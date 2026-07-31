@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/legacy_result.schema.json",
+  "title": "Frozen legacy Tuppi execution result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "adapter_version",
+    "artifact_id",
+    "ruleset_id",
+    "emulator_sha256",
+    "python_version",
+    "effective_configuration",
+    "deal_id",
+    "initial_deal",
+    "dealer",
+    "agents",
+    "auction",
+    "contract",
+    "declarer",
+    "card_play_transcript",
+    "tricks",
+    "terminal",
+    "execution",
+    "fidelity_warnings"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.legacy.result.v1"},
+    "adapter_version": {"const": "0.1.0"},
+    "artifact_id": {"const": "legacy_v9_unverified"},
+    "ruleset_id": {"const": "legacy_v9_unverified"},
+    "emulator_sha256": {
+      "const": "f5d52f2a41d0c1fc2db18fa54f1171355d432d581c6eb6cb18c1298218aa87c9"
+    },
+    "python_version": {"type": "string"},
+    "effective_configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deal_count",
+        "deal_input",
+        "deal_index",
+        "legacy_rng_seed",
+        "legacy_rng_scope",
+        "rollouts_per_legal_move",
+        "scoring",
+        "show_banned_ranks",
+        "analysis",
+        "runner_mode"
+      ],
+      "properties": {
+        "deal_count": {"type": "integer", "minimum": 1},
+        "deal_input": {
+          "type": "object",
+          "required": ["mode", "materialized_deal_set_sha256"],
+          "properties": {
+            "mode": {"enum": ["generated", "explicit_file", "programmatic"]},
+            "materialized_deal_set_sha256": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "generation_algorithm": {"type": "string"},
+            "generation_seed": {"type": "integer"},
+            "initial_dealer": {"type": "integer", "minimum": 0, "maximum": 3}
+          }
+        },
+        "deal_index": {"type": "integer", "minimum": 0},
+        "legacy_rng_seed": {"type": "integer"},
+        "legacy_rng_scope": {"type": "string"},
+        "rollouts_per_legal_move": {"type": "integer", "minimum": 1},
+        "scoring": {"enum": ["rising", "flat"]},
+        "show_banned_ranks": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "integer", "minimum": 2, "maximum": 14}
+        },
+        "analysis": {"const": "none"},
+        "runner_mode": {"const": "fixed_deal_count_all_ai"}
+      }
+    },
+    "deal_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "initial_deal": {"$ref": "legacy_deal.schema.json"},
+    "dealer": {"type": "integer", "minimum": 0, "maximum": 3},
+    "agents": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["seat", "identity", "rollouts_per_legal_move"],
+        "properties": {
+          "seat": {"type": "integer", "minimum": 0, "maximum": 3},
+          "identity": {"const": "legacy_v9.MonteCarloAI"},
+          "rollouts_per_legal_move": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "auction": {
+      "type": "object",
+      "required": ["contract", "declarer", "forehand", "reveal_order", "actions"]
+    },
+    "contract": {"enum": ["RAMI", "NOLO"]},
+    "declarer": {"type": ["integer", "null"], "minimum": 0, "maximum": 3},
+    "card_play_transcript": {
+      "type": "array",
+      "minItems": 52,
+      "maxItems": 52,
+      "items": {"type": "object"}
+    },
+    "tricks": {
+      "type": "array",
+      "minItems": 13,
+      "maxItems": 13,
+      "items": {"type": "object"}
+    },
+    "terminal": {
+      "type": "object",
+      "required": [
+        "tricks_by_player",
+        "tricks_by_team",
+        "deal_winner_team",
+        "deal_points",
+        "legacy_score_before",
+        "legacy_score_after"
+      ]
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "legacy_stdout_parsed",
+        "stdin_required",
+        "gui_required",
+        "network_required"
+      ],
+      "properties": {
+        "status": {"const": "ok"},
+        "legacy_stdout_parsed": {"const": false},
+        "stdin_required": {"const": false},
+        "gui_required": {"const": false},
+        "network_required": {"const": false}
+      }
+    },
+    "fidelity_warnings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string"}
+    }
+  }
+}

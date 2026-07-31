@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tuppi-legacy-archive"
+version = "0.1.0"
+description = "Reproducible archival harness for the frozen Tuppi legacy prototype"
+readme = "README.md"
+requires-python = ">=3.11,<3.15"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<9"]
+
+[project.scripts]
+tuppi-legacy = "tuppi_legacy.run:entrypoint"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.data-files]
+"share/tuppi-legacy/Archive" = [
+  "Archive/tuppi_emulator_v9.py",
+  "Archive/tuppi_gui_client_multi_v8.py",
+]
+"share/tuppi-legacy/manifests" = ["manifests/legacy_v9.json"]
+"share/tuppi-legacy/schemas" = [
+  "schemas/legacy_deal.schema.json",
+  "schemas/legacy_deal_set.schema.json",
+  "schemas/legacy_result.schema.json",
+]
+"share/tuppi-legacy/docs" = ["docs/phase0_audit.md"]
+
+[tool.pytest.ini_options]
+testpaths = [
+  "tests/legacy_characterization",
+  "tests/archival_harness",
+]
+addopts = "-ra"
