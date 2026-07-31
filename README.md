@@ -1,21 +1,41 @@
-# Tuppi research project: frozen legacy harness
+# Tuppi research project
 
-This repository currently contains a reproducible archival harness around an
-unverified legacy Tuppi prototype. It is Phase 0B infrastructure, not the future
-trusted game engine.
+This repository contains the frozen Phase 0B legacy harness and the Phase 1
+authoritative rules specification. It does not yet contain the future trusted
+game engine or evaluation framework.
 
-Three boundaries matter:
+Four boundaries matter:
 
 1. `Archive/` contains byte-for-byte frozen historical artifacts.
 2. `src/tuppi_legacy/` verifies and executes the old emulator through an
    external, finite, all-AI adapter.
-3. The future clean engine will be a separate implementation with normative
-   rules tests. Legacy characterization tests must not be reused as its rules
-   specification.
+3. `project_target_v1` is the authoritative future ruleset. Its pure executable
+   reference is in `src/tuppi_rules/`; it is not a complete game engine.
+4. The future clean engine will be a separate implementation whose normative
+   tests are independent of legacy characterization.
 
 The archival ruleset identifier is **`legacy_v9_unverified`**. It is not the
-target ruleset and must not be described as following official tournament
-rules.
+target ruleset, is preserved only for historical comparison, and must not be
+described as following official tournament rules.
+
+## Authoritative target rules
+
+The project owner's Finnish specification dated 2026-07-31 is formalized as
+**`project_target_v1`**. It is authoritative for this project but does not claim
+general official status.
+
+- Principal engineering specification: `docs/rules/project_target_v1.md`
+- Finnish specification: `docs/rules/project_target_v1.fi.md`
+- Traceable decision table: `docs/rules/project_target_v1_decisions.md`
+- Machine-readable configuration: `configs/rules/project_target_v1.json`
+- Strict schema: `schemas/ruleset.schema.json`
+- Pure executable reference: `src/tuppi_rules/`
+- Executable examples: `examples/rules/project_target_v1/`
+
+The reference package defines immutable cards, showing, contract resolution,
+legal trick play, complete-deal validation, deal scoring, and rising-score
+transitions. It contains no randomness, I/O, game loop, agents, search, or
+legacy imports.
 
 ## Supported Python
 
@@ -24,7 +44,8 @@ audit and frozen manifest were produced with Python 3.14.3.
 
 ## Installation
 
-Create an isolated environment and install the adapter plus test dependency:
+Create an isolated environment and install both packages plus development
+dependencies:
 
 ```bash
 python3 -m venv .venv
@@ -32,7 +53,8 @@ python3 -m venv .venv
 ```
 
 There are no runtime dependencies outside the Python standard library and no
-machine-learning dependencies.
+machine-learning dependencies. Development tests use pytest, Hypothesis, and
+JSON Schema validation.
 
 ## Tests
 
@@ -43,6 +65,15 @@ machine-learning dependencies.
 `tests/legacy_characterization/` records observed legacy behavior, including
 known defects. `tests/archival_harness/` tests the external adapter. Neither is
 a normative test suite for the future engine.
+
+Run only the authoritative rules tests with:
+
+```bash
+.venv/bin/python -m pytest tests/rules/project_target_v1
+```
+
+These tests derive solely from the project-owner specification and include
+exhaustive scoring cases plus deterministic property-based checks.
 
 ## Headless execution
 
@@ -127,3 +158,11 @@ Schemas:
 
 See `docs/phase0_audit.md` and `manifests/legacy_v9.json` for the preserved
 audit and artifact hashes.
+
+## Development sequence
+
+`src/tuppi_rules/` is an executable specification, not a playable engine. The
+next phase should build a clean state machine around player-specific immutable
+observations and strict actions. AI strength work must wait until that engine
+and a controlled evaluation framework are complete; no legacy result is a
+strength benchmark unless independently reproduced.

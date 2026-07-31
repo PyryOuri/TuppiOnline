@@ -1,0 +1,31 @@
+{
+  "schema_version": "tuppi.rules.examples.v1",
+  "ruleset_id": "project_target_v1",
+  "operation": "transition_rising_score",
+  "scenarios": [
+    {
+      "id": "team_at_48_reaches_52",
+      "current_score": [48, 0],
+      "deal": {"contract": "NOLO", "team0_tricks": 6, "team1_tricks": 7},
+      "expected_score": [52, 0],
+      "expected_terminal": true,
+      "expected_winner_team": 0
+    },
+    {
+      "id": "down_team_resets_48_point_up_team",
+      "current_score": [48, 0],
+      "deal": {"contract": "NOLO", "team0_tricks": 8, "team1_tricks": 5},
+      "expected_score": [0, 0],
+      "expected_terminal": false,
+      "expected_winner_team": null
+    },
+    {
+      "id": "down_team_56_point_stolen_rami_only_resets",
+      "current_score": [48, 0],
+      "deal": {"contract": "RAMI", "declaring_team": 0, "team0_tricks": 0, "team1_tricks": 13},
+      "expected_score": [0, 0],
+      "expected_terminal": false,
+      "expected_winner_team": null
+    }
+  ]
+}

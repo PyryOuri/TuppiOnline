@@ -1,0 +1,27 @@
+# `project_target_v1` rules decision table
+
+The project-owner specification dated 2026-07-31 is authoritative throughout
+this table. Legacy observations are comparisons only, never normative inputs.
+
+| Domain | Authoritative project behavior | Legacy behavior where known | Reason for difference or confirmation | Source / provenance | Normative test references |
+| --- | --- | --- | --- | --- | --- |
+| Show-card mechanism | A player reveals one card from their own hand; no separate physical show cards are used. | Uses a hand card for non-verbal shows. | Owner intentionally selected hand-card showing for this project. | Project-owner specification, 2026-07-31 | `test_showing.py`, `test_examples.py` |
+| Eligible show ranks | Exactly 3, 4, 5, 6, 7, 8, 9. | Default banned set is 2/J/Q/K, so 10 and ace are normally allowed. | Explicit owner rule replaces legacy defaults. | Project-owner specification | `test_showing.py`, `test_config.py` |
+| Verbal mismatch | If no eligible normal-color card exists but some eligible card exists, any eligible card may be shown and the explicit declaration overrides color; speech is required. | Verbal bids can use `card=None`; human card shows normally infer contract from color. | Target always retains a physical hand-card show and explicit contract. | Project-owner specification | `test_showing.py`, `test_examples.py` |
+| No eligible show cards | Any held card must still be shown; the explicit contract is verbal and authoritative. | Verbal bid may contain no card. | Owner requires one shown card for every action. | Project-owner specification | `test_showing.py`, `test_examples.py` |
+| Public shown-card information | Every action's card is public, stays in hand, is unreserved, and may be played later. | Revealed card remains in the hand; only shows reached by the reveal loop become public. | Retention agrees; target explicitly defines public scope and stops collecting after RAMI. | Project-owner specification | `test_showing.py`, `test_contract_resolution.py` |
+| Contract termination | The first RAMI action ends showing immediately; later players have no actions. Four ordered NOLO actions resolve NOLO. | All four choices are collected before ordered reveal; reveal stops at first RAMI. | Owner specifies immediate end of showing, not merely reveal. | Project-owner specification | `test_contract_resolution.py` |
+| First leader | NOLO: forehand. RAMI: `(declarer - 1) mod 4`, including dealer lead when forehand declares. | Same formulas observed. | Independently confirmed by owner specification. | Project-owner specification | `test_seating.py`, `test_contract_resolution.py` |
+| Follow-suit | Leader may play any held card; followers must follow if able and otherwise may play any held card. | Same basic rule observed, but invalid AI output may be replaced. | Target makes legality strict and explicit. | Project-owner specification | `test_tricks.py`, `test_properties.py` |
+| Deal length | Exactly 13 tricks and 52 distinct plays; never stop early. | Always plays 13 tricks. | Owner intentionally overrides tournament variants that stop early. | Project-owner specification | `test_deal_invariants.py`, `test_config.py` |
+| NOLO scoring | Lower-trick team wins `4 × (7 - winner_tricks)`; all 14 splits are defined. | Same formula observed. | Independently confirmed by owner specification. | Project-owner specification | `test_scoring.py`, `test_properties.py` |
+| RAMI scoring | Declarer team at 7–13 tricks wins `4 × (declaring_tricks - 6)`. | Same formula observed. | Independently confirmed by owner specification. | Project-owner specification | `test_scoring.py`, `test_properties.py` |
+| Stolen RAMI scoring | Declarer team at 0–6 loses; opponents receive deal value `8 × (opponent_tricks - 6)`. | Same deal formula observed. | Independently confirmed by owner specification. | Project-owner specification | `test_scoring.py`, `test_examples.py` |
+| Rising-score reset | A down-team deal win erases the up score and awards the down team zero match points, regardless of deal value. | Same continuous-rise reset observed; legacy also offers a non-target flat mode. | Owner selected continuous rising scoring only. | Project-owner specification | `test_match_scoring.py`, `test_examples.py` |
+| Match target | Match ends when the sole positive score is `>= 52`; overshoot is valid. | Winner check also uses `>= 52`. | Independently confirmed; no exact-52 requirement. | Project-owner specification | `test_match_scoring.py`, `test_config.py` |
+| Dealer rotation | Initial dealer is runner-supplied; after each completed nonterminal deal rotate `(dealer + 1) mod 4`. | Internal initial dealer is 0; run loop rotates clockwise after each nonterminal deal. | Random/initial selection belongs outside the clean rules core. | Project-owner specification | `test_seating.py`, `test_config.py` |
+| Invalid actions | Reject with a typed error; never substitute, default, or normalize. | Contains illegal-play fallback and several `value or default` normalizations. | Correctness and experimental integrity require explicit failure. | Project-owner specification plus engineering safety requirement | `test_showing.py`, `test_tricks.py`, `test_match_scoring.py` |
+
+The complete authoritative wording is in `project_target_v1.md` and
+`project_target_v1.fi.md`. Tests under `tests/legacy_characterization/` remain
+explicitly non-normative.

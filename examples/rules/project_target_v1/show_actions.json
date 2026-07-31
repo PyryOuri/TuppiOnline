@@ -1,0 +1,52 @@
+{
+  "schema_version": "tuppi.rules.examples.v1",
+  "ruleset_id": "project_target_v1",
+  "operation": "validate_show_action",
+  "scenarios": [
+    {
+      "id": "normal_red_rami_show",
+      "seat": 0,
+      "hand": ["3H", "2H", "10H", "JH", "QH", "KH", "AH", "2C", "10C", "JC", "QC", "KC", "AC"],
+      "shown_card": "3H",
+      "declared_contract": "RAMI",
+      "expected_verbal_required": false,
+      "expected_valid_show_cards": ["3H"]
+    },
+    {
+      "id": "normal_black_nolo_show",
+      "seat": 1,
+      "hand": ["4C", "3H", "2H", "10H", "JH", "QH", "KH", "AH", "2S", "10S", "JS", "QS", "KS"],
+      "shown_card": "4C",
+      "declared_contract": "NOLO",
+      "expected_verbal_required": false,
+      "expected_valid_show_cards": ["4C"]
+    },
+    {
+      "id": "rami_verbal_fallback_black_eligible",
+      "seat": 2,
+      "hand": ["3C", "7S", "2H", "10H", "JH", "QH", "KH", "AH", "2D", "10D", "JD", "QD", "KD"],
+      "shown_card": "3C",
+      "declared_contract": "RAMI",
+      "expected_verbal_required": true,
+      "expected_valid_show_cards": ["3C", "7S"]
+    },
+    {
+      "id": "nolo_verbal_fallback_red_eligible",
+      "seat": 3,
+      "hand": ["4D", "8H", "2C", "10C", "JC", "QC", "KC", "AC", "2S", "10S", "JS", "QS", "KS"],
+      "shown_card": "4D",
+      "declared_contract": "NOLO",
+      "expected_verbal_required": true,
+      "expected_valid_show_cards": ["4D", "8H"]
+    },
+    {
+      "id": "no_eligible_rank_arbitrary_card_verbal",
+      "seat": 0,
+      "hand": ["2H", "10H", "JH", "QH", "KH", "AH", "2D", "10D", "JD", "QD", "KD", "AD", "2C"],
+      "shown_card": "10H",
+      "declared_contract": "RAMI",
+      "expected_verbal_required": true,
+      "expected_valid_show_cards": ["2H", "10H", "JH", "QH", "KH", "AH", "2D", "10D", "JD", "QD", "KD", "AD", "2C"]
+    }
+  ]
+}
