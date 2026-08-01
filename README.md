@@ -1,8 +1,8 @@
 # Tuppi research project
 
 This repository contains the frozen Phase 0B legacy harness, the Phase 1
-authoritative rules specification, and the Phase 2 deterministic clean engine.
-It does not yet contain the future agent evaluation framework.
+authoritative rules specification, the Phase 2 deterministic clean engine,
+and the Phase 3 deterministic evaluation framework.
 
 Five boundaries matter:
 
@@ -13,8 +13,10 @@ Five boundaries matter:
    reference is in `src/tuppi_rules/`; it is not a complete game engine.
 4. `src/tuppi_engine/` is the clean deterministic state machine around those
    rules. It has no dependency on the legacy adapter.
-5. Future evaluation and AI packages remain separate from the engine and must
-   consume player-specific observations rather than private engine state.
+5. `src/tuppi_eval/` owns deal banks, agent/team identities, balanced schedules,
+   finite arena execution, paired statistics, and baseline cross-play.
+6. Future strategic AI remains separate and must consume player-specific
+   observations rather than private engine state.
 
 The archival ruleset identifier is **`legacy_v9_unverified`**. It is not the
 target ruleset, is preserved only for historical comparison, and must not be
@@ -144,6 +146,56 @@ out-of-order scripts, illegal actions, shared cross-seat agent objects, extra
 post-terminal deals, non-regular inputs, and invalid or aliased paths fail
 nonzero.
 Output path and stderr verbosity are excluded from canonical result content.
+
+## Deterministic evaluation
+
+`src/tuppi_eval/` compares immutable agent partnerships using content-addressed
+deal banks and the documented eight-game `balanced_duplicate_8_v1` schedule.
+The independently generated base deal—not each correlated seat rotation—is the
+primary statistical unit. Failed rows are quarantined and excluded from normal
+outcome metrics; completed atomic shards resume without replay.
+
+Generate a deterministic one-deal bank:
+
+```bash
+.venv/bin/python -m tuppi_eval.runner generate-deals \
+  --count 1 --seed 1729 --dealer-policy round_robin \
+  --initial-dealer 0 --starting-score 0-0 \
+  --output deal-bank.json
+```
+
+Run or resume the checked-in baseline fixture and rebuild its summary:
+
+```bash
+.venv/bin/python -m tuppi_eval.runner compare \
+  --config examples/evaluation/baseline_comparison.json \
+  --deal-bank examples/evaluation/small_deal_bank.json \
+  --output-dir runs/baseline
+
+.venv/bin/python -m tuppi_eval.runner summarize \
+  --run-dir runs/baseline
+```
+
+Run deterministic baseline cross-play:
+
+```bash
+.venv/bin/python -m tuppi_eval.runner crossplay \
+  --config examples/evaluation/baseline_crossplay.json \
+  --deal-bank examples/evaluation/small_deal_bank.json \
+  --output-dir runs/baseline-crossplay
+```
+
+These simple policies are evaluator fixtures, not strategic-strength claims.
+The evaluator adds no search, learning, belief model, expert policy, GUI, or
+network play. See `docs/evaluation/` for architecture, the exact schedule proof,
+statistics, reproducibility, and registry semantics. Strict schemas are in
+`schemas/evaluation/`, and CI-sized fixtures are in `examples/evaluation/`.
+
+Run only Phase 3 tests with:
+
+```bash
+.venv/bin/python -m pytest tests/evaluation
+```
 
 ## Legacy headless execution
 

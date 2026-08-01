@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tuppi-research"
-version = "0.2.0"
-description = "Deterministic Tuppi engine, authoritative rules, and legacy archive"
+version = "0.3.0"
+description = "Deterministic Tuppi rules, engine, evaluation framework, and legacy archive"
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
 dependencies = []
@@ -20,6 +20,7 @@ dev = [
 [project.scripts]
 tuppi-legacy = "tuppi_legacy.run:entrypoint"
 tuppi-engine = "tuppi_engine.runner:entrypoint"
+tuppi-eval = "tuppi_eval.runner:entrypoint"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -83,6 +84,40 @@ where = ["src"]
   "examples/engine/project_target_v1/exact_52_script.json",
   "examples/engine/project_target_v1/invalid_duplicate_card_deal.json",
 ]
+"share/tuppi-eval/schemas" = [
+  "schemas/evaluation/agent_spec.schema.json",
+  "schemas/evaluation/team_spec.schema.json",
+  "schemas/evaluation/deal_bank.schema.json",
+  "schemas/evaluation/evaluation_config.schema.json",
+  "schemas/evaluation/schedule.schema.json",
+  "schemas/evaluation/game_record.schema.json",
+  "schemas/evaluation/duplicate_block_record.schema.json",
+  "schemas/evaluation/evaluation_result.schema.json",
+  "schemas/evaluation/crossplay_matrix.schema.json",
+  "schemas/evaluation/promotion_decision.schema.json",
+]
+"share/tuppi-eval/docs" = [
+  "docs/evaluation/architecture.md",
+  "docs/evaluation/duplicate_design.md",
+  "docs/evaluation/statistics.md",
+  "docs/evaluation/reproducibility.md",
+  "docs/evaluation/agent_registry.md",
+]
+"share/tuppi-eval/examples" = [
+  "examples/evaluation/README.md",
+  "examples/evaluation/generate_examples.py",
+  "examples/evaluation/benchmark_smoke.py",
+  "examples/evaluation/small_deal_bank.json",
+  "examples/evaluation/baseline_comparison.json",
+  "examples/evaluation/homogeneous_vs_heterogeneous.json",
+  "examples/evaluation/duplicate_block.json",
+  "examples/evaluation/baseline_crossplay.json",
+  "examples/evaluation/small_crossplay_matrix.json",
+  "examples/evaluation/structured_failure.json",
+  "examples/evaluation/interrupted_resume.json",
+  "examples/evaluation/synthetic_statistics.json",
+  "examples/evaluation/promotion_decision.json",
+]
 
 [tool.pytest.ini_options]
 testpaths = [
@@ -90,5 +125,6 @@ testpaths = [
   "tests/archival_harness",
   "tests/rules/project_target_v1",
   "tests/engine",
+  "tests/evaluation",
 ]
 addopts = "-ra"

@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/evaluation/game_record.schema.json",
+  "title": "Individual transformed evaluation game record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "record_id", "evaluation_id", "entry_id", "base_deal_id",
+    "transformation_id", "transformed_deal_id", "schedule_position", "block_index",
+    "evaluation_mode", "ruleset_id", "engine_identity", "seat_team_ids",
+    "seat_agent_ids", "seat_external_teams", "dealer", "forehand", "starting_score",
+    "contract", "declarer", "declaring_engine_team", "declaring_external_team",
+    "first_leader", "team_tricks", "winner_engine_team", "winner_external_team",
+    "deal_points", "score_after", "reset", "terminal", "match_winner_external_team",
+    "deals_played", "execution_status", "failure", "raw_result_digest", "event_log_id",
+    "agent_seeds", "determinism_metadata", "duration_seconds", "action_durations_seconds"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.eval.game_record.v1"},
+    "record_id": {"type": "string", "pattern": "^game:sha256:[0-9a-f]{64}$"},
+    "evaluation_id": {"type": "string", "pattern": "^eval:sha256:[0-9a-f]{64}$"},
+    "entry_id": {"type": "string", "pattern": "^entry:sha256:[0-9a-f]{64}$"},
+    "base_deal_id": {"type": "string", "pattern": "^(?:base|sequence):sha256:[0-9a-f]{64}$"},
+    "transformation_id": {"type": "string", "pattern": "^transform:sha256:[0-9a-f]{64}$"},
+    "transformed_deal_id": {"type": "string", "pattern": "^(?:concrete|concrete-sequence):sha256:[0-9a-f]{64}$"},
+    "schedule_position": {"type": "integer", "minimum": 0},
+    "block_index": {"type": "integer", "minimum": 0},
+    "evaluation_mode": {"enum": ["deal", "match"]},
+    "ruleset_id": {"const": "project_target_v1"},
+    "engine_identity": {"type": "string", "minLength": 1},
+    "seat_team_ids": {"$ref": "#/$defs/fourStrings"},
+    "seat_agent_ids": {"$ref": "#/$defs/fourStrings"},
+    "seat_external_teams": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"enum": ["A", "B"]}},
+    "dealer": {"$ref": "#/$defs/seat"},
+    "forehand": {"$ref": "#/$defs/seat"},
+    "starting_score": {"$ref": "#/$defs/score"},
+    "contract": {"oneOf": [{"enum": ["RAMI", "NOLO"]}, {"type": "null"}]},
+    "declarer": {"$ref": "#/$defs/nullableSeat"},
+    "declaring_engine_team": {"$ref": "#/$defs/nullableTeam"},
+    "declaring_external_team": {"$ref": "#/$defs/nullableExternal"},
+    "first_leader": {"$ref": "#/$defs/nullableSeat"},
+    "team_tricks": {"oneOf": [{"$ref": "#/$defs/tricks"}, {"type": "null"}]},
+    "winner_engine_team": {"$ref": "#/$defs/nullableTeam"},
+    "winner_external_team": {"$ref": "#/$defs/nullableExternal"},
+    "deal_points": {"oneOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
+    "score_after": {"oneOf": [{"$ref": "#/$defs/score"}, {"type": "null"}]},
+    "reset": {"oneOf": [{"type": "boolean"}, {"type": "null"}]},
+    "terminal": {"oneOf": [{"type": "boolean"}, {"type": "null"}]},
+    "match_winner_external_team": {"$ref": "#/$defs/nullableExternal"},
+    "deals_played": {"type": "integer", "minimum": 0},
+    "execution_status": {"enum": ["success", "failed"]},
+    "failure": {"oneOf": [{"$ref": "#/$defs/failure"}, {"type": "null"}]},
+    "raw_result_digest": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+    "event_log_id": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+    "agent_seeds": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}]}},
+    "determinism_metadata": {"type": "object"},
+    "duration_seconds": {"type": "number", "minimum": 0},
+    "action_durations_seconds": {"type": "array", "items": {"type": "number", "minimum": 0}}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"execution_status": {"const": "success"}}, "required": ["execution_status"]},
+      "then": {
+        "properties": {
+          "contract": {"enum": ["RAMI", "NOLO"]},
+          "failure": {"type": "null"},
+          "team_tricks": {"$ref": "#/$defs/tricks"},
+          "winner_external_team": {"enum": ["A", "B"]},
+          "deal_points": {"type": "integer", "minimum": 1},
+          "raw_result_digest": {"$ref": "#/$defs/sha256"},
+          "event_log_id": {"$ref": "#/$defs/sha256"}
+        }
+      },
+      "else": {
+        "properties": {
+          "contract": {"type": "null"}, "failure": {"$ref": "#/$defs/failure"},
+          "team_tricks": {"type": "null"}, "winner_external_team": {"type": "null"},
+          "deal_points": {"type": "null"}, "raw_result_digest": {"type": "null"},
+          "event_log_id": {"type": "null"}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "seat": {"type": "integer", "minimum": 0, "maximum": 3},
+    "nullableSeat": {"oneOf": [{"$ref": "#/$defs/seat"}, {"type": "null"}]},
+    "nullableTeam": {"oneOf": [{"type": "integer", "minimum": 0, "maximum": 1}, {"type": "null"}]},
+    "nullableExternal": {"oneOf": [{"enum": ["A", "B"]}, {"type": "null"}]},
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "fourStrings": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "string", "minLength": 1}},
+    "score": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "integer", "minimum": 0}},
+    "tricks": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "integer", "minimum": 0, "maximum": 13}},
+    "failure": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "exception_type", "message", "acting_seat", "action_index"],
+      "properties": {
+        "kind": {"enum": ["invalid_configuration", "invalid_deal_bank", "agent_construction_failure", "illegal_agent_action", "engine_invariant_failure", "timeout", "serialization_failure", "interrupted_run", "agent_protocol_failure", "insufficient_match_deals", "unexpected_failure"]},
+        "exception_type": {"type": "string", "minLength": 1},
+        "message": {"type": "string"},
+        "acting_seat": {"$ref": "#/$defs/nullableSeat"},
+        "action_index": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]}
+      }
+    }
+  },
+  "$comment": "Durations are operational and excluded from semantic game identity."
+}

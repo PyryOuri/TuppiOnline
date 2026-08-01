@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/evaluation/agent_spec.schema.json",
+  "title": "Immutable Tuppi evaluation agent specification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "agent_id", "agent_family", "configuration_version",
+    "implementation_reference", "ruleset_compatibility",
+    "observation_schema_compatibility", "determinism", "seed_policy",
+    "configuration", "configuration_digest", "model_checkpoint_id",
+    "search_budget", "partner_convention_id", "description"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.eval.agent_spec.v1"},
+    "agent_id": {"type": "string", "pattern": "^agent:sha256:[0-9a-f]{64}$"},
+    "agent_family": {"$ref": "#/$defs/reference"},
+    "configuration_version": {"$ref": "#/$defs/reference"},
+    "implementation_reference": {"$ref": "#/$defs/reference"},
+    "ruleset_compatibility": {"$ref": "#/$defs/nonemptyStrings"},
+    "observation_schema_compatibility": {"$ref": "#/$defs/nonemptyStrings"},
+    "determinism": {"enum": ["deterministic", "seeded_stochastic"]},
+    "seed_policy": {"enum": ["none", "derived_per_entry_seat"]},
+    "configuration": {"type": "object"},
+    "configuration_digest": {"$ref": "#/$defs/sha256"},
+    "model_checkpoint_id": {"oneOf": [{"$ref": "#/$defs/reference"}, {"type": "null"}]},
+    "search_budget": {"oneOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
+    "partner_convention_id": {"oneOf": [{"$ref": "#/$defs/reference"}, {"type": "null"}]},
+    "description": {"type": "string", "minLength": 1}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"determinism": {"const": "deterministic"}}, "required": ["determinism"]},
+      "then": {"properties": {"seed_policy": {"const": "none"}}},
+      "else": {"properties": {"seed_policy": {"const": "derived_per_entry_seat"}}}
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "reference": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,160}$"},
+    "nonemptyStrings": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    }
+  },
+  "$comment": "The Python loader recomputes configuration_digest and agent_id from canonical content."
+}
