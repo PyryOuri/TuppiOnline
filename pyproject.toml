@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "tuppi-legacy-archive"
-version = "0.1.0"
-description = "Research foundations for authoritative and archived Tuppi rulesets"
+name = "tuppi-research"
+version = "0.2.0"
+description = "Deterministic Tuppi engine, authoritative rules, and legacy archive"
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
 dependencies = []
@@ -19,6 +19,7 @@ dev = [
 
 [project.scripts]
 tuppi-legacy = "tuppi_legacy.run:entrypoint"
+tuppi-engine = "tuppi_engine.runner:entrypoint"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -49,11 +50,45 @@ where = ["src"]
   "examples/rules/project_target_v1/deal_scoring.json",
   "examples/rules/project_target_v1/match_transitions.json",
 ]
+"share/tuppi-engine/schemas" = [
+  "schemas/engine/explicit_deal.schema.json",
+  "schemas/engine/match_input.schema.json",
+  "schemas/engine/agent_script.schema.json",
+  "schemas/engine/public_event_log.schema.json",
+  "schemas/engine/deal_result.schema.json",
+  "schemas/engine/match_result.schema.json",
+  "schemas/engine/player_observation.schema.json",
+  "schemas/engine/research_result.schema.json",
+]
+"share/tuppi-engine/docs" = [
+  "docs/engine/architecture.md",
+  "docs/engine/state_machine.md",
+  "docs/engine/observation_security.md",
+  "docs/engine/serialization.md",
+]
+"share/tuppi-engine/examples/project_target_v1" = [
+  "examples/engine/project_target_v1/README.md",
+  "examples/engine/project_target_v1/generate_examples.py",
+  "examples/engine/project_target_v1/valid_one_deal_match.json",
+  "examples/engine/project_target_v1/full_nolo_script.json",
+  "examples/engine/project_target_v1/successful_rami_match.json",
+  "examples/engine/project_target_v1/successful_rami_script.json",
+  "examples/engine/project_target_v1/stolen_rami_match.json",
+  "examples/engine/project_target_v1/stolen_rami_script.json",
+  "examples/engine/project_target_v1/verbal_fallback_match.json",
+  "examples/engine/project_target_v1/verbal_fallback_script.json",
+  "examples/engine/project_target_v1/no_eligible_show_match.json",
+  "examples/engine/project_target_v1/no_eligible_show_script.json",
+  "examples/engine/project_target_v1/exact_52_match.json",
+  "examples/engine/project_target_v1/exact_52_script.json",
+  "examples/engine/project_target_v1/invalid_duplicate_card_deal.json",
+]
 
 [tool.pytest.ini_options]
 testpaths = [
   "tests/legacy_characterization",
   "tests/archival_harness",
   "tests/rules/project_target_v1",
+  "tests/engine",
 ]
 addopts = "-ra"

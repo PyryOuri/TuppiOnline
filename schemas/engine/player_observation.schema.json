@@ -1,0 +1,292 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/engine/player_observation.schema.json",
+  "title": "project_target_v1 player-private observation",
+  "description": "A serialized immutable observation for one seat. This is not a public event artifact or an accepted state input.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "ruleset_id",
+    "visibility",
+    "match_ref",
+    "deal_ref",
+    "observing_seat",
+    "team",
+    "partner_seat",
+    "dealer",
+    "forehand",
+    "phase",
+    "current_actor",
+    "own_hand",
+    "show_actions",
+    "publicly_shown_cards",
+    "contract",
+    "declarer",
+    "first_leader",
+    "completed_tricks",
+    "current_trick",
+    "team_tricks",
+    "match_score",
+    "legal_actions",
+    "deal_terminal",
+    "match_terminal"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.engine.player_observation.v1"},
+    "ruleset_id": {"const": "project_target_v1"},
+    "visibility": {"const": "player_private"},
+    "match_ref": {"$ref": "#/$defs/matchRef"},
+    "deal_ref": {"$ref": "#/$defs/dealRef"},
+    "observing_seat": {"$ref": "#/$defs/seat"},
+    "team": {"$ref": "#/$defs/team"},
+    "partner_seat": {"$ref": "#/$defs/seat"},
+    "dealer": {"$ref": "#/$defs/seat"},
+    "forehand": {"$ref": "#/$defs/seat"},
+    "phase": {"enum": ["SHOWING", "TRICK_PLAY", "DEAL_COMPLETE", "MATCH_COMPLETE"]},
+    "current_actor": {
+      "oneOf": [{"$ref": "#/$defs/seat"}, {"type": "null"}]
+    },
+    "own_hand": {
+      "type": "array",
+      "maxItems": 13,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/card"}
+    },
+    "show_actions": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {"$ref": "#/$defs/acceptedShow"}
+    },
+    "publicly_shown_cards": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {"$ref": "#/$defs/publicShownCard"}
+    },
+    "contract": {
+      "oneOf": [{"enum": ["RAMI", "NOLO"]}, {"type": "null"}]
+    },
+    "declarer": {
+      "oneOf": [{"$ref": "#/$defs/seat"}, {"type": "null"}]
+    },
+    "first_leader": {
+      "oneOf": [{"$ref": "#/$defs/seat"}, {"type": "null"}]
+    },
+    "completed_tricks": {
+      "type": "array",
+      "maxItems": 13,
+      "items": {"$ref": "#/$defs/completedTrick"}
+    },
+    "current_trick": {
+      "type": "array",
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/playedCard"}
+    },
+    "team_tricks": {"$ref": "#/$defs/teamTricks"},
+    "match_score": {"$ref": "#/$defs/score"},
+    "legal_actions": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/action"}
+    },
+    "deal_terminal": {"type": "boolean"},
+    "match_terminal": {"type": "boolean"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"phase": {"const": "SHOWING"}}, "required": ["phase"]},
+      "then": {
+        "properties": {
+          "contract": {"type": "null"},
+          "declarer": {"type": "null"},
+          "first_leader": {"type": "null"},
+          "completed_tricks": {"maxItems": 0},
+          "current_trick": {"maxItems": 0},
+          "team_tricks": {"const": [0, 0]},
+          "deal_terminal": {"const": false},
+          "match_terminal": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"phase": {"const": "TRICK_PLAY"}}, "required": ["phase"]},
+      "then": {
+        "properties": {
+          "contract": {"enum": ["RAMI", "NOLO"]},
+          "first_leader": {"$ref": "#/$defs/seat"},
+          "completed_tricks": {"maxItems": 12},
+          "deal_terminal": {"const": false},
+          "match_terminal": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"phase": {"const": "DEAL_COMPLETE"}}, "required": ["phase"]},
+      "then": {
+        "properties": {
+          "current_actor": {"type": "null"},
+          "own_hand": {"maxItems": 0},
+          "completed_tricks": {"minItems": 13, "maxItems": 13},
+          "current_trick": {"maxItems": 0},
+          "legal_actions": {"maxItems": 0},
+          "deal_terminal": {"const": true},
+          "match_terminal": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"phase": {"const": "MATCH_COMPLETE"}}, "required": ["phase"]},
+      "then": {
+        "properties": {
+          "current_actor": {"type": "null"},
+          "own_hand": {"maxItems": 0},
+          "completed_tricks": {"minItems": 13, "maxItems": 13},
+          "current_trick": {"maxItems": 0},
+          "legal_actions": {"maxItems": 0},
+          "deal_terminal": {"const": true},
+          "match_terminal": {"const": true},
+          "match_score": {"$ref": "#/$defs/terminalScore"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"contract": {"const": "RAMI"}}, "required": ["contract"]},
+      "then": {"properties": {"declarer": {"$ref": "#/$defs/seat"}}}
+    },
+    {
+      "if": {"properties": {"contract": {"const": "NOLO"}}, "required": ["contract"]},
+      "then": {"properties": {"declarer": {"type": "null"}}}
+    }
+  ],
+  "$defs": {
+    "seat": {"type": "integer", "minimum": 0, "maximum": 3},
+    "team": {"type": "integer", "minimum": 0, "maximum": 1},
+    "matchRef": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,96}$"},
+    "dealRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]{1,96}/deal:(?:0|[1-9][0-9]*)$",
+      "maxLength": 128
+    },
+    "card": {"type": "string", "pattern": "^(?:[2-9]|10|J|Q|K|A)[HDCS]$"},
+    "score": {
+      "oneOf": [
+        {
+          "type": "array",
+          "prefixItems": [{"const": 0}, {"type": "integer", "minimum": 0}],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        {
+          "type": "array",
+          "prefixItems": [{"type": "integer", "minimum": 1}, {"const": 0}],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        }
+      ]
+    },
+    "terminalScore": {
+      "oneOf": [
+        {
+          "type": "array",
+          "prefixItems": [{"const": 0}, {"type": "integer", "minimum": 52}],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        {
+          "type": "array",
+          "prefixItems": [{"type": "integer", "minimum": 52}, {"const": 0}],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        }
+      ]
+    },
+    "teamTricks": {
+      "type": "array",
+      "prefixItems": [
+        {"type": "integer", "minimum": 0, "maximum": 13},
+        {"type": "integer", "minimum": 0, "maximum": 13}
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "playedCard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seat", "card"],
+      "properties": {
+        "seat": {"$ref": "#/$defs/seat"},
+        "card": {"$ref": "#/$defs/card"}
+      }
+    },
+    "acceptedShow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seat", "shown_card", "declared_contract", "verbal_required"],
+      "properties": {
+        "seat": {"$ref": "#/$defs/seat"},
+        "shown_card": {"$ref": "#/$defs/card"},
+        "declared_contract": {"enum": ["RAMI", "NOLO"]},
+        "verbal_required": {"type": "boolean"}
+      }
+    },
+    "publicShownCard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seat", "card"],
+      "properties": {
+        "seat": {"$ref": "#/$defs/seat"},
+        "card": {"$ref": "#/$defs/card"}
+      }
+    },
+    "completedTrick": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trick_index", "leader", "plays", "winner"],
+      "properties": {
+        "trick_index": {"type": "integer", "minimum": 0, "maximum": 12},
+        "leader": {"$ref": "#/$defs/seat"},
+        "plays": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/playedCard"}
+        },
+        "winner": {"$ref": "#/$defs/seat"}
+      }
+    },
+    "action": {
+      "oneOf": [
+        {"$ref": "#/$defs/showAction"},
+        {"$ref": "#/$defs/playAction"}
+      ]
+    },
+    "showAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "seat", "shown_card", "declared_contract"],
+      "properties": {
+        "type": {"const": "show"},
+        "seat": {"$ref": "#/$defs/seat"},
+        "shown_card": {"$ref": "#/$defs/card"},
+        "declared_contract": {"enum": ["RAMI", "NOLO"]}
+      }
+    },
+    "playAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "seat", "card"],
+      "properties": {
+        "type": {"const": "play"},
+        "seat": {"$ref": "#/$defs/seat"},
+        "card": {"$ref": "#/$defs/card"}
+      }
+    }
+  },
+  "$comment": "Schema validation alone cannot prove observation privacy, seat/team/partner relations, shown-card duplication, legal-action correctness, trick totals, or equality of public show views. Those are derived from validated private state and tested adversarially."
+}

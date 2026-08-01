@@ -1,18 +1,20 @@
 # Tuppi research project
 
-This repository contains the frozen Phase 0B legacy harness and the Phase 1
-authoritative rules specification. It does not yet contain the future trusted
-game engine or evaluation framework.
+This repository contains the frozen Phase 0B legacy harness, the Phase 1
+authoritative rules specification, and the Phase 2 deterministic clean engine.
+It does not yet contain the future agent evaluation framework.
 
-Four boundaries matter:
+Five boundaries matter:
 
 1. `Archive/` contains byte-for-byte frozen historical artifacts.
 2. `src/tuppi_legacy/` verifies and executes the old emulator through an
    external, finite, all-AI adapter.
 3. `project_target_v1` is the authoritative future ruleset. Its pure executable
    reference is in `src/tuppi_rules/`; it is not a complete game engine.
-4. The future clean engine will be a separate implementation whose normative
-   tests are independent of legacy characterization.
+4. `src/tuppi_engine/` is the clean deterministic state machine around those
+   rules. It has no dependency on the legacy adapter.
+5. Future evaluation and AI packages remain separate from the engine and must
+   consume player-specific observations rather than private engine state.
 
 The archival ruleset identifier is **`legacy_v9_unverified`**. It is not the
 target ruleset, is preserved only for historical comparison, and must not be
@@ -36,6 +38,32 @@ The reference package defines immutable cards, showing, contract resolution,
 legal trick play, complete-deal validation, deal scoring, and rising-score
 transitions. It contains no randomness, I/O, game loop, agents, search, or
 legacy imports.
+
+## Clean deterministic engine
+
+`src/tuppi_engine/` owns complete private hands and executes full explicit
+deals and matches under `project_target_v1`. Its public action boundary is
+strict: invalid actors, cards, phases, shows, and follow-suit violations raise
+typed errors and are never replaced with a fallback action.
+
+Agents receive only frozen `PlayerObservation` values containing their own
+hand and public history. Opponent hands, content-derived deal identifiers, RNG
+state, and private engine objects are absent. This is a formally audited API
+boundary, not an operating-system sandbox for arbitrary hostile Python code.
+
+Engine documentation:
+
+- Architecture: `docs/engine/architecture.md`
+- State machine: `docs/engine/state_machine.md`
+- Observation security: `docs/engine/observation_security.md`
+- Serialization and visibility: `docs/engine/serialization.md`
+- Strict schemas: `schemas/engine/`
+- Explicit examples and scripts: `examples/engine/project_target_v1/`
+
+The engine contains no random dealing. A runner must supply complete ordered
+hands, an explicit dealer, and a valid starting score. Canonical public event
+logs contain only accepted public actions. Separate research-private results
+are explicitly labeled and retain full initial hands for reproducibility.
 
 ## Supported Python
 
@@ -75,7 +103,49 @@ Run only the authoritative rules tests with:
 These tests derive solely from the project-owner specification and include
 exhaustive scoring cases plus deterministic property-based checks.
 
-## Headless execution
+Run only the clean-engine tests with:
+
+```bash
+.venv/bin/python -m pytest tests/engine
+```
+
+The engine suite includes adversarial hidden-hand isolation, complete scripted
+deals and matches, strict schema validation, canonical determinism, and
+property-based state invariants.
+
+## Clean engine execution
+
+Run one complete explicit all-NOLO deal:
+
+```bash
+.venv/bin/python -m tuppi_engine.runner \
+  --deal-file examples/engine/project_target_v1/valid_one_deal_match.json \
+  --agents scripted,scripted,scripted,scripted \
+  --script-file examples/engine/project_target_v1/full_nolo_script.json \
+  --output engine-result.json \
+  --event-log public-events.json
+```
+
+Run the four-deal scripted match that finishes exactly at 52:
+
+```bash
+.venv/bin/python -m tuppi_engine.runner \
+  --deal-file examples/engine/project_target_v1/exact_52_match.json \
+  --agents scripted,scripted,scripted,scripted \
+  --script-file examples/engine/project_target_v1/exact_52_script.json \
+  --output exact-52-result.json \
+  --event-log exact-52-public-events.json \
+  --require-complete-match
+```
+
+The runner is finite and uses no stdin, GUI, network, or hidden randomness.
+Unknown fields, noncanonical cards, identifier mismatches, script exhaustion,
+out-of-order scripts, illegal actions, shared cross-seat agent objects, extra
+post-terminal deals, non-regular inputs, and invalid or aliased paths fail
+nonzero.
+Output path and stderr verbosity are excluded from canonical result content.
+
+## Legacy headless execution
 
 Generate and play one fully materialized deal, with separate seeds for deal
 generation and the legacy shared search stream:
@@ -161,8 +231,9 @@ audit and artifact hashes.
 
 ## Development sequence
 
-`src/tuppi_rules/` is an executable specification, not a playable engine. The
-next phase should build a clean state machine around player-specific immutable
-observations and strict actions. AI strength work must wait until that engine
-and a controlled evaluation framework are complete; no legacy result is a
-strength benchmark unless independently reproduced.
+`src/tuppi_rules/` remains the executable specification; `src/tuppi_engine/`
+is now the playable deterministic state machine. The next phase should build
+duplicate-deal and cross-play evaluation around canonical explicit inputs and
+player-specific observations. AI strength work must still wait until that
+controlled evaluation framework exists, and no legacy result is a strength
+benchmark unless independently reproduced.

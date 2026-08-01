@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/engine/agent_script.schema.json",
+  "title": "project_target_v1 deterministic agent script",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "ruleset_id", "match_input_id", "actions"],
+  "properties": {
+    "schema_version": {"const": "tuppi.engine.agent_script.v1"},
+    "ruleset_id": {"const": "project_target_v1"},
+    "match_input_id": {"$ref": "#/$defs/sha256"},
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/action"}
+    }
+  },
+  "$defs": {
+    "seat": {"type": "integer", "minimum": 0, "maximum": 3},
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "card": {
+      "type": "string",
+      "pattern": "^(?:[2-9]|10|J|Q|K|A)[HDCS]$"
+    },
+    "action": {
+      "oneOf": [
+        {"$ref": "#/$defs/showAction"},
+        {"$ref": "#/$defs/playAction"}
+      ]
+    },
+    "showAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "seat", "shown_card", "declared_contract"],
+      "properties": {
+        "type": {"const": "show"},
+        "seat": {"$ref": "#/$defs/seat"},
+        "shown_card": {"$ref": "#/$defs/card"},
+        "declared_contract": {"enum": ["RAMI", "NOLO"]}
+      }
+    },
+    "playAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "seat", "card"],
+      "properties": {
+        "type": {"const": "play"},
+        "seat": {"$ref": "#/$defs/seat"},
+        "card": {"$ref": "#/$defs/card"}
+      }
+    }
+  },
+  "$comment": "The loader additionally verifies that match_input_id identifies the selected match input. Script order, legality, exhaustion, and absence of trailing actions are engine-level checks."
+}
