@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/agents/strategy_rule_catalogue.schema.json",
+  "title": "Tuppi Phase 4 strategy-rule catalogue",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "ruleset_id", "rules", "no_expert_validated_rules"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.agents.strategy_rule_catalogue.v1"},
+    "ruleset_id": {"const": "project_target_v1"},
+    "no_expert_validated_rules": {"const": true},
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/rule"}
+    }
+  },
+  "$defs": {
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version", "rule_id", "contracts", "phases", "condition",
+        "action_preference", "provenance", "rationale", "limitations",
+        "implementing_profiles", "independently_disableable"
+      ],
+      "properties": {
+        "schema_version": {"const": "tuppi.agents.strategy_rule_catalogue.v1"},
+        "rule_id": {"type": "string", "pattern": "^[a-z][a-z0-9_.]*\\.v1$"},
+        "contracts": {
+          "type": "array", "minItems": 1, "maxItems": 2, "uniqueItems": true,
+          "items": {"enum": ["NOLO", "RAMI"]}
+        },
+        "phases": {
+          "type": "array", "minItems": 1, "maxItems": 2, "uniqueItems": true,
+          "items": {"enum": ["SHOWING", "TRICK_PLAY"]}
+        },
+        "condition": {"type": "string", "minLength": 1},
+        "action_preference": {"type": "string", "minLength": 1},
+        "provenance": {
+          "enum": [
+            "mechanical",
+            "legacy_port",
+            "generic_trick_taking_hypothesis",
+            "project_hypothesis",
+            "owner_supplied"
+          ],
+          "$comment": "expert_validated and simulation_validated are deliberately absent: no Phase 4 rule has earned either label."
+        },
+        "rationale": {"type": "string", "minLength": 1},
+        "limitations": {"type": "string", "minLength": 1},
+        "implementing_profiles": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-z0-9_]+_v1$"}
+        },
+        "independently_disableable": {"type": "boolean"}
+      }
+    }
+  }
+}

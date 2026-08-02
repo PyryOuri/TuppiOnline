@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tuppi-research"
-version = "0.3.0"
-description = "Deterministic Tuppi rules, engine, evaluation framework, and legacy archive"
+version = "0.4.0"
+description = "Deterministic Tuppi rules, engine, evaluation framework, baseline agents, and legacy archive"
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
 dependencies = []
@@ -21,6 +21,7 @@ dev = [
 tuppi-legacy = "tuppi_legacy.run:entrypoint"
 tuppi-engine = "tuppi_engine.runner:entrypoint"
 tuppi-eval = "tuppi_eval.runner:entrypoint"
+tuppi-agents = "tuppi_agents.runner:entrypoint"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -119,6 +120,39 @@ where = ["src"]
   "examples/evaluation/promotion_decision.json",
 ]
 
+"share/tuppi-agents/schemas" = [
+  "schemas/agents/heuristic_profile.schema.json",
+  "schemas/agents/strategy_rule_catalogue.schema.json",
+  "schemas/agents/decision_diagnostics.schema.json",
+  "schemas/agents/baseline_report.schema.json",
+]
+"share/tuppi-agents/docs" = [
+  "docs/agents/architecture.md",
+  "docs/agents/public_inference.md",
+  "docs/agents/baseline_profiles.md",
+  "docs/agents/legacy_port.md",
+  "docs/agents/strategy_rule_catalogue.md",
+  "docs/agents/phase4_evaluation.md",
+]
+"share/tuppi-agents/examples" = [
+  "examples/agents/README.md",
+  "examples/agents/generate_examples.py",
+  "examples/agents/render_report.py",
+  "examples/agents/strategy_rule_catalogue.json",
+  "examples/agents/heuristic_profiles.json",
+  "examples/agents/phase4_agents.json",
+  "examples/agents/ladder_fixed_deal.json",
+  "examples/agents/decision_diagnostics.json",
+  "examples/agents/legacy_port_compatibility.json",
+]
+"share/tuppi-agents/banks" = [
+  "banks/phase4_development_deal_v1.json",
+  "banks/phase4_development_deal_up_v1.json",
+  "banks/phase4_crossplay_v1.json",
+  "banks/phase4_development_match_v1.json",
+]
+"share/tuppi-agents/reports" = ["reports/phase4/baseline_report.json"]
+
 [tool.pytest.ini_options]
 testpaths = [
   "tests/legacy_characterization",
@@ -126,5 +160,6 @@ testpaths = [
   "tests/rules/project_target_v1",
   "tests/engine",
   "tests/evaluation",
+  "tests/agents",
 ]
 addopts = "-ra"

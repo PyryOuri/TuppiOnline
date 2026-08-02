@@ -154,6 +154,18 @@ def construct_agent(
         raise RegistryError("agent construction seat must be in 0..3")
     implementation = specification.implementation_reference
     configuration = specification.configuration
+    if implementation.startswith("tuppi_agents."):
+        # Phase 4 strategic policies live in their own package and receive only
+        # the specification, the seat, and (never, for deterministic policies) a
+        # seed. The import is local so that the evaluation package keeps no
+        # module-level dependency on the strategic layer.
+        from tuppi_agents.factory import construct_registered_agent
+
+        if scripted_actions is not None:
+            raise RegistryError(
+                "a strategic specification does not consume scripted actions"
+            )
+        return construct_registered_agent(specification, seat=seat, seed=seed)
     if specification.seed_policy is SeedPolicy.NONE and seed is not None:
         raise RegistryError("deterministic specification must not receive a seed")
     if (

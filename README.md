@@ -2,9 +2,10 @@
 
 This repository contains the frozen Phase 0B legacy harness, the Phase 1
 authoritative rules specification, the Phase 2 deterministic clean engine,
-and the Phase 3 deterministic evaluation framework.
+the Phase 3 deterministic evaluation framework, and the Phase 4 transparent
+baseline-agent ladder.
 
-Five boundaries matter:
+Six boundaries matter:
 
 1. `Archive/` contains byte-for-byte frozen historical artifacts.
 2. `src/tuppi_legacy/` verifies and executes the old emulator through an
@@ -15,8 +16,9 @@ Five boundaries matter:
    rules. It has no dependency on the legacy adapter.
 5. `src/tuppi_eval/` owns deal banks, agent/team identities, balanced schedules,
    finite arena execution, paired statistics, and baseline cross-play.
-6. Future strategic AI remains separate and must consume player-specific
-   observations rather than private engine state.
+6. `src/tuppi_agents/` owns the deterministic observation-only baseline agents.
+   It consumes player-specific observations and never private engine state, and
+   it contains no search, learning, or belief model.
 
 The archival ruleset identifier is **`legacy_v9_unverified`**. It is not the
 target ruleset, is preserved only for historical comparison, and must not be
@@ -197,6 +199,88 @@ Run only Phase 3 tests with:
 .venv/bin/python -m pytest tests/evaluation
 ```
 
+## Transparent baseline agents
+
+`src/tuppi_agents/` is a ladder of deterministic, observation-only agents. It is
+a **reproducible reference population, not a strong player**. No agent here is
+expert-validated, tuned, or claimed to be good.
+
+| Rung | Agent | Capability added |
+| --- | --- | --- |
+| 1 | `legacy_heuristic_port_v1` | The frozen legacy public-information heuristic, ported to `project_target_v1` with no legacy import and no rollouts. |
+| 2 | `reactive_contract_v1` | Own hand, current trick, seat relations, contract, legal actions. |
+| 3 | `public_counting_v1` | Hard public inference: proven voids, public card accounting, certain winners. |
+| 4 | `partner_aware_v1` | Explicit partnership rules, including the mechanical NOLO team-count consequence. |
+| 5 | `match_aware_v1` | Deterministic rising-score rules for showing and play. |
+
+Three further profiles exist only as ablation variants:
+`reactive_contract_legacy_show_v1`, `partner_aware_legacy_convention_v1`, and
+`match_aware_no_match_features_v1`. The Phase 3 fixtures (first legal, lowest
+legal, highest legal, seeded random, fixed scripted) are re-exported as protocol
+controls, not reimplemented, and are not rungs of the ladder.
+
+Every policy receives only a frozen `PlayerObservation`, scores every legal
+action into a named lexicographic vector, and breaks ties by the lowest engine
+legal-action index. There is no PIMC, Monte Carlo search, determinization,
+hidden-hand sampling, belief model, solver, learning, or self-play anywhere in
+the package, and the test suite enforces that by parsing the source.
+
+List the registered agents, profiles, and partnerships:
+
+```bash
+.venv/bin/python -m tuppi_agents.runner agents
+```
+
+Play one fixed deal and capture privacy-safe decision diagnostics:
+
+```bash
+.venv/bin/python -m tuppi_agents.runner play-deal \
+  --deal-file examples/engine/project_target_v1/valid_one_deal_match.json \
+  --profile match_aware_v1 \
+  --output ladder-result.json \
+  --diagnostics ladder-diagnostics.json
+```
+
+Write the strategy-rule and profile catalogues, or explain a single decision:
+
+```bash
+.venv/bin/python -m tuppi_agents.runner catalogue --output rules.json
+.venv/bin/python -m tuppi_agents.runner profiles --output profiles.json
+.venv/bin/python -m tuppi_agents.runner explain \
+  --deal-file examples/engine/project_target_v1/valid_one_deal_match.json \
+  --profile partner_aware_v1 --output first-decision.json
+```
+
+Reproduce the frozen Phase 4 baseline evaluation (tens of minutes, resumable):
+
+```bash
+.venv/bin/python -m tuppi_agents.runner run-suite \
+  --bank-dir banks --output-dir runs/phase4 \
+  --report reports/phase4/baseline_report.json --only all
+```
+
+Agent documentation:
+
+- Architecture and the observation-only boundary: `docs/agents/architecture.md`
+- Hard inference versus probabilistic belief: `docs/agents/public_inference.md`
+- Profiles, thresholds, and limitations: `docs/agents/baseline_profiles.md`
+- The legacy port and its deviations: `docs/agents/legacy_port.md`
+- Every strategy rule and its provenance: `docs/agents/strategy_rule_catalogue.md`
+- Evaluation protocol and results: `docs/agents/phase4_evaluation.md`
+- Strict schemas: `schemas/agents/`; CI-sized examples: `examples/agents/`
+- Committed deal banks: `banks/`; manifests: `manifests/phase4/`; report:
+  `reports/phase4/`
+
+The committed banks are **development banks**: they were visible while the
+agents were written, so their results are descriptive and are not sealed
+promotion evidence.
+
+Run only Phase 4 tests with:
+
+```bash
+.venv/bin/python -m pytest tests/agents
+```
+
 ## Legacy headless execution
 
 Generate and play one fully materialized deal, with separate seeds for deal
@@ -283,9 +367,16 @@ audit and artifact hashes.
 
 ## Development sequence
 
-`src/tuppi_rules/` remains the executable specification; `src/tuppi_engine/`
-is now the playable deterministic state machine. The next phase should build
-duplicate-deal and cross-play evaluation around canonical explicit inputs and
-player-specific observations. AI strength work must still wait until that
-controlled evaluation framework exists, and no legacy result is a strength
-benchmark unless independently reproduced.
+`src/tuppi_rules/` remains the executable specification, `src/tuppi_engine/` is
+the playable deterministic state machine, `src/tuppi_eval/` is the controlled
+evaluation framework, and `src/tuppi_agents/` is the transparent reference
+population that framework measures.
+
+Phase 4 deliberately stops short of strength work. It provides readable
+baselines, hard public inference separated from any belief model, stable rule
+provenance, and a reproducible evaluation protocol. The next phase should build
+a sealed promotion bank, then add search or belief modelling on top of the
+existing hard-constraint layer, using these agents as rollout policies, opponent
+models, and fixed historical baselines. No legacy result is a strength benchmark
+unless independently reproduced, and no Phase 4 result is an expert-strength
+claim.

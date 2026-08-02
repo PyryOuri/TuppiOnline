@@ -1,0 +1,120 @@
+# `legacy_heuristic_port_v1`: the frozen heuristic, ported
+
+`src/tuppi_agents/legacy_port.py` and `src/tuppi_agents/legacy_formulas.py` are a
+**port**, not a wrapper. They import nothing from `tuppi_legacy`, touch no legacy
+object, and execute no rollout. The frozen `Archive/tuppi_emulator_v9.py` is used
+only as a *historical oracle* in characterization fixtures, and only for
+positions where the two rule sets deliberately coincide.
+
+## What was ported
+
+The deterministic public-information parts of the frozen `HeuristicPolicy`:
+
+| Frozen source | Ported to |
+| --- | --- |
+| `rami_strength_RS`, `nolo_hand_index_NHI` | `legacy_formulas.rami_strength`, `nolo_hand_index` |
+| `sigmoid`, `approx_P_rami_make`, `approx_P_nolo_win` | `legacy_formulas.sigmoid`, `probability_rami_make`, `probability_nolo_win` |
+| `_binom_pmf_13`, `_binom_cdf_13`, `_solve_p_for_cdf6`, `_solve_p_for_tail_ge7` | `legacy_formulas.binomial_*`, `solve_probability_*` |
+| `approx_EV_rami_from_RS`, `approx_EV_nolo_from_NHI` | `legacy_formulas.expected_value_rami`, `expected_value_nolo` |
+| `HeuristicPolicy.choose_show_bid` | `showing.legacy_contract_preference` + `score_showing` |
+| `_play_rami` lead and follow branches | `legacy_port` `RAMI_LEAD` / `RAMI_FOLLOW` score layouts |
+| `_play_nolo` lead, follow, and forced-win branches | `legacy_port` `NOLO_LEAD` / `NOLO_FOLLOW` layouts |
+| `_nolo_discard_any` liability table | `legacy_formulas.nolo_discard_liability` + `NOLO_DISCARD` layout |
+| `sort_hand` ordering | `ordering.legacy_suit_precedence`, folded into the score vector |
+
+Expression order, constants, and loop order are preserved, so the ported scalars
+are bit-identical to the frozen ones on the same platform. That is asserted
+directly:
+`test_ported_formulas_match_the_frozen_implementations` compares
+`rami_strength`, `nolo_hand_index`, `expected_value_rami`, and
+`expected_value_nolo` against the frozen functions with `==`, not a tolerance.
+
+The frozen selection used `min`/`max` over a hand sorted by
+`(legacy suit index, -rank)`, so ties depended on that order. The port makes that
+dependency explicit: legacy suit precedence is a *named score component*
+(`legacy_suit_precedence`), never an implicit iteration order.
+
+## What was deliberately not ported
+
+`MonteCarloAI`, `MonteCarloAdvisor`, `estimate_value_generic`,
+`simulate_from_state`, hidden-hand determinization, the shared module-global
+RNG, the human input loop, and the presentation layer.
+
+This is enforced, not just promised. `tests/agents/test_legacy_port.py` parses
+every module in `tuppi_agents` and fails if any executed identifier contains
+`montecarlo`, `rollouts`, `simulate`, `determinize`, `determinization`,
+`shuffle`, `randint`, `choice`, `sample`, or `estimate_value`; if any module
+imports `tuppi_legacy`, `random`, or `secrets`; and it asserts that constructing
+and running the port loads no frozen module into `sys.modules`.
+
+## Unavoidable semantic deviations
+
+Complete behavioural equivalence across the two rule sets is **not** claimed.
+Six deviations are documented, and the first two are demonstrated by concrete
+committed positions in `examples/agents/legacy_port_compatibility.json`.
+
+1. **Show-rank eligibility is narrower.** Legacy banned only `{2, J, Q, K}`, so
+   ranks 3-10 and the ace were showable. `project_target_v1` allows only 3-9. The
+   curated position shows the frozen policy choosing `10H` under its own default
+   ban where the port must show an eligible 3-9 card.
+2. **There is no cardless verbal declaration.** Legacy returned
+   `ShowBid(card=None, verbal=True)` when it held no card of the wanted colour.
+   `project_target_v1` always requires a shown card and derives `verbal_required`
+   from the fallback hierarchy, so the port shows the lowest eligible off-colour
+   card instead. The curated position has the frozen policy declaring RAMI
+   verbally with no card while the port shows `3C`.
+3. **The flat-scoring branch is unreachable.** Legacy lowered its RAMI bar to 3.0
+   when not in rising mode. `project_target_v1` is always rising, so that branch
+   cannot fire; the constant survives only as the configurable
+   `legacy_rami_ev_minimum_pressured` used for the opposite case.
+4. **A dead threshold was dropped.** Legacy computed `base_thr` (17.0, adjusted by
+   +1.0 near the winning line) and never used it. The port omits it.
+5. **The score state has a different shape.** Legacy read a mutable `ScoreState`
+   whose `rising_team` could be `None`; the port reads the frozen `MatchScore` and
+   maps "nobody is up" to the legacy table case.
+6. **No partnership awareness.** The frozen RAMI follow branch ignored who held
+   the trick, so the port can and does overtake its own partner. This is
+   preserved on purpose: it is one of the behaviours the higher rungs exist to
+   improve on, and removing it would make the port unfaithful.
+
+## The compatibility fixture
+
+`examples/agents/legacy_port_compatibility.json` is regenerated by
+`examples/agents/generate_examples.py`. It plays six seeded deals end to end with
+the port at all four seats and, at **every** decision, asks the frozen
+`HeuristicPolicy` the same question through `tuppi_legacy.heuristic_oracle`, with
+the legacy banned-rank set configured to `{2, 10, J, Q, K, A}` so that legacy show
+eligibility coincides with `project_target_v1`.
+
+The fixture records the deal, the exact action sequence, each position's acting
+seat and phase, the port's action, and the frozen oracle's answer. It also pins
+the artifact identity (`legacy_v9_unverified`) and the frozen emulator's
+SHA-256, so a fixture generated against a different Archive is detectable.
+
+**Result: 332 of 332 curated positions agree** - 20 showing decisions and 312
+card plays across six complete deals. (Showing positions number fewer than
+`6 x 4` because a RAMI declaration ends the showing round early.)
+
+Three tests keep this honest:
+
+- `test_the_port_reproduces_every_curated_fixture_action` replays every position
+  and requires the port to choose the recorded action;
+- `test_the_frozen_archive_agrees_on_every_compatible_position` re-asks the
+  Archive and requires agreement on every position marked compatible;
+- `test_documented_deviations_are_demonstrated_by_real_positions` requires both
+  documented showing deviations to be exhibited by real positions rather than
+  merely asserted in prose.
+
+The fixture's own `equivalence_claim` field states the limit in the artifact
+itself: agreement is asserted only for the curated compatible positions, with
+the legacy banned-rank set matched to the target ruleset. Nothing here supports
+a general claim of equivalence, and the archival ruleset identifier remains
+`legacy_v9_unverified`.
+
+## Ownership of legacy access
+
+`src/tuppi_legacy/heuristic_oracle.py` is the only new path that reads the
+Archive. It lives in the archival package because that package already owns
+artifact verification and the frozen import. It exposes exactly two decisions -
+`legacy_show_choice` and `legacy_play_choice` - plus the card encoding
+converters and the legacy hand ordering. It exposes no rollout entry point.

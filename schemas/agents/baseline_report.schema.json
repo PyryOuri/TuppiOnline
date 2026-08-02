@@ -1,0 +1,198 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/agents/baseline_report.schema.json",
+  "title": "Tuppi Phase 4 baseline evaluation report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "ruleset_id", "engine_identity", "agents", "teams",
+    "banks", "comparisons", "crossplay", "performance", "interpretation"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.agents.baseline_report.v1"},
+    "ruleset_id": {"const": "project_target_v1"},
+    "engine_identity": {"type": "string", "minLength": 1},
+    "agents": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "agent_id", "family", "in_ladder", "partner_convention_id",
+          "profile_id", "profile_key", "showing_policy"
+        ],
+        "properties": {
+          "agent_id": {"type": "string", "pattern": "^agent:sha256:[0-9a-f]{64}$"},
+          "family": {"type": "string", "minLength": 1},
+          "in_ladder": {"type": "boolean"},
+          "partner_convention_id": {"type": ["string", "null"]},
+          "profile_id": {"type": "string", "pattern": "^profile:sha256:[0-9a-f]{64}$"},
+          "profile_key": {"type": "string", "pattern": "^[a-z0-9_]+_v1$"},
+          "showing_policy": {"enum": ["legacy_show_v1", "simple_show_v1"]}
+        }
+      }
+    },
+    "teams": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "team_id"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "team_id": {"type": "string", "pattern": "^team:sha256:[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "banks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "deal_bank_id"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "deal_bank_id": {"type": "string", "pattern": "^bank:sha256:[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "comparisons": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/comparison"}
+    },
+    "crossplay": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/crossplay"}]
+    },
+    "performance": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/performance"}]
+    },
+    "interpretation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "development_bank_status", "ladder_claim", "no_expert_claim",
+        "sample_size_warning"
+      ],
+      "properties": {
+        "development_bank_status": {"type": "string", "minLength": 1},
+        "ladder_claim": {"type": "string", "minLength": 1},
+        "no_expert_claim": {"type": "string", "minLength": 1},
+        "sample_size_warning": {"type": "string", "minLength": 1}
+      }
+    }
+  },
+  "$defs": {
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name", "result_class", "hypothesis", "mode", "bank", "evaluation_id",
+        "result_id", "team_a", "team_b", "transformed_games", "censored_games",
+        "primary_inference", "outcome_metrics", "contract_metrics",
+        "execution_metrics", "strata"
+      ],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "result_class": {
+          "enum": ["development", "protocol_control", "ablation"]
+        },
+        "hypothesis": {"type": "string", "minLength": 1},
+        "mode": {"enum": ["deal", "match"]},
+        "bank": {"type": "string", "minLength": 1},
+        "evaluation_id": {"type": "string", "pattern": "^eval:sha256:[0-9a-f]{64}$"},
+        "result_id": {"type": "string", "pattern": "^result:sha256:[0-9a-f]{64}$"},
+        "team_a": {"$ref": "#/$defs/namedTeam"},
+        "team_b": {"$ref": "#/$defs/namedTeam"},
+        "transformed_games": {"type": "integer", "minimum": 1},
+        "censored_games": {"type": "integer", "minimum": 0},
+        "primary_inference": {"$ref": "#/$defs/inference"},
+        "outcome_metrics": {"type": "object"},
+        "contract_metrics": {"type": "object"},
+        "execution_metrics": {"type": "object"},
+        "strata": {"type": "object"}
+      }
+    },
+    "namedTeam": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "team_id"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "team_id": {"type": "string", "pattern": "^team:sha256:[0-9a-f]{64}$"}
+      }
+    },
+    "inference": {
+      "type": "object",
+      "required": [
+        "independent_base_deals", "mean_paired_utility", "confidence_interval",
+        "confidence_level", "method_id"
+      ],
+      "properties": {
+        "independent_base_deals": {"type": "integer", "minimum": 0},
+        "mean_paired_utility": {"type": ["number", "null"]},
+        "confidence_interval": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}}
+          ]
+        },
+        "confidence_level": {"type": "number", "exclusiveMinimum": 0.5, "exclusiveMaximum": 1},
+        "method_id": {"type": "string", "minLength": 1}
+      }
+    },
+    "crossplay": {
+      "type": "object",
+      "required": ["matrix_id", "team_ids", "cells", "team_names"],
+      "properties": {
+        "matrix_id": {"type": "string", "pattern": "^matrix:sha256:[0-9a-f]{64}$"},
+        "team_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "cells": {"type": "array", "minItems": 1, "items": {"type": "object"}},
+        "team_names": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "team_id"],
+            "properties": {
+              "name": {"type": "string"},
+              "team_id": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "performance": {
+      "type": "object",
+      "required": ["schema_version", "throughput", "deal_count", "note"],
+      "properties": {
+        "schema_version": {"const": "tuppi.agents.performance_report.v1"},
+        "deal_count": {"type": "integer", "minimum": 1},
+        "deal_bank_id": {"type": "string"},
+        "note": {"type": "string", "minLength": 1},
+        "throughput": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["agent", "latency", "seconds", "deals_per_second"],
+            "properties": {
+              "agent": {"type": "string", "minLength": 1},
+              "seconds": {"type": "number", "minimum": 0},
+              "deals_per_second": {"type": ["number", "null"]},
+              "relative_wall_clock": {"type": ["number", "null"]},
+              "latency": {"type": "object"}
+            }
+          }
+        },
+        "diagnostics_overhead": {"type": "object"},
+        "feature_extraction": {"type": "array"},
+        "memory": {"type": "array"}
+      }
+    }
+  },
+  "$comment": "Every comparison carries its interval and its result class. Development-bank results are descriptive and are never presented as sealed promotion evidence."
+}
