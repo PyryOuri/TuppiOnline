@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tuppi-research"
-version = "0.4.0"
-description = "Deterministic Tuppi rules, engine, evaluation framework, baseline agents, and legacy archive"
+version = "0.5.0"
+description = "Deterministic Tuppi rules, engine, deal and complete-match evaluation, baseline agents, and legacy archive"
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
 dependencies = []
@@ -22,6 +22,7 @@ tuppi-legacy = "tuppi_legacy.run:entrypoint"
 tuppi-engine = "tuppi_engine.runner:entrypoint"
 tuppi-eval = "tuppi_eval.runner:entrypoint"
 tuppi-agents = "tuppi_agents.runner:entrypoint"
+tuppi-match = "tuppi_match.runner:entrypoint"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -152,6 +153,21 @@ where = ["src"]
   "banks/phase4_development_match_v1.json",
 ]
 "share/tuppi-agents/reports" = ["reports/phase4/baseline_report.json"]
+"share/tuppi-match/docs" = [
+  "docs/match/complete_match_protocol.md",
+  "docs/match/endpoints.md",
+  "docs/match/censoring.md",
+  "docs/match/bank_lifecycle.md",
+  "docs/match/calibration.md",
+  "docs/match/phase5a_results.md",
+]
+"share/tuppi-match/reports" = [
+  "reports/phase5a/phase4_frozen_agents.json",
+  "reports/phase5a/calibration_report.json",
+  "reports/phase5a/score_state_diagnostics.json",
+  "reports/phase5a/match_length_calibration.json",
+  "reports/phase5a/sealed_commitment.json",
+]
 
 [tool.pytest.ini_options]
 testpaths = [
@@ -161,5 +177,6 @@ testpaths = [
   "tests/engine",
   "tests/evaluation",
   "tests/agents",
+  "tests/match",
 ]
 addopts = "-ra"

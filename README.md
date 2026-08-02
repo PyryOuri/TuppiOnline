@@ -2,10 +2,10 @@
 
 This repository contains the frozen Phase 0B legacy harness, the Phase 1
 authoritative rules specification, the Phase 2 deterministic clean engine,
-the Phase 3 deterministic evaluation framework, and the Phase 4 transparent
-baseline-agent ladder.
+the Phase 3 deterministic evaluation framework, the Phase 4 transparent
+baseline-agent ladder, and the Phase 5A complete-match evaluation protocol.
 
-Six boundaries matter:
+Seven boundaries matter:
 
 1. `Archive/` contains byte-for-byte frozen historical artifacts.
 2. `src/tuppi_legacy/` verifies and executes the old emulator through an
@@ -19,6 +19,10 @@ Six boundaries matter:
 6. `src/tuppi_agents/` owns the deterministic observation-only baseline agents.
    It consumes player-specific observations and never private engine state, and
    it contains no search, learning, or belief model.
+7. `src/tuppi_match/` owns the complete-match duplicate protocol: extensible
+   deterministic streams, complementary leg pairs run to natural termination,
+   match win probability as the primary endpoint, and separated development,
+   calibration, and sealed fixture banks.
 
 The archival ruleset identifier is **`legacy_v9_unverified`**. It is not the
 target ruleset, is preserved only for historical comparison, and must not be
@@ -279,6 +283,58 @@ Run only Phase 4 tests with:
 
 ```bash
 .venv/bin/python -m pytest tests/agents
+```
+
+## Complete-match evaluation
+
+`src/tuppi_match/` measures agents on **matches**, not deals. Phase 4 showed why
+that is necessary: a partnership that is behind scores nothing for any win, so
+signed deal points are blind to match safety, and Phase 4's 40-deal cap sat near
+the median match length and censored roughly a third of all pairs.
+
+The protocol runs, for each independent stream, two complementary legs from 0-0
+on the *same* extensible deterministic deal stream: the candidate takes seats 0
+and 2 in Leg E and seats 1 and 3 in Leg O. Each leg runs until a partnership
+reaches 52; the legs may take different numbers of deals and the longer one is
+never truncated. The pair value is
+
+```text
+D_match = (Y_E - Y_O) / 2        # +1 candidate wins both, 0 split, -1 opponent wins both
+```
+
+and the primary endpoint is the candidate's match win probability
+`(1 + mean(D_match)) / 2`. The complete pair is the only independent unit; legs,
+deals, tricks, and decisions are never counted as observations. A leg that hits
+the infrastructure safety cap is `censored_infrastructure` - never a draw, never
+a policy result - and its pair is excluded from the primary analysis entirely.
+
+Verify that the Phase 4 agents have not moved, then run a calibration:
+
+```bash
+.venv/bin/python -m tuppi_match.runner freeze \
+  --verify reports/phase5a/phase4_frozen_agents.json
+
+.venv/bin/python -m tuppi_match.runner run \
+  --design calibration --pairs 256 --safety-cap 704 \
+  --output-dir "$TMPDIR/tuppi-phase5a/calibration" --workers 6
+```
+
+Write experiment output to **local scratch, never inside this iCloud-synced
+tree**; see `docs/match/complete_match_protocol.md`.
+
+Match documentation:
+
+- Protocol, streams, storage, and CLI: `docs/match/complete_match_protocol.md`
+- Deal-level versus match-level endpoints: `docs/match/endpoints.md`
+- Censoring policy and safety-cap calibration: `docs/match/censoring.md`
+- Bank roles and sealed-bank handling: `docs/match/bank_lifecycle.md`
+- Calibration methodology and sample sizes: `docs/match/calibration.md`
+- Results and ladder reassessment: `docs/match/phase5a_results.md`
+
+Run only Phase 5A tests with:
+
+```bash
+.venv/bin/python -m pytest tests/match
 ```
 
 ## Legacy headless execution
