@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tuppi-research"
-version = "0.5.0"
-description = "Deterministic Tuppi rules, engine, deal and complete-match evaluation, baseline agents, and legacy archive"
+version = "0.5.1"
+description = "Deterministic Tuppi rules, engine, deal and complete-match evaluation, baseline agents, exact inference and solving, and legacy archive"
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
 dependencies = []
@@ -23,6 +23,7 @@ tuppi-engine = "tuppi_engine.runner:entrypoint"
 tuppi-eval = "tuppi_eval.runner:entrypoint"
 tuppi-agents = "tuppi_agents.runner:entrypoint"
 tuppi-match = "tuppi_match.runner:entrypoint"
+tuppi-exact = "tuppi_exact.runner:entrypoint"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -168,6 +169,25 @@ where = ["src"]
   "reports/phase5a/match_length_calibration.json",
   "reports/phase5a/sealed_commitment.json",
 ]
+"share/tuppi-exact/schemas" = [
+  "schemas/exact/frozen_baseline.schema.json",
+  "schemas/exact/hidden_hand_sampling.schema.json",
+  "schemas/exact/late_game_solution.schema.json",
+  "schemas/exact/match_rule_diagnosis.schema.json",
+]
+"share/tuppi-exact/docs" = [
+  "docs/exact/architecture.md",
+  "docs/exact/constraint_model.md",
+  "docs/exact/counting_and_sampling.md",
+  "docs/exact/continuation.md",
+  "docs/exact/solver.md",
+  "docs/exact/integrity.md",
+  "docs/exact/phase5b_results.md",
+]
+"share/tuppi-exact/reports" = [
+  "reports/phase5b/frozen_baseline.json",
+  "reports/phase5b/match_rule_diagnosis.json",
+]
 
 [tool.pytest.ini_options]
 testpaths = [
@@ -178,5 +198,6 @@ testpaths = [
   "tests/evaluation",
   "tests/agents",
   "tests/match",
+  "tests/exact",
 ]
 addopts = "-ra"

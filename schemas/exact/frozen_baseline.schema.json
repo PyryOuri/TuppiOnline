@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tuppi.research/schemas/exact/frozen_baseline.schema.json",
+  "title": "Phase 5B frozen-baseline snapshot",
+  "description": "Every digest Phase 5B commits to leaving unchanged. Any difference against a rebuilt snapshot is drift, never an update.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_digests",
+    "baseline_digest",
+    "phase4_behaviour_digests",
+    "phase4_snapshot_digest",
+    "purpose",
+    "ruleset_config_digest",
+    "ruleset_id",
+    "ruleset_version",
+    "schema_version"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.exact.frozen_baseline.v1"},
+    "artifact_digests": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["digest", "path"],
+        "properties": {
+          "digest": {"$ref": "#/$defs/sha256"},
+          "path": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "baseline_digest": {"$ref": "#/$defs/sha256"},
+    "phase4_behaviour_digests": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["behaviour_digest", "profile_key"],
+        "properties": {
+          "behaviour_digest": {"$ref": "#/$defs/sha256"},
+          "profile_key": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "phase4_snapshot_digest": {"$ref": "#/$defs/sha256"},
+    "purpose": {"type": "string", "minLength": 1},
+    "ruleset_config_digest": {"$ref": "#/$defs/sha256"},
+    "ruleset_id": {"const": "project_target_v1"},
+    "ruleset_version": {"type": ["string", "integer"]}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}

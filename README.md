@@ -3,9 +3,10 @@
 This repository contains the frozen Phase 0B legacy harness, the Phase 1
 authoritative rules specification, the Phase 2 deterministic clean engine,
 the Phase 3 deterministic evaluation framework, the Phase 4 transparent
-baseline-agent ladder, and the Phase 5A complete-match evaluation protocol.
+baseline-agent ladder, the Phase 5A complete-match evaluation protocol, and the
+Phase 5B exact inference and solving layer.
 
-Seven boundaries matter:
+Eight boundaries matter:
 
 1. `Archive/` contains byte-for-byte frozen historical artifacts.
 2. `src/tuppi_legacy/` verifies and executes the old emulator through an
@@ -23,6 +24,11 @@ Seven boundaries matter:
    deterministic streams, complementary leg pairs run to natural termination,
    match win probability as the primary endpoint, and separated development,
    calibration, and sealed fixture banks.
+8. `src/tuppi_exact/` owns the exact layer: the hard public constraint model, the
+   exact feasible-assignment counter, the exactly uniform hidden-hand sampler,
+   engine-validated hypothetical continuations, and the exact late-game solver.
+   Everything in it is exact or an error, and the dependency direction is
+   one-way: it reads the earlier packages and none of them may reference it.
 
 The archival ruleset identifier is **`legacy_v9_unverified`**. It is not the
 target ruleset, is preserved only for historical comparison, and must not be
@@ -80,12 +86,22 @@ audit and frozen manifest were produced with Python 3.14.3.
 
 ## Installation
 
-Create an isolated environment and install both packages plus development
+Create an isolated environment and install the packages plus development
 dependencies:
 
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install '.[dev]'
+```
+
+If the working tree is on a cloud-synced filesystem, put the environment
+**outside** it instead. A synced `.venv` was the reproducible cause of a stalled
+CLI subprocess test:
+
+```bash
+python3 -m venv "$HOME/.venvs/tuppi-research"
+source "$HOME/.venvs/tuppi-research/bin/activate"
+python -m pip install -e '.[dev]'
 ```
 
 There are no runtime dependencies outside the Python standard library and no
@@ -337,6 +353,83 @@ Run only Phase 5A tests with:
 .venv/bin/python -m pytest tests/match
 ```
 
+## Exact inference, exact solving, and rule diagnosis
+
+`src/tuppi_exact/` is the Phase 5B layer that sits on top of Phase 4's hard public
+inference. Five capabilities, all exact:
+
+| Module | Question it answers exactly |
+| --- | --- |
+| `constraints` | Which seats may still hold this card? |
+| `counting` | How many hidden-hand assignments does public information permit? |
+| `sampling` | Draw one of those, exactly uniformly. |
+| `continuation` | Turn a sampled assignment into a playable engine state. |
+| `solver` | What is optimal play here under perfect information? |
+
+Nothing here estimates. A position beyond the exact budget raises
+`SolverBudgetError` instead of answering approximately, and
+uniform-over-feasible is recorded as a neutral reference measure, **not** a
+posterior over opponent hands.
+
+Phase 5B adds one exclusion Phase 4 did not model: a public show action proves
+what the shower's whole hand does *not* contain, because `verbal_required` is
+derived from the complete 13-card hand. Without it the sampler proposes
+assignments the engine rejects.
+
+Verify the frozen baseline, then diagnose the rising-score rules:
+
+```bash
+.venv/bin/python -m tuppi_exact.runner integrity \
+  --verify reports/phase5b/frozen_baseline.json
+
+.venv/bin/python -m tuppi_exact.runner monotonicity
+.venv/bin/python -m tuppi_exact.runner variants
+
+.venv/bin/python -m tuppi_exact.runner diagnose \
+  --census-deals 24 --samples-per-decision 16 --show-census-deals 384 \
+  --output "$TMPDIR/tuppi-phase5b/diagnosis.json"
+```
+
+Inspect or solve one position:
+
+```bash
+.venv/bin/python -m tuppi_exact.runner inspect \
+  --deal-file examples/engine/project_target_v1/valid_one_deal_match.json \
+  --seat 1 --tricks 9 --samples 8
+
+.venv/bin/python -m tuppi_exact.runner solve \
+  --deal-file examples/engine/project_target_v1/valid_one_deal_match.json \
+  --tricks 10
+```
+
+**The central Phase 5B result.** Match utility is weakly monotone in the trick
+split for every contract, declarer, and score state, so every trick-optimal card
+is also match-optimal under perfect information. A rule that changes a *card*
+therefore cannot buy anything the score makes valuable. Measured against that:
+`match.play.coast_when_margin_worthless.v1` is exactly match-neutral,
+`match.play.secure_decisive_trick.v1` is redundant - its condition held 510 times
+and it changed 0 of 11 232 decisions - and only the two showing rules can move a
+match. The protect threshold is not retunable, because the reachable score lattice
+leaves it three distinct behaviours and the more it fires the worse it does. No
+result establishes harm; every interval contains 0.5.
+
+Exact-layer documentation:
+
+- Architecture and the one-way boundary: `docs/exact/architecture.md`
+- The constraint model and the show deduction: `docs/exact/constraint_model.md`
+- Counting, uniform sampling, and the posterior caveat: `docs/exact/counting_and_sampling.md`
+- Hypothetical continuations: `docs/exact/continuation.md`
+- The solver and the monotonicity theorem: `docs/exact/solver.md`
+- The frozen-baseline gate: `docs/exact/integrity.md`
+- Results and the rule diagnosis: `docs/exact/phase5b_results.md`
+- Strict schemas: `schemas/exact/`; reports: `reports/phase5b/`
+
+Run only Phase 5B tests with:
+
+```bash
+.venv/bin/python -m pytest tests/exact
+```
+
 ## Legacy headless execution
 
 Generate and play one fully materialized deal, with separate seeds for deal
@@ -430,9 +523,23 @@ population that framework measures.
 
 Phase 4 deliberately stops short of strength work. It provides readable
 baselines, hard public inference separated from any belief model, stable rule
-provenance, and a reproducible evaluation protocol. The next phase should build
-a sealed promotion bank, then add search or belief modelling on top of the
-existing hard-constraint layer, using these agents as rollout policies, opponent
-models, and fixed historical baselines. No legacy result is a strength benchmark
-unless independently reproduced, and no Phase 4 result is an expert-strength
-claim.
+provenance, and a reproducible evaluation protocol. Phase 5A replaced the deal
+endpoint with match win probability; Phase 5B added the exact layer a search agent
+needs and used it to diagnose Phase 4's rising-score rules. No legacy result is a
+strength benchmark unless independently reproduced, and no Phase 4, 5A, or 5B
+result is an expert-strength claim.
+
+The next phase should add a belief model on top of `HardConstraintModel` and
+justify it against uniform-over-feasible rather than against nothing, then add
+PIMC or ISMCTS using the Phase 5B capabilities as its determinizer and evaluator,
+with `partner_aware_v1` as the development reference opponent. The
+promotion-sealed bank stays closed until a candidate is frozen.
+
+## Storage discipline
+
+Only compact schemas, fixtures, benchmark summaries, and documentation belong in
+Git. High-volume run output belongs on a plain local filesystem outside the
+repository, outside `~/Documents`, and outside any cloud-synced directory: a
+cloud-synced working tree was the reproducible cause of a stalled CLI subprocess
+test. `python -m tuppi_exact.runner integrity --report` warns when the working tree
+itself looks cloud-synced.
