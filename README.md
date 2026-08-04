@@ -3,10 +3,11 @@
 This repository contains the frozen Phase 0B legacy harness, the Phase 1
 authoritative rules specification, the Phase 2 deterministic clean engine,
 the Phase 3 deterministic evaluation framework, the Phase 4 transparent
-baseline-agent ladder, the Phase 5A complete-match evaluation protocol, and the
-Phase 5B exact inference and solving layer.
+baseline-agent ladder, the Phase 5A complete-match evaluation protocol, the
+Phase 5B exact inference and solving layer, and the Phase 5C uniform-feasible PIMC
+search baseline.
 
-Eight boundaries matter:
+Nine boundaries matter:
 
 1. `Archive/` contains byte-for-byte frozen historical artifacts.
 2. `src/tuppi_legacy/` verifies and executes the old emulator through an
@@ -29,6 +30,10 @@ Eight boundaries matter:
    engine-validated hypothetical continuations, and the exact late-game solver.
    Everything in it is exact or an error, and the dependency direction is
    one-way: it reads the earlier packages and none of them may reference it.
+9. `src/tuppi_search/` owns the first search-based baseline: classical root
+   Perfect-Information Monte Carlo over uniformly sampled hard-feasible worlds. It
+   is a baseline, not an equilibrium solver, and it is subject to strategy fusion.
+   The dependency direction is one-way again: nothing earlier may reference it.
 
 The archival ruleset identifier is **`legacy_v9_unverified`**. It is not the
 target ruleset, is preserved only for historical comparison, and must not be
@@ -430,6 +435,65 @@ Run only Phase 5B tests with:
 .venv/bin/python -m pytest tests/exact
 ```
 
+## Search: uniform-feasible PIMC
+
+`src/tuppi_search/` is the Phase 5C baseline. For one decision it builds the Phase 5B
+hard constraint set, samples an indexed set of uniformly feasible worlds, forces
+**every** legal root action into **every** world of that one common set, completes each
+deal with observation-only rollout policies, averages root-team utility, and selects
+deterministically.
+
+It is a **PIMC baseline, not an equilibrium solver**, and must never be described as
+optimal imperfect-information play. Each sampled world is evaluated as a complete world
+and the averaging happens afterwards, so PIMC can combine mutually incompatible
+world-specific plans - *strategy fusion* - and more samples shrink Monte Carlo error
+without touching that bias.
+
+Phase 5C adds no information-set tree search, no persistent tree, no neural model, no
+learned belief weighting, no particle filter, no CFR, and no training of any kind.
+`tuppi_search.validation` scans for those families.
+
+```bash
+.venv/bin/python -m tuppi_search.runner validate
+.venv/bin/python -m tuppi_search.runner agents
+.venv/bin/python -m tuppi_search.runner utilities
+
+.venv/bin/python -m tuppi_search.runner explain \
+  --deal-file examples/engine/project_target_v1/valid_one_deal_match.json \
+  --profile uniform_feasible_pimc_smoke_v1 --seat 1 --tricks 9
+```
+
+**The central Phase 5C result is negative, and it is preserved as measured.** Over 32
+complementary complete-match pairs from 0-0, `uniform_feasible_pimc_small_v1` lost to
+`development_reference_v1` (`partner_aware_v1`) with `p_win = 0.156`, CI
+[0.075, 0.238], sign-flip p = 0.0001, and **0 wins / 10 ties / 22 losses**. Zero legs
+were censored and zero decisions failed, so this is a strength result rather than a
+harness defect.
+
+A dedicated showing census refuted the obvious explanation: PIMC's RAMI declaration
+rate *rises* with the world budget (0.458 at 2 worlds to 0.583 at 16, against the
+reference's 0.417), so small-sample selection optimism is not the mechanism. What
+survives is policy mismatch - PIMC values an action assuming *reference* play by its own
+partner, while both its seats actually play PIMC - and root strategy fusion. See
+`docs/search/phase5c_evaluation.md`.
+
+Search documentation:
+
+- Architecture and why ISMCTS is deferred: `docs/search/architecture.md`
+- The algorithm and strategy fusion: `docs/search/uniform_feasible_pimc.md`
+- The rollout boundary: `docs/search/rollout_security.md`
+- The exact tail and its bias: `docs/search/exact_tail_integration.md`
+- Utility adapters: `docs/search/utilities.md`
+- Determinism and the seed hierarchy: `docs/search/determinism.md`
+- Budgets, benchmarks, and results: `docs/search/phase5c_evaluation.md`
+- Strict schemas: `schemas/search/`; examples: `examples/search/`; reports: `reports/phase5c/`
+
+Run only Phase 5C tests with:
+
+```bash
+.venv/bin/python -m pytest tests/search
+```
+
 ## Legacy headless execution
 
 Generate and play one fully materialized deal, with separate seeds for deal
@@ -529,11 +593,11 @@ needs and used it to diagnose Phase 4's rising-score rules. No legacy result is 
 strength benchmark unless independently reproduced, and no Phase 4, 5A, or 5B
 result is an expert-strength claim.
 
-The next phase should add a belief model on top of `HardConstraintModel` and
-justify it against uniform-over-feasible rather than against nothing, then add
-PIMC or ISMCTS using the Phase 5B capabilities as its determinizer and evaluator,
-with `partner_aware_v1` as the development reference opponent. The
-promotion-sealed bank stays closed until a candidate is frozen.
+Phase 5C built the PIMC baseline on those capabilities and measured it losing
+decisively to the development reference, with a named mechanism. The next phase should
+fix the policy mismatch before adding tree search, then move to information-set search,
+which is the structural answer to the root fusion Phase 5C's observation-only rollout
+did not remove. The promotion-sealed bank stays closed until a candidate is frozen.
 
 ## Storage discipline
 

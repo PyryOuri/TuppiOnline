@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tuppi.research/schemas/search/pimc_configuration.schema.json",
+  "title": "PIMC configuration",
+  "description": "Every behaviourally material field of a Phase 5C agent. The configuration_id is a digest over exactly these fields, so two runs with the same id played the same way. Wall-clock stopping is deliberately absent: the semantic budget is a fixed amount of work.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "action_ordering_id",
+    "configuration_id",
+    "exact_tail_enabled",
+    "exact_tail_failure_policy",
+    "exact_tail_max_tricks_remaining",
+    "exact_tail_node_budget",
+    "failure_policy",
+    "pimc_protocol_version",
+    "root_continuation",
+    "root_rollout_policy_key",
+    "rollout_policy_key",
+    "rollout_replicas",
+    "sample_index_protocol",
+    "sampler_algorithm_id",
+    "schema_version",
+    "seed_protocol",
+    "semantic_work_budget",
+    "showing_search_enabled",
+    "solver_algorithm_id",
+    "tie_break_id",
+    "utility_id",
+    "world_count"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.search.pimc_configuration.v1"},
+    "configuration_id": {"type": "string", "pattern": "^pimcfg:sha256:[0-9a-f]{64}$"},
+    "pimc_protocol_version": {"const": "tuppi.search.pimc.v1"},
+    "sampler_algorithm_id": {"const": "tuppi.exact.counted_prefix_uniform_v1"},
+    "sample_index_protocol": {"const": "contiguous_prefix_from_zero_v1"},
+    "solver_algorithm_id": {"const": "tuppi.exact.trick_count_minimax_v1"},
+    "action_ordering_id": {"const": "tuppi.engine.legal_action_order.v1"},
+    "tie_break_id": {
+      "const": "highest_mean_utility_then_lowest_legal_action_index_v1"
+    },
+    "seed_protocol": {"const": "tuppi.search.seed_hierarchy.v1"},
+    "world_count": {"type": "integer", "minimum": 1, "maximum": 4096},
+    "rollout_replicas": {"type": "integer", "minimum": 1, "maximum": 64},
+    "rollout_policy_key": {
+      "enum": ["reactive_contract_v1", "public_counting_v1", "partner_aware_v1"]
+    },
+    "root_continuation": {
+      "enum": ["rollout_policy", "alternate_rollout_policy"]
+    },
+    "root_rollout_policy_key": {
+      "oneOf": [
+        {"enum": ["reactive_contract_v1", "public_counting_v1", "partner_aware_v1"]},
+        {"type": "null"}
+      ]
+    },
+    "utility_id": {
+      "enum": [
+        "tuppi.search.utility.deal_result.v1",
+        "tuppi.search.utility.match_transition.v1",
+        "tuppi.search.utility.trick_split.v1"
+      ]
+    },
+    "exact_tail_enabled": {"type": "boolean"},
+    "exact_tail_max_tricks_remaining": {
+      "oneOf": [
+        {"type": "integer", "minimum": 1, "maximum": 5},
+        {"type": "null"}
+      ]
+    },
+    "exact_tail_node_budget": {
+      "oneOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]
+    },
+    "exact_tail_failure_policy": {"enum": ["strict", "fallback_rollout"]},
+    "showing_search_enabled": {"type": "boolean"},
+    "failure_policy": {"const": "strict"},
+    "semantic_work_budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rollout_replicas",
+        "rollouts_per_candidate",
+        "stopping_rule",
+        "world_count"
+      ],
+      "properties": {
+        "rollout_replicas": {"type": "integer", "minimum": 1},
+        "rollouts_per_candidate": {"type": "integer", "minimum": 1},
+        "stopping_rule": {"const": "deterministic_work_budget"},
+        "world_count": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}

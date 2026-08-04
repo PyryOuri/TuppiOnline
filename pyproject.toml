@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tuppi-research"
-version = "0.5.1"
-description = "Deterministic Tuppi rules, engine, deal and complete-match evaluation, baseline agents, exact inference and solving, and legacy archive"
+version = "0.5.2"
+description = "Deterministic Tuppi rules, engine, deal and complete-match evaluation, baseline agents, exact inference and solving, uniform-feasible PIMC search, and legacy archive"
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
 dependencies = []
@@ -24,6 +24,7 @@ tuppi-eval = "tuppi_eval.runner:entrypoint"
 tuppi-agents = "tuppi_agents.runner:entrypoint"
 tuppi-match = "tuppi_match.runner:entrypoint"
 tuppi-exact = "tuppi_exact.runner:entrypoint"
+tuppi-search = "tuppi_search.runner:entrypoint"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -188,6 +189,28 @@ where = ["src"]
   "reports/phase5b/frozen_baseline.json",
   "reports/phase5b/match_rule_diagnosis.json",
 ]
+"share/tuppi-search/schemas" = [
+  "schemas/search/pimc_configuration.schema.json",
+  "schemas/search/pimc_decision_diagnostics.schema.json",
+  "schemas/search/world_set_summary.schema.json",
+  "schemas/search/search_benchmark.schema.json",
+  "schemas/search/phase5c_evaluation.schema.json",
+]
+"share/tuppi-search/docs" = [
+  "docs/search/architecture.md",
+  "docs/search/uniform_feasible_pimc.md",
+  "docs/search/rollout_security.md",
+  "docs/search/exact_tail_integration.md",
+  "docs/search/utilities.md",
+  "docs/search/determinism.md",
+  "docs/search/phase5c_evaluation.md",
+]
+"share/tuppi-search/examples" = ["examples/search/README.md"]
+"share/tuppi-search/reports" = [
+  "reports/phase5c/pimc_registry.json",
+  "reports/phase5c/search_benchmark.json",
+  "reports/phase5c/phase5c_evaluation.json",
+]
 
 [tool.pytest.ini_options]
 testpaths = [
@@ -199,5 +222,6 @@ testpaths = [
   "tests/agents",
   "tests/match",
   "tests/exact",
+  "tests/search",
 ]
 addopts = "-ra"

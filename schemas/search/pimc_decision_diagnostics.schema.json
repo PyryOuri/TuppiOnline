@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tuppi.research/schemas/search/pimc_decision_diagnostics.schema.json",
+  "title": "PIMC decision diagnostics",
+  "description": "A privacy-safe explanation of one search decision. It carries world identities and counts but never a sampled hand, never the true deal identifier, never the evaluator fixture identity, and never a marker of which sampled world matched reality - the agent does not compute that at all.",
+  "type": "object",
+  "required": [
+    "agent_id",
+    "candidate_count",
+    "candidates",
+    "decision_seed",
+    "exact_tail",
+    "failure_counts",
+    "information_state",
+    "legal_actions",
+    "phase",
+    "pimc_configuration_id",
+    "pimc_protocol_version",
+    "rollout_policy_agent_ids",
+    "rollout_policy_key",
+    "root_seat",
+    "root_team",
+    "schema_version",
+    "selected_action",
+    "selected_action_order_index",
+    "selected_mean_utility",
+    "selection_gap",
+    "semantic_work_budget",
+    "simulation_counts",
+    "single_legal_action_shortcut",
+    "tie_break_id",
+    "utility",
+    "world_set"
+  ],
+  "not": {
+    "anyOf": [
+      {"required": ["true_hands"]},
+      {"required": ["hidden_hands"]},
+      {"required": ["initial_hands"]},
+      {"required": ["deal_id"]},
+      {"required": ["true_deal_id"]},
+      {"required": ["evaluator_fixture_id"]},
+      {"required": ["sealed_seed"]},
+      {"required": ["true_world_index"]},
+      {"required": ["matched_truth"]}
+    ]
+  },
+  "properties": {
+    "schema_version": {"const": "tuppi.search.pimc_decision_diagnostics.v1"},
+    "agent_id": {"type": "string", "pattern": "^agent:sha256:[0-9a-f]{64}$"},
+    "pimc_configuration_id": {
+      "type": "string",
+      "pattern": "^pimcfg:sha256:[0-9a-f]{64}$"
+    },
+    "information_state": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "decision_seed": {"type": "string", "minLength": 1},
+    "root_seat": {"type": "integer", "minimum": 0, "maximum": 3},
+    "root_team": {"enum": [0, 1]},
+    "phase": {"enum": ["SHOWING", "TRICK_PLAY"]},
+    "legal_actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "selected_action": {"type": "string", "minLength": 1},
+    "selected_action_order_index": {"type": "integer", "minimum": 0},
+    "selection_gap": {"type": "number"},
+    "selected_mean_utility": {"type": "number", "minimum": -1, "maximum": 1},
+    "single_legal_action_shortcut": {"type": "boolean"},
+    "candidate_count": {"type": "integer", "minimum": 1},
+    "rollout_policy_agent_ids": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "utility": {
+      "type": "object",
+      "required": ["description", "range", "utility_id"],
+      "properties": {
+        "description": {"type": "string", "minLength": 1},
+        "range": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {"type": "number"}
+        },
+        "utility_id": {"type": "string", "minLength": 1}
+      }
+    },
+    "exact_tail": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "max_tricks_remaining": {"type": "integer", "minimum": 1, "maximum": 5},
+        "node_budget": {"type": "integer", "minimum": 1},
+        "solver_algorithm_id": {"type": "string"}
+      }
+    },
+    "failure_counts": {
+      "type": "object",
+      "required": [
+        "candidate_failures",
+        "rollout_failures",
+        "world_construction_failures"
+      ],
+      "properties": {
+        "candidate_failures": {"type": "integer", "minimum": 0},
+        "rollout_failures": {"type": "integer", "minimum": 0},
+        "world_construction_failures": {"type": "integer", "minimum": 0}
+      }
+    },
+    "simulation_counts": {
+      "type": "object",
+      "required": [
+        "actions_simulated",
+        "evaluations",
+        "exact_tail_evaluations",
+        "solver_calls",
+        "solver_nodes"
+      ],
+      "properties": {
+        "actions_simulated": {"type": "integer", "minimum": 0},
+        "evaluations": {"type": "integer", "minimum": 0},
+        "exact_tail_evaluations": {"type": "integer", "minimum": 0},
+        "solver_calls": {"type": "integer", "minimum": 0},
+        "solver_nodes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "semantic_work_budget": {
+      "type": "object",
+      "required": ["stopping_rule", "world_count"],
+      "properties": {
+        "stopping_rule": {"const": "deterministic_work_budget"},
+        "world_count": {"type": "integer", "minimum": 0},
+        "rollout_replicas": {"type": "integer", "minimum": 1},
+        "rollouts_per_candidate": {"type": "integer", "minimum": 1}
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "action",
+          "action_order_index",
+          "actions_simulated",
+          "evaluations",
+          "exact_tail_evaluations",
+          "exact_tail_rate",
+          "failures",
+          "lower_quartile",
+          "maximum",
+          "mean_utility",
+          "median",
+          "minimum",
+          "root_team_deal_win_rate",
+          "root_team_deal_wins",
+          "solver_calls",
+          "standard_deviation",
+          "standard_error",
+          "unique_worlds",
+          "upper_quartile"
+        ],
+        "properties": {
+          "action": {"type": "string", "minLength": 1},
+          "action_order_index": {"type": "integer", "minimum": 0},
+          "evaluations": {"type": "integer", "minimum": 1},
+          "failures": {"const": 0},
+          "mean_utility": {"type": "number", "minimum": -1, "maximum": 1},
+          "minimum": {"type": "number", "minimum": -1, "maximum": 1},
+          "maximum": {"type": "number", "minimum": -1, "maximum": 1},
+          "standard_deviation": {"type": "number", "minimum": 0},
+          "standard_error": {"type": "number", "minimum": 0},
+          "exact_tail_rate": {"type": "number", "minimum": 0, "maximum": 1},
+          "root_team_deal_win_rate": {"type": "number", "minimum": 0, "maximum": 1}
+        }
+      }
+    },
+    "world_set": {"type": "object"},
+    "operational_timing": {
+      "type": "object",
+      "description": "Operational only. No decision depends on timing."
+    }
+  }
+}
