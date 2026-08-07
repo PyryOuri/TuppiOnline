@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tuppi.research/schemas/search/phase5d_a_report.schema.json",
+  "title": "Phase 5D-A failure-decomposition report",
+  "description": "The committed Phase 5D-A findings. Every experiment in this report runs on a fresh unsealed development bank, so nothing here is promotion evidence. The Phase 5C result is quoted, never recomputed: 'phase5c_quoted_result' exists so that the negative baseline being explained is visible beside the diagnosis without being rewritten by it.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "purpose",
+    "phase5c_negative_baseline",
+    "phase5c_quoted_result",
+    "phase5c_registry_digest_unchanged",
+    "promotion_status"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": {
+      "const": "tuppi.search.phase5d_a_report.v1"
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1
+    },
+    "phase5c_negative_baseline": {
+      "type": "object",
+      "description": "The frozen designation of the Phase 5C configuration. Metadata only: the designation must not alter the agent id it designates.",
+      "required": ["designation", "agent_id", "configuration_id"],
+      "additionalProperties": true,
+      "properties": {
+        "designation": {
+          "const": "uniform_feasible_pimc_small_v1_negative_baseline"
+        },
+        "agent_id": {
+          "type": "string",
+          "pattern": "^agent:sha256:[0-9a-f]{64}$"
+        },
+        "configuration_id": {
+          "type": "string",
+          "pattern": "^pimcfg:sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "phase5c_quoted_result": {
+      "type": "object",
+      "description": "Quoted from reports/phase5c/, not recomputed here.",
+      "required": ["note", "primary_match_inference"],
+      "additionalProperties": true,
+      "properties": {
+        "note": {
+          "type": "string",
+          "minLength": 1
+        },
+        "primary_match_inference": {
+          "type": "object"
+        }
+      }
+    },
+    "phase5c_registry_digest_unchanged": {
+      "type": "string",
+      "description": "The live Phase 5C registry digest, which must still equal the value committed in reports/phase5c/pimc_registry.json.",
+      "minLength": 1
+    },
+    "promotion_status": {
+      "type": "string",
+      "minLength": 1
+    },
+    "safety_cap_deviation": {
+      "type": "object",
+      "description": "Phase 5D-A complete-match runs use a smaller per-leg deal cap than Phase 5C. Recorded explicitly because it induces censoring, and censoring is not missing-at-random: it removes the closest legs.",
+      "required": ["phase5c_safety_cap", "phase5d_a_safety_cap", "rationale"],
+      "additionalProperties": true,
+      "properties": {
+        "phase5c_safety_cap": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "phase5d_a_safety_cap": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "play_only_complete_match": {
+      "type": "object",
+      "description": "Experiment A: the frozen reference chooses every contract, PIMC plays every card."
+    },
+    "show_only_complete_match": {
+      "type": "object",
+      "description": "Experiment B: PIMC chooses every contract, the frozen reference plays every card."
+    },
+    "heterogeneous_full_pimc": {
+      "type": "object",
+      "description": "Experiment C: one search seat with a frozen reference partner, reported per seat arrangement rather than pooled."
+    },
+    "heterogeneous_play_only": {
+      "type": "object",
+      "description": "Experiment D: the same seat-balanced design applied to the play-only variant."
+    },
+    "decomposition": {
+      "type": "object",
+      "description": "Contract, card-play, and rollout-mismatch decompositions over the frozen decision corpus."
+    },
+    "convergence": {
+      "type": "object",
+      "description": "Nested-budget action stability. Prefixes nest exactly, so a changed action means a changed opinion."
+    },
+    "selected_path": {
+      "type": "object",
+      "description": "The Phase 5D-A decision: which of paths A, B, C, or D the evidence selects, and what it licenses next.",
+      "required": ["path", "justification", "licenses_next"],
+      "additionalProperties": true,
+      "properties": {
+        "path": {
+          "enum": ["A", "B", "C", "D", "unresolved"]
+        },
+        "justification": {
+          "type": "string",
+          "minLength": 1
+        },
+        "licenses_next": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "not_run": {
+      "type": "array",
+      "description": "Planned artifacts that were not produced, named rather than silently omitted.",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

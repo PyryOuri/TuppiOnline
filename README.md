@@ -4,8 +4,8 @@ This repository contains the frozen Phase 0B legacy harness, the Phase 1
 authoritative rules specification, the Phase 2 deterministic clean engine,
 the Phase 3 deterministic evaluation framework, the Phase 4 transparent
 baseline-agent ladder, the Phase 5A complete-match evaluation protocol, the
-Phase 5B exact inference and solving layer, and the Phase 5C uniform-feasible PIMC
-search baseline.
+Phase 5B exact inference and solving layer, the Phase 5C uniform-feasible PIMC
+search baseline, and the Phase 5D-A decomposition of that baseline's failure.
 
 Nine boundaries matter:
 
@@ -493,6 +493,59 @@ Run only Phase 5C tests with:
 ```bash
 .venv/bin/python -m pytest tests/search
 ```
+
+## Phase 5D-A: decomposing the PIMC failure
+
+Phase 5D-A asks *which* decisions lost the Phase 5C matches, before committing to another
+search family. It adds only controlled PIMC variants and diagnostics - no ISMCTS, no
+persistent tree, no learned partner model, no particle filter, and **no recursive PIMC**,
+which `tuppi_search.validation` scans for structurally: the modules a rollout executes may
+not construct a search agent at all.
+
+Two phase-gated variants partition full PIMC's decisions, each with its own immutable
+identity, composed from an *unmodified* `PimcConfiguration` so every Phase 5C content
+address stays exactly as committed:
+
+- `uniform_feasible_pimc_play_only_v1` - the frozen reference chooses the contract, PIMC
+  plays every card.
+- `uniform_feasible_pimc_show_only_v1` - PIMC chooses the contract, the frozen reference
+  plays every card.
+
+```bash
+.venv/bin/python -m tuppi_search.runner diagnostic-agents
+.venv/bin/python -m tuppi_search.runner corpus --showing 128 --trick-play 256 --output /tmp/c.json
+.venv/bin/python -m tuppi_search.runner converge --budgets 2,4,8,16,32 --output /tmp/v.json
+.venv/bin/python -m tuppi_search.runner decompose --output /tmp/d.json
+```
+
+**Both phases lose separately, and neither alone explains the loss.** Play-only reaches
+`p_win = 0.250` and show-only `0.333` over 12 complete-match pairs each on a fresh
+development bank, against the Phase 5C full-PIMC baseline of 0.156. They lose differently:
+play-only loses tricks (191 vs 205), while show-only wins tricks evenly (184 vs 182) and
+still loses points by over-declaring RAMI (0.905 share of deals against play-only's 0.780).
+
+Two mechanism findings carry most of the weight. PIMC's root utility barely separates its
+candidates - the mean margin between best and second-best *shrinks* from 0.034 to 0.012 as
+the budget grows from 2 to 32 worlds, and at the deployed four worlds 64 % of decisions are
+settled by canonical tie-break rather than by value. And PIMC's rollout models a partner
+that is not there: with a reference partner the assumed continuation matches perfectly
+(20/20 control positions), but with a PIMC partner it diverges in 19 of 20 within the first
+action or two.
+
+The Phase 5C negative result is preserved exactly as measured under the frozen designation
+`uniform_feasible_pimc_small_v1_negative_baseline` - metadata only, with the agent id,
+configuration id, and committed registry digest all unchanged.
+
+One instrument defect is recorded rather than quietly fixed: the first decision corpus drew
+all 96 of its trick-play positions from a *single* set of hands, which inflated an apparent
+"perfectly one-directional" RAMI bias that the corrected 64-hand corpus shows is 3.7 : 1.
+`build_corpus` now caps the positions any one hand may contribute, and
+`tests/search/test_phase5d_diagnostics.py` asserts the deal-spread property.
+
+- Hypotheses, instruments, and their limits, written before the measurements:
+  `docs/search/phase5d_a_hypotheses.md`
+- Results and the selected decision path: `docs/search/phase5d_a_results.md`
+- Reports: `reports/phase5d_a/`; schemas: `schemas/search/phase5d_a_*.schema.json`
 
 ## Legacy headless execution
 

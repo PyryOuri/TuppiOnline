@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tuppi.research/schemas/search/phase5d_a_decomposition.schema.json",
+  "title": "Phase 5D-A PIMC failure decomposition",
+  "description": "Descriptive decomposition of where PIMC and the reference policy disagree, plus rollout-mismatch records. Every section carries its own interpretation field: a disagreement is not an error, a divergence is not a cause, and none of these establishes what produced the Phase 5C loss.",
+  "type": "object",
+  "required": ["card_play", "corpus", "rollout_mismatch", "schema_version", "showing"],
+  "properties": {
+    "schema_version": {"const": "tuppi.search.phase5d_a_decomposition.v1"},
+    "corpus": {
+      "type": "object",
+      "required": [
+        "corpus_id",
+        "position_count",
+        "privacy_note",
+        "showing_positions",
+        "stratum_counts",
+        "trick_play_positions"
+      ],
+      "properties": {
+        "corpus_id": {"type": "string", "pattern": "^corpus:sha256:[0-9a-f]{64}$"},
+        "position_count": {"type": "integer", "minimum": 1},
+        "privacy_note": {"type": "string", "minLength": 1},
+        "showing_positions": {"type": "integer", "minimum": 0},
+        "trick_play_positions": {"type": "integer", "minimum": 0}
+      }
+    },
+    "showing": {
+      "type": "object",
+      "required": [
+        "by_showing_position",
+        "classification_counts",
+        "classification_rates",
+        "interpretation",
+        "pimc_rami_declaration_rate",
+        "rami_rate_difference",
+        "reference_rami_declaration_rate",
+        "showing_positions"
+      ],
+      "properties": {
+        "classification_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "same_action",
+            "same_contract_different_card",
+            "pimc_rami_reference_nolo",
+            "pimc_nolo_reference_rami"
+          ],
+          "properties": {
+            "same_action": {"type": "integer", "minimum": 0},
+            "same_contract_different_card": {"type": "integer", "minimum": 0},
+            "pimc_rami_reference_nolo": {"type": "integer", "minimum": 0},
+            "pimc_nolo_reference_rami": {"type": "integer", "minimum": 0}
+          }
+        },
+        "pimc_rami_declaration_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "reference_rami_declaration_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "rami_rate_difference": {"type": "number", "minimum": -1, "maximum": 1},
+        "interpretation": {"type": "string", "minLength": 1}
+      }
+    },
+    "card_play": {
+      "type": "object",
+      "required": [
+        "by_slice",
+        "disagreement_rate",
+        "disagreements",
+        "interpretation",
+        "trick_play_positions"
+      ],
+      "properties": {
+        "disagreement_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "disagreements": {"type": "integer", "minimum": 0},
+        "interpretation": {"type": "string", "minLength": 1},
+        "by_slice": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["disagreement_rate", "disagreements", "positions"],
+              "properties": {
+                "disagreement_rate": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "disagreements": {"type": "integer", "minimum": 0},
+                "positions": {"type": "integer", "minimum": 1}
+              }
+            }
+          }
+        }
+      }
+    },
+    "rollout_mismatch": {
+      "type": "object",
+      "required": [
+        "assumed_continuation",
+        "by_partner_kind",
+        "horizon_actions",
+        "interpretation",
+        "label",
+        "positions",
+        "records"
+      ],
+      "properties": {
+        "label": {"const": "perfect_information_diagnostic"},
+        "horizon_actions": {"type": "integer", "minimum": 1},
+        "positions": {"type": "integer", "minimum": 1},
+        "interpretation": {"type": "string", "minLength": 1},
+        "by_partner_kind": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["all_pimc", "pimc_partner", "reference_partner"],
+          "properties": {
+            "all_pimc": {"$ref": "#/$defs/mismatchStats"},
+            "pimc_partner": {"$ref": "#/$defs/mismatchStats"},
+            "reference_partner": {"$ref": "#/$defs/mismatchStats"}
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "assumed_actions",
+              "contract",
+              "first_divergence_index",
+              "first_divergence_is_root_team",
+              "first_divergence_seat",
+              "matched_fraction",
+              "matched_prefix",
+              "partner_kind",
+              "position_id",
+              "stage"
+            ],
+            "properties": {
+              "assumed_actions": {"type": "integer", "minimum": 0},
+              "contract": {"type": ["string", "null"]},
+              "first_divergence_index": {
+                "type": ["integer", "null"],
+                "minimum": 0
+              },
+              "first_divergence_is_root_team": {"type": ["boolean", "null"]},
+              "first_divergence_seat": {
+                "type": ["integer", "null"],
+                "minimum": 0,
+                "maximum": 3
+              },
+              "matched_fraction": {"type": "number", "minimum": 0, "maximum": 1},
+              "matched_prefix": {"type": "integer", "minimum": 0},
+              "partner_kind": {
+                "enum": ["all_pimc", "pimc_partner", "reference_partner"]
+              },
+              "position_id": {
+                "type": "string",
+                "pattern": "^pos:sha256:[0-9a-f]{64}$"
+              },
+              "stage": {"enum": ["showing", "early", "middle", "late"]}
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "mismatchStats": {
+      "type": "object",
+      "required": [
+        "diverged_positions",
+        "first_divergence_in_root_team",
+        "mean_first_divergence_index",
+        "mean_matched_fraction",
+        "positions"
+      ],
+      "properties": {
+        "diverged_positions": {"type": "integer", "minimum": 0},
+        "first_divergence_in_root_team": {"type": "integer", "minimum": 0},
+        "mean_first_divergence_index": {"type": ["number", "null"]},
+        "mean_matched_fraction": {"type": "number", "minimum": 0, "maximum": 1},
+        "positions": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

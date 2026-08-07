@@ -33,13 +33,17 @@ from .errors import SearchError
 from .evaluation import (
     heterogeneous_partnership_diagnostic,
     run_deal_ablation,
+    run_heterogeneous_match_comparison,
     run_match_comparison,
+    run_phase5d_a_deal_screen,
+    run_phase5d_a_match_comparison,
     showing_contract_sensitivity,
 )
 from .registry import (
     PRIMARY_PROFILE_KEY,
     REGISTERED_CONFIGURATIONS,
     build_agent,
+    phase5d_a_registry_snapshot,
     registry_snapshot,
 )
 from .utilities import UtilityId, utility_catalogue
@@ -125,6 +129,72 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sens.add_argument("--deals", type=int, default=24)
     sens.add_argument("--output")
+
+    diag_agents = subparsers.add_parser(
+        "diagnostic-agents", help="list the Phase 5D-A diagnostic agents"
+    )
+    diag_agents.add_argument("--output")
+
+    d_compare = subparsers.add_parser(
+        "d-compare",
+        help="Phase 5D-A homogeneous complete-match comparison on a fresh bank",
+    )
+    d_compare.add_argument("--candidate", required=True)
+    d_compare.add_argument("--opponent", default=DEVELOPMENT_REFERENCE_POLICY)
+    d_compare.add_argument("--pairs", type=int, required=True)
+    d_compare.add_argument("--safety-cap", type=int, default=704)
+    d_compare.add_argument("--workers", type=int)
+    d_compare.add_argument("--output", required=True)
+
+    d_hetero = subparsers.add_parser(
+        "d-heterogeneous",
+        help="Phase 5D-A seat-balanced heterogeneous complete-match comparison",
+    )
+    d_hetero.add_argument("--search", required=True)
+    d_hetero.add_argument("--partner", default=DEVELOPMENT_REFERENCE_POLICY)
+    d_hetero.add_argument("--opponent", default=DEVELOPMENT_REFERENCE_POLICY)
+    d_hetero.add_argument("--pairs", type=int, required=True)
+    d_hetero.add_argument("--safety-cap", type=int, default=704)
+    d_hetero.add_argument("--workers", type=int)
+    d_hetero.add_argument("--output", required=True)
+
+    corpus_cmd = subparsers.add_parser(
+        "corpus", help="build and summarize the frozen Phase 5D-A decision corpus"
+    )
+    corpus_cmd.add_argument("--showing", type=int, default=256)
+    corpus_cmd.add_argument("--trick-play", type=int, default=512)
+    corpus_cmd.add_argument("--streams", type=int, default=96)
+    corpus_cmd.add_argument("--output", required=True)
+
+    converge = subparsers.add_parser(
+        "converge", help="nested-budget convergence over the decision corpus"
+    )
+    converge.add_argument("--showing", type=int, default=64)
+    converge.add_argument("--trick-play", type=int, default=128)
+    converge.add_argument("--streams", type=int, default=48)
+    converge.add_argument("--showing-limit", type=int, default=32)
+    converge.add_argument("--trick-play-limit", type=int, default=48)
+    converge.add_argument(
+        "--budgets", default="2,4,8,16,32", help="ascending, comma separated"
+    )
+    converge.add_argument("--output", required=True)
+
+    decompose = subparsers.add_parser(
+        "decompose", help="showing, card-play, and rollout-mismatch decomposition"
+    )
+    decompose.add_argument("--showing", type=int, default=192)
+    decompose.add_argument("--trick-play", type=int, default=384)
+    decompose.add_argument("--streams", type=int, default=96)
+    decompose.add_argument("--mismatch-positions", type=int, default=24)
+    decompose.add_argument("--output", required=True)
+
+    d_screen = subparsers.add_parser(
+        "d-screen", help="Phase 5D-A deal-level duplicate screen on a fresh bank"
+    )
+    d_screen.add_argument("--candidate", required=True)
+    d_screen.add_argument("--opponent", required=True)
+    d_screen.add_argument("--deals", type=int, default=12)
+    d_screen.add_argument("--output", required=True)
 
     hetero = subparsers.add_parser(
         "heterogeneous", help="mixed-partnership deal diagnostic"
@@ -368,6 +438,180 @@ def _showing_sensitivity(args) -> int:
     return 0
 
 
+def _diagnostic_agents(args) -> int:
+    snapshot = phase5d_a_registry_snapshot()
+    _write(args.output, snapshot)
+    if not args.output:
+        for entry in snapshot["agents"]:
+            print(f"{entry['profile_key']:44s} {entry['agent_id']}")
+        baseline = snapshot["negative_baseline"]
+        print(f"negative baseline: {baseline['designation']}")
+        print(f"  agent (unchanged): {baseline['agent_id']}")
+        print(f"phase5c digest unchanged: {snapshot['phase5c_registry_digest_unchanged']}")
+    return 0
+
+
+def _d_compare(args) -> int:
+    report = run_phase5d_a_match_comparison(
+        candidate_profile_key=args.candidate,
+        opponent_profile_key=args.opponent,
+        pairs=args.pairs,
+        safety_cap=args.safety_cap,
+        workers=args.workers,
+        progress=_progress(time.perf_counter(), "pair"),
+    )
+    atomic_write_canonical_json(args.output, report)
+    inference = report["primary_match_inference"]
+    print(
+        f"{report['name']}: pairs={inference['complete_pair_count']} "
+        f"p_win={inference['candidate_match_win_probability']} "
+        f"outcomes={inference['pair_outcomes']} "
+        f"p={inference['sign_flip_p_value']:.4f}"
+    )
+    print(args.output)
+    return 0
+
+
+def _d_heterogeneous(args) -> int:
+    report = run_heterogeneous_match_comparison(
+        search_profile_key=args.search,
+        partner_profile_key=args.partner,
+        opponent_profile_key=args.opponent,
+        pairs=args.pairs,
+        safety_cap=args.safety_cap,
+        workers=args.workers,
+        progress=_progress(time.perf_counter(), "pair"),
+    )
+    atomic_write_canonical_json(args.output, report)
+    for entry in report["arrangements"]:
+        inference = entry["primary_match_inference"]
+        print(
+            f"arrangement {entry['arrangement']} "
+            f"({entry['arrangement_meaning']}): "
+            f"p_win={inference['candidate_match_win_probability']} "
+            f"outcomes={inference['pair_outcomes']}"
+        )
+    print(args.output)
+    return 0
+
+
+def _build_corpus(args):
+    from .corpus import build_corpus
+
+    return build_corpus(
+        showing_target=args.showing,
+        trick_play_target=args.trick_play,
+        streams=args.streams,
+        progress=_progress(time.perf_counter(), "deal"),
+    )
+
+
+def _corpus(args) -> int:
+    corpus = _build_corpus(args)
+    payload = corpus.to_data()
+    payload["positions"] = [item.to_data() for item in corpus.positions]
+    atomic_write_canonical_json(args.output, payload)
+    print(
+        f"corpus {corpus.corpus_id}: {payload['showing_positions']} showing, "
+        f"{payload['trick_play_positions']} trick play"
+    )
+    disagree = sum(
+        1 for item in corpus.positions if item.pimc_disagrees_with_reference
+    )
+    print(f"PIMC disagrees with the reference at {disagree}/{len(corpus)} positions")
+    print(args.output)
+    return 0
+
+
+def _converge(args) -> int:
+    from .convergence import run_convergence
+
+    budgets = tuple(int(part) for part in args.budgets.split(","))
+    corpus = _build_corpus(args)
+    report = run_convergence(
+        corpus,
+        budgets=budgets,
+        showing_limit=args.showing_limit,
+        trick_play_limit=args.trick_play_limit,
+        progress=_progress(time.perf_counter(), "position"),
+    )
+    report["corpus"] = corpus.to_data()
+    atomic_write_canonical_json(args.output, report)
+    for entry in report["adjacent_agreement"]:
+        print(
+            f"{entry['from_worlds']:3d} -> {entry['to_worlds']:3d} worlds: "
+            f"agreement {entry['agreement_rate']:.3f} "
+            f"({entry['agreements']}/{entry['comparisons']})"
+        )
+    for entry in report["declaration_shift"]:
+        if entry["rami_declaration_rate"] is not None:
+            print(
+                f"  {entry['world_count']:3d} worlds: RAMI rate "
+                f"{entry['rami_declaration_rate']:.3f} "
+                f"({entry['showing_decisions']} showing decisions)"
+            )
+    print(args.output)
+    return 0
+
+
+def _decompose(args) -> int:
+    from .decomposition import (
+        card_play_decomposition,
+        rollout_mismatch,
+        showing_decomposition,
+    )
+
+    corpus = _build_corpus(args)
+    report = {
+        "card_play": card_play_decomposition(corpus),
+        "corpus": corpus.to_data(),
+        "rollout_mismatch": rollout_mismatch(
+            corpus,
+            positions_limit=args.mismatch_positions,
+            progress=_progress(time.perf_counter(), "position"),
+        ),
+        "schema_version": "tuppi.search.phase5d_a_decomposition.v1",
+        "showing": showing_decomposition(corpus),
+    }
+    atomic_write_canonical_json(args.output, report)
+    show = report["showing"]
+    print(
+        f"showing: PIMC RAMI {show['pimc_rami_declaration_rate']:.3f} vs reference "
+        f"{show['reference_rami_declaration_rate']:.3f} "
+        f"(difference {show['rami_rate_difference']:+.3f})"
+    )
+    for key, value in sorted(show["classification_rates"].items()):
+        print(f"  {key:34s} {value:.3f}")
+    print(f"card play: disagreement rate {report['card_play']['disagreement_rate']:.3f}")
+    for kind, stats in sorted(report["rollout_mismatch"]["by_partner_kind"].items()):
+        print(
+            f"  mismatch {kind:20s} matched fraction "
+            f"{stats['mean_matched_fraction']:.3f} "
+            f"diverged {stats['diverged_positions']}/{stats['positions']}"
+        )
+    print(args.output)
+    return 0
+
+
+def _d_screen(args) -> int:
+    report = run_phase5d_a_deal_screen(
+        candidate_profile_key=args.candidate,
+        opponent_profile_key=args.opponent,
+        deals=args.deals,
+        progress=_progress(time.perf_counter(), "deal pair"),
+    )
+    atomic_write_canonical_json(args.output, report)
+    print(
+        f"{report['candidate_profile_key']} vs {report['opponent_profile_key']}: "
+        f"mean paired utility {report['mean_paired_utility']:+.6f} "
+        f"(se {report['standard_error_paired_utility']:.6f}), "
+        f"ahead/tied/behind {report['pairs_candidate_ahead']}/"
+        f"{report['pairs_tied']}/{report['pairs_candidate_behind']}"
+    )
+    print(args.output)
+    return 0
+
+
 def _heterogeneous(args) -> int:
     report = heterogeneous_partnership_diagnostic(
         pimc_profile_key=args.profile,
@@ -393,6 +637,13 @@ def main(argv: list[str] | None = None) -> int:
         "benchmark": _benchmark,
         "compare": _compare,
         "explain": _explain,
+        "converge": _converge,
+        "corpus": _corpus,
+        "d-compare": _d_compare,
+        "decompose": _decompose,
+        "d-heterogeneous": _d_heterogeneous,
+        "d-screen": _d_screen,
+        "diagnostic-agents": _diagnostic_agents,
         "heterogeneous": _heterogeneous,
         "showing-sensitivity": _showing_sensitivity,
         "stability": _stability,

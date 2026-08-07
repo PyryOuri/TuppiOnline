@@ -50,6 +50,20 @@ EARLIER_PACKAGES: tuple[str, ...] = (
     "tuppi_exact",
 )
 
+#: Phase 5D-A additionally forbids solving policy mismatch by recursion. A nested
+#: PIMC would multiply cost by the branching factor at every ply, and its semantics
+#: do not terminate: the nested search would itself have to assume something about
+#: *its* partner. These are the call shapes that would implement it.
+RECURSIVE_SEARCH_PATTERNS: tuple[tuple[str, str], ...] = (
+    ("nested_pimc", r"\bnested[-_ ]?pimc\b"),
+    ("recursive_pimc", r"\brecursive[-_ ]?pimc\b"),
+    ("pimc_inside_rollout", r"\bpimc_rollout_policy\b"),
+)
+
+#: The modules a rollout executes. Neither may construct a search agent, which is
+#: the structural half of the no-recursion rule.
+ROLLOUT_EXECUTED_MODULES: tuple[str, ...] = ("rollout.py", "exact_tail.py")
+
 #: Technique families Phase 5C is explicitly not allowed to introduce. Matched
 #: case-insensitively against the search package's own source.
 EXCLUDED_TECHNIQUE_PATTERNS: tuple[tuple[str, str], ...] = (
@@ -203,6 +217,43 @@ def legacy_import_problems(root: str | Path | None = None) -> list[str]:
     return problems
 
 
+def recursive_search_problems(root: str | Path | None = None) -> list[str]:
+    """Confirm no rollout path can invoke a search.
+
+    Two checks. The first is a name scan for the shapes a nested search would take.
+    The second is structural and stronger: ``rollout.py`` and ``exact_tail.py`` are
+    the modules a rollout executes, and neither may construct a PIMC agent or call
+    :func:`tuppi_search.pimc.decide`. A rollout that could search would make the
+    cost unbounded and the semantics circular.
+    """
+
+    directory = search_package_root(root)
+    problems: list[str] = []
+    for module in sorted(directory.glob("*.py")):
+        text = module.read_text(encoding="utf-8")
+        lowered = text.lower()
+        if module.name not in DOCUMENTED_EXCLUSION_MODULES:
+            for label, pattern in RECURSIVE_SEARCH_PATTERNS:
+                if re.search(pattern, lowered) is not None:
+                    problems.append(
+                        f"src/tuppi_search/{module.name} mentions {label!r}; "
+                        "Phase 5D-A forbids solving policy mismatch by recursion"
+                    )
+        if module.name in ROLLOUT_EXECUTED_MODULES:
+            for token in (
+                "UniformFeasiblePimcAgent",
+                "PhaseGatedPimcAgent",
+                "from .pimc import",
+                "build_agent",
+            ):
+                if token in text:
+                    problems.append(
+                        f"src/tuppi_search/{module.name} references {token!r}; a "
+                        "rollout must never be able to invoke a search"
+                    )
+    return problems
+
+
 def boundary_report(root: str | Path | None = None) -> dict[str, object]:
     """Run every Phase 5C boundary check and report the result."""
 
@@ -214,13 +265,22 @@ def boundary_report(root: str | Path | None = None) -> dict[str, object]:
     excluded = excluded_technique_problems(resolved)
     legacy = legacy_import_problems(resolved)
     sealed = sealed_bank_containment(resolved)
+    recursion = recursive_search_problems(resolved)
     return {
         "dependency_direction_problems": dependency,
+        "recursive_search_problems": recursion,
         "development_reference_problems": reference,
         "excluded_technique_problems": excluded,
         "frozen_agent_problems": frozen,
         "holds": not (
-            dependency or frozen or retuned or reference or excluded or legacy or sealed
+            dependency
+            or frozen
+            or retuned
+            or reference
+            or excluded
+            or legacy
+            or sealed
+            or recursion
         ),
         "legacy_import_problems": legacy,
         "match_aware_retuning_problems": retuned,

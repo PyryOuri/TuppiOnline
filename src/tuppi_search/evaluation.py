@@ -620,3 +620,468 @@ def _mixed_deal_screen(
         ),
         "utility_id": UtilityId.MATCH_TRANSITION_V1.value,
     }
+
+
+# ------------------------------------------------------------- Phase 5D-A
+
+
+PHASE5D_A_MATCH_ROOT_SEED = "tuppi-phase5d-a-match-v1"
+PHASE5D_A_DEAL_ROOT_SEED = "tuppi-phase5d-a-deal-v1"
+PHASE5D_A_CORPUS_ROOT_SEED = "tuppi-phase5d-a-corpus-v1"
+PHASE5D_A_HETERO_ROOT_SEED = "tuppi-phase5d-a-heterogeneous-v1"
+
+
+def phase5d_a_match_bank(*, stream_count: int) -> StreamBank:
+    """Fresh complete-match streams for the Phase 5D-A homogeneous comparisons.
+
+    A new root seed. The Phase 5C primary used 32 streams from
+    ``phase5c_match_comparison_v1``; re-running variants on those same streams would
+    be tuning against the fixture that produced the result being explained.
+    """
+
+    return StreamBank.build(
+        name="phase5d_a_match_v1",
+        role=BankRole.DEVELOPMENT,
+        root_seed=PHASE5D_A_MATCH_ROOT_SEED,
+        initial_dealer=0,
+        stream_count=stream_count,
+        purpose=(
+            "Phase 5D-A complete-match streams for the play-only and show-only "
+            "decompositions. A development bank, distinct from every Phase 5C "
+            "fixture; the promotion-sealed bank stays unopened."
+        ),
+    )
+
+
+def phase5d_a_hetero_bank(*, stream_count: int) -> StreamBank:
+    """Fresh streams for the seat-balanced heterogeneous partnership designs."""
+
+    return StreamBank.build(
+        name="phase5d_a_heterogeneous_v1",
+        role=BankRole.DEVELOPMENT,
+        root_seed=PHASE5D_A_HETERO_ROOT_SEED,
+        initial_dealer=0,
+        stream_count=stream_count,
+        purpose=(
+            "Phase 5D-A heterogeneous-partnership complete-match streams. Separate "
+            "from the homogeneous bank so a mixed-team result never shares a "
+            "fixture with a homogeneous one."
+        ),
+    )
+
+
+def phase5d_a_deal_bank(*, stream_count: int) -> StreamBank:
+    """Fresh deals for the Phase 5D-A deal-level screens."""
+
+    return StreamBank.build(
+        name="phase5d_a_deal_v1",
+        role=BankRole.DEVELOPMENT,
+        root_seed=PHASE5D_A_DEAL_ROOT_SEED,
+        initial_dealer=0,
+        stream_count=stream_count,
+        purpose=(
+            "Phase 5D-A deal-level duplicate screens. Screening only: Phase 5A "
+            "established that signed deal value is blind to match safety."
+        ),
+    )
+
+
+def phase5d_a_corpus_bank(*, stream_count: int) -> StreamBank:
+    """Fresh deals from which the frozen decision corpus is sampled."""
+
+    return StreamBank.build(
+        name="phase5d_a_corpus_v1",
+        role=BankRole.DEVELOPMENT,
+        root_seed=PHASE5D_A_CORPUS_ROOT_SEED,
+        initial_dealer=0,
+        stream_count=stream_count,
+        purpose=(
+            "Phase 5D-A frozen decision corpus. Positions are sampled from "
+            "reference-agent play on a development bank and stored as formal "
+            "observations; the true state lives in a separate restricted channel."
+        ),
+    )
+
+
+def phase5d_a_agent_builder(profile_key: str):
+    """Resolve a builder for a Phase 4, Phase 5C, or Phase 5D-A profile key."""
+
+    from .registry import build_phase5d_a_agent, is_phase5d_a_profile
+
+    if is_phase5d_a_profile(profile_key):
+        return lambda seat: build_phase5d_a_agent(profile_key, seat=seat)
+    return agent_builder(profile_key)
+
+
+def phase5d_a_agent_identity(profile_key: str) -> str:
+    from .registry import is_phase5d_a_profile, phase5d_a_specification
+
+    if is_phase5d_a_profile(profile_key):
+        return phase5d_a_specification(profile_key).agent_id
+    return agent_identity(profile_key)
+
+
+def _phase5d_a_unit(payload: tuple) -> tuple[int, dict]:
+    """Process-pool entry point for a homogeneous Phase 5D-A pair."""
+
+    (
+        candidate_key,
+        opponent_key,
+        comparison_data,
+        stream_count,
+        safety_cap,
+        ordinal,
+    ) = payload
+    comparison = MatchComparison.build(
+        name=comparison_data["name"],
+        candidate_profile_key=comparison_data["candidate_profile_key"],
+        opponent_profile_key=comparison_data["opponent_profile_key"],
+        candidate_agent_id=comparison_data["candidate_agent_id"],
+        opponent_agent_id=comparison_data["opponent_agent_id"],
+        result_class=comparison_data["result_class"],
+        hypothesis=comparison_data["hypothesis"],
+        starting_score=tuple(comparison_data["starting_score"]),
+    )
+    bank = phase5d_a_match_bank(stream_count=stream_count)
+    record = run_pair(
+        stream=bank.stream(ordinal),
+        comparison=comparison,
+        safety_cap=safety_cap,
+        ordinal=ordinal,
+        build_candidate=phase5d_a_agent_builder(candidate_key),
+        build_opponent=phase5d_a_agent_builder(opponent_key),
+    )
+    return (ordinal, record.to_data())
+
+
+def run_phase5d_a_match_comparison(
+    *,
+    candidate_profile_key: str,
+    opponent_profile_key: str = DEVELOPMENT_REFERENCE_POLICY,
+    pairs: int,
+    safety_cap: int = DEFAULT_SAFETY_CAP,
+    hypothesis: str | None = None,
+    workers: int | None = None,
+    progress=None,
+) -> dict[str, object]:
+    """Homogeneous complete-match comparison on the fresh Phase 5D-A bank."""
+
+    if type(pairs) is not int or pairs <= 0:
+        raise SearchError("pair count must be a positive integer")
+    comparison = MatchComparison.build(
+        name=f"phase5d_a_{candidate_profile_key}_vs_{opponent_profile_key}",
+        candidate_profile_key=candidate_profile_key,
+        opponent_profile_key=opponent_profile_key,
+        candidate_agent_id=phase5d_a_agent_identity(candidate_profile_key),
+        opponent_agent_id=phase5d_a_agent_identity(opponent_profile_key),
+        result_class="development",
+        hypothesis=hypothesis
+        or (
+            f"Does {candidate_profile_key} beat {opponent_profile_key} over "
+            "complete matches from 0-0?"
+        ),
+    )
+    bank = phase5d_a_match_bank(stream_count=pairs)
+    units = [
+        (
+            candidate_profile_key,
+            opponent_profile_key,
+            comparison.to_data(),
+            pairs,
+            safety_cap,
+            ordinal,
+        )
+        for ordinal in range(pairs)
+    ]
+    collected: dict[int, PairRecord] = {}
+    done = 0
+    if workers is None or workers <= 1:
+        for unit in units:
+            ordinal, data = _phase5d_a_unit(unit)
+            collected[ordinal] = _pair_from_data(data)
+            done += 1
+            if progress is not None:
+                progress(done, len(units))
+    else:
+        from concurrent.futures import ProcessPoolExecutor
+
+        with ProcessPoolExecutor(max_workers=workers) as pool:
+            for ordinal, data in pool.map(_phase5d_a_unit, units, chunksize=1):
+                collected[ordinal] = _pair_from_data(data)
+                done += 1
+                if progress is not None:
+                    progress(done, len(units))
+
+    records = tuple(collected[ordinal] for ordinal in range(pairs))
+    return {
+        "bank": bank.to_data(),
+        "candidate_profile_key": candidate_profile_key,
+        "comparison_id": comparison.comparison_id,
+        "design": "homogeneous_partnership",
+        "hypothesis": comparison.hypothesis,
+        "name": comparison.name,
+        "opponent_profile_key": opponent_profile_key,
+        "pair_count": pairs,
+        "primary_match_inference": pair_inference(
+            records,
+            confidence_level=CONFIDENCE_LEVEL,
+            analysis_seed=PHASE5D_A_MATCH_ROOT_SEED,
+            bootstrap_replicates=BOOTSTRAP_REPLICATES,
+            sign_flip_replicates=SIGN_FLIP_REPLICATES,
+        ),
+        "safety_cap": safety_cap,
+        "schema_version": EVALUATION_SCHEMA_VERSION,
+        "secondary_metrics": secondary_metrics(records),
+        "sign_convention": (
+            "The candidate is the search variant, so p_win above 0.5 means the "
+            "variant beats the opponent over complete matches."
+        ),
+        "worker_independence": (
+            "Every pair is a pure function of the bank, comparison, safety cap, "
+            "and ordinal, so the worker count changes wall-clock time only."
+        ),
+    }
+
+
+def _hetero_unit(payload: tuple) -> tuple[int, dict]:
+    """Process-pool entry point for one seat-balanced heterogeneous pair."""
+
+    (
+        search_key,
+        partner_key,
+        opponent_key,
+        arrangement,
+        comparison_data,
+        stream_count,
+        safety_cap,
+        ordinal,
+    ) = payload
+    comparison = MatchComparison.build(
+        name=comparison_data["name"],
+        candidate_profile_key=comparison_data["candidate_profile_key"],
+        opponent_profile_key=comparison_data["opponent_profile_key"],
+        candidate_agent_id=comparison_data["candidate_agent_id"],
+        opponent_agent_id=comparison_data["opponent_agent_id"],
+        result_class=comparison_data["result_class"],
+        hypothesis=comparison_data["hypothesis"],
+        starting_score=tuple(comparison_data["starting_score"]),
+    )
+    bank = phase5d_a_hetero_bank(stream_count=stream_count)
+    search_builder = phase5d_a_agent_builder(search_key)
+    partner_builder = phase5d_a_agent_builder(partner_key)
+    opponent_builder = phase5d_a_agent_builder(opponent_key)
+
+    def build_candidate(seat: int):
+        # The complete-match protocol hands the candidate builder its two seats.
+        # ``arrangement`` decides which of them holds the search agent, so running
+        # both arrangements rotates the search agent through both partnership
+        # positions instead of fixing it to one.
+        lower = seat in (0, 1)
+        searches = lower if arrangement == 0 else not lower
+        return search_builder(seat) if searches else partner_builder(seat)
+
+    record = run_pair(
+        stream=bank.stream(ordinal),
+        comparison=comparison,
+        safety_cap=safety_cap,
+        ordinal=ordinal,
+        build_candidate=build_candidate,
+        build_opponent=opponent_builder,
+    )
+    return (ordinal, record.to_data())
+
+
+def run_heterogeneous_match_comparison(
+    *,
+    search_profile_key: str,
+    partner_profile_key: str = DEVELOPMENT_REFERENCE_POLICY,
+    opponent_profile_key: str = DEVELOPMENT_REFERENCE_POLICY,
+    pairs: int,
+    safety_cap: int = DEFAULT_SAFETY_CAP,
+    workers: int | None = None,
+    progress=None,
+) -> dict[str, object]:
+    """Seat-balanced heterogeneous partnership comparison.
+
+    The search agent is rotated through **both** partnership positions. Each
+    arrangement is reported as its own comparison over the same streams, because a
+    single fixed seat assignment cannot distinguish partner compatibility from a
+    seat or dealer effect - and pooling the two would understate the dependence
+    between them.
+    """
+
+    if type(pairs) is not int or pairs <= 0:
+        raise SearchError("pair count must be a positive integer")
+    bank = phase5d_a_hetero_bank(stream_count=pairs)
+    results = []
+    total = 2 * pairs
+    done = 0
+    for arrangement in (0, 1):
+        comparison = MatchComparison.build(
+            name=(
+                f"phase5d_a_hetero_{search_profile_key}_with_"
+                f"{partner_profile_key}_arrangement{arrangement}"
+            ),
+            candidate_profile_key=f"{search_profile_key}+{partner_profile_key}",
+            opponent_profile_key=f"{opponent_profile_key}+{opponent_profile_key}",
+            candidate_agent_id=phase5d_a_agent_identity(search_profile_key),
+            opponent_agent_id=phase5d_a_agent_identity(opponent_profile_key),
+            result_class="development",
+            hypothesis=(
+                f"Is a {search_profile_key} seat partnered with "
+                f"{partner_profile_key} competitive against a pure "
+                f"{opponent_profile_key} partnership?"
+            ),
+        )
+        units = [
+            (
+                search_profile_key,
+                partner_profile_key,
+                opponent_profile_key,
+                arrangement,
+                comparison.to_data(),
+                pairs,
+                safety_cap,
+                ordinal,
+            )
+            for ordinal in range(pairs)
+        ]
+        collected: dict[int, PairRecord] = {}
+        if workers is None or workers <= 1:
+            for unit in units:
+                ordinal, data = _hetero_unit(unit)
+                collected[ordinal] = _pair_from_data(data)
+                done += 1
+                if progress is not None:
+                    progress(done, total)
+        else:
+            from concurrent.futures import ProcessPoolExecutor
+
+            with ProcessPoolExecutor(max_workers=workers) as pool:
+                for ordinal, data in pool.map(_hetero_unit, units, chunksize=1):
+                    collected[ordinal] = _pair_from_data(data)
+                    done += 1
+                    if progress is not None:
+                        progress(done, total)
+        records = tuple(collected[ordinal] for ordinal in range(pairs))
+        results.append(
+            {
+                "arrangement": arrangement,
+                "arrangement_meaning": (
+                    "search agent at the numerically lower candidate seat"
+                    if arrangement == 0
+                    else "search agent at the numerically higher candidate seat"
+                ),
+                "comparison_id": comparison.comparison_id,
+                "name": comparison.name,
+                "primary_match_inference": pair_inference(
+                    records,
+                    confidence_level=CONFIDENCE_LEVEL,
+                    analysis_seed=PHASE5D_A_HETERO_ROOT_SEED,
+                    bootstrap_replicates=BOOTSTRAP_REPLICATES,
+                    sign_flip_replicates=SIGN_FLIP_REPLICATES,
+                ),
+                "secondary_metrics": secondary_metrics(records),
+            }
+        )
+    return {
+        "arrangements": results,
+        "bank": bank.to_data(),
+        "design": "heterogeneous_partnership_seat_balanced",
+        "opponent_profile_key": opponent_profile_key,
+        "pair_count_per_arrangement": pairs,
+        "partner_profile_key": partner_profile_key,
+        "safety_cap": safety_cap,
+        "schema_version": "tuppi.search.phase5d_a_heterogeneous.v1",
+        "search_profile_key": search_profile_key,
+        "seat_balance_note": (
+            "Both arrangements use the same streams, so they are not independent of "
+            "each other. Each is reported separately rather than pooled."
+        ),
+        "sign_convention": (
+            "The candidate partnership contains the search agent, so p_win above "
+            "0.5 means the mixed partnership beats the pure reference partnership."
+        ),
+    }
+
+
+def run_phase5d_a_deal_screen(
+    *,
+    candidate_profile_key: str,
+    opponent_profile_key: str,
+    deals: int,
+    utility_id: UtilityId = UtilityId.MATCH_TRANSITION_V1,
+    progress=None,
+) -> dict[str, object]:
+    """Deal-level duplicate screen on the fresh Phase 5D-A deal bank."""
+
+    if type(deals) is not int or deals <= 0:
+        raise SearchError("deal count must be a positive integer")
+    bank = phase5d_a_deal_bank(stream_count=max(deals, 1))
+    build_candidate = phase5d_a_agent_builder(candidate_profile_key)
+    build_opponent = phase5d_a_agent_builder(opponent_profile_key)
+    score = MatchScore()
+    results: list[DealPairResult] = []
+    for ordinal in range(deals):
+        stream = bank.stream(ordinal)
+        stream_deal = stream.deal(0)
+        even_utility, even_win, even_actions = _play_one_deal(
+            hands=stream_deal.hands,
+            dealer=stream.initial_dealer,
+            starting_score=score,
+            candidate_seats=(0, 2),
+            build_candidate=build_candidate,
+            build_opponent=build_opponent,
+            match_ref=f"dda-e-{ordinal:06d}",
+            utility_id=utility_id,
+        )
+        odd_utility, odd_win, odd_actions = _play_one_deal(
+            hands=stream_deal.hands,
+            dealer=stream.initial_dealer,
+            starting_score=score,
+            candidate_seats=(1, 3),
+            build_candidate=build_candidate,
+            build_opponent=build_opponent,
+            match_ref=f"dda-o-{ordinal:06d}",
+            utility_id=utility_id,
+        )
+        results.append(
+            DealPairResult(
+                ordinal=ordinal,
+                even_utility=even_utility,
+                odd_utility=odd_utility,
+                even_candidate_wins=even_win,
+                odd_candidate_wins=odd_win,
+                even_actions=even_actions,
+                odd_actions=odd_actions,
+            )
+        )
+        if progress is not None:
+            progress(ordinal + 1, deals)
+    values = [item.paired_value for item in results]
+    mean = math.fsum(values) / len(values)
+    deviation = (
+        math.sqrt(math.fsum((value - mean) ** 2 for value in values) / len(values))
+        if len(values) > 1
+        else 0.0
+    )
+    return {
+        "bank": bank.to_data(),
+        "candidate_profile_key": candidate_profile_key,
+        "deal_pairs": len(results),
+        "interpretation": (
+            "Deal-level screening. Phase 5A established that signed deal value is "
+            "blind to match safety, so this may show that two agents differ and may "
+            "never be read as a match-strength claim."
+        ),
+        "mean_paired_utility": round(mean, 6),
+        "opponent_profile_key": opponent_profile_key,
+        "pairs_candidate_ahead": sum(1 for value in values if value > 0),
+        "pairs_candidate_behind": sum(1 for value in values if value < 0),
+        "pairs_tied": sum(1 for value in values if value == 0),
+        "schema_version": "tuppi.search.phase5d_a_deal_screen.v1",
+        "standard_error_paired_utility": round(
+            deviation / math.sqrt(len(values)) if len(values) > 1 else 0.0, 6
+        ),
+        "utility_id": utility_id.value,
+    }
