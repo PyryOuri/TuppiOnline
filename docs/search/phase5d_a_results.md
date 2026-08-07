@@ -190,7 +190,14 @@ not a contract-specific defect. It is a broad difference in card selection, conc
 where the value signal has the most candidates to separate - which connects directly to
 the next section.
 
-## Nested-budget convergence: actions still move, and the margins are vanishing
+## Nested-budget convergence: provisional, and measured on the defective corpus
+
+**This section's numbers come from the defective corpus described above, and must be
+re-measured before they are relied on.** The convergence study was re-launched against the
+corrected 26-hand corpus but did not finish before the phase was wrapped up; the figures
+below are from the build whose 24 trick-play positions came from a single set of hands. The
+direction they indicate is suggestive and the mechanism they suggest is the most interesting
+finding in this phase, which is exactly why it should not be reported as established.
 
 Budgets 2, 4, 8, 16, 32 over 28 positions, using **nested prefixes** of one world set, so
 a changed action means a changed opinion rather than a different sample.
@@ -233,16 +240,23 @@ tie-break rather than by value.**
 That is the opposite of what a sample-size problem looks like. If the instability were
 Monte Carlo error around a real difference, more worlds would resolve the difference and
 the gap would grow. Instead the estimate sharpens and reveals that PIMC's root utility
-barely distinguishes the actions at all. The instability is a *symptom* of a weak value
-signal, not a shortage of samples.
+barely distinguishes the actions at all. On this reading the instability is a *symptom* of
+a weak value signal rather than a shortage of samples - which, if it survives
+re-measurement, is a stronger claim against Path C than unconverged actions alone would be.
 
-World diversity is not the constraint either: the mean duplicate-world fraction is
-**0.000 at every budget**, so the uniform-feasible sampler is doing its job.
+**Why it is only provisional.** Twenty-eight positions drawn from one to three hands cannot
+establish a gap series. The tie rate is also not monotone (0.679, 0.643, 0.500, 0.571,
+0.429), which is what a small clustered sample looks like. Re-running `converge` on the
+corrected corpus is the single cheapest outstanding item in this phase.
 
-Cost is almost exactly linear in the budget - 2.30 s, 4.57 s, 9.15 s, 18.65 s, 37.14 s
-per decision at 2, 4, 8, 16, 32 worlds - so buying convergence by budget is
-proportionally expensive and, on this evidence, buys sharper indifference rather than
-better play.
+Two observations from the same run are robust to the corpus defect, because they are
+properties of the sampler and the cost model rather than of position selection:
+
+- The mean duplicate-world fraction is **0.000 at every budget**, so world diversity is not
+  the constraint and the uniform-feasible sampler is doing its job.
+- Cost is almost exactly linear in the budget - 2.30 s, 4.57 s, 9.15 s, 18.65 s, 37.14 s
+  per decision at 2, 4, 8, 16, 32 worlds - so buying convergence by budget is
+  proportionally expensive.
 
 ## Rollout mismatch: the continuation assumption fails almost immediately
 
@@ -272,13 +286,13 @@ same decision under a correct continuation model - is not available here.
 
 ## Corpus composition, and where it fell short of target
 
-| | Decomposition corpus | Convergence corpus |
+| | Decomposition corpus (corrected) | Convergence corpus (defective) |
 | --- | --- | --- |
-| `corpus_id` | `corpus:sha256:73dd4bc6…` | `corpus:sha256:…` |
-| Showing positions / distinct hands | 128 / 32 | 40 / 10 |
-| Trick-play positions / distinct hands | 256 / 64 | 56 / 14 |
-| Stage (early / middle / late) | 96 / 102 / 58 | – |
-| Score states (down / table / up) | 150 / 101 / 133 | – |
+| `corpus_id` | `corpus:sha256:73dd4bc6…` | `corpus:sha256:1798b5d6…` |
+| Showing positions / distinct hands | 128 / 32 | 20 / ~2 |
+| Trick-play positions / distinct hands | 256 / 64 | 24 / **1** |
+| Stage (early / middle / late) | 96 / 102 / 58 | 16 / 8 / 0 |
+| Score states (down / table / up) | 150 / 101 / 133 | 6 / 32 / 6 |
 
 The phase target was 256-512 showing and 512-1024 trick-play positions. **That was not
 reached, and the shortfall is a compute limit rather than a design choice.** A full-size
@@ -300,3 +314,98 @@ the effective sample size.** A hand's four showing decisions share the same card
 hand's kept card decisions share the same deal, so 128 showing positions carry closer to
 32 hands' worth of independent information. Strata below roughly 20 positions are
 descriptive only.
+
+## Cost, and why this phase stopped where it did
+
+All figures measured on an 8-core laptop shared with foreground work.
+
+| Quantity | Measured |
+| --- | --- |
+| Play-only deal, two gated seats | 24.5 s |
+| PIMC decision at 2 / 4 / 8 / 16 / 32 worlds | 2.30 / 4.57 / 9.15 / 18.65 / 37.14 s |
+| Complete-match leg, play-only | mean 30.5 deals, median 28, max 71 |
+| Complete-match leg, show-only | mean 28.2 deals, median 22.5, max 66 |
+| Actions per complete match | 1670 (play-only), 1527 (show-only) |
+| Resets per complete match | 9.8 (play-only), 9.2 (show-only) |
+| One 12-pair homogeneous comparison | ~2 h wall on 5 workers |
+| Corrected 384-position corpus + decomposition | ~30 min |
+
+Three cost facts dominated the phase and are worth recording for whoever runs it next.
+
+**Near-parity candidates make complete matches expensive.** `project_target_v1` resets the
+score to 0-0 whenever the down team wins a deal, so the closer a candidate is to the
+reference, the longer its legs run - a mean of 9.8 resets per match here. The weakest
+candidate is the cheapest to evaluate, which is precisely backwards from what a development
+loop wants.
+
+**Pair-level progress reporting is too coarse.** A comparison reports only on completed
+pairs, and a pair is two full legs. The first attempt at the play-only comparison ran ten
+hours across six workers without emitting a single line, because it used the Phase 5C cap of
+704 deals per leg. Per-deal or per-leg progress would have surfaced that in minutes.
+
+**Watch for pool workers going idle.** One heterogeneous run spent 100 minutes with a single
+active worker while three sat at 0 % CPU, having exited; `d-compare` on the same machine kept
+five workers at 97 %. The `chunksize=1` dispatch is correct, so this is worth checking with
+`top` shortly after any long launch rather than assumed.
+
+## What did not run
+
+Named rather than omitted. None of these were skipped for methodological reasons; all four
+were cut when the phase was wrapped up to move to a faster machine.
+
+| Planned | Status | What it would decide |
+| --- | --- | --- |
+| Heterogeneous full PIMC, seat-balanced | **not run** | Path B: whether one PIMC seat with a reference partner is competitive |
+| Heterogeneous play-only, seat-balanced | **not run** | Whether the mismatch effect survives when only cards are searched |
+| Full PIMC on the `phase5d_a_match_v1` bank | **not run** | The like-for-like comparator that would make the play-only and show-only numbers a true series |
+| Convergence on the corrected corpus | **not run** | Whether the vanishing-selection-gap mechanism is real |
+| Deal-level screens | not run | Cheap secondary confirmation only |
+
+The heterogeneous experiment is the important one. It is the only instrument in this phase
+that tests partnership mismatch *behaviourally*, and without it the choice between Path B and
+Path D cannot be closed.
+
+## The decision: A is eliminated, B versus D is open
+
+**Selected path: unresolved between B and D, with A eliminated as the primary cause.**
+
+What the evidence supports:
+
+- **Path A is not primary.** If contract selection were the dominant cost, handing showing
+  back to the frozen reference should recover most of the strength. It does not:
+  `uniform_feasible_pimc_play_only_v1` reaches `p_win = 0.250` with a 95 % interval of
+  [0.059, 0.441] that excludes parity. Both phases lose separately - show-only 0.333,
+  play-only 0.250 - so neither is the single cause. Freezing heuristic showing and searching
+  only cards, which is what Path A would license, is not supported.
+- **Path C is not supported on this evidence**, and per the pre-registered rule would not be
+  selected merely because four worlds is unconverged - which Phase 5C already established.
+  The stronger anti-C argument here, the shrinking selection gap, rests on the defective
+  corpus and is provisional.
+- **Path B has strong mechanistic support and no behavioural test.** The rollout-mismatch
+  diagnostic is unambiguous on the corrected corpus: with a reference partner the assumed
+  continuation matches perfectly in 20 of 20 positions, and with a PIMC partner it diverges
+  in 19 of 20 within the first action or two, inside the root's own team in 35 of 38 cases.
+  PIMC is valuing its actions against a partner that is not there. But divergence is not
+  causation, and the seat-balanced heterogeneous comparison that would convert this into a
+  strength claim did not run.
+- **Path D remains open.** Play-only is still clearly negative with the reference choosing
+  every contract, which is what structural failure looks like. Distinguishing it from B needs
+  the heterogeneous result.
+
+**Is ISMCTS justified next? Not yet.** One experiment separates the two live hypotheses, and
+it is cheaper than implementing a new search family. If a single PIMC seat with a reference
+partner is competitive, the defect is partner modelling and the next step is an explicit
+partner-action model or multi-observer search - not a deeper tree over the same wrong
+continuation assumption. If it still loses, the failure is structural, PIMC freezes as a
+negative baseline, and observation-safe information-set search is justified.
+
+Run the heterogeneous comparison first. The commands are in
+`docs/search/phase5d_a_handoff.md`.
+
+## Development-bank status
+
+Every fixture used here is a fresh unsealed **development** bank with a root seed no earlier
+phase used, and each of the four banks has a distinct `bank_id`:
+`phase5d_a_match_v1`, `phase5d_a_heterogeneous_v1`, `phase5d_a_deal_v1`,
+`phase5d_a_corpus_v1`. No result in this document is promotion evidence, no result was tuned
+against the 32 Phase 5C streams, and the promotion-sealed bank was not opened.

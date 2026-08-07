@@ -183,6 +183,7 @@ def test_no_phase5d_a_document_calls_pimc_optimal() -> None:
 def test_the_results_document_declares_the_development_bank_status() -> None:
     text = _flat("phase5d_a_results.md").lower()
     assert "development" in text
-    assert "not promotion evidence" in text or "no promotion claim" in text
+    assert "promotion evidence" in text
+    assert "promotion-sealed bank was not opened" in text
     findings = _report("phase5d_a_findings.json")
     assert "development bank" in findings["promotion_status"]

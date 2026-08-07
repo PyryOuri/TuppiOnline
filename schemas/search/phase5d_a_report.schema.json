@@ -24,7 +24,12 @@
     "phase5c_negative_baseline": {
       "type": "object",
       "description": "The frozen designation of the Phase 5C configuration. Metadata only: the designation must not alter the agent id it designates.",
-      "required": ["designation", "agent_id", "configuration_id"],
+      "required": [
+        "designation",
+        "agent_id",
+        "pimc_configuration_id",
+        "identity_unchanged"
+      ],
       "additionalProperties": true,
       "properties": {
         "designation": {
@@ -34,9 +39,13 @@
           "type": "string",
           "pattern": "^agent:sha256:[0-9a-f]{64}$"
         },
-        "configuration_id": {
+        "pimc_configuration_id": {
           "type": "string",
           "pattern": "^pimcfg:sha256:[0-9a-f]{64}$"
+        },
+        "identity_unchanged": {
+          "description": "The designation is metadata. It must never be recorded as having changed the identity it designates.",
+          "const": true
         }
       }
     },
