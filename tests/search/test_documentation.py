@@ -30,6 +30,9 @@ REQUIRED_DOCS = (
     "phase5d_a_results.md",
     "information_state_nodes.md",
     "phase5d_b_results.md",
+    "phase5d_c_profiling.md",
+    "phase5d_c_optimization.md",
+    "phase5d_c_results.md",
     "root_information_uct.md",
     "tiny_exact_information_reference.md",
     "rollout_security.md",
@@ -49,6 +52,7 @@ REQUIRED_SCHEMAS = (
     "root_info_uct_configuration.schema.json",
     "root_info_uct_diagnostics.schema.json",
     "tiny_exact_information_reference.schema.json",
+    "phase5d_c_results.schema.json",
 )
 REQUIRED_REPORTS = (
     "phase5c_evaluation.json",

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tuppi-research"
-version = "0.6.0"
-description = "Deterministic Tuppi rules, engine, deal and complete-match evaluation, baseline agents, exact inference and solving, uniform-feasible PIMC and root information-set UCT search, and legacy archive"
+version = "0.7.0"
+description = "Deterministic Tuppi rules, engine, deal and complete-match evaluation, baseline agents, exact inference and solving, uniform-feasible PIMC and optimized root information-set UCT search, and legacy archive"
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
 dependencies = []
@@ -202,6 +202,7 @@ where = ["src"]
   "schemas/search/root_info_uct_diagnostics.schema.json",
   "schemas/search/tiny_exact_information_reference.schema.json",
   "schemas/search/phase5d_b_evaluation.schema.json",
+  "schemas/search/phase5d_c_results.schema.json",
 ]
 "share/tuppi-search/docs" = [
   "docs/search/architecture.md",
@@ -218,6 +219,9 @@ where = ["src"]
   "docs/search/information_state_nodes.md",
   "docs/search/tiny_exact_information_reference.md",
   "docs/search/phase5d_b_results.md",
+  "docs/search/phase5d_c_profiling.md",
+  "docs/search/phase5d_c_optimization.md",
+  "docs/search/phase5d_c_results.md",
 ]
 "share/tuppi-search/examples" = [
   "examples/search/README.md",

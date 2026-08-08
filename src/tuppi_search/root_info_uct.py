@@ -37,10 +37,12 @@ from .errors import (
     SearchError,
     WorldSetError,
 )
+from .fast_trick import FastTrickError, FastTrickState
 from .information_state import root_information_state_key
 from .random import canonical_action_id
 from .utilities import (
     OutcomeSource,
+    DealOutcomeSummary,
     UtilityId,
     is_registerable,
     summary_from_completed_deal,
@@ -430,7 +432,7 @@ def _choose_non_root(agent: object, observation: PlayerObservation, actor: int) 
     return action
 
 
-def _run_simulation(
+def _run_simulation_authoritative(
     *,
     state: DealState,
     root_seat: int,
@@ -502,6 +504,83 @@ def _run_simulation(
     return utility
 
 
+def _run_simulation_fast(
+    *,
+    state: FastTrickState,
+    root_seat: int,
+    tree: RootInfoUctTree,
+    configuration: RootInfoUctConfiguration,
+) -> float:
+    """Run one simulation on the validated search-local trick state."""
+
+    agents = _build_non_root_agents(configuration=configuration, root_seat=root_seat)
+    path: list[tuple[UctInformationNode, str]] = []
+    keys: list[str] = []
+    actions_simulated = 0
+    maximum_actions = 4 + 4 * TRICKS_PER_DEAL
+    while not state.complete:
+        if actions_simulated > maximum_actions:
+            raise RootInfoUctDecisionError(
+                "rollout exceeded the maximum possible action count",
+                failure_kind=RootInfoUctFailureKind.RESOURCE_EXHAUSTION,
+            )
+        actor = state.current_actor
+        if actor is None:
+            raise RootInfoUctDecisionError(
+                "nonterminal fast state has no acting seat",
+                failure_kind=RootInfoUctFailureKind.ENGINE_FAILURE,
+            )
+        observation = state.observation_for(actor)
+        if actor == root_seat:
+            key = root_information_state_key(observation)
+            node = tree.node_for(observation)
+            action = node.select(observation, configuration.exploration_constant)
+            action_id = canonical_action_id(action)
+            if action_id not in node.actions:
+                raise RootInfoUctDecisionError(
+                    "tree selected an action absent from the root node",
+                    failure_kind=RootInfoUctFailureKind.IMPOSSIBLE_ROOT_ACTION,
+                )
+            path.append((node, action_id))
+            keys.append(key)
+        else:
+            policy = agents[actor]
+            if policy is None:
+                raise RootInfoUctInvariantError("non-root policy slot is empty")
+            action = _choose_non_root(policy, observation, actor)
+        try:
+            state = state.apply(action)
+        except FastTrickError as exc:
+            kind = (
+                RootInfoUctFailureKind.IMPOSSIBLE_ROOT_ACTION
+                if actor == root_seat
+                else RootInfoUctFailureKind.ENGINE_FAILURE
+            )
+            raise RootInfoUctDecisionError(
+                f"fast engine rejected a simulated action: {exc}",
+                failure_kind=kind,
+            ) from exc
+        actions_simulated += 1
+    if len(state.completed_tricks) != TRICKS_PER_DEAL:
+        raise RootInfoUctDecisionError(
+            "a completed fast simulation did not contain 13 tricks",
+            failure_kind=RootInfoUctFailureKind.ENGINE_FAILURE,
+        )
+    summary = DealOutcomeSummary(
+        contract=state.contract,
+        declarer=state.declarer,
+        team0_tricks=state.team_tricks[0],
+        starting_score=state.starting_score,
+        root_team=team_for_seat(root_seat),
+        source=OutcomeSource.ROLLOUT,
+        tricks_simulated=TRICKS_PER_DEAL,
+    )
+    utility = utility_value(configuration.utility_id, summary)
+    tree.record_world_path(tuple(keys))
+    tree.backpropagate(tuple(path), utility)
+    return utility
+
+
 def _failure(kind: str, message: str, cause: BaseException | None = None) -> RootInfoUctDecisionError:
     error = RootInfoUctDecisionError(message, failure_kind=kind)
     if cause is not None:
@@ -514,6 +593,7 @@ def decide(
     *,
     configuration: RootInfoUctConfiguration,
     decision_seed: str,
+    _fast_path: bool = True,
 ) -> RootInfoUctDecision:
     """Run one fresh root-information tree search from one observation."""
 
@@ -595,9 +675,14 @@ def decide(
     completed = 0
     for assignment in assignments:
         try:
-            from tuppi_exact import hypothetical_continuation
+            if _fast_path:
+                simulation_state = FastTrickState.from_observation_assignment(
+                    observation, assignment
+                )
+            else:
+                from tuppi_exact import hypothetical_continuation
 
-            continuation = hypothetical_continuation(observation, assignment)
+                simulation_state = hypothetical_continuation(observation, assignment).state
         except Exception as exc:  # noqa: BLE001 - classified and fatal
             raise _failure(
                 RootInfoUctFailureKind.HYPOTHETICAL_CONSTRUCTION,
@@ -605,12 +690,20 @@ def decide(
                 exc,
             ) from exc
         try:
-            _run_simulation(
-                state=continuation.state,
-                root_seat=root_seat,
-                tree=tree,
-                configuration=configuration,
-            )
+            if _fast_path:
+                _run_simulation_fast(
+                    state=simulation_state,
+                    root_seat=root_seat,
+                    tree=tree,
+                    configuration=configuration,
+                )
+            else:
+                _run_simulation_authoritative(
+                    state=simulation_state,
+                    root_seat=root_seat,
+                    tree=tree,
+                    configuration=configuration,
+                )
         except RootInfoUctDecisionError:
             raise
         except IllegalRolloutActionError as exc:
@@ -624,6 +717,8 @@ def decide(
         except MemoryError as exc:
             raise _failure(RootInfoUctFailureKind.RESOURCE_EXHAUSTION, str(exc), exc) from exc
         except EngineError as exc:
+            raise _failure(RootInfoUctFailureKind.ENGINE_FAILURE, str(exc), exc) from exc
+        except FastTrickError as exc:
             raise _failure(RootInfoUctFailureKind.ENGINE_FAILURE, str(exc), exc) from exc
         completed += 1
 

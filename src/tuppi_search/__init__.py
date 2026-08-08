@@ -186,8 +186,8 @@ from .worlds import (
 )
 
 
-SEARCH_LAYER_VERSION = "0.6.0"
-PHASE = "phase5d-b"
+SEARCH_LAYER_VERSION = "0.7.0"
+PHASE = "phase5d-c"
 
 
 __all__ = (

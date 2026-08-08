@@ -78,4 +78,6 @@ def test_phase5d_b_source_does_not_modify_pimc_configuration_or_recurse():
 
 def test_phase5d_b_package_version_is_incremented():
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    assert 'version = "0.6.0"' in pyproject
+    # Phase 5D-C is a separately versioned optimization release; this guard
+    # ensures the Phase 5D-B version is not silently retained.
+    assert 'version = "0.7.0"' in pyproject

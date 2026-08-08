@@ -575,6 +575,18 @@ the permitted local `/Users/pyryouri/Developer/TuppiRuns/phase5d-b` directory,
 and the sealed bank remains closed. The current small-budget result is
 structurally correct but compute-limited; it is not a promotion or strength claim.
 
+## Phase 5D-C: semantics-preserving UCT optimization
+
+Phase 5D-C keeps every Phase 5D-B search identity, budget, rollout, utility,
+normalization, node key, and tie-break unchanged. It adds a search-local immutable
+trick-play state and formal observation projection that omit engine event-log
+construction and repeated full-state validation inside hypothetical simulations.
+The authoritative engine remains the differential reference. The optimized path
+is documented in `docs/search/phase5d_c_optimization.md`, with profiling and results
+in the three Phase 5D-C documents. Bulk profiles, conformance records, and the
+unsealed 32-pair strength evaluation stay under
+`/Users/pyryouri/Developer/TuppiRuns/phase5d-c`.
+
 ## Legacy headless execution
 
 Generate and play one fully materialized deal, with separate seeds for deal
