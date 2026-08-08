@@ -550,6 +550,31 @@ all 96 of its trick-play positions from a *single* set of hands, which inflated 
 - Results and the selected decision path: `docs/search/phase5d_a_results.md`
 - Reports: `reports/phase5d_a/`; schemas: `schemas/search/phase5d_a_*.schema.json`
 
+## Phase 5D-B: root-player information-set UCT
+
+Phase 5D-B adds `root_info_uct_v1`, a deliberately narrow observation-safe tree
+searcher. It samples exact hard-feasible worlds, but keys all future root-player
+nodes only by the root observation, so equivalent hidden worlds share one
+contingent root policy. Partner and opponents remain frozen observation-only
+`partner_aware_v1` rollouts; showing remains exactly `partner_aware_v1`; exact-tail
+solving is off; the tree is not persistent and no recursive search is used.
+
+```bash
+.venv/bin/python -m tuppi_search.runner b-agents
+.venv/bin/python -m tuppi_search.runner b-explain \
+  --deal-file examples/engine/project_target_v1/valid_one_deal_match.json \
+  --profile root_info_uct_smoke_v1 --seat 1 --tricks 9
+```
+
+The finite independent reference and its PIMC strategy-fusion counterexample are
+in `docs/search/tiny_exact_information_reference.md`. The implementation and
+node-key contract are in `docs/search/root_information_uct.md` and
+`docs/search/information_state_nodes.md`; development results and the E2 decision
+gate are recorded in `docs/search/phase5d_b_results.md`. All bulk runs stay under
+the permitted local `/Users/pyryouri/Developer/TuppiRuns/phase5d-b` directory,
+and the sealed bank remains closed. The current small-budget result is
+structurally correct but compute-limited; it is not a promotion or strength claim.
+
 ## Legacy headless execution
 
 Generate and play one fully materialized deal, with separate seeds for deal

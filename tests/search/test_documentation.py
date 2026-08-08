@@ -1,4 +1,4 @@
-"""Phase 5C documentation, schemas, and committed reports must agree.
+"""Search-layer documentation, schemas, and committed reports must agree.
 
 The strongest tests here check that a *number* in a document still matches the
 committed report, not merely that a paragraph exists. A claim that drifts away from
@@ -28,6 +28,10 @@ REQUIRED_DOCS = (
     "phase5d_a_handoff.md",
     "phase5d_a_hypotheses.md",
     "phase5d_a_results.md",
+    "information_state_nodes.md",
+    "phase5d_b_results.md",
+    "root_information_uct.md",
+    "tiny_exact_information_reference.md",
     "rollout_security.md",
     "uniform_feasible_pimc.md",
     "utilities.md",
@@ -41,6 +45,10 @@ REQUIRED_SCHEMAS = (
     "pimc_decision_diagnostics.schema.json",
     "search_benchmark.schema.json",
     "world_set_summary.schema.json",
+    "phase5d_b_evaluation.schema.json",
+    "root_info_uct_configuration.schema.json",
+    "root_info_uct_diagnostics.schema.json",
+    "tiny_exact_information_reference.schema.json",
 )
 REQUIRED_REPORTS = (
     "phase5c_evaluation.json",

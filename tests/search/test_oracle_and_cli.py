@@ -173,6 +173,12 @@ def test_every_subcommand_is_registered():
         "stability",
         "utilities",
         "validate",
+        "b-agents",
+        "b-behavior",
+        "b-compare",
+        "b-explain",
+        "b-heterogeneous",
+        "b-stability",
     }
 
 

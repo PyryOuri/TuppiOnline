@@ -71,6 +71,8 @@ from .errors import (
     IllegalRolloutActionError,
     OracleError,
     PimcDecisionError,
+    RootInfoUctDecisionError,
+    RootInfoUctInvariantError,
     RolloutError,
     SearchConfigurationError,
     SearchDiagnosticsError,
@@ -78,6 +80,36 @@ from .errors import (
     SeedError,
     UtilityError,
     WorldSetError,
+)
+from .information_state import (
+    ROOT_INFORMATION_STATE_SCHEMA_VERSION,
+    root_information_state_data,
+    root_information_state_key,
+)
+from .root_info_uct import (
+    ROOT_INFO_UCT_ACTION_ORDERING_ID,
+    ROOT_INFO_UCT_CONFIGURATION_SCHEMA_VERSION,
+    ROOT_INFO_UCT_DIAGNOSTICS_SCHEMA_VERSION,
+    ROOT_INFO_UCT_EXPANSION_RULE_ID,
+    ROOT_INFO_UCT_FINAL_ACTION_RULE_ID,
+    ROOT_INFO_UCT_NORMALIZATION_ID,
+    ROOT_INFO_UCT_PROTOCOL_VERSION,
+    ROOT_INFO_UCT_SEED_PROTOCOL_VERSION,
+    RootInfoUctAgent,
+    RootInfoUctConfiguration,
+    RootInfoUctDecision,
+    RootInfoUctFailureKind,
+    RootInfoUctTree,
+    construct_root_info_uct_agent,
+    decide as decide_root_info_uct,
+)
+from .root_info_uct_registry import (
+    ROOT_INFO_UCT_PRIMARY_PROFILE_KEY,
+    build_agent as build_root_info_uct_profile_agent,
+    configuration_for as root_info_uct_configuration_for,
+    registry_snapshot as root_info_uct_registry_snapshot,
+    root_info_uct_specifications,
+    specification_for as root_info_uct_specification_for,
 )
 from .exact_tail import EXACT_TAIL_SCHEMA_VERSION, ExactTail, TailVerdict
 from .pimc import (
@@ -154,8 +186,8 @@ from .worlds import (
 )
 
 
-SEARCH_LAYER_VERSION = "0.5.2"
-PHASE = "phase5c"
+SEARCH_LAYER_VERSION = "0.6.0"
+PHASE = "phase5d-b"
 
 
 __all__ = (
@@ -193,6 +225,23 @@ __all__ = (
     "PimcDecision",
     "PimcDecisionDiagnostics",
     "PimcDecisionError",
+    "ROOT_INFORMATION_STATE_SCHEMA_VERSION",
+    "ROOT_INFO_UCT_ACTION_ORDERING_ID",
+    "ROOT_INFO_UCT_CONFIGURATION_SCHEMA_VERSION",
+    "ROOT_INFO_UCT_DIAGNOSTICS_SCHEMA_VERSION",
+    "ROOT_INFO_UCT_EXPANSION_RULE_ID",
+    "ROOT_INFO_UCT_FINAL_ACTION_RULE_ID",
+    "ROOT_INFO_UCT_NORMALIZATION_ID",
+    "ROOT_INFO_UCT_PROTOCOL_VERSION",
+    "ROOT_INFO_UCT_PRIMARY_PROFILE_KEY",
+    "ROOT_INFO_UCT_SEED_PROTOCOL_VERSION",
+    "RootInfoUctAgent",
+    "RootInfoUctConfiguration",
+    "RootInfoUctDecision",
+    "RootInfoUctDecisionError",
+    "RootInfoUctFailureKind",
+    "RootInfoUctInvariantError",
+    "RootInfoUctTree",
     "REGISTERED_CONFIGURATIONS",
     "ROLLOUT_SCHEMA_VERSION",
     "RolloutError",
@@ -221,15 +270,21 @@ __all__ = (
     "WORLD_SET_SCHEMA_VERSION",
     "WorldEvaluation",
     "WorldSetError",
+    "construct_root_info_uct_agent",
+    "decide_root_info_uct",
+    "root_information_state_data",
+    "root_information_state_key",
     "WorldSetMode",
     "WorldStatus",
     "boundary_report",
     "build_agent",
+    "build_root_info_uct_profile_agent",
     "build_world_set",
     "can_enumerate",
     "canonical_action_id",
     "complete_deal",
     "configuration_for",
+    "root_info_uct_configuration_for",
     "construct_pimc_agent",
     "decide",
     "dependency_direction_problems",
@@ -244,9 +299,12 @@ __all__ = (
     "observation_visible_card_codes",
     "phase5c_specifications",
     "registry_snapshot",
+    "root_info_uct_registry_snapshot",
     "require_no_full_state",
     "require_privacy_safe",
     "specification_for",
+    "root_info_uct_specification_for",
+    "root_info_uct_specifications",
     "stable_text_digest",
     "summary_from_completed_deal",
     "utility_catalogue",

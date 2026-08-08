@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tuppi.research/schemas/search/tiny_exact_information_reference.schema.json",
+  "title": "Tiny exact information-set reference result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "pimc_action", "exact_action", "pimc_values", "exact_values", "uct_prefixes"],
+  "properties": {
+    "schema_version": {"const": "tuppi.search.tiny_exact_information_reference.v1"},
+    "pimc_action": {"type": "string"},
+    "exact_action": {"type": "string"},
+    "pimc_values": {"type": "object", "additionalProperties": {"type": "number"}},
+    "exact_values": {"type": "object", "additionalProperties": {"type": "number"}},
+    "uct_prefixes": {"type": "array", "items": {"type": "object"}}
+  }
+}

@@ -52,6 +52,18 @@ class PimcDecisionError(SearchError):
     """The PIMC decision as a whole is invalid and must not be used."""
 
 
+class RootInfoUctDecisionError(SearchError):
+    """A root-information UCT decision failed and must not be used."""
+
+    def __init__(self, message: str, *, failure_kind: str | None = None) -> None:
+        super().__init__(message)
+        self.failure_kind = failure_kind
+
+
+class RootInfoUctInvariantError(RootInfoUctDecisionError):
+    """The information-set tree violated a correctness invariant."""
+
+
 class SearchDiagnosticsError(SearchError):
     """A diagnostics record is malformed or would leak hidden state."""
 

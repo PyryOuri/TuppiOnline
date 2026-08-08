@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tuppi-research"
-version = "0.5.3"
-description = "Deterministic Tuppi rules, engine, deal and complete-match evaluation, baseline agents, exact inference and solving, uniform-feasible PIMC search, and legacy archive"
+version = "0.6.0"
+description = "Deterministic Tuppi rules, engine, deal and complete-match evaluation, baseline agents, exact inference and solving, uniform-feasible PIMC and root information-set UCT search, and legacy archive"
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
 dependencies = []
@@ -198,6 +198,10 @@ where = ["src"]
   "schemas/search/phase5d_a_convergence.schema.json",
   "schemas/search/phase5d_a_decomposition.schema.json",
   "schemas/search/phase5d_a_report.schema.json",
+  "schemas/search/root_info_uct_configuration.schema.json",
+  "schemas/search/root_info_uct_diagnostics.schema.json",
+  "schemas/search/tiny_exact_information_reference.schema.json",
+  "schemas/search/phase5d_b_evaluation.schema.json",
 ]
 "share/tuppi-search/docs" = [
   "docs/search/architecture.md",
@@ -210,6 +214,10 @@ where = ["src"]
   "docs/search/phase5d_a_hypotheses.md",
   "docs/search/phase5d_a_results.md",
   "docs/search/phase5d_a_handoff.md",
+  "docs/search/root_information_uct.md",
+  "docs/search/information_state_nodes.md",
+  "docs/search/tiny_exact_information_reference.md",
+  "docs/search/phase5d_b_results.md",
 ]
 "share/tuppi-search/examples" = [
   "examples/search/README.md",
@@ -221,6 +229,7 @@ where = ["src"]
   "reports/phase5c/phase5c_evaluation.json",
   "reports/phase5d_a/phase5d_a_registry.json",
   "reports/phase5d_a/phase5d_a_findings.json",
+  "reports/phase5d_b/root_info_uct_registry.json",
 ]
 
 [tool.pytest.ini_options]
