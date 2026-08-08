@@ -1,38 +1,32 @@
 # Phase 5D-A handoff: what to run next, and in what order
 
-Phase 5D-A was wrapped up before four planned measurements completed, to move the remaining
-compute to a faster machine. This document is the runbook for finishing it. Nothing here
-requires new code: every command below exists and is exercised by the test suite.
+Phase 5D-A execution is now complete for the required handoff: the migration baseline,
+seat-balanced heterogeneous comparison, corrected convergence run, full decomposition run,
+parallel-analysis implementation, and final regression suite have all been completed. This
+document remains the runbook and provenance record for that work.
 
 Results so far, and the reasoning that bounds them, are in
 `docs/search/phase5d_a_results.md`. Hypotheses were pre-registered in
 `docs/search/phase5d_a_hypotheses.md` and must not be edited in light of new numbers.
 
-## Step 0: run the full suite
+## Step 0: full suite — complete
 
-**The Phase 5D-A commit was made without a full-suite run.** On the laptop it projected 45-75
-minutes - the Phase 5D-A corpus tests alone take about 17 of those - and the remaining compute
-was being moved rather than spent. What *was* run green before committing:
+The final post-implementation run was:
 
-| Test file | Result |
-| --- | --- |
-| `tests/search/test_phase5d_diagnostics.py` | 28 passed |
-| `tests/search/test_phase5d_documentation.py` + `test_phase5d_architecture.py` | 28 passed |
-| `tests/search/test_phase5d_hybrid.py` | 26 passed |
-
-That covers the change surface: `corpus.py` was the only module edited, and its only consumers
-are `runner.py`, `convergence.py`, and `decomposition.py`, all exercised by those files. No test
-outside `tests/search/` references `tuppi_search` at all. Still, confirm it:
+`1346 passed, 2 skipped` in 19:19. The two skips are existing feasibility/fully-determined
+position conditions, not failures.
 
 ```bash
 python -m pytest -q
 ```
 
-## The one experiment that matters most
+## The one experiment that mattered most — complete
 
-The phase ends with **Path A eliminated** and **Path B versus Path D open**. The seat-balanced
-heterogeneous comparison is the only instrument that tests partnership mismatch behaviourally,
-and it decides between them:
+The seat-balanced heterogeneous comparison was run at `--workers 10`, with each seat
+arrangement read separately. Both remained below parity: p_win 0.333 with 9 complete and 3
+censored pairs in one arrangement, and p_win 0.375 with 12 complete and no censored pairs in
+the other. This does not support partnership mismatch as the primary explanation and selects
+Path D, subject to the recorded sample and censoring limits.
 
 ```bash
 python -m tuppi_search.runner d-heterogeneous \
@@ -41,41 +35,43 @@ python -m tuppi_search.runner d-heterogeneous \
   --output "$RUNS/hetero_full_pimc_12.json"
 ```
 
-Read `arrangements[*].primary_match_inference` for each seat arrangement **separately** - they
-share streams and pooling them would understate the dependence.
+The corrected convergence run covered 112 positions, with adjacent agreement 0.839, 0.830,
+0.839, and 0.875 from 2 to 32 worlds. The full decomposition run covered 768 positions.
 
-- If one PIMC seat with a reference partner is competitive while the homogeneous team is
-  strongly negative, that is **Path B**: the defect is partner modelling. The next step is an
-  explicit partner-action model or multi-observer search, not a deeper tree over the same wrong
-  continuation assumption. Recursive PIMC remains forbidden - see the hypotheses document for
-  why the regress does not terminate.
-- If it still loses, that is **Path D**: freeze PIMC as a negative baseline and proceed to
-  observation-safe information-set search.
+## Remaining optional instruments
 
-## The rest, in priority order
+The requested completion set is done. These additional instruments remain explicitly unrun:
+
+| Instrument | Status | Purpose |
+| --- | --- | --- |
+| Same-bank full-PIMC comparison | not run | Like-for-like comparator for play-only/show-only |
+| Heterogeneous play-only comparison | not run | Test whether mismatch survives card-only search |
+| Deal-level screens | not run | Cheap secondary confirmation |
+
+They are useful follow-ups, but neither is required before the Path D closeout.
+
+The original command forms are retained below for reproducibility:
 
 ```bash
 export RUNS="$HOME/TuppiRuns/phase5d-a"   # never inside the repository or iCloud
 source /path/to/venv/bin/activate
 
-# 2. Convergence on the corrected corpus. The committed convergence numbers came from the
-#    defective corpus and must be replaced. Cheapest outstanding item.
+# 2. Completed: convergence on the corrected corpus.
 python -m tuppi_search.runner converge --showing 64 --trick-play 96 --streams 96 \
   --showing-limit 48 --trick-play-limit 64 --budgets 2,4,8,16,32 \
   --output "$RUNS/convergence_v2.json"
 
-# 3. Full PIMC on the same bank as play-only and show-only. Without it those two numbers
-#    have no like-for-like comparator.
+# 3. Optional: full PIMC on the same bank as play-only and show-only.
 python -m tuppi_search.runner d-compare --candidate uniform_feasible_pimc_small_v1 \
   --pairs 12 --safety-cap 96 --workers 8 --output "$RUNS/match_full_pimc_12.json"
 
-# 4. Heterogeneous play-only: does the mismatch effect survive when only cards are searched?
+# 4. Optional: heterogeneous play-only.
 python -m tuppi_search.runner d-heterogeneous \
   --search uniform_feasible_pimc_play_only_v1 \
   --pairs 12 --safety-cap 96 --workers 8 \
   --output "$RUNS/hetero_play_only_12.json"
 
-# 5. The corpus at the phase's original target, now affordable. 31 h projected on a laptop.
+# 5. Completed: the corpus at the phase's original target.
 python -m tuppi_search.runner decompose --showing 256 --trick-play 512 --streams 192 \
   --mismatch-positions 32 --output "$RUNS/decomposition_full.json"
 
@@ -84,14 +80,16 @@ python -m tuppi_search.runner d-screen --candidate uniform_feasible_pimc_play_on
   --deals 64 --output "$RUNS/screen_play_only.json"
 ```
 
-Then regenerate the committed reports and re-run the suite:
+The compact report has now been regenerated from the permitted run directory, and the final
+suite has been rerun. The assembler accepts `TUPPI_RUNS_DIR` so it can operate without reading
+an unapproved home-directory path:
 
 ```bash
-python "$RUNS/assemble_report.py"     # writes reports/phase5d_a/
+TUPPI_RUNS_DIR="$RUNS" python examples/search/assemble_phase5d_a_report.py
 python -m pytest tests/search -q
 ```
 
-`assemble_report.py` picks up whichever artifacts exist and lists the rest under `not_run`, so
+The assembler picks up whichever artifacts exist and lists the rest under `not_run`, so
 it is safe to run after each step.
 
 ## Operational lessons worth carrying over

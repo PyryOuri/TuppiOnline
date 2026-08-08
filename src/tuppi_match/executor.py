@@ -55,7 +55,7 @@ def default_worker_count() -> int:
     """Leave headroom so an interactive machine stays usable."""
 
     available = os.cpu_count() or 1
-    return max(1, min(6, available - 2))
+    return max(1, available - 2)
 
 
 def parallel_available() -> bool:

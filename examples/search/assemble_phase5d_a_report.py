@@ -1,5 +1,6 @@
 """Assemble the committed Phase 5D-A report from the run artifacts."""
 from __future__ import annotations
+import os
 import pathlib, sys
 from tuppi_engine import atomic_write_canonical_json, strict_json_load_file
 from tuppi_search.registry import (
@@ -7,14 +8,22 @@ from tuppi_search.registry import (
 )
 from tuppi_search.validation import boundary_report
 
-RUNS = pathlib.Path.home() / "TuppiRuns" / "phase5d-a"
+RUNS = pathlib.Path(
+    os.environ.get(
+        "TUPPI_RUNS_DIR",
+        str(pathlib.Path.home() / "TuppiRuns" / "phase5d-a"),
+    )
+)
 REPORTS = pathlib.Path("reports/phase5d_a")
 REPORTS.mkdir(parents=True, exist_ok=True)
 
 
-def optional(name: str):
-    path = RUNS / name
-    return strict_json_load_file(str(path)) if path.exists() else None
+def optional(*names: str):
+    for name in names:
+        path = RUNS / name
+        if path.exists():
+            return strict_json_load_file(str(path)), name
+    return None, None
 
 
 registry = phase5d_a_registry_snapshot()
@@ -103,27 +112,61 @@ findings["corpus_defect_retracted"] = {
         "tests/search/test_phase5d_diagnostics.py asserts the deal-spread property."
     ),
 }
-for key, name in (
-    ("play_only_complete_match", "match_play_only_12.json"),
-    ("show_only_complete_match", "match_show_only_12.json"),
-    ("heterogeneous_full_pimc", "hetero_full_pimc_12.json"),
-    ("heterogeneous_play_only", "hetero_play_only_12.json"),
-    ("full_pimc_same_bank", "match_full_pimc_12.json"),
-    ("decomposition", "decomposition_v2.json"),
-    ("convergence", "convergence.json"),
+artifact_sources = {}
+for key, names in (
+    ("play_only_complete_match", ("match_play_only_12.json",)),
+    ("show_only_complete_match", ("match_show_only_12.json",)),
+    ("heterogeneous_full_pimc", ("hetero_full_pimc_12.json",)),
+    ("heterogeneous_play_only", ("hetero_play_only_12.json",)),
+    ("full_pimc_same_bank", ("match_full_pimc_12.json",)),
+    ("deal_screen", ("screen_play_only.json",)),
+    ("decomposition", ("decomposition_v2.json", "decomposition_full.json")),
+    ("convergence", ("convergence.json", "convergence_v2.json")),
 ):
-    value = optional(name)
+    value, source = optional(*names)
     if value is not None:
         findings[key] = value
+        artifact_sources[key] = source
     else:
-        findings.setdefault("not_run", []).append(name)
+        findings.setdefault("not_run", []).append(names[0])
 
-if "convergence" in findings:
+if artifact_sources.get("convergence") == "convergence.json":
     findings["convergence"]["provisional"] = (
         "Measured on the defective corpus described in corpus_defect_retracted: 24 of "
         "its trick-play positions came from a single set of hands. Re-run on the "
         "corrected corpus before relying on the selection-gap series."
     )
+
+heterogeneous = findings.get("heterogeneous_full_pimc")
+if heterogeneous is not None:
+    arrangements = heterogeneous.get("arrangements", [])
+    inferences = [item["primary_match_inference"] for item in arrangements]
+    if inferences and all(
+        item["candidate_match_win_probability"] < 0.5 for item in inferences
+    ):
+        findings["selected_path"] = {
+            "path": "D",
+            "eliminated": ["A", "B", "C"],
+            "open": [],
+            "justification": (
+                "Path A is eliminated as the primary cause: handing showing back to the "
+                "frozen reference leaves play-only at p_win 0.250 and show-only at "
+                "0.333, so neither phase is the single cause. Path B is not supported "
+                "by the seat-balanced heterogeneous comparison: the two PIMC-seat "
+                "arrangements reached p_win 0.333 and 0.375, both below parity, with "
+                "one arrangement having 3 censored pairs and the other none. Path C is "
+                "not supported by the corrected convergence run: adjacent agreement "
+                "was 0.839, 0.830, 0.839, and 0.875 from 2 to 32 worlds, with 16 to "
+                "32 worlds agreeing on 98 of 112 positions. Path D is therefore the "
+                "selected development path, subject to the recorded small-sample and "
+                "censoring limits."
+            ),
+            "licenses_next": (
+                "Freeze uniform_feasible_pimc_small_v1 as a negative baseline and begin "
+                "an observation-safe information-set search phase. The promotion-sealed "
+                "bank remains closed."
+            ),
+        }
 
 atomic_write_canonical_json(str(REPORTS / "phase5d_a_findings.json"), findings)
 for path in sorted(REPORTS.iterdir()):

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -74,6 +75,11 @@ def test_results_are_returned_in_canonical_ordinal_order() -> None:
                 for ordinal in range(manifest.pair_count)
             ]
             assert [item.stream_id for item in values] == expected
+
+
+def test_default_worker_count_leaves_two_cores_of_headroom(monkeypatch) -> None:
+    monkeypatch.setattr(os, "cpu_count", lambda: 16)
+    assert default_worker_count() == 14
 
 
 def test_a_resumed_run_matches_a_run_that_never_stopped() -> None:

@@ -176,12 +176,22 @@ def evaluate_position(
     return PositionConvergence(position=position, evaluations=tuple(evaluations))
 
 
+def _evaluate_position_unit(
+    unit: tuple[CorpusPosition, tuple[int, ...]],
+) -> PositionConvergence:
+    """Evaluate one position from the small, pickleable worker payload."""
+
+    position, budgets = unit
+    return evaluate_position(position, budgets=budgets)
+
+
 def run_convergence(
     corpus: DecisionCorpus,
     *,
     budgets: tuple[int, ...] = DEFAULT_BUDGETS,
     showing_limit: int | None = None,
     trick_play_limit: int | None = None,
+    workers: int | None = None,
     progress=None,
 ) -> dict[str, object]:
     """Run the nested-budget analysis over a (sub)sample of the corpus.
@@ -208,11 +218,23 @@ def run_convergence(
     if not selected:
         raise SearchError("the convergence analysis selected no position")
 
+    units = [(position, budgets) for position in selected]
     results: list[PositionConvergence] = []
-    for index, position in enumerate(selected):
-        results.append(evaluate_position(position, budgets=budgets))
-        if progress is not None:
-            progress(index + 1, len(selected))
+    if workers is None or workers <= 1:
+        for index, (position, _) in enumerate(units):
+            results.append(evaluate_position(position, budgets=budgets))
+            if progress is not None:
+                progress(index + 1, len(units))
+    else:
+        from concurrent.futures import ProcessPoolExecutor
+
+        with ProcessPoolExecutor(max_workers=workers) as pool:
+            for index, result in enumerate(
+                pool.map(_evaluate_position_unit, units, chunksize=1)
+            ):
+                results.append(result)
+                if progress is not None:
+                    progress(index + 1, len(units))
 
     return {
         "adjacent_agreement": _adjacent(results, budgets),

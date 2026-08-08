@@ -37,6 +37,7 @@ from tuppi_search.decomposition import (
 )
 from tuppi_search.diagnostics import observation_visible_card_codes
 from tuppi_search.errors import SearchError
+from tuppi_eval.serialization import content_digest
 
 from .conftest import walk_deal
 
@@ -218,6 +219,70 @@ def test_the_corpus_is_reproducible():
     ]
 
 
+def test_corpus_worker_count_preserves_semantic_positions():
+    arguments = dict(
+        showing_target=3,
+        trick_play_target=3,
+        streams=2,
+        deals_per_stream=1,
+        score_states=((0, 0),),
+    )
+    serial = build_corpus(workers=1, **arguments)
+    parallel = build_corpus(workers=8, **arguments)
+    assert serial.corpus_id == parallel.corpus_id
+    assert [item.to_data() for item in serial.positions] == [
+        item.to_data() for item in parallel.positions
+    ]
+
+
+def test_corpus_report_reloads_without_serializing_restricted_truth():
+    original = build_corpus(
+        showing_target=3,
+        trick_play_target=3,
+        streams=2,
+        deals_per_stream=1,
+        score_states=((0, 0),),
+    )
+    report = original.to_data()
+    report["positions"] = [item.to_data() for item in original.positions]
+    serialized = json.dumps(report, sort_keys=True)
+    assert "initial_hands" not in serialized
+    assert "hands" not in serialized
+
+    reloaded = DecisionCorpus.from_data(report)
+    assert reloaded.corpus_id == original.corpus_id
+    assert [item.to_data() for item in reloaded.positions] == [
+        item.to_data() for item in original.positions
+    ]
+    assert [
+        reloaded.restricted_truth(item.position_id).deal_state
+        for item in reloaded.positions
+    ] == [
+        original.restricted_truth(item.position_id).deal_state
+        for item in original.positions
+    ]
+
+
+def test_decomposition_worker_count_preserves_semantic_results(tiny_corpus):
+    serial = (
+        showing_decomposition(tiny_corpus, workers=1),
+        card_play_decomposition(tiny_corpus, workers=1),
+        rollout_mismatch(
+            tiny_corpus, positions_limit=1, limit=2, workers=1
+        ),
+    )
+    parallel = (
+        showing_decomposition(tiny_corpus, workers=8),
+        card_play_decomposition(tiny_corpus, workers=8),
+        rollout_mismatch(
+            tiny_corpus, positions_limit=1, limit=2, workers=8
+        ),
+    )
+    assert [content_digest(item) for item in serial] == [
+        content_digest(item) for item in parallel
+    ]
+
+
 def test_the_corpus_uses_a_fresh_development_bank():
     from tuppi_search.evaluation import (
         MATCH_COMPARISON_ROOT_SEED,
@@ -368,6 +433,22 @@ def test_convergence_reports_every_required_section(tiny_corpus):
         assert 0.0 <= entry["agreement_rate"] <= 1.0
     # The largest budget trivially agrees with itself.
     assert report["agreement_with_largest"][-1]["agreement_rate"] == 1.0
+
+
+def test_convergence_worker_count_preserves_semantic_results(tiny_corpus):
+    def semantic_id(report):
+        semantic = dict(report)
+        semantic.pop("timing_seconds")
+        return content_digest(semantic)
+
+    arguments = dict(
+        budgets=(2, 4),
+        showing_limit=1,
+        trick_play_limit=1,
+    )
+    serial = run_convergence(tiny_corpus, workers=1, **arguments)
+    parallel = run_convergence(tiny_corpus, workers=8, **arguments)
+    assert semantic_id(serial) == semantic_id(parallel)
 
 
 def test_convergence_default_budgets_are_the_documented_ladder():

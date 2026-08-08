@@ -68,6 +68,12 @@ CORPUS_SCHEMA_VERSION = "tuppi.search.decision_corpus.v1"
 #: rather than in one cluster. The phase is rotated per deal instance in
 #: :func:`build_corpus`, which is what makes the pooled stage distribution even.
 _PLAY_STRIDE = 11
+DEFAULT_SCORE_STATES: tuple[tuple[int, int], ...] = (
+    (0, 0),
+    (32, 0),
+    (0, 32),
+    (48, 0),
+)
 
 
 class DealStage(StrEnum):
@@ -222,6 +228,7 @@ class CorpusPosition:
             "contract": self.contract,
             "deal_index": self.deal_index,
             "decision_index": self.decision_index,
+            "observing_seat": self.observation.observing_seat,
             "feasible_assignment_count": self.feasible_assignment_count,
             "feasible_band": self.feasible_band,
             "information_state": self.information_state,
@@ -265,6 +272,9 @@ class DecisionCorpus:
     reference_policy_key: str
     pimc_profile_key: str
     schema_version: str = field(default=CORPUS_SCHEMA_VERSION, init=False)
+    bank_stream_count: int = 1
+    deals_per_stream: int = 2
+    score_states: tuple[tuple[int, int], ...] = DEFAULT_SCORE_STATES
 
     def __post_init__(self) -> None:
         if not self.positions:
@@ -315,7 +325,9 @@ class DecisionCorpus:
     def to_data(self) -> dict[str, object]:
         return {
             "bank_id": self.bank_id,
+            "bank_stream_count": self.bank_stream_count,
             "corpus_id": self.corpus_id,
+            "deals_per_stream": self.deals_per_stream,
             "pimc_profile_key": self.pimc_profile_key,
             "position_count": len(self.positions),
             "privacy_note": (
@@ -324,11 +336,205 @@ class DecisionCorpus:
                 "labelled perfect-information diagnostics."
             ),
             "reference_policy_key": self.reference_policy_key,
+            "score_states": [list(score) for score in self.score_states],
             "schema_version": CORPUS_SCHEMA_VERSION,
             "showing_positions": len(self.showing),
             "stratum_counts": self.stratum_counts(),
             "trick_play_positions": len(self.trick_play),
         }
+
+    @classmethod
+    def from_data(cls, value: object) -> "DecisionCorpus":
+        """Reload a corpus report without serialising its restricted truth.
+
+        The corpus artifact carries public position identities and labels. The
+        observations and their private deal states are reconstructed from the
+        deterministic development bank and the recorded coordinates. This keeps
+        the reuse path useful for diagnostics without turning the JSON artifact
+        into a hidden-hand cache.
+        """
+
+        if not isinstance(value, dict):
+            raise SearchError("corpus input must be a JSON object")
+        positions_data = value.get("positions")
+        if not isinstance(positions_data, list) or not positions_data:
+            raise SearchError(
+                "corpus input must be a corpus report with position summaries"
+            )
+        if value.get("schema_version") != CORPUS_SCHEMA_VERSION:
+            raise SearchError("corpus input has an unsupported schema version")
+
+        try:
+            bank_stream_count = int(value["bank_stream_count"])
+            deals_per_stream = int(value["deals_per_stream"])
+            score_states = tuple(
+                (int(item[0]), int(item[1])) for item in value["score_states"]
+            )
+            bank_id = value["bank_id"]
+            reference_policy_key = value["reference_policy_key"]
+            pimc_profile_key = value["pimc_profile_key"]
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
+            raise SearchError("corpus input is missing rebuild metadata") from exc
+        if (
+            type(bank_stream_count) is not int
+            or bank_stream_count <= 0
+            or type(deals_per_stream) is not int
+            or deals_per_stream <= 0
+            or not score_states
+            or not isinstance(bank_id, str)
+            or not isinstance(reference_policy_key, str)
+            or not isinstance(pimc_profile_key, str)
+        ):
+            raise SearchError("corpus input has invalid rebuild metadata")
+
+        from .evaluation import phase5d_a_corpus_bank
+
+        bank = phase5d_a_corpus_bank(stream_count=bank_stream_count)
+        if bank.bank_id != bank_id:
+            raise SearchError("corpus input does not identify the expected bank")
+        specification = phase4_specifications_by_profile_key()[reference_policy_key]
+        replayed: dict[tuple[int, int], dict[int, tuple[PlayerObservation, DealState]]] = {}
+        positions: list[CorpusPosition] = []
+        truth: dict[str, RestrictedTruth] = {}
+
+        for raw in positions_data:
+            if not isinstance(raw, dict):
+                raise SearchError("corpus position summaries must be objects")
+            try:
+                stream_index = int(raw["stream_index"])
+                deal_index = int(raw["deal_index"])
+                decision_index = int(raw["decision_index"])
+                observing_seat = int(raw["observing_seat"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise SearchError("corpus position is missing coordinates") from exc
+            if (
+                not 0 <= stream_index < bank_stream_count
+                or deal_index < 0
+                or decision_index < 0
+                or not 0 <= observing_seat < 4
+            ):
+                raise SearchError("corpus position has invalid coordinates")
+
+            key = (stream_index, deal_index)
+            states = replayed.get(key)
+            if states is None:
+                stream = bank.stream(stream_index)
+                ordinal = stream_index * deals_per_stream + deal_index
+                score = score_states[ordinal % len(score_states)]
+                state = create_match(
+                    initial_score=MatchScore(*score),
+                    initial_dealer=stream.initial_dealer,
+                    match_ref=f"corpus-{stream_index:04d}-{deal_index:02d}",
+                )
+                state = begin_explicit_deal(
+                    state,
+                    ExplicitDeal(
+                        dealer=stream.initial_dealer,
+                        hands=stream.deal(deal_index).hands,
+                    ),
+                )
+                deal = state.active_deal
+                if deal is None:
+                    raise SearchError("corpus replay did not create an active deal")
+                states = {}
+                while not deal.complete:
+                    actor = deal.current_actor
+                    if actor is None:
+                        raise SearchError("corpus replay reached a missing actor")
+                    states[len(states)] = (observation_for(deal, actor), deal)
+                    action = construct_agent(
+                        specification, seat=actor
+                    ).choose_action(states[len(states) - 1][0])
+                    deal = apply_action(deal, action)
+                replayed[key] = states
+            if decision_index not in states:
+                raise SearchError("corpus position is beyond the replayed deal")
+            observation, deal = states[decision_index]
+            if observation.observing_seat != observing_seat:
+                raise SearchError("corpus position observing seat is inconsistent")
+
+            digest = information_state_digest(observation)
+            expected_position_id = "pos:" + content_digest(
+                {
+                    "deal_index": deal_index,
+                    "decision_index": decision_index,
+                    "information_state": digest,
+                    "schema_version": CORPUS_SCHEMA_VERSION,
+                    "stream_index": stream_index,
+                }
+            )
+            if raw.get("position_id") != expected_position_id:
+                raise SearchError("corpus position identity does not replay")
+            if raw.get("information_state") != digest:
+                raise SearchError("corpus position information state does not replay")
+
+            expected_reference = construct_agent(
+                specification, seat=observation.observing_seat
+            ).choose_action(observation)
+            if raw.get("reference_action") != canonical_action_id(expected_reference):
+                raise SearchError("corpus reference action does not replay")
+            count = raw.get("feasible_assignment_count")
+            if type(count) is not int or count <= 0:
+                raise SearchError("corpus feasible-assignment count is invalid")
+            if raw.get("feasible_band") != feasible_band(count).value:
+                raise SearchError("corpus feasible-assignment band is invalid")
+            expected_labels = {
+                "contract": (
+                    None if observation.contract is None else observation.contract.value
+                ),
+                "phase": observation.phase.value,
+                "role": role(observation).value,
+                "stage": deal_stage(observation).value,
+                "score_state": score_state(observation).value,
+                "partial_trick_size": len(observation.current_trick),
+                "partner_holds_trick": partner_holds_trick(observation),
+                "legal_action_count": len(observation.legal_actions),
+            }
+            for name, expected in expected_labels.items():
+                if raw.get(name) != expected:
+                    raise SearchError(f"corpus position {name} label does not replay")
+
+            entry = CorpusPosition(
+                position_id=expected_position_id,
+                observation=observation,
+                stream_index=stream_index,
+                deal_index=deal_index,
+                decision_index=decision_index,
+                information_state=digest,
+                phase=raw["phase"],
+                contract=raw["contract"],
+                role=raw["role"],
+                stage=raw["stage"],
+                score_state=raw["score_state"],
+                partial_trick_size=raw["partial_trick_size"],
+                partner_holds_trick=raw["partner_holds_trick"],
+                legal_action_count=raw["legal_action_count"],
+                feasible_assignment_count=count,
+                feasible_band=raw["feasible_band"],
+                reference_action_id=raw["reference_action"],
+                pimc_action_id=raw["pimc_action"],
+                pimc_disagrees_with_reference=raw[
+                    "pimc_disagrees_with_reference"
+                ],
+            )
+            positions.append(entry)
+            truth[entry.position_id] = RestrictedTruth(
+                position_id=entry.position_id, deal_state=deal
+            )
+
+        corpus = cls(
+            positions=tuple(positions),
+            truth=MappingProxyType(truth),
+            bank_id=bank_id,
+            reference_policy_key=reference_policy_key,
+            pimc_profile_key=pimc_profile_key,
+            bank_stream_count=bank_stream_count,
+            deals_per_stream=deals_per_stream,
+            score_states=score_states,
+        )
+        if value.get("corpus_id") != corpus.corpus_id:
+            raise SearchError("corpus input semantic identity does not match")
+        return corpus
 
 
 def build_corpus(
@@ -341,6 +547,7 @@ def build_corpus(
     reference_policy_key: str = DEVELOPMENT_REFERENCE_POLICY,
     score_states: tuple[tuple[int, int], ...] = ((0, 0), (32, 0), (0, 32), (48, 0)),
     trick_play_per_deal: int = 4,
+    workers: int | None = None,
     progress=None,
 ) -> DecisionCorpus:
     """Sample a frozen corpus from reference play on the Phase 5D-A corpus bank.
@@ -376,7 +583,6 @@ def build_corpus(
     """
 
     from .evaluation import phase5d_a_corpus_bank
-    from .registry import build_agent
 
     if showing_target <= 0 or trick_play_target <= 0:
         raise SearchError("corpus targets must be positive")
@@ -385,7 +591,7 @@ def build_corpus(
     bank = phase5d_a_corpus_bank(stream_count=max(streams, 1))
     specification = phase4_specifications_by_profile_key()[reference_policy_key]
 
-    positions: list[CorpusPosition] = []
+    pending = []
     truth: dict[str, RestrictedTruth] = {}
     showing_kept = play_kept = 0
     total = streams * deals_per_stream
@@ -439,19 +645,18 @@ def build_corpus(
                 # A forced decision teaches nothing about search: there is nothing to
                 # choose, so PIMC and the reference must agree.
                 if keep and unforced:
-                    entry, real = _build_position(
-                        observation=observation,
-                        deal=deal,
-                        stream_index=stream_index,
-                        deal_index=deal_index,
-                        decision_index=decision_index,
-                        specification=specification,
-                        pimc_profile_key=pimc_profile_key,
-                        build_agent=build_agent,
+                    pending.append(
+                        (
+                            observation,
+                            deal,
+                            stream_index,
+                            deal_index,
+                            decision_index,
+                            reference_policy_key,
+                            pimc_profile_key,
+                        )
                     )
-                    positions.append(entry)
-                    truth[entry.position_id] = real
-                    if entry.is_showing:
+                    if showing:
                         showing_kept += 1
                     else:
                         play_kept += 1
@@ -466,14 +671,71 @@ def build_corpus(
         if showing_kept >= showing_target and play_kept >= trick_play_target:
             break
 
-    if not positions:
+    if not pending:
         raise SearchError("the corpus sampled no usable position")
+
+    positions: list[CorpusPosition] = []
+    if workers is None or workers <= 1:
+        built = (_build_position_unit(unit) for unit in pending)
+        for entry, real in built:
+            positions.append(entry)
+            truth[entry.position_id] = real
+    else:
+        from concurrent.futures import ProcessPoolExecutor
+
+        with ProcessPoolExecutor(max_workers=workers) as pool:
+            for entry, real in pool.map(
+                _build_position_unit, pending, chunksize=1
+            ):
+                positions.append(entry)
+                truth[entry.position_id] = real
+
     return DecisionCorpus(
         positions=tuple(positions),
         truth=MappingProxyType(truth),
         bank_id=bank.bank_id,
         reference_policy_key=reference_policy_key,
         pimc_profile_key=pimc_profile_key,
+        bank_stream_count=max(streams, 1),
+        deals_per_stream=deals_per_stream,
+        score_states=score_states,
+    )
+
+
+def _build_position_unit(
+    unit: tuple[
+        PlayerObservation,
+        DealState,
+        int,
+        int,
+        int,
+        str,
+        str,
+    ],
+) -> tuple[CorpusPosition, RestrictedTruth]:
+    """Build one labelled position from a small, private worker payload."""
+
+    (
+        observation,
+        deal,
+        stream_index,
+        deal_index,
+        decision_index,
+        reference_policy_key,
+        pimc_profile_key,
+    ) = unit
+    from .registry import build_agent
+
+    specification = phase4_specifications_by_profile_key()[reference_policy_key]
+    return _build_position(
+        observation=observation,
+        deal=deal,
+        stream_index=stream_index,
+        deal_index=deal_index,
+        decision_index=decision_index,
+        specification=specification,
+        pimc_profile_key=pimc_profile_key,
+        build_agent=build_agent,
     )
 
 

@@ -65,7 +65,24 @@ def classify_showing(
     return ShowingDisagreement.PIMC_NOLO_REFERENCE_RAMI
 
 
-def showing_decomposition(corpus: DecisionCorpus) -> dict[str, object]:
+def _showing_unit(
+    position: CorpusPosition,
+) -> tuple[str, int, bool, bool]:
+    pimc = _action_from_id(position.pimc_action_id, position.observation)
+    reference = _action_from_id(
+        position.reference_action_id, position.observation
+    )
+    return (
+        classify_showing(pimc, reference).value,
+        (position.observation.observing_seat - position.observation.forehand) % 4,
+        pimc.declared_contract is Contract.RAMI,
+        reference.declared_contract is Contract.RAMI,
+    )
+
+
+def showing_decomposition(
+    corpus: DecisionCorpus, *, workers: int | None = None
+) -> dict[str, object]:
     """Classify every showing disagreement in the corpus."""
 
     positions = corpus.showing
@@ -74,24 +91,29 @@ def showing_decomposition(corpus: DecisionCorpus) -> dict[str, object]:
     counts: dict[str, int] = {item.value: 0 for item in ShowingDisagreement}
     by_position: dict[str, dict[str, int]] = {}
     pimc_rami = reference_rami = 0
-    for position in positions:
-        pimc = _action_from_id(position.pimc_action_id, position.observation)
-        reference = _action_from_id(
-            position.reference_action_id, position.observation
-        )
-        label = classify_showing(pimc, reference).value
-        counts[label] += 1
-        # Showing order R0..R3 measured from the forehand, which is the only
-        # position label the ruleset gives a showing decision.
-        offset = (position.observation.observing_seat - position.observation.forehand) % 4
-        bucket = by_position.setdefault(
-            f"R{offset}",
-            {item.value: 0 for item in ShowingDisagreement} | {"positions": 0},
-        )
-        bucket[label] += 1
-        bucket["positions"] += 1
-        pimc_rami += int(pimc.declared_contract is Contract.RAMI)
-        reference_rami += int(reference.declared_contract is Contract.RAMI)
+    if workers is None or workers <= 1:
+        classified = map(_showing_unit, positions)
+    else:
+        from concurrent.futures import ProcessPoolExecutor
+
+        pool = ProcessPoolExecutor(max_workers=workers)
+        classified = pool.map(_showing_unit, positions, chunksize=1)
+    try:
+        for label, offset, pimc_is_rami, reference_is_rami in classified:
+            counts[label] += 1
+            # Showing order R0..R3 measured from the forehand, which is the only
+            # position label the ruleset gives a showing decision.
+            bucket = by_position.setdefault(
+                f"R{offset}",
+                {item.value: 0 for item in ShowingDisagreement} | {"positions": 0},
+            )
+            bucket[label] += 1
+            bucket["positions"] += 1
+            pimc_rami += int(pimc_is_rami)
+            reference_rami += int(reference_is_rami)
+    finally:
+        if workers is not None and workers > 1:
+            pool.shutdown()
     total = len(positions)
     return {
         "by_showing_position": dict(sorted(by_position.items())),
@@ -205,7 +227,19 @@ def _beats_current_best(observation: PlayerObservation, card) -> bool:
     return card.suit is led and card.rank.value > best
 
 
-def card_play_decomposition(corpus: DecisionCorpus) -> dict[str, object]:
+def _card_play_unit(
+    position: CorpusPosition,
+) -> tuple[bool, tuple[tuple[str, str], ...]]:
+    pimc = _action_from_id(position.pimc_action_id, position.observation)
+    reference = _action_from_id(
+        position.reference_action_id, position.observation
+    )
+    return pimc != reference, _play_slices(position, pimc, reference)
+
+
+def card_play_decomposition(
+    corpus: DecisionCorpus, *, workers: int | None = None
+) -> dict[str, object]:
     """Slice trick-play disagreement by the features that separate mechanisms."""
 
     positions = corpus.trick_play
@@ -213,19 +247,26 @@ def card_play_decomposition(corpus: DecisionCorpus) -> dict[str, object]:
         raise SearchError("the corpus contains no trick-play position")
     grouped: dict[str, dict[str, dict[str, int]]] = {}
     disagreements = 0
-    for position in positions:
-        pimc = _action_from_id(position.pimc_action_id, position.observation)
-        reference = _action_from_id(
-            position.reference_action_id, position.observation
-        )
-        disagrees = pimc != reference
-        disagreements += int(disagrees)
-        for name, value in _play_slices(position, pimc, reference):
-            bucket = grouped.setdefault(name, {}).setdefault(
-                value, {"disagreements": 0, "positions": 0}
-            )
-            bucket["positions"] += 1
-            bucket["disagreements"] += int(disagrees)
+    if workers is None or workers <= 1:
+        classified = map(_card_play_unit, positions)
+    else:
+        from concurrent.futures import ProcessPoolExecutor
+
+        pool = ProcessPoolExecutor(max_workers=workers)
+        classified = pool.map(_card_play_unit, positions, chunksize=1)
+    try:
+        for disagrees, slices in classified:
+            disagrees = bool(disagrees)
+            disagreements += int(disagrees)
+            for name, value in slices:
+                bucket = grouped.setdefault(name, {}).setdefault(
+                    value, {"disagreements": 0, "positions": 0}
+                )
+                bucket["positions"] += 1
+                bucket["disagreements"] += int(disagrees)
+    finally:
+        if workers is not None and workers > 1:
+            pool.shutdown()
     return {
         "by_slice": {
             name: {
@@ -312,12 +353,69 @@ def _continuation_actions(
     return recorded
 
 
+def _rollout_mismatch_unit(
+    unit: tuple[CorpusPosition, DealState, str, str, int],
+) -> tuple[MismatchRecord, ...]:
+    position, real, pimc_profile_key, reference_policy_key, limit = unit
+    from .evaluation import phase5d_a_agent_builder
+
+    reference = phase4_specifications_by_profile_key()[reference_policy_key]
+
+    def reference_builder(seat: int):
+        return construct_agent(reference, seat=seat)
+
+    pimc_builder = phase5d_a_agent_builder(pimc_profile_key)
+    root_seat = position.observation.observing_seat
+    partner = position.observation.partner_seat
+    assumed = _continuation_actions(
+        real, builders={seat: reference_builder for seat in range(4)}, limit=limit
+    )
+    designs = {
+        "reference_partner": {seat: reference_builder for seat in range(4)},
+        "pimc_partner": {
+            seat: (pimc_builder if seat in (root_seat, partner) else reference_builder)
+            for seat in range(4)
+        },
+        "all_pimc": {seat: pimc_builder for seat in range(4)},
+    }
+    records: list[MismatchRecord] = []
+    for kind, builders in designs.items():
+        realized = _continuation_actions(real, builders=builders, limit=limit)
+        matched = 0
+        for left, right in zip(assumed, realized):
+            if left != right:
+                break
+            matched += 1
+        diverged = matched < min(len(assumed), len(realized))
+        seat = realized[matched][0] if diverged and matched < len(realized) else None
+        records.append(
+            MismatchRecord(
+                position_id=position.position_id,
+                partner_kind=kind,
+                assumed_actions=len(assumed),
+                matched_prefix=matched,
+                matched_fraction=matched / len(assumed) if assumed else 1.0,
+                first_divergence_index=matched if diverged else None,
+                first_divergence_seat=seat,
+                first_divergence_is_root_team=(
+                    None
+                    if seat is None
+                    else team_for_seat(seat) is team_for_seat(root_seat)
+                ),
+                contract=position.contract,
+                stage=position.stage,
+            )
+        )
+    return tuple(records)
+
+
 def rollout_mismatch(
     corpus: DecisionCorpus,
     *,
     pimc_profile_key: str = "uniform_feasible_pimc_small_v1",
     limit: int = 12,
     positions_limit: int = 32,
+    workers: int | None = None,
     progress=None,
 ) -> dict[str, object]:
     """Compare the assumed rollout continuation with realized continuations.
@@ -338,68 +436,36 @@ def rollout_mismatch(
     decision.
     """
 
-    from .evaluation import phase5d_a_agent_builder
-    from .registry import build_agent
-
-    reference = phase4_specifications_by_profile_key()[
-        corpus.reference_policy_key
-    ]
-
-    def reference_builder(seat: int):
-        return construct_agent(reference, seat=seat)
-
-    pimc_builder = phase5d_a_agent_builder(pimc_profile_key)
-    del build_agent
-
     selected = corpus.trick_play[:positions_limit]
     if not selected:
         raise SearchError("no trick-play position available for mismatch analysis")
 
-    records: list[MismatchRecord] = []
-    for index, position in enumerate(selected):
-        real = corpus.restricted_truth(position.position_id).deal_state
-        root_seat = position.observation.observing_seat
-        partner = position.observation.partner_seat
-        assumed = _continuation_actions(
-            real, builders={seat: reference_builder for seat in range(4)}, limit=limit
+    units = [
+        (
+            position,
+            corpus.restricted_truth(position.position_id).deal_state,
+            pimc_profile_key,
+            corpus.reference_policy_key,
+            limit,
         )
-        designs = {
-            "reference_partner": {seat: reference_builder for seat in range(4)},
-            "pimc_partner": {
-                seat: (pimc_builder if seat in (root_seat, partner) else reference_builder)
-                for seat in range(4)
-            },
-            "all_pimc": {seat: pimc_builder for seat in range(4)},
-        }
-        for kind, builders in designs.items():
-            realized = _continuation_actions(real, builders=builders, limit=limit)
-            matched = 0
-            for left, right in zip(assumed, realized):
-                if left != right:
-                    break
-                matched += 1
-            diverged = matched < min(len(assumed), len(realized))
-            seat = realized[matched][0] if diverged and matched < len(realized) else None
-            records.append(
-                MismatchRecord(
-                    position_id=position.position_id,
-                    partner_kind=kind,
-                    assumed_actions=len(assumed),
-                    matched_prefix=matched,
-                    matched_fraction=matched / len(assumed) if assumed else 1.0,
-                    first_divergence_index=matched if diverged else None,
-                    first_divergence_seat=seat,
-                    first_divergence_is_root_team=(
-                        None
-                        if seat is None
-                        else team_for_seat(seat) is team_for_seat(root_seat)
-                    ),
-                    contract=position.contract,
-                    stage=position.stage,
-                )
-            )
-        if progress is not None:
-            progress(index + 1, len(selected))
+        for position in selected
+    ]
+    if workers is None or workers <= 1:
+        built = map(_rollout_mismatch_unit, units)
+    else:
+        from concurrent.futures import ProcessPoolExecutor
+
+        pool = ProcessPoolExecutor(max_workers=workers)
+        built = pool.map(_rollout_mismatch_unit, units, chunksize=1)
+    records: list[MismatchRecord] = []
+    try:
+        for index, item_records in enumerate(built):
+            records.extend(item_records)
+            if progress is not None:
+                progress(index + 1, len(selected))
+    finally:
+        if workers is not None and workers > 1:
+            pool.shutdown()
 
     by_kind: dict[str, dict[str, object]] = {}
     for kind in ("reference_partner", "pimc_partner", "all_pimc"):

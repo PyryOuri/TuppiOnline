@@ -513,9 +513,9 @@ address stays exactly as committed:
 
 ```bash
 .venv/bin/python -m tuppi_search.runner diagnostic-agents
-.venv/bin/python -m tuppi_search.runner corpus --showing 128 --trick-play 256 --output /tmp/c.json
-.venv/bin/python -m tuppi_search.runner converge --budgets 2,4,8,16,32 --output /tmp/v.json
-.venv/bin/python -m tuppi_search.runner decompose --output /tmp/d.json
+.venv/bin/python -m tuppi_search.runner corpus --showing 128 --trick-play 256 --workers 8 --output /tmp/c.json
+.venv/bin/python -m tuppi_search.runner converge --budgets 2,4,8,16,32 --workers 8 --output /tmp/v.json
+.venv/bin/python -m tuppi_search.runner decompose --workers 8 --output /tmp/d.json
 ```
 
 **Both phases lose separately, and neither alone explains the loss.** Play-only reaches
@@ -524,13 +524,16 @@ development bank, against the Phase 5C full-PIMC baseline of 0.156. They lose di
 play-only loses tricks (191 vs 205), while show-only wins tricks evenly (184 vs 182) and
 still loses points by over-declaring RAMI (0.905 share of deals against play-only's 0.780).
 
-Two mechanism findings carry most of the weight. PIMC's root utility barely separates its
-candidates - the mean margin between best and second-best *shrinks* from 0.034 to 0.012 as
-the budget grows from 2 to 32 worlds, and at the deployed four worlds 64 % of decisions are
-settled by canonical tie-break rather than by value. And PIMC's rollout models a partner
-that is not there: with a reference partner the assumed continuation matches perfectly
-(20/20 control positions), but with a PIMC partner it diverges in 19 of 20 within the first
-action or two.
+The corrected convergence run covered 112 positions: adjacent agreement was 0.839, 0.830,
+0.839, and 0.875 from 2 to 32 worlds, while tie-breaking remained common. The full
+decomposition covered 768 positions. PIMC's rollout still models a partner that is not
+there: with a reference partner the assumed continuation matched perfectly (32/32 control
+positions), but with a PIMC partner it diverged in 29/32 within the first action or two.
+
+The seat-balanced heterogeneous comparison was also negative in both arrangements (p_win
+0.333 and 0.375), so Phase 5D-A selects **Path D**: freeze PIMC as a negative baseline and
+proceed to observation-safe information-set search. This is development evidence, not
+promotion evidence.
 
 The Phase 5C negative result is preserved exactly as measured under the frozen designation
 `uniform_feasible_pimc_small_v1_negative_baseline` - metadata only, with the agent id,
@@ -647,10 +650,11 @@ strength benchmark unless independently reproduced, and no Phase 4, 5A, or 5B
 result is an expert-strength claim.
 
 Phase 5C built the PIMC baseline on those capabilities and measured it losing
-decisively to the development reference, with a named mechanism. The next phase should
-fix the policy mismatch before adding tree search, then move to information-set search,
-which is the structural answer to the root fusion Phase 5C's observation-only rollout
-did not remove. The promotion-sealed bank stays closed until a candidate is frozen.
+decisively to the development reference, with a named mechanism. Phase 5D-A completed
+the behavioral decomposition and selected Path D: the next phase is observation-safe
+information-set search, beginning with a concise design and determinism specification.
+The negative PIMC baseline remains frozen for comparison, and the promotion-sealed bank
+stays closed until a candidate is frozen.
 
 ## Storage discipline
 

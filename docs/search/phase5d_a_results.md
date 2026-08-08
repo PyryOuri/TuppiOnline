@@ -126,7 +126,8 @@ The consequences, stated because the defective figures are the more striking one
 | Trick-play contract mix | NOLO 96 / RAMI 0 | RAMI 205 / NOLO 51 |
 
 The defective corpus said the RAMI bias was *perfectly* one-directional. It is not; that
-was an artifact of drawing three hands. Everything below uses the corrected corpus.
+was an artifact of drawing three hands. The table records the first corrected corpus used
+for the original decomposition; the full 768-position corrected rerun is reported below.
 `tests/search/test_phase5d_diagnostics.py` now asserts the deal-spread property directly,
 and `build_corpus` caps the positions any one hand may contribute, spaces the kept card
 decisions across tricks, and plays each hand at one rotated score state rather than all
@@ -134,25 +135,24 @@ four.
 
 ## Showing decomposition: a real, directional RAMI bias
 
-Over 128 showing decisions from 32 distinct hands, comparing PIMC's chosen action with
-`partner_aware_v1`'s on the identical observation:
+The full corrected corpus contains 256 showing decisions, comparing PIMC's chosen action
+with `partner_aware_v1`'s on the identical observation:
 
 | Classification | Count | Rate |
 | --- | --- | --- |
-| PIMC RAMI, reference NOLO | 33 | 0.258 |
-| PIMC NOLO, reference RAMI | 9 | 0.070 |
-| Same contract, different card | 51 | 0.398 |
-| Identical action | 35 | 0.273 |
+| PIMC RAMI, reference NOLO | 70 | 0.273 |
+| PIMC NOLO, reference RAMI | 16 | 0.063 |
+| Same contract, different card | 103 | 0.402 |
+| Identical action | 67 | 0.262 |
 
-PIMC's RAMI declaration rate is **0.477** against the reference's **0.289** - a difference
-of **0.188**, with contract flips running PIMC-toward-RAMI by 33 to 9, a ratio of 3.7 : 1.
-The bias holds in every showing position measured from the forehand (R0 14-3, R1 8-1,
-R2 7-4, R3 4-1), so it is not one seat's artifact.
+PIMC's RAMI declaration rate is **0.496** against the reference's **0.285** - a difference
+of **0.211**, with contract flips running PIMC-toward-RAMI by 70 to 16, a ratio of 4.4 : 1.
+The full run confirms the direction of the earlier corrected-corpus result.
 
 A contract flip is the only showing change that can move a match: the shown card is public
-but changes no contract, no leader, and no trick, so the 51 "same contract, different
-card" disagreements are match-irrelevant by construction. That leaves 42 of 128 decisions
-that could matter, three-quarters of them in the same direction.
+but changes no contract, no leader, and no trick, so the 103 "same contract, different
+card" disagreements are match-irrelevant by construction. That leaves 86 of 256 decisions
+that could matter, most of them in the same direction.
 
 This is consistent with the Phase 5C showing census, where PIMC's RAMI rate rose with the
 world budget rather than falling - which is why small-sample selection optimism was
@@ -160,146 +160,132 @@ refuted as the mechanism.
 
 ## Card-play decomposition: high disagreement, with structure
 
-Over 256 trick-play positions from 64 distinct hands, PIMC disagrees with the reference on
-**167 (65.2 %)**. Per the pre-registered limits, disagreement is not error - the reference
+Over 512 trick-play positions, PIMC disagrees with the reference on **333 (65.0 %)**. Per
+the pre-registered limits, disagreement is not error - the reference
 is a transparent heuristic, not an optimum - so these slices say where the two policies
 differ, not who is right. They are exploratory and carry no inferential claim.
 
 | Slice | Disagreement rate |
 | --- | --- |
-| Leading a trick | 0.803 (57/71) |
-| Following | 0.595 (110/185) |
-| Different suit chosen | 1.000 (69/69) |
-| Same suit chosen | 0.524 (98/187) |
-| Partner does not hold the trick | 0.695 (130/187) |
-| Partner holds the trick | 0.536 (37/69) |
-| Early stage | 0.781 (75/96) |
-| Middle stage | 0.578 (59/102) |
-| Late stage | 0.569 (33/58) |
-| RAMI | 0.649 (133/205) |
-| NOLO | 0.667 (34/51) |
+| Leading a trick | 0.781 (118/151) |
+| Following | 0.596 (215/361) |
+| Different suit chosen | 1.000 (133/133) |
+| Same suit chosen | 0.528 (200/379) |
+| Partner does not hold the trick | 0.682 (264/387) |
+| Partner holds the trick | 0.552 (69/125) |
+| Early stage | 0.788 (149/189) |
+| Middle stage | 0.598 (122/204) |
+| Late stage | 0.521 (62/119) |
+| RAMI | 0.636 (253/398) |
+| NOLO | 0.702 (80/114) |
 
 Two features are worth naming. Disagreement is highest when PIMC is **leading** a trick
-(0.803), which is the decision with the widest branching and the least constraint from the
-current trick. And when the two policies disagree, PIMC plays the **higher** card in 101
-cases against the lower in 62 - a 1.6 : 1 tilt - while the 93 positions where both choose
-an equal-ranked card are almost entirely agreements (4 disagreements, all suit choices).
+(0.781), which is the decision with the widest branching and the least constraint from the
+current trick. And when the two policies disagree, PIMC plays the **higher** card in 215
+cases against the lower in 110 - a 2.0 : 1 tilt - while the 187 positions where both choose
+an equal-ranked card are almost entirely agreements (8 disagreements, all suit choices).
 
 Disagreement is also roughly uniform across contracts (0.649 RAMI, 0.667 NOLO), so this is
 not a contract-specific defect. It is a broad difference in card selection, concentrated
 where the value signal has the most candidates to separate - which connects directly to
 the next section.
 
-## Nested-budget convergence: provisional, and measured on the defective corpus
+## Nested-budget convergence on the corrected corpus
 
-**This section's numbers come from the defective corpus described above, and must be
-re-measured before they are relied on.** The convergence study was re-launched against the
-corrected 26-hand corpus but did not finish before the phase was wrapped up; the figures
-below are from the build whose 24 trick-play positions came from a single set of hands. The
-direction they indicate is suggestive and the mechanism they suggest is the most interesting
-finding in this phase, which is exactly why it should not be reported as established.
-
-Budgets 2, 4, 8, 16, 32 over 28 positions, using **nested prefixes** of one world set, so
-a changed action means a changed opinion rather than a different sample.
+The corrected run covers 112 positions (48 showing and 64 trick-play), using budgets 2, 4,
+8, 16, and 32 with **nested prefixes** of one world set. A changed action therefore means a
+changed opinion rather than a different sample. This is a convergence diagnostic, not a
+strength evaluation.
 
 | From → to | Adjacent agreement |
 | --- | --- |
-| 2 → 4 | 0.607 |
-| 4 → 8 | 0.786 |
-| 8 → 16 | 0.750 |
-| 16 → 32 | 0.714 |
+| 2 → 4 | 0.839 (94/112) |
+| 4 → 8 | 0.830 (93/112) |
+| 8 → 16 | 0.839 (94/112) |
+| 16 → 32 | 0.875 (98/112) |
 
 | Budget | Agreement with the 32-world action |
 | --- | --- |
-| 2 | 0.500 |
-| 4 | **0.536** |
-| 8 | 0.643 |
-| 16 | 0.714 |
+| 2 | 0.705 (79/112) |
+| 4 | 0.759 (85/112) |
+| 8 | 0.830 (93/112) |
+| 16 | 0.875 (98/112) |
+| 32 | 1.000 (112/112) |
 
-Actions are **still moving at 16 → 32 worlds**: adjacent agreement does not climb toward
-1, and the mean Spearman correlation between per-action value orderings is flat at
-0.68 → 0.75 → 0.71 → 0.70 rather than rising. At the deployed budget of four worlds, PIMC
-agrees with its own 32-world opinion on only 53.6 % of decisions.
+Actions are substantially more stable on the corrected corpus: 16 and 32 worlds agree on
+98 of 112 positions, and the 32-world action agrees with the 4-world action on 85 of 112.
+Mean Spearman correlations across adjacent budgets are 0.833, 0.819, 0.791, and 0.854.
+This does not establish correctness, but it does not support selecting Path C merely because
+the deployed four-world action is noisy.
 
-Read alone, that is Path C evidence. The selection-gap series is why it is not:
+The selection-gap series remains descriptive:
 
 | Budget | Mean gap between best and second-best | Tie rate | Ties broken by canonical order |
 | --- | --- | --- | --- |
-| 2 | 0.0343 | 0.679 | 19/28 |
-| 4 | 0.0316 | 0.643 | 18/28 |
-| 8 | 0.0244 | 0.500 | 14/28 |
-| 16 | 0.0197 | 0.571 | 16/28 |
-| 32 | **0.0123** | 0.429 | 12/28 |
+| 2 | 0.0563 | 0.875 | 98/112 |
+| 4 | 0.0391 | 0.857 | 96/112 |
+| 8 | 0.0379 | 0.750 | 84/112 |
+| 16 | 0.0310 | 0.714 | 80/112 |
+| 32 | 0.0251 | 0.679 | 76/112 |
 
-More worlds make the margin between the best and second-best action **smaller**, not
-larger. On a utility scale spanning [-1, 1], the best action at 32 worlds beats the
-runner-up by a mean of 0.012, and 42.9 % of decisions remain exact ties resolved by
-canonical card order. At the deployed four worlds, **64.3 % of decisions are settled by
-tie-break rather than by value.**
+The selection gap still shrinks with budget, and tie-breaking remains common: 67.9 % of
+32-world decisions are ties resolved by canonical order, compared with 85.7 % at four
+worlds. That is a weak-value-signal observation, not evidence that the reference is optimal
+or that PIMC is correct at 32 worlds.
 
-That is the opposite of what a sample-size problem looks like. If the instability were
-Monte Carlo error around a real difference, more worlds would resolve the difference and
-the gap would grow. Instead the estimate sharpens and reveals that PIMC's root utility
-barely distinguishes the actions at all. On this reading the instability is a *symptom* of
-a weak value signal rather than a shortage of samples - which, if it survives
-re-measurement, is a stronger claim against Path C than unconverged actions alone would be.
-
-**Why it is only provisional.** Twenty-eight positions drawn from one to three hands cannot
-establish a gap series. The tie rate is also not monotone (0.679, 0.643, 0.500, 0.571,
-0.429), which is what a small clustered sample looks like. Re-running `converge` on the
-corrected corpus is the single cheapest outstanding item in this phase.
+The corrected run is large enough to replace the defective-corpus result, but the gap and
+tie-rate series remain descriptive. Convergence is not strength, and this instrument does
+not justify tuning the world count before changing the algorithm family.
 
 Two observations from the same run are robust to the corpus defect, because they are
 properties of the sampler and the cost model rather than of position selection:
 
-- The mean duplicate-world fraction is **0.000 at every budget**, so world diversity is not
-  the constraint and the uniform-feasible sampler is doing its job.
-- Cost is almost exactly linear in the budget - 2.30 s, 4.57 s, 9.15 s, 18.65 s, 37.14 s
+- Mean duplicate-world fraction rises from 0.004 at 2 worlds to 0.059 at 32 worlds, so
+  duplicate sampling is measurable but remains a secondary diagnostic rather than a
+  strength result.
+- Cost is almost exactly linear in the budget - 1.00 s, 2.00 s, 3.99 s, 8.01 s, 15.95 s
   per decision at 2, 4, 8, 16, 32 worlds - so buying convergence by budget is
   proportionally expensive.
 
 ## Rollout mismatch: the continuation assumption fails almost immediately
 
-Twenty corpus positions, each replayed for a 12-action horizon under three partner
+Thirty-two corpus positions, each replayed for a 12-action horizon under three partner
 designs. Labelled a **perfect-information diagnostic**: it uses the restricted-truth
 channel to replay actual continuations and is never used to select a deployable action.
 
 | Partner design | Diverged | Mean matched fraction | Mean first divergence index | First divergence in root team |
 | --- | --- | --- | --- | --- |
-| `reference_partner` (control) | 0/20 | **1.000** | – | 0/20 |
-| `pimc_partner` | 19/20 | 0.158 | 1.37 | 19/20 |
-| `all_pimc` | 19/20 | 0.083 | 0.42 | 16/20 |
+| `reference_partner` (control) | 0/32 | **1.000** | – | 0/32 |
+| `pimc_partner` | 29/32 | 0.172 | 1.03 | 29/32 |
+| `all_pimc` | 29/32 | 0.120 | 0.34 | 24/32 |
 
 The control behaves exactly as it must: when every seat really does play
 `partner_aware_v1`, the assumed continuation is the realized one, matching perfectly in
-all twenty positions. That is the assumption itself, so a perfect match validates the
+all thirty-two positions. That is the assumption itself, so a perfect match validates the
 instrument rather than saying anything about PIMC.
 
 The other two rows are the finding. As soon as PIMC's partner is another PIMC instance -
 the situation in the homogeneous team Phase 5C evaluated - the assumed continuation
-diverges in 19 of 20 positions, after fewer than half an action on average in the
-`all_pimc` design, and the first divergence falls inside the root's own team in 35 of the
-38 diverging cases. PIMC's rollout is modelling a partner that is not there.
+diverges in 29 of 32 positions, after fewer than half an action on average in the
+`all_pimc` design, and the first divergence falls inside the root's own team in 53 of the
+58 diverging cases. PIMC's rollout is modelling a partner that is not there.
 
 Per the pre-registered limits this is divergence, not causation: the counterfactual - the
 same decision under a correct continuation model - is not available here.
 
 ## Corpus composition, and where it fell short of target
 
-| | Decomposition corpus (corrected) | Convergence corpus (defective) |
+| | Decomposition corpus | Convergence corpus |
 | --- | --- | --- |
-| `corpus_id` | `corpus:sha256:73dd4bc6…` | `corpus:sha256:1798b5d6…` |
-| Showing positions / distinct hands | 128 / 32 | 20 / ~2 |
-| Trick-play positions / distinct hands | 256 / 64 | 24 / **1** |
-| Stage (early / middle / late) | 96 / 102 / 58 | 16 / 8 / 0 |
-| Score states (down / table / up) | 150 / 101 / 133 | 6 / 32 / 6 |
+| `corpus_id` | `corpus:sha256:3d69a141…` | `corpus:sha256:4486e587…` |
+| Total positions | 768 | 112 |
+| Showing / trick-play positions | 256 / 512 | 48 / 64 |
+| Stage (early / middle / late) | 189 / 204 / 119 | not reported |
+| Score states (down / table / up) | 150 / 101 / 133 | not reported |
 
-The phase target was 256-512 showing and 512-1024 trick-play positions. **That was not
-reached, and the shortfall is a compute limit rather than a design choice.** A full-size
-build (256 showing / 512 trick-play) projected 31 hours on this machine and was abandoned;
-labelling each position requires a PIMC decision at the deployed budget on top of the
-reference deal walk that generates it. The achieved corpus is half the lower bound on
-showing positions and half on trick-play.
+The phase's original 256-512 showing and 512-1024 trick-play target was reached at its
+lower bound in the corrected full decomposition run. The convergence run deliberately uses
+a smaller, balanced subset because its nested-budget evaluations are the expensive stage.
 
 Both corpora are built from **reference** play, so no comparison here is conditioned on a
 trajectory PIMC itself reached.
@@ -311,24 +297,24 @@ The deployable PIMC path takes no such parameter.
 
 The consequence for inference: **read the distinct-hand count, not the position count, as
 the effective sample size.** A hand's four showing decisions share the same cards, and a
-hand's kept card decisions share the same deal, so 128 showing positions carry closer to
-32 hands' worth of independent information. Strata below roughly 20 positions are
-descriptive only.
+hand's kept card decisions share the same deal. The compact full-run report records labels,
+not a hand-count estimator, so strata below roughly 20 positions remain descriptive only.
 
 ## Cost, and why this phase stopped where it did
 
-All figures measured on an 8-core laptop shared with foreground work.
+The corrected large runs were executed sequentially by stage on the migrated M3 Max; the
+following per-decision timings come from the corrected convergence artifact.
 
 | Quantity | Measured |
 | --- | --- |
 | Play-only deal, two gated seats | 24.5 s |
-| PIMC decision at 2 / 4 / 8 / 16 / 32 worlds | 2.30 / 4.57 / 9.15 / 18.65 / 37.14 s |
+| PIMC decision at 2 / 4 / 8 / 16 / 32 worlds | 1.00 / 2.00 / 3.99 / 8.01 / 15.95 s |
 | Complete-match leg, play-only | mean 30.5 deals, median 28, max 71 |
 | Complete-match leg, show-only | mean 28.2 deals, median 22.5, max 66 |
 | Actions per complete match | 1670 (play-only), 1527 (show-only) |
 | Resets per complete match | 9.8 (play-only), 9.2 (show-only) |
 | One 12-pair homogeneous comparison | ~2 h wall on 5 workers |
-| Corrected 384-position corpus + decomposition | ~30 min |
+| Corrected 768-position corpus + decomposition | completed on the M3 Max |
 
 Three cost facts dominated the phase and are worth recording for whoever runs it next.
 
@@ -348,26 +334,24 @@ active worker while three sat at 0 % CPU, having exited; `d-compare` on the same
 five workers at 97 %. The `chunksize=1` dispatch is correct, so this is worth checking with
 `top` shortly after any long launch rather than assumed.
 
-## What did not run
+## What remains outside the requested completion set
 
-Named rather than omitted. None of these were skipped for methodological reasons; all four
-were cut when the phase was wrapped up to move to a faster machine.
+Named rather than omitted. The required heterogeneous-full-PIMC, corrected convergence, and
+full decomposition runs are now complete. These additional instruments were not run:
 
 | Planned | Status | What it would decide |
 | --- | --- | --- |
-| Heterogeneous full PIMC, seat-balanced | **not run** | Path B: whether one PIMC seat with a reference partner is competitive |
 | Heterogeneous play-only, seat-balanced | **not run** | Whether the mismatch effect survives when only cards are searched |
 | Full PIMC on the `phase5d_a_match_v1` bank | **not run** | The like-for-like comparator that would make the play-only and show-only numbers a true series |
-| Convergence on the corrected corpus | **not run** | Whether the vanishing-selection-gap mechanism is real |
 | Deal-level screens | not run | Cheap secondary confirmation only |
 
-The heterogeneous experiment is the important one. It is the only instrument in this phase
-that tests partnership mismatch *behaviourally*, and without it the choice between Path B and
-Path D cannot be closed.
+The two unrun match instruments would refine the decomposition but are not needed for the
+Path B versus Path D decision made by the completed seat-balanced full-PIMC comparison.
 
-## The decision: A is eliminated, B versus D is open
+## The decision: Path D selected
 
-**Selected path: unresolved between B and D, with A eliminated as the primary cause.**
+**Selected path: D - structural PIMC failure, subject to the recorded sample and censoring
+limits.**
 
 What the evidence supports:
 
@@ -377,30 +361,28 @@ What the evidence supports:
   [0.059, 0.441] that excludes parity. Both phases lose separately - show-only 0.333,
   play-only 0.250 - so neither is the single cause. Freezing heuristic showing and searching
   only cards, which is what Path A would license, is not supported.
-- **Path C is not supported on this evidence**, and per the pre-registered rule would not be
-  selected merely because four worlds is unconverged - which Phase 5C already established.
-  The stronger anti-C argument here, the shrinking selection gap, rests on the defective
-  corpus and is provisional.
-- **Path B has strong mechanistic support and no behavioural test.** The rollout-mismatch
-  diagnostic is unambiguous on the corrected corpus: with a reference partner the assumed
-  continuation matches perfectly in 20 of 20 positions, and with a PIMC partner it diverges
-  in 19 of 20 within the first action or two, inside the root's own team in 35 of 38 cases.
-  PIMC is valuing its actions against a partner that is not there. But divergence is not
-  causation, and the seat-balanced heterogeneous comparison that would convert this into a
-  strength claim did not run.
-- **Path D remains open.** Play-only is still clearly negative with the reference choosing
-  every contract, which is what structural failure looks like. Distinguishing it from B needs
-  the heterogeneous result.
+- **Path C is not supported on the corrected convergence run.** Adjacent agreement rises to
+  0.875 at 16 → 32 worlds, and the 16- and 32-world actions agree on 98 of 112 positions.
+  The convergence instrument is not a strength evaluation, but it does not license spending
+  the next phase merely increasing the world count.
+- **Path B is not supported behaviorally.** With one PIMC seat and a reference partner, the
+  two seat arrangements reached p_win 0.333 and 0.375. One had 9 complete pairs and 3
+  censored pairs; the other had 12 complete pairs and no censoring. Both remained below
+  parity, so a reference partner did not recover competitiveness. This result is small and
+  the cap deviation remains explicit; it is evidence against partnership mismatch as the
+  primary explanation, not a promotion claim.
+- **Path D is selected.** Play-only remains negative with the reference choosing every
+  contract, the heterogeneous full-PIMC comparison remains negative with a reference partner,
+  and corrected-budget actions stabilize without recovering strength. Freeze PIMC as a
+  negative baseline and move to observation-safe information-set search.
 
-**Is ISMCTS justified next? Not yet.** One experiment separates the two live hypotheses, and
-it is cheaper than implementing a new search family. If a single PIMC seat with a reference
-partner is competitive, the defect is partner modelling and the next step is an explicit
-partner-action model or multi-observer search - not a deeper tree over the same wrong
-continuation assumption. If it still loses, the failure is structural, PIMC freezes as a
-negative baseline, and observation-safe information-set search is justified.
+**Is ISMCTS justified next? Yes, as a new development phase.** It must be observation-safe,
+deterministic, and compared first against the frozen negative baseline and the development
+reference. It must not alter the Phase 5C configuration identity, introduce recursive PIMC,
+or open the promotion-sealed bank.
 
-Run the heterogeneous comparison first. The commands are in
-`docs/search/phase5d_a_handoff.md`.
+The next phase should begin with a concise design and acceptance specification for the
+information-set searcher before implementation.
 
 ## Development-bank status
 

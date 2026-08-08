@@ -164,6 +164,7 @@ def build_parser() -> argparse.ArgumentParser:
     corpus_cmd.add_argument("--showing", type=int, default=256)
     corpus_cmd.add_argument("--trick-play", type=int, default=512)
     corpus_cmd.add_argument("--streams", type=int, default=96)
+    corpus_cmd.add_argument("--workers", type=int)
     corpus_cmd.add_argument("--output", required=True)
 
     converge = subparsers.add_parser(
@@ -177,15 +178,29 @@ def build_parser() -> argparse.ArgumentParser:
     converge.add_argument(
         "--budgets", default="2,4,8,16,32", help="ascending, comma separated"
     )
+    converge.add_argument(
+        "--workers",
+        type=int,
+        help="worker processes; affects wall-clock time only, never a result",
+    )
+    converge.add_argument(
+        "--corpus",
+        help="reload a corpus artifact produced by the corpus subcommand",
+    )
     converge.add_argument("--output", required=True)
 
     decompose = subparsers.add_parser(
         "decompose", help="showing, card-play, and rollout-mismatch decomposition"
     )
+    decompose.add_argument(
+        "--corpus",
+        help="reload a corpus artifact produced by the corpus subcommand",
+    )
     decompose.add_argument("--showing", type=int, default=192)
     decompose.add_argument("--trick-play", type=int, default=384)
     decompose.add_argument("--streams", type=int, default=96)
     decompose.add_argument("--mismatch-positions", type=int, default=24)
+    decompose.add_argument("--workers", type=int)
     decompose.add_argument("--output", required=True)
 
     d_screen = subparsers.add_parser(
@@ -496,12 +511,19 @@ def _d_heterogeneous(args) -> int:
 
 
 def _build_corpus(args):
+    from .corpus import DecisionCorpus
+
+    corpus_path = getattr(args, "corpus", None)
+    if corpus_path:
+        return DecisionCorpus.from_data(strict_json_load_file(corpus_path))
+
     from .corpus import build_corpus
 
     return build_corpus(
         showing_target=args.showing,
         trick_play_target=args.trick_play,
         streams=args.streams,
+        workers=getattr(args, "workers", None),
         progress=_progress(time.perf_counter(), "deal"),
     )
 
@@ -533,6 +555,7 @@ def _converge(args) -> int:
         budgets=budgets,
         showing_limit=args.showing_limit,
         trick_play_limit=args.trick_play_limit,
+        workers=args.workers,
         progress=_progress(time.perf_counter(), "position"),
     )
     report["corpus"] = corpus.to_data()
@@ -563,15 +586,16 @@ def _decompose(args) -> int:
 
     corpus = _build_corpus(args)
     report = {
-        "card_play": card_play_decomposition(corpus),
+        "card_play": card_play_decomposition(corpus, workers=args.workers),
         "corpus": corpus.to_data(),
         "rollout_mismatch": rollout_mismatch(
             corpus,
             positions_limit=args.mismatch_positions,
+            workers=args.workers,
             progress=_progress(time.perf_counter(), "position"),
         ),
         "schema_version": "tuppi.search.phase5d_a_decomposition.v1",
-        "showing": showing_decomposition(corpus),
+        "showing": showing_decomposition(corpus, workers=args.workers),
     }
     atomic_write_canonical_json(args.output, report)
     show = report["showing"]

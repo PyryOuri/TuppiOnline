@@ -25,11 +25,17 @@ REQUIRED_DOCS = (
     "determinism.md",
     "exact_tail_integration.md",
     "phase5c_evaluation.md",
+    "phase5d_a_handoff.md",
+    "phase5d_a_hypotheses.md",
+    "phase5d_a_results.md",
     "rollout_security.md",
     "uniform_feasible_pimc.md",
     "utilities.md",
 )
 REQUIRED_SCHEMAS = (
+    "phase5d_a_convergence.schema.json",
+    "phase5d_a_decomposition.schema.json",
+    "phase5d_a_report.schema.json",
     "phase5c_evaluation.schema.json",
     "pimc_configuration.schema.json",
     "pimc_decision_diagnostics.schema.json",
