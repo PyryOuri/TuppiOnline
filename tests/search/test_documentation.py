@@ -33,6 +33,11 @@ REQUIRED_DOCS = (
     "phase5d_c_profiling.md",
     "phase5d_c_optimization.md",
     "phase5d_c_results.md",
+    "multi_observer_search.md",
+    "redeterminization.md",
+    "observer_privacy.md",
+    "tiny_multi_observer_oracle.md",
+    "phase5e_results.md",
     "root_information_uct.md",
     "tiny_exact_information_reference.md",
     "rollout_security.md",
@@ -53,6 +58,10 @@ REQUIRED_SCHEMAS = (
     "root_info_uct_diagnostics.schema.json",
     "tiny_exact_information_reference.schema.json",
     "phase5d_c_results.schema.json",
+    "multi_observer_configuration.schema.json",
+    "multi_observer_diagnostics.schema.json",
+    "phase5e_evaluation.schema.json",
+    "tiny_multi_observer_reference.schema.json",
 )
 REQUIRED_REPORTS = (
     "phase5c_evaluation.json",

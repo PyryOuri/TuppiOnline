@@ -80,4 +80,4 @@ def test_phase5d_b_package_version_is_incremented():
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     # Phase 5D-C is a separately versioned optimization release; this guard
     # ensures the Phase 5D-B version is not silently retained.
-    assert 'version = "0.7.0"' in pyproject
+    assert 'version = "0.8.0"' in pyproject

@@ -587,6 +587,20 @@ in the three Phase 5D-C documents. Bulk profiles, conformance records, and the
 unsealed 32-pair strength evaluation stay under
 `/Users/pyryouri/Developer/TuppiRuns/phase5d-c`.
 
+## Phase 5E: multi-observer re-determinizing search
+
+Phase 5E adds the narrow `redeterminizing_ismcts_v1` baseline. It keeps one
+fresh tree per real decision, namespaces information nodes by physical seat,
+and re-determinizes non-root tree decisions from the acting seat's formal
+observation using the exact Phase 5B sampler. The parent root-consistent world
+is never replaced by an observer-local world; only a legal selected card is
+mapped back to the parent. Showing remains frozen `partner_aware_v1`, exact-tail
+is disabled, and fallback rollouts remain observation-only `partner_aware_v1`.
+The specification and privacy contract are in `docs/search/multi_observer_search.md`,
+`docs/search/redeterminization.md`, and `docs/search/observer_privacy.md`.
+Phase 5E development output stays under the permitted local
+`/Users/pyryouri/Developer/TuppiRuns/phase5e` directory.
+
 ## Legacy headless execution
 
 Generate and play one fully materialized deal, with separate seeds for deal

@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tuppi.research/schemas/search/multi_observer_diagnostics.schema.json",
+  "title": "Phase 5E multi-observer search diagnostics",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["algorithm_id", "configuration", "cross_world_node_merge_count", "decision_seed", "failures", "feasible_world_count", "final_action_rule_id", "fallback_rollout_count", "information_set_node_count", "maximum_tree_depth_in_decisions", "node_revisit_count_by_seat", "normalization_id", "observer_redeterminization_count", "redeterminizations_by_seat", "per_seat_information_node_count", "phase", "root_action_availability", "root_action_mean_utilities", "root_action_value_ranking", "root_action_visit_counts", "root_information_state_id", "root_sampled_world_count", "root_seat", "root_team", "rollout_policy_ids", "schema_version", "selected_action", "selected_action_value_gap", "selected_action_visit_share", "showing_delegated", "simulation_budget", "simulations_completed", "utility_id"],
+  "properties": {
+    "algorithm_id": {"const": "redeterminizing_ismcts_v1"},
+    "configuration": {"$ref": "multi_observer_configuration.schema.json"},
+    "cross_world_node_merge_count": {"type": "integer", "minimum": 0},
+    "decision_seed": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "failures": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "feasible_world_count": {"type": "integer", "minimum": 0},
+    "final_action_rule_id": {"const": "highest_visits_then_mean_then_legal_order_v1"},
+    "fallback_rollout_count": {"type": "integer", "minimum": 0},
+    "information_set_node_count": {"type": "integer", "minimum": 0},
+    "maximum_tree_depth_in_decisions": {"type": "integer", "minimum": 0},
+    "node_revisit_count_by_seat": {"type": "array", "prefixItems": [{"type": "integer", "minimum": 0}, {"type": "integer", "minimum": 0}, {"type": "integer", "minimum": 0}, {"type": "integer", "minimum": 0}], "items": false},
+    "normalization_id": {"const": "identity_bounded_minus_one_to_one_v1"},
+    "observer_redeterminization_count": {"type": "integer", "minimum": 0},
+    "operational_timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision_seconds", "note"],
+      "properties": {
+        "decision_seconds": {"type": "number", "minimum": 0},
+        "note": {"type": "string"}
+      }
+    },
+    "redeterminizations_by_seat": {"type": "array", "prefixItems": [{"type": "integer", "minimum": 0}, {"type": "integer", "minimum": 0}, {"type": "integer", "minimum": 0}, {"type": "integer", "minimum": 0}], "items": false},
+    "per_seat_information_node_count": {"type": "array", "prefixItems": [{"type": "integer", "minimum": 0}, {"type": "integer", "minimum": 0}, {"type": "integer", "minimum": 0}, {"type": "integer", "minimum": 0}], "items": false},
+    "phase": {"enum": ["SHOWING", "TRICK_PLAY"]},
+    "root_action_availability": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "root_action_mean_utilities": {"type": "object", "additionalProperties": {"type": "number", "minimum": -1, "maximum": 1}},
+    "root_action_value_ranking": {"type": "array", "items": {"type": "string"}},
+    "root_action_visit_counts": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "root_information_state_id": {"type": "string", "pattern": "^rootinfo:sha256:[0-9a-f]{64}$"},
+    "root_sampled_world_count": {"type": "integer", "minimum": 0},
+    "root_seat": {"type": "integer", "minimum": 0, "maximum": 3},
+    "root_team": {"type": "integer", "enum": [0, 1]},
+    "rollout_policy_ids": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "string"}},
+    "schema_version": {"const": "tuppi.search.redeterminizing_ismcts_diagnostics.v1"},
+    "selected_action": {"type": "string"},
+    "selected_action_value_gap": {"type": "number", "minimum": -2, "maximum": 2},
+    "selected_action_visit_share": {"type": "number", "minimum": 0, "maximum": 1},
+    "showing_delegated": {"type": "boolean"},
+    "simulation_budget": {"type": "integer", "minimum": 1},
+    "simulations_completed": {"type": "integer", "minimum": 0},
+    "utility_id": {"type": "string"}
+  }
+}

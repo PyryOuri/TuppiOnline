@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tuppi-research"
-version = "0.7.0"
-description = "Deterministic Tuppi rules, engine, deal and complete-match evaluation, baseline agents, exact inference and solving, uniform-feasible PIMC and optimized root information-set UCT search, and legacy archive"
+version = "0.8.0"
+description = "Deterministic Tuppi rules, engine, deal and complete-match evaluation, baseline agents, exact inference and solving, uniform-feasible PIMC, root information-set UCT, multi-observer re-determinizing search, and legacy archive"
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
 dependencies = []
@@ -203,6 +203,10 @@ where = ["src"]
   "schemas/search/tiny_exact_information_reference.schema.json",
   "schemas/search/phase5d_b_evaluation.schema.json",
   "schemas/search/phase5d_c_results.schema.json",
+  "schemas/search/multi_observer_configuration.schema.json",
+  "schemas/search/multi_observer_diagnostics.schema.json",
+  "schemas/search/phase5e_evaluation.schema.json",
+  "schemas/search/tiny_multi_observer_reference.schema.json",
 ]
 "share/tuppi-search/docs" = [
   "docs/search/architecture.md",
@@ -222,6 +226,11 @@ where = ["src"]
   "docs/search/phase5d_c_profiling.md",
   "docs/search/phase5d_c_optimization.md",
   "docs/search/phase5d_c_results.md",
+  "docs/search/multi_observer_search.md",
+  "docs/search/redeterminization.md",
+  "docs/search/observer_privacy.md",
+  "docs/search/tiny_multi_observer_oracle.md",
+  "docs/search/phase5e_results.md",
 ]
 "share/tuppi-search/examples" = [
   "examples/search/README.md",

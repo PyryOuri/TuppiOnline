@@ -179,6 +179,12 @@ def test_every_subcommand_is_registered():
         "b-explain",
         "b-heterogeneous",
         "b-stability",
+        "e-agents",
+        "e-behavior",
+        "e-compare",
+        "e-explain",
+        "e-heterogeneous",
+        "e-stability",
     }
 
 

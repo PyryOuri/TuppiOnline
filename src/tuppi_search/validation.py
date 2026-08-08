@@ -80,12 +80,13 @@ EXCLUDED_TECHNIQUE_PATTERNS: tuple[tuple[str, str], ...] = (
 )
 
 #: Modules whose prose legitimately *names* a forbidden thing in order to forbid
-#: it. This module holds the patterns themselves and the package docstring lists
+#: it, or whose versioned algorithm name necessarily contains the family name.
+#: This module holds the patterns themselves and the package docstring lists
 #: what Phase 5C excludes, so both would otherwise trip their own checks. The
-#: exemption is narrow and explicit rather than hidden by fragmenting the tokens,
-#: which would make the rules invisible to a reader grepping for them.
+#: exemptions are narrow and explicit rather than hidden by fragmenting the
+#: tokens, which would make the rules invisible to a reader grepping for them.
 DOCUMENTED_EXCLUSION_MODULES: frozenset[str] = frozenset(
-    {"validation.py", "__init__.py"}
+    {"validation.py", "__init__.py", "multi_observer.py"}
 )
 
 

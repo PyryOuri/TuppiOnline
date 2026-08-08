@@ -64,6 +64,18 @@ class RootInfoUctInvariantError(RootInfoUctDecisionError):
     """The information-set tree violated a correctness invariant."""
 
 
+class MultiObserverDecisionError(SearchError):
+    """A multi-observer re-determinizing search decision failed."""
+
+    def __init__(self, message: str, *, failure_kind: str | None = None) -> None:
+        super().__init__(message)
+        self.failure_kind = failure_kind
+
+
+class MultiObserverInvariantError(MultiObserverDecisionError):
+    """The multi-observer tree or privacy contract was violated."""
+
+
 class SearchDiagnosticsError(SearchError):
     """A diagnostics record is malformed or would leak hidden state."""
 

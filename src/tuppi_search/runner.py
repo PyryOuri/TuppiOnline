@@ -45,6 +45,12 @@ from .phase5d_b_evaluation import (
     run_phase5d_b_match_comparison,
     run_root_info_uct_stability,
 )
+from .phase5e_evaluation import (
+    run_phase5e_heterogeneous_match_comparison,
+    run_phase5e_match_comparison,
+    run_phase5e_behavior_comparison,
+    run_multi_observer_stability,
+)
 from .registry import (
     PRIMARY_PROFILE_KEY,
     REGISTERED_CONFIGURATIONS,
@@ -56,6 +62,11 @@ from .root_info_uct_registry import (
     ROOT_INFO_UCT_PRIMARY_PROFILE_KEY,
     registry_snapshot as root_info_uct_registry_snapshot,
     build_agent as build_root_info_uct_agent,
+)
+from .multi_observer_registry import (
+    MULTI_OBSERVER_PRIMARY_PROFILE_KEY,
+    build_agent as build_multi_observer_agent,
+    registry_snapshot as multi_observer_registry_snapshot,
 )
 from .utilities import UtilityId, utility_catalogue
 from .validation import boundary_report
@@ -198,6 +209,58 @@ def build_parser() -> argparse.ArgumentParser:
     b_behavior.add_argument("--showing-limit", type=int)
     b_behavior.add_argument("--trick-play-limit", type=int)
     b_behavior.add_argument("--output", required=True)
+
+    e_agents = subparsers.add_parser(
+        "e-agents", help="list registered Phase 5E multi-observer agents"
+    )
+    e_agents.add_argument("--output")
+
+    e_explain = subparsers.add_parser(
+        "e-explain", help="explain one Phase 5E multi-observer decision"
+    )
+    e_explain.add_argument("--deal-file", required=True)
+    e_explain.add_argument("--profile", default=MULTI_OBSERVER_PRIMARY_PROFILE_KEY)
+    e_explain.add_argument("--seat", type=int, required=True)
+    e_explain.add_argument("--tricks", type=int, default=0)
+    e_explain.add_argument("--output")
+
+    e_compare = subparsers.add_parser(
+        "e-compare", help="Phase 5E complete-match development comparison"
+    )
+    e_compare.add_argument("--candidate", default=MULTI_OBSERVER_PRIMARY_PROFILE_KEY)
+    e_compare.add_argument("--opponent", default=DEVELOPMENT_REFERENCE_POLICY)
+    e_compare.add_argument("--pairs", type=int, required=True)
+    e_compare.add_argument("--safety-cap", type=int, default=704)
+    e_compare.add_argument("--workers", type=int)
+    e_compare.add_argument("--output", required=True)
+
+    e_hetero = subparsers.add_parser(
+        "e-heterogeneous", help="Phase 5E seat-balanced heterogeneous comparison"
+    )
+    e_hetero.add_argument("--search", default=MULTI_OBSERVER_PRIMARY_PROFILE_KEY)
+    e_hetero.add_argument("--partner", default=DEVELOPMENT_REFERENCE_POLICY)
+    e_hetero.add_argument("--opponent", default=DEVELOPMENT_REFERENCE_POLICY)
+    e_hetero.add_argument("--pairs", type=int, required=True)
+    e_hetero.add_argument("--safety-cap", type=int, default=704)
+    e_hetero.add_argument("--workers", type=int)
+    e_hetero.add_argument("--output", required=True)
+
+    e_stability = subparsers.add_parser(
+        "e-stability", help="nested-budget Phase 5E action stability"
+    )
+    e_stability.add_argument("--corpus", required=True)
+    e_stability.add_argument("--budgets", default="2,8,32")
+    e_stability.add_argument("--showing-limit", type=int)
+    e_stability.add_argument("--trick-play-limit", type=int)
+    e_stability.add_argument("--output", required=True)
+
+    e_behavior = subparsers.add_parser(
+        "e-behavior", help="Phase 5E/reference/root-UCT behavior comparison"
+    )
+    e_behavior.add_argument("--corpus", required=True)
+    e_behavior.add_argument("--showing-limit", type=int)
+    e_behavior.add_argument("--trick-play-limit", type=int)
+    e_behavior.add_argument("--output", required=True)
 
     d_compare = subparsers.add_parser(
         "d-compare",
@@ -645,6 +708,119 @@ def _b_behavior(args) -> int:
     return 0
 
 
+def _e_agents(args) -> int:
+    snapshot = multi_observer_registry_snapshot()
+    _write(args.output, snapshot)
+    if not args.output:
+        for entry in snapshot["agents"]:
+            print(f"{entry['profile_key']:44s} {entry['agent_id']}")
+        print(f"primary: {snapshot['primary_profile_key']}")
+    return 0
+
+
+def _e_explain(args) -> int:
+    state = _advance(args.deal_file, args.tricks)
+    if args.seat not in range(4):
+        raise SearchError("--seat must be an integer in 0..3")
+    observation = observation_for(state, args.seat)
+    if observation.current_actor != args.seat:
+        raise SearchError(
+            f"seat {args.seat} is not the acting seat at this position; the actor "
+            f"is {observation.current_actor}"
+        )
+    started = time.perf_counter()
+    payload = build_multi_observer_agent(args.profile, seat=args.seat).explain(observation).to_data()
+    payload["operational_timing"] = {
+        "decision_seconds": round(time.perf_counter() - started, 6),
+        "note": "operational only; no decision depends on timing",
+    }
+    _write(args.output, payload)
+    if not args.output:
+        print(
+            f"seat {payload['root_seat']} team {payload['root_team']} "
+            f"phase {payload['phase']} selected {payload['selected_action']}"
+        )
+    return 0
+
+
+def _e_compare(args) -> int:
+    report = run_phase5e_match_comparison(
+        candidate_profile_key=args.candidate,
+        opponent_profile_key=args.opponent,
+        pairs=args.pairs,
+        safety_cap=args.safety_cap,
+        workers=args.workers,
+        progress=_progress(time.perf_counter(), "pair"),
+    )
+    atomic_write_canonical_json(args.output, report)
+    inference = report["primary_match_inference"]
+    print(
+        f"{report['name']}: pairs={inference['complete_pair_count']} "
+        f"p_win={inference['candidate_match_win_probability']} "
+        f"outcomes={inference['pair_outcomes']}"
+    )
+    print(args.output)
+    return 0
+
+
+def _e_heterogeneous(args) -> int:
+    report = run_phase5e_heterogeneous_match_comparison(
+        search_profile_key=args.search,
+        partner_profile_key=args.partner,
+        opponent_profile_key=args.opponent,
+        pairs=args.pairs,
+        safety_cap=args.safety_cap,
+        workers=args.workers,
+        progress=_progress(time.perf_counter(), "pair"),
+    )
+    atomic_write_canonical_json(args.output, report)
+    for entry in report["arrangements"]:
+        inference = entry["primary_match_inference"]
+        print(
+            f"arrangement {entry['arrangement']}: "
+            f"p_win={inference['candidate_match_win_probability']} "
+            f"outcomes={inference['pair_outcomes']}"
+        )
+    print(args.output)
+    return 0
+
+
+def _e_stability(args) -> int:
+    from .corpus import DecisionCorpus
+
+    corpus = DecisionCorpus.from_data(strict_json_load_file(args.corpus))
+    budgets = tuple(int(part) for part in args.budgets.split(","))
+    report = run_multi_observer_stability(
+        corpus,
+        budgets=budgets,
+        showing_limit=args.showing_limit,
+        trick_play_limit=args.trick_play_limit,
+    )
+    atomic_write_canonical_json(args.output, report)
+    for entry in report["adjacent_action_agreement"]:
+        print(
+            f"{entry['from_budget']:3d} -> {entry['to_budget']:3d}: "
+            f"agreement {entry['agreement_rate']:.3f}"
+        )
+    print(args.output)
+    return 0
+
+
+def _e_behavior(args) -> int:
+    from .corpus import DecisionCorpus
+
+    corpus = DecisionCorpus.from_data(strict_json_load_file(args.corpus))
+    report = run_phase5e_behavior_comparison(
+        corpus,
+        showing_limit=args.showing_limit,
+        trick_play_limit=args.trick_play_limit,
+    )
+    atomic_write_canonical_json(args.output, report)
+    print(report["categories"])
+    print(args.output)
+    return 0
+
+
 def _d_compare(args) -> int:
     report = run_phase5d_a_match_comparison(
         candidate_profile_key=args.candidate,
@@ -853,6 +1029,12 @@ def main(argv: list[str] | None = None) -> int:
         "d-heterogeneous": _d_heterogeneous,
         "d-screen": _d_screen,
         "diagnostic-agents": _diagnostic_agents,
+        "e-agents": _e_agents,
+        "e-behavior": _e_behavior,
+        "e-compare": _e_compare,
+        "e-explain": _e_explain,
+        "e-heterogeneous": _e_heterogeneous,
+        "e-stability": _e_stability,
         "heterogeneous": _heterogeneous,
         "showing-sensitivity": _showing_sensitivity,
         "stability": _stability,

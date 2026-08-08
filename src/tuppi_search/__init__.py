@@ -111,6 +111,32 @@ from .root_info_uct_registry import (
     root_info_uct_specifications,
     specification_for as root_info_uct_specification_for,
 )
+from .multi_observer import (
+    MULTI_OBSERVER_ALGORITHM_ID,
+    MULTI_OBSERVER_AVAILABILITY_RULE_ID,
+    MULTI_OBSERVER_CONFIGURATION_SCHEMA_VERSION,
+    MULTI_OBSERVER_DIAGNOSTICS_SCHEMA_VERSION,
+    MULTI_OBSERVER_EXPANSION_RULE_ID,
+    MULTI_OBSERVER_FINAL_ACTION_RULE_ID,
+    MULTI_OBSERVER_PROTOCOL_VERSION,
+    MULTI_OBSERVER_REDETERMINIZATION_RULE_ID,
+    MULTI_OBSERVER_SEED_PROTOCOL_VERSION,
+    MultiObserverAgent,
+    MultiObserverConfiguration,
+    MultiObserverDecision,
+    MultiObserverFailureKind,
+    MultiObserverTree,
+    construct_multi_observer_agent,
+    decide as decide_multi_observer,
+)
+from .multi_observer_registry import (
+    MULTI_OBSERVER_PRIMARY_PROFILE_KEY,
+    build_agent as build_multi_observer_profile_agent,
+    configuration_for as multi_observer_configuration_for,
+    multi_observer_specifications,
+    registry_snapshot as multi_observer_registry_snapshot,
+    specification_for as multi_observer_specification_for,
+)
 from .exact_tail import EXACT_TAIL_SCHEMA_VERSION, ExactTail, TailVerdict
 from .pimc import (
     PIMC_DECISION_SCHEMA_VERSION,
@@ -186,8 +212,8 @@ from .worlds import (
 )
 
 
-SEARCH_LAYER_VERSION = "0.7.0"
-PHASE = "phase5d-c"
+SEARCH_LAYER_VERSION = "0.8.0"
+PHASE = "phase5e"
 
 
 __all__ = (
@@ -242,6 +268,27 @@ __all__ = (
     "RootInfoUctFailureKind",
     "RootInfoUctInvariantError",
     "RootInfoUctTree",
+    "MULTI_OBSERVER_ALGORITHM_ID",
+    "MULTI_OBSERVER_AVAILABILITY_RULE_ID",
+    "MULTI_OBSERVER_CONFIGURATION_SCHEMA_VERSION",
+    "MULTI_OBSERVER_DIAGNOSTICS_SCHEMA_VERSION",
+    "MULTI_OBSERVER_EXPANSION_RULE_ID",
+    "MULTI_OBSERVER_FINAL_ACTION_RULE_ID",
+    "MULTI_OBSERVER_PROTOCOL_VERSION",
+    "MULTI_OBSERVER_REDETERMINIZATION_RULE_ID",
+    "MULTI_OBSERVER_SEED_PROTOCOL_VERSION",
+    "MultiObserverAgent",
+    "MultiObserverConfiguration",
+    "MultiObserverDecision",
+    "MultiObserverFailureKind",
+    "MultiObserverTree",
+    "build_multi_observer_profile_agent",
+    "construct_multi_observer_agent",
+    "decide_multi_observer",
+    "multi_observer_configuration_for",
+    "multi_observer_registry_snapshot",
+    "multi_observer_specification_for",
+    "multi_observer_specifications",
     "REGISTERED_CONFIGURATIONS",
     "ROLLOUT_SCHEMA_VERSION",
     "RolloutError",
