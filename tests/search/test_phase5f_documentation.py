@@ -32,7 +32,7 @@ def test_phase5f_docs_and_schema_are_present_and_substantial():
 
 
 def test_phase5f_version_and_frozen_registries():
-    assert SEARCH_LAYER_VERSION == "0.9.0"
+    assert SEARCH_LAYER_VERSION == "0.9.1"
     snapshot = registry_snapshot()
     assert snapshot["registry_digest"] == (
         "sha256:0e58bc6f3445b1b102c2253c282ae9ad95584cbea52768a4efa0acdaff8c0707"

@@ -36,7 +36,7 @@ def test_phase5d_c_result_schema_is_strict_and_valid() -> None:
 
 
 def test_phase5d_c_version_and_frozen_registry_boundary() -> None:
-    assert SEARCH_LAYER_VERSION == "0.9.0"
+    assert SEARCH_LAYER_VERSION == "0.9.1"
     snapshot = registry_snapshot()
     assert len(snapshot["agents"]) == 3
     assert snapshot["promotion_status"].startswith("No Phase 5D-B agent is promoted")

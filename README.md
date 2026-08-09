@@ -705,10 +705,11 @@ result is an expert-strength claim.
 
 Phase 5C built the PIMC baseline on those capabilities and measured it losing
 decisively to the development reference, with a named mechanism. Phase 5D-A completed
-the behavioral decomposition and selected Path D: the next phase is observation-safe
-information-set search, beginning with a concise design and determinism specification.
-The negative PIMC baseline remains frozen for comparison, and the promotion-sealed bank
-stays closed until a candidate is frozen.
+the behavioral decomposition and selected Path D; Phase 5D-B/C validated and optimized
+root information-set UCT; Phase 5E/F validated and optimized observation-safe
+multi-observer re-determinizing search. Phase 5G-A audits cross-bank evaluation
+consistency before any behavioral belief model is introduced. All search identities and
+the negative PIMC baseline remain frozen, and the promotion-sealed bank stays closed.
 
 ## Storage discipline
 
