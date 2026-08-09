@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tuppi-research"
-version = "0.9.1"
-description = "Deterministic Tuppi rules, engine, deal and complete-match evaluation, baseline agents, exact inference and solving, uniform-feasible PIMC, root information-set UCT, multi-observer re-determinizing search, and legacy archive"
+version = "0.10.0"
+description = "Deterministic Tuppi rules, engine, deal and complete-match evaluation, baseline agents, exact inference and solving, uniform-feasible PIMC, information-set search, behavioural hidden-hand belief diagnostics, and legacy archive"
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
 dependencies = []
@@ -244,6 +244,18 @@ where = ["src"]
   "reports/phase5d_a/phase5d_a_findings.json",
   "reports/phase5d_b/root_info_uct_registry.json",
 ]
+"share/tuppi-belief/schemas" = [
+  "schemas/belief/behavior_model.schema.json",
+  "schemas/belief/behavioral_belief.schema.json",
+  "schemas/belief/synthetic_manifest.schema.json",
+]
+"share/tuppi-belief/docs" = [
+  "docs/belief/behavioral_likelihood.md",
+  "docs/belief/action_history_reconstruction.md",
+  "docs/belief/policy_mixture.md",
+  "docs/belief/calibration.md",
+  "docs/belief/phase5g_b_results.md",
+]
 
 [tool.pytest.ini_options]
 testpaths = [
@@ -256,5 +268,6 @@ testpaths = [
   "tests/match",
   "tests/exact",
   "tests/search",
+  "tests/belief",
 ]
 addopts = "-ra"

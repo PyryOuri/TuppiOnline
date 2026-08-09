@@ -78,6 +78,6 @@ def test_phase5d_b_source_does_not_modify_pimc_configuration_or_recurse():
 
 def test_phase5d_b_package_version_is_incremented():
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    # Phase 5G-A is a separately versioned audit release; this guard ensures
-    # the Phase 5F version is not silently retained.
-    assert 'version = "0.9.1"' in pyproject
+    # Phase 5G-B is a separately versioned belief-layer release; this guard
+    # ensures the Phase 5G-A package version is not silently retained.
+    assert 'version = "0.10.0"' in pyproject

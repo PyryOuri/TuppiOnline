@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tuppi.belief.synthetic_manifest.schema.v1",
+  "title": "Synthetic behavioral-belief dataset manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifest_version", "splits", "generator_profiles", "labels_private"],
+  "properties": {
+    "manifest_version": {"const": "tuppi.belief.synthetic_manifest.v1"},
+    "splits": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "generator_profiles": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "labels_private": {"const": true},
+    "stream_roots": {"type": "array", "items": {"type": "string", "minLength": 1}}
+  }
+}

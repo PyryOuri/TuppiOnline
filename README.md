@@ -710,6 +710,10 @@ root information-set UCT; Phase 5E/F validated and optimized observation-safe
 multi-observer re-determinizing search. Phase 5G-A audits cross-bank evaluation
 consistency before any behavioral belief model is introduced. All search identities and
 the negative PIMC baseline remain frozen, and the promotion-sealed bank stays closed.
+Phase 5G-B adds an observation-safe, causal action-likelihood belief layer over the
+exact hard-feasible prior. It is evaluated on independent synthetic known-policy
+streams and is deliberately not connected to any search agent yet; see
+`docs/belief/phase5g_b_results.md` for the held-out decision and limitations.
 
 ## Storage discipline
 

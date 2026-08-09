@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tuppi.belief.behavioral_belief.schema.v1",
+  "title": "Privacy-safe behavioral belief summary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["candidate_count", "candidate_ids", "diagnostics", "feasible_world_count", "model_id", "normalized_weights", "owner_marginals", "schema_version"],
+  "properties": {
+    "candidate_count": {"type": "integer", "minimum": 1},
+    "candidate_ids": {"type": "array", "items": {"type": "string"}},
+    "diagnostics": {"type": "object"},
+    "feasible_world_count": {"type": "integer", "minimum": 1},
+    "model_id": {"type": "string", "minLength": 1},
+    "normalized_weights": {"type": "array", "items": {"type": "number", "minimum": 0}},
+    "owner_marginals": {"type": "object", "additionalProperties": {"type": "object"}},
+    "schema_version": {"const": "tuppi.belief.weighted_feasible_posterior.v1"}
+  }
+}
