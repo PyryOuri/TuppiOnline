@@ -70,7 +70,7 @@ def test_phase5e_registry_is_new_and_unsealed():
 
 
 def test_phase5e_version_and_algorithm_boundaries():
-    assert SEARCH_LAYER_VERSION == "0.8.0"
+    assert SEARCH_LAYER_VERSION == "0.9.0"
     text = (ROOT / "src/tuppi_search/multi_observer.py").read_text(encoding="utf-8")
     assert "PimcConfiguration" not in text
     assert "UniformFeasiblePimcAgent" not in text

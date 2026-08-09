@@ -31,6 +31,7 @@ assignments in the same order.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import lru_cache
 import hashlib
 import math
 from typing import Mapping
@@ -42,7 +43,8 @@ from .constraints import HardConstraintModel
 from .counting import (
     ClassAllocation,
     CountingPlan,
-    bounded_compositions,
+    _count_from,
+    _bounded_compositions_cached,
     multinomial,
     count_plan,
     feasible_assignment_count,
@@ -164,6 +166,11 @@ class UniformFeasibleSampler:
     schema_version: str = field(default=SAMPLER_SCHEMA_VERSION, init=False)
     algorithm_id: str = field(default=SAMPLER_ALGORITHM_ID, init=False)
     random_source_id: str = field(default=RANDOM_SOURCE_ID, init=False)
+    _class_positions: tuple[tuple[int, ...], ...] = field(
+        init=False, repr=False, compare=False
+    )
+    _counting_key: tuple = field(init=False, repr=False, compare=False)
+    _suffix_sizes: tuple[int, ...] = field(init=False, repr=False, compare=False)
 
     @classmethod
     def build(
@@ -179,7 +186,18 @@ class UniformFeasibleSampler:
             raise SamplingError(
                 "the hard constraints admit no assignment; nothing can be sampled"
             )
-        return cls(model=model, plan=plan, seed=seed, total_assignments=total)
+        sampler = cls(model=model, plan=plan, seed=seed, total_assignments=total)
+        object.__setattr__(
+            sampler,
+            "_class_positions",
+            tuple(plan.positions_for(item) for item in plan.classes),
+        )
+        object.__setattr__(sampler, "_counting_key", plan.identity_key())
+        suffix_sizes = [0] * (len(plan.classes) + 1)
+        for position in range(len(plan.classes) - 1, -1, -1):
+            suffix_sizes[position] = suffix_sizes[position + 1] + plan.classes[position].size
+        object.__setattr__(sampler, "_suffix_sizes", tuple(suffix_sizes))
+        return sampler
 
     @classmethod
     def for_observation(
@@ -211,7 +229,15 @@ class UniformFeasibleSampler:
 
         if type(index) is not int or index < 0:
             raise SamplingError("sample index must be a nonnegative integer")
-        return self.sample(index + 1)[index]
+        source = DeterministicBitSource(self._stream_seed())
+        # The indexed stream is deliberately unchanged.  We consume exactly
+        # the same bounded draws as each preceding assignment, but discard the
+        # ownership materialisation.  The old implementation rebuilt all
+        # preceding HiddenHandAssignment objects, which made a high observer
+        # occurrence needlessly quadratic in the simulation index.
+        for prior_index in range(index):
+            self._skip_draw(source)
+        return self._draw(source, index)
 
     def _stream_seed(self) -> str:
         from tuppi_eval.serialization import content_digest
@@ -255,6 +281,62 @@ class UniformFeasibleSampler:
             sample_index=index,
         )
 
+    def _skip_draw(self, source: DeterministicBitSource) -> None:
+        """Consume one assignment from ``source`` without materialising it.
+
+        This is intentionally a structural twin of :meth:`_draw`.  It makes
+        the same split and combination-rank calls, in the same order, so the
+        next materialised assignment is byte-for-byte the one produced by the
+        historical ``sample(index + 1)[index]`` implementation.
+        """
+
+        remaining = list(self.plan.capacities)
+        for position, allocation in enumerate(self.plan.classes):
+            self._skip_draw_class(
+                source=source,
+                position=position,
+                allocation=allocation,
+                remaining=remaining,
+            )
+        if any(remaining):
+            raise SamplingError("skipping left residual capacity unfilled")
+
+    def _skip_draw_class(
+        self,
+        *,
+        source: DeterministicBitSource,
+        position: int,
+        allocation: ClassAllocation,
+        remaining: list[int],
+    ) -> None:
+        positions = self._class_positions[position]
+        weights, total = _weighted_split_options(
+            self._counting_key, position, tuple(remaining)
+        )
+        if total <= 0:
+            raise SamplingError("no split of an equivalence class can be completed")
+        target = source.below(total)
+        chosen: tuple[int, ...] | None = None
+        for split, weight in weights:
+            if target < weight:
+                chosen = split
+                break
+            target -= weight
+        if chosen is None:  # pragma: no cover - the weights sum to ``total``
+            raise SamplingError("weighted split selection fell through")
+
+        available_count = len(allocation.cards)
+        for item, _seat, size in zip(
+            positions, allocation.allowed_seats, chosen, strict=True
+        ):
+            if size:
+                # _draw_class un-ranks one of these combinations.  Skipping
+                # only needs to consume its rank; the next call must observe
+                # exactly the same source state.
+                source.below(math.comb(available_count, size))
+                available_count -= size
+            remaining[item] -= size
+
     def _draw_class(
         self,
         *,
@@ -264,20 +346,10 @@ class UniformFeasibleSampler:
         remaining: list[int],
         owner: dict[Card, int],
     ) -> None:
-        positions = self.plan.positions_for(allocation)
-        bounds = tuple(remaining[item] for item in positions)
-        weights: list[tuple[tuple[int, ...], int]] = []
-        total = 0
-        for split in bounded_compositions(allocation.size, bounds):
-            following = list(remaining)
-            for item, value in zip(positions, split):
-                following[item] -= value
-            completions = self._completions(position + 1, tuple(following))
-            if not completions:
-                continue
-            weight = multinomial(allocation.size, split) * completions
-            total += weight
-            weights.append((split, weight))
+        positions = self._class_positions[position]
+        weights, total = _weighted_split_options(
+            self._counting_key, position, tuple(remaining)
+        )
         if total <= 0:
             raise SamplingError("no split of an equivalence class can be completed")
         target = source.below(total)
@@ -306,16 +378,13 @@ class UniformFeasibleSampler:
     def _completions(self, position: int, remaining: tuple[int, ...]) -> int:
         """Exact number of ways to finish from ``position`` with ``remaining``."""
 
-        suffix = CountingPlan(
-            seat_order=self.plan.seat_order,
-            capacities=remaining,
-            classes=self.plan.classes[position:],
-        ) if sum(remaining) == sum(
-            item.size for item in self.plan.classes[position:]
-        ) else None
-        if suffix is None:
+        if sum(remaining) != self._suffix_sizes[position]:
             return 0
-        return count_plan(suffix)
+        # _count_from is the exact memoised recurrence used by count_plan.
+        # Starting at the suffix index preserves its result while avoiding a
+        # new CountingPlan validation and identity construction for every
+        # candidate split.
+        return _count_from(self._counting_key, position, remaining)
 
     # ------------------------------------------------------------------ report
 
@@ -369,6 +438,37 @@ def _unrank_combination(
             remaining_rank -= skip
         index += 1
     return tuple(chosen)
+
+
+@lru_cache(maxsize=131_072)
+def _weighted_split_options(
+    counting_key: tuple, position: int, remaining: tuple[int, ...]
+) -> tuple[tuple[tuple[tuple[int, ...], int], ...], int]:
+    """Return exact weighted class splits for one residual plan state.
+
+    The result depends only on the canonical counting-plan shape and residual
+    capacities.  Card identities never enter this cache: cards within one
+    equivalence class are interchangeable, while the actual card combination
+    rank is still consumed by the caller using the original source.
+    """
+
+    seat_order, _capacities, class_shapes = counting_key
+    allowed_seats, size = class_shapes[position]
+    positions = tuple(seat_order.index(seat) for seat in allowed_seats)
+    bounds = tuple(remaining[item] for item in positions)
+    weights: list[tuple[tuple[int, ...], int]] = []
+    total = 0
+    for split in _bounded_compositions_cached(size, bounds):
+        following = list(remaining)
+        for item, value in zip(positions, split):
+            following[item] -= value
+        completions = _count_from(counting_key, position + 1, tuple(following))
+        if not completions:
+            continue
+        weight = multinomial(size, split) * completions
+        total += weight
+        weights.append((split, weight))
+    return tuple(weights), total
 
 
 def sample_assignments(

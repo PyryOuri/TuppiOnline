@@ -322,11 +322,14 @@ def _refine_possible_owners(
     """
 
     working = dict(possible)
+    ordered_cards = tuple(sorted(working, key=_card_order))
     certain: dict[int, set[Card]] = {seat: set() for seat in range(4)}
     remaining_capacity = list(capacity)
     for _ in range(MAXIMUM_REFINEMENT_PASSES):
         changed = False
-        for card in sorted(working, key=_card_order):
+        for card in ordered_cards:
+            if card not in working:
+                continue
             owners = working[card]
             if len(owners) == 1:
                 (seat,) = tuple(owners)
@@ -340,7 +343,9 @@ def _refine_possible_owners(
                     "pigeonhole refinement produced a negative hand capacity"
                 )
             if remaining_capacity[seat] == 0:
-                for card in sorted(working, key=_card_order):
+                for card in ordered_cards:
+                    if card not in working:
+                        continue
                     if seat in working[card]:
                         reduced = working[card] - {seat}
                         if not reduced:
@@ -352,8 +357,8 @@ def _refine_possible_owners(
                 continue
             owned = tuple(
                 card
-                for card in sorted(working, key=_card_order)
-                if seat in working[card]
+                for card in ordered_cards
+                if card in working and seat in working[card]
             )
             if len(owned) == remaining_capacity[seat]:
                 for card in owned:

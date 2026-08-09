@@ -198,6 +198,22 @@ def bounded_compositions(total: int, bounds: tuple[int, ...]) -> Iterator[tuple[
             yield (value,) + tail
 
 
+@lru_cache(maxsize=65_536)
+def _bounded_compositions_cached(
+    total: int, bounds: tuple[int, ...]
+) -> tuple[tuple[int, ...], ...]:
+    """Return the canonical composition sequence without rebuilding it.
+
+    The generator above remains the reference implementation and preserves its
+    public lazy behaviour.  Exact sampling repeatedly asks for the same small
+    ``(total, bounds)`` shapes while skipping indexed assignments; caching the
+    materialized sequence removes recursion and tuple allocation from that hot
+    path without changing ordering or values.
+    """
+
+    return tuple(bounded_compositions(total, bounds))
+
+
 def multinomial(total: int, parts: tuple[int, ...]) -> int:
     ways = 1
     left = total

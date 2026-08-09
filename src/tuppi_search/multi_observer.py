@@ -310,6 +310,26 @@ class MultiObserverTree:
         self, observation: PlayerObservation, seat: int
     ) -> tuple[MultiObserverInformationNode, bool]:
         key = multi_observer_information_state_key(observation)
+        return self._node_for_key(key=key, observation=observation, seat=seat)
+
+    def node_for_key(
+        self, *, key: str, observation: PlayerObservation, seat: int
+    ) -> tuple[MultiObserverInformationNode, bool]:
+        """Resolve a node when the caller already computed its canonical key.
+
+        Phase 5E computes the observer key before re-determinization to seed the
+        exact sampler.  The observer-local projection preserves that same formal
+        information state, so recomputing the digest immediately afterward is
+        redundant.  Callers must obtain ``key`` from the parent formal
+        observation and still pass the projected observation for legal-action
+        validation.
+        """
+
+        return self._node_for_key(key=key, observation=observation, seat=seat)
+
+    def _node_for_key(
+        self, *, key: str, observation: PlayerObservation, seat: int
+    ) -> tuple[MultiObserverInformationNode, bool]:
         node = self.nodes.get(key)
         created = node is None
         if node is None:
@@ -613,7 +633,14 @@ def _run_simulation(
                         failure_kind=MultiObserverFailureKind.OBSERVER_CONSTRUCTION,
                     ) from exc
             occurrences[actor] += 1
-            node, _created = tree.node_for(observer_observation, actor)
+            if actor != root_seat:
+                node, _created = tree.node_for_key(
+                    key=observer_key,
+                    observation=observer_observation,
+                    seat=actor,
+                )
+            else:
+                node, _created = tree.node_for(observer_observation, actor)
             action, _edge_expanded = node.select(
                 observer_observation, configuration.exploration_constant
             )

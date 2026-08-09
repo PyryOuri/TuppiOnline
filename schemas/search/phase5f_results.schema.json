@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tuppi.example/schemas/search/phase5f_results.schema.json",
+  "title": "Phase 5F optimization and strength result summary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "package_version",
+    "path",
+    "semantic_corpus_matches",
+    "registered_agent_count",
+    "strength_pairs",
+    "strength_wins",
+    "strength_ties",
+    "strength_losses",
+    "sealed_bank_opened"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.search.phase5f_results.v1"},
+    "package_version": {"type": "string"},
+    "path": {"enum": ["H1", "H2", "H3", "H4"]},
+    "semantic_corpus_matches": {"type": "integer", "minimum": 0},
+    "registered_agent_count": {"type": "integer", "minimum": 0},
+    "strength_pairs": {"type": "integer", "minimum": 0},
+    "strength_wins": {"type": "integer", "minimum": 0},
+    "strength_ties": {"type": "integer", "minimum": 0},
+    "strength_losses": {"type": "integer", "minimum": 0},
+    "sealed_bank_opened": {"const": false}
+  }
+}

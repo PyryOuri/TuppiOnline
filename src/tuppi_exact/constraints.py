@@ -88,6 +88,7 @@ ELIGIBLE_SHOW_CARDS_BY_COLOR: Mapping[Color, frozenset[Card]] = MappingProxyType
         for color in Color
     }
 )
+_SUIT_ORDER = {suit: index for index, suit in enumerate(Suit)}
 
 
 def show_exclusion_for(action: ShowAction) -> frozenset[Card]:
@@ -406,11 +407,14 @@ def _refine(
     one card's owner or removes at least one edge, and both are monotone.
     """
 
+    ordered_cards = tuple(sorted(allowed, key=_card_key))
     limit = len(allowed) * 4 + 8
     for completed in range(limit):
         changed = False
 
-        for card in sorted(allowed, key=_card_key):
+        for card in ordered_cards:
+            if card not in allowed:
+                continue
             seats = allowed[card]
             if len(seats) == 1:
                 (owner,) = tuple(seats)
@@ -426,7 +430,9 @@ def _refine(
         for seat in range(4):
             if capacity[seat] != 0:
                 continue
-            for card in sorted(allowed, key=_card_key):
+            for card in ordered_cards:
+                if card not in allowed:
+                    continue
                 if seat in allowed[card]:
                     reduced = allowed[card] - {seat}
                     if not reduced:
@@ -439,7 +445,9 @@ def _refine(
         open_seats = tuple(seat for seat in range(4) if capacity[seat] > 0)
         for seat in open_seats:
             candidates = tuple(
-                card for card in sorted(allowed, key=_card_key) if seat in allowed[card]
+                card
+                for card in ordered_cards
+                if card in allowed and seat in allowed[card]
             )
             if len(candidates) < capacity[seat]:
                 raise ConstraintError(
@@ -455,8 +463,9 @@ def _refine(
             for subset in combinations(open_seats, size):
                 chosen = frozenset(subset)
                 captive = tuple(
-                    card for card in sorted(allowed, key=_card_key)
-                    if allowed[card] <= chosen
+                    card
+                    for card in ordered_cards
+                    if card in allowed and allowed[card] <= chosen
                 )
                 available = sum(capacity[item] for item in subset)
                 if len(captive) > available:
@@ -464,7 +473,9 @@ def _refine(
                         "a seat subset cannot absorb the cards captive to it"
                     )
                 if len(captive) == available:
-                    for card in sorted(allowed, key=_card_key):
+                    for card in ordered_cards:
+                        if card not in allowed:
+                            continue
                         if allowed[card] <= chosen:
                             continue
                         reduced = allowed[card] - chosen
@@ -482,7 +493,7 @@ def _refine(
 
 
 def _card_key(card: Card) -> tuple[int, int]:
-    return (list(Suit).index(card.suit), card.rank.value)
+    return (_SUIT_ORDER[card.suit], card.rank.value)
 
 
 def own_show_exclusion_is_consistent(

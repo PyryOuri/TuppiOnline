@@ -38,6 +38,9 @@ REQUIRED_DOCS = (
     "observer_privacy.md",
     "tiny_multi_observer_oracle.md",
     "phase5e_results.md",
+    "phase5f_profiling.md",
+    "phase5f_sampler_optimization.md",
+    "phase5f_results.md",
     "root_information_uct.md",
     "tiny_exact_information_reference.md",
     "rollout_security.md",
@@ -62,6 +65,7 @@ REQUIRED_SCHEMAS = (
     "multi_observer_diagnostics.schema.json",
     "phase5e_evaluation.schema.json",
     "tiny_multi_observer_reference.schema.json",
+    "phase5f_results.schema.json",
 )
 REQUIRED_REPORTS = (
     "phase5c_evaluation.json",

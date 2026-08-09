@@ -46,6 +46,7 @@ what :mod:`tests.search.test_information_set_invariance` checks.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import lru_cache
 from enum import StrEnum
 import hashlib
 
@@ -159,6 +160,7 @@ def _action_label(action: object) -> str:
     raise SeedError("unknown action type in an information state")
 
 
+@lru_cache(maxsize=512)
 def canonical_action_id(action: object) -> str:
     """Return the stable identifier of one candidate root action."""
 

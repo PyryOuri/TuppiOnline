@@ -6,6 +6,9 @@ the Phase 3 deterministic evaluation framework, the Phase 4 transparent
 baseline-agent ladder, the Phase 5A complete-match evaluation protocol, the
 Phase 5B exact inference and solving layer, the Phase 5C uniform-feasible PIMC
 search baseline, and the Phase 5D-A decomposition of that baseline's failure.
+Phase 5D-B and Phase 5E added observation-safe root information-set UCT and
+multi-observer re-determinizing search; Phase 5F accelerates the latter without
+changing its semantics and records its first valid unsealed strength evaluation.
 
 Nine boundaries matter:
 
@@ -30,10 +33,10 @@ Nine boundaries matter:
    engine-validated hypothetical continuations, and the exact late-game solver.
    Everything in it is exact or an error, and the dependency direction is
    one-way: it reads the earlier packages and none of them may reference it.
-9. `src/tuppi_search/` owns the first search-based baseline: classical root
-   Perfect-Information Monte Carlo over uniformly sampled hard-feasible worlds. It
-   is a baseline, not an equilibrium solver, and it is subject to strategy fusion.
-   The dependency direction is one-way again: nothing earlier may reference it.
+9. `src/tuppi_search/` owns the search baselines: uniform-feasible PIMC,
+   root-player information-set UCT, and observation-safe multi-observer
+   re-determinizing search. They are baselines, not equilibrium solvers, and the
+   dependency direction is one-way again: nothing earlier may reference it.
 
 The archival ruleset identifier is **`legacy_v9_unverified`**. It is not the
 target ruleset, is preserved only for historical comparison, and must not be
