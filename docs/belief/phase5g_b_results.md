@@ -20,7 +20,8 @@ The held-out report contains matched-policy, misspecified-reactive, robust
 mixture, and hard-uniform metrics, plus ESS, reliability, ablations, candidate
 count convergence, and independent tiny exact validation.
 
-The candidate-32 held-out run used 57 positions in each split (three generating
+The candidate-32 held-out run used 56 development, 57 calibration, and 57 held-out
+positions (three generating
 profiles and disjoint stream roots). On held-out positions, hard-uniform owner
 NLL was `1.050`, matched smoothed was `1.747`, and the equal mixture was `1.758`.
 The corresponding mean ESS for weighted candidates was `6.47/32`; candidate
