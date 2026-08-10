@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 import json
 from pathlib import Path
+import tomllib
 
 import pytest
 
@@ -16,6 +17,7 @@ from tuppi_learning.errors import (
 )
 from tuppi_learning.evaluation import evaluate_learned_against_phase4
 from tuppi_learning.models import ActorConfiguration, CentralizedCritic, ObservationOnlyActor, SeatRelativeActor
+from tuppi_learning import LEARNING_LAYER_VERSION
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -28,9 +30,10 @@ def test_learning_schemas_are_strict_objects() -> None:
         assert payload["additionalProperties"] is False
 
 
-def test_phase6_package_version_is_incremented() -> None:
-    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    assert 'version = "0.11.0"' in pyproject
+def test_product_package_increment_does_not_change_frozen_learning_layer() -> None:
+    pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    assert pyproject["project"]["version"] == "0.12.0"
+    assert LEARNING_LAYER_VERSION == "0.11.0"
 
 
 def test_stream_manifest_has_disjoint_split_identity() -> None:

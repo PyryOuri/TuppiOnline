@@ -10,7 +10,7 @@ belief experiments. Phase 5 is closed as a negative classical-search programme.
 Phase 6 adds an optional observation-only learned-policy experiment and records
 its bounded imitation failure; no learned policy is integrated into gameplay.
 
-Eleven boundaries matter:
+Thirteen boundaries matter:
 
 1. `Archive/` contains byte-for-byte frozen historical artifacts.
 2. `src/tuppi_legacy/` verifies and executes the old emulator through an
@@ -43,6 +43,13 @@ Eleven boundaries matter:
 11. `src/tuppi_learning/` owns the optional learned-policy experiment. Its actor
     accepts only formal player observations and legal actions; its centralized
     critic is training-only. Core packages neither import nor require PyTorch.
+12. `src/tuppi_server/` owns the authoritative private-alpha room, transport,
+    projection, AI-seat, persistence, and restart-recovery boundary. It consumes
+    the current engine and agents; it does not reimplement rules or expose
+    private state.
+13. `src/tuppi_ui_fixtures/` exports deterministic privacy-safe protocol fixtures
+    from the engine examples. Python schemas and the exporter are the protocol
+    source of truth for the separately versioned Swift client.
 
 The archival ruleset identifier is **`legacy_v9_unverified`**. It is not the
 target ruleset, is preserved only for historical comparison, and must not be
@@ -128,6 +135,31 @@ Phase 6 neural tooling is isolated in the optional `learning` dependency group:
 
 Importing the rules, engine, evaluation, agent, exact, search, or belief layers
 does not import or require NumPy or PyTorch.
+
+## Private-alpha product runtime
+
+Product Stabilization 1 adds the optional local server without making it a core
+research dependency. Create a dedicated environment outside the repository and
+install the development and server groups:
+
+```bash
+python3 -m venv "$HOME/.venvs/tuppi-product"
+"$HOME/.venvs/tuppi-product/bin/python" -m pip install -e '.[dev,server]'
+"$HOME/.venvs/tuppi-product/bin/python" -m tuppi_server --check
+```
+
+Start a localhost development server with:
+
+```bash
+TUPPI_SERVER_DATA_DIR=/private/tmp/tuppi-server-state \
+  "$HOME/.venvs/tuppi-product/bin/python" -m tuppi_server \
+  --host 127.0.0.1 --port 8765
+```
+
+The default private-alpha AI profile is the observation-only
+`partner_aware_v1`. Live deals use server-side CSPRNG and never expose a deal
+seed. Protocol schemas live in `schemas/network/`; fixture export and client
+synchronization are documented in `docs/ui/`.
 
 ## Tests
 

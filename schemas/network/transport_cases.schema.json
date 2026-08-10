@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/network/transport_cases.schema.json",
+  "title": "Tuppi deterministic transport regression cases",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "protocol_version", "cases"],
+  "properties": {
+    "schema_version": {"const": "tuppi.ui.transport_cases.v2"},
+    "protocol_version": {"const": "tuppi.network.v1"},
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "request", "response"],
+        "properties": {
+          "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+          "request": {"$ref": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json"},
+          "response": {"$ref": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json"}
+        }
+      }
+    }
+  }
+}

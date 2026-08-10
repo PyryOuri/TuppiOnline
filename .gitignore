@@ -11,3 +11,14 @@ build/
 dist/
 results*.jsonl
 runs/
+
+# Local server state, secrets, and signing material.
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.sqlite
+*.sqlite3
+server-state/
+local-state/

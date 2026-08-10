@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/network/http_api.schema.json",
+  "title": "Tuppi private-alpha HTTP API payloads",
+  "oneOf": [
+    {"$ref": "#/$defs/compatibilityResult"},
+    {"$ref": "#/$defs/createRoomRequest"},
+    {"$ref": "#/$defs/joinRoomRequest"},
+    {"$ref": "#/$defs/configureRoomRequest"},
+    {"$ref": "#/$defs/sessionRequest"},
+    {"$ref": "#/$defs/roomBootstrap"},
+    {"$ref": "#/$defs/roomStatusResponse"},
+    {"$ref": "#/$defs/serverError"},
+    {"$ref": "https://example.invalid/tuppi/schemas/network/post_match_analysis.schema.json"}
+  ],
+  "$defs": {
+    "seat": {"type": "integer", "minimum": 0, "maximum": 3},
+    "aiSeat": {"type": "integer", "minimum": 1, "maximum": 3},
+    "roomCode": {"type": "string", "pattern": "^[A-Z0-9]{6}$"},
+    "sessionToken": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "displayName": {"type": "string", "minLength": 1, "maxLength": 40},
+    "aiSeats": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/aiSeat"}
+    },
+    "lobbySeat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["display_name", "kind", "ready", "seat"],
+      "properties": {
+        "display_name": {"type": ["string", "null"], "maxLength": 40},
+        "kind": {"enum": ["open", "human", "ai"]},
+        "ready": {"type": "boolean"},
+        "seat": {"$ref": "#/$defs/seat"},
+        "agent_profile": {"const": "partner_aware_v1"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"kind": {"const": "ai"}}, "required": ["kind"]},
+          "then": {"required": ["agent_profile"]},
+          "else": {"not": {"required": ["agent_profile"]}}
+        }
+      ]
+    },
+    "lobbySnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lifecycle", "room_code", "seats"],
+      "properties": {
+        "lifecycle": {
+          "enum": ["created", "configured", "waiting", "ready", "playing", "completed"]
+        },
+        "room_code": {"$ref": "#/$defs/roomCode"},
+        "seats": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {"$ref": "#/$defs/lobbySeat"}
+        }
+      }
+    },
+    "compatibilityResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["compatible", "protocol_version", "status"],
+      "properties": {
+        "compatible": {"const": true},
+        "protocol_version": {"const": "tuppi.network.v1"},
+        "status": {"const": "ok"}
+      }
+    },
+    "createRoomRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["display_name", "ai_seats"],
+      "properties": {
+        "display_name": {"$ref": "#/$defs/displayName"},
+        "ai_seats": {"$ref": "#/$defs/aiSeats"}
+      }
+    },
+    "joinRoomRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["display_name"],
+      "properties": {"display_name": {"$ref": "#/$defs/displayName"}}
+    },
+    "configureRoomRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session_token", "ai_seats"],
+      "properties": {
+        "session_token": {"$ref": "#/$defs/sessionToken"},
+        "ai_seats": {"$ref": "#/$defs/aiSeats"}
+      }
+    },
+    "sessionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session_token"],
+      "properties": {"session_token": {"$ref": "#/$defs/sessionToken"}}
+    },
+    "roomBootstrap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["room_code", "seat", "session_token", "lobby"],
+      "properties": {
+        "room_code": {"$ref": "#/$defs/roomCode"},
+        "seat": {"$ref": "#/$defs/seat"},
+        "session_token": {"$ref": "#/$defs/sessionToken"},
+        "lobby": {"$ref": "#/$defs/lobbySnapshot"}
+      }
+    },
+    "roomStatusResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lobby"],
+      "properties": {
+        "lobby": {"$ref": "#/$defs/lobbySnapshot"},
+        "playing": {"type": "boolean"}
+      }
+    },
+    "serverError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["error"],
+      "properties": {"error": {"type": "string", "minLength": 1, "maxLength": 96}}
+    }
+  }
+}

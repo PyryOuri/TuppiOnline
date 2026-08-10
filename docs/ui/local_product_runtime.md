@@ -1,0 +1,61 @@
+# Local product runtime and verification
+
+## Dedicated environment
+
+Use a product environment separate from historical research environments:
+
+```bash
+python3 -m venv "$HOME/.venvs/tuppi-product"
+"$HOME/.venvs/tuppi-product/bin/python" -m pip install -e '.[dev,server]'
+"$HOME/.venvs/tuppi-product/bin/python" -m tuppi_server --check
+```
+
+The `server` extra contains `uvicorn` and `websockets`. The preflight imports
+both and reports `tuppi.network.v1`; an HTTP-only ASGI installation is not
+accepted.
+
+Start a localhost server with:
+
+```bash
+"$HOME/.venvs/tuppi-product/bin/python" -m tuppi_server
+```
+
+Use `tools/start_private_alpha_server.sh` for the later LAN pass. Runtime state
+defaults to `~/Library/Application Support/Tuppi/server` and may be isolated
+with `TUPPI_SERVER_DATA_DIR`. It contains credentials and private hands and
+must not be committed or shared with clients.
+
+## Fixture synchronization
+
+From the Python repository:
+
+```bash
+python tools/sync_tuppi_client_bundle.py \
+  --client-root /path/to/TuppiClient --sync
+python tools/sync_tuppi_client_bundle.py \
+  --client-root /path/to/TuppiClient --check
+```
+
+Do not edit the Swift fixture JSON manually.
+
+## Local cross-language gate
+
+The checked-in XCTest uses the production `TuppiHTTPClient` and
+`TuppiWebSocketClient` against a real Python process:
+
+```bash
+TUPPI_PRODUCT_PYTHON="$HOME/.venvs/tuppi-product/bin/python" \
+TUPPI_PRODUCT_PROJECT_ROOT=/path/to/TuppiProject \
+TUPPI_PRODUCT_PORT=18765 \
+swift test --filter LocalInteropTests/testRealPythonServerRoundTripReconnectAndRestart
+```
+
+It checks compatibility, room creation, AI profile exposure, readiness, a
+canonical observation, accepted/duplicate/stale actions, disconnect/reconnect,
+raw reconnect-observation decoding, persistent server restart, restored event
+cursor, and continued play. Credentials intentionally remain in the test/client
+process across only the server restart.
+
+The server answers application `ping` with `pong`. The client retains its
+bounded automatic backoff and manual `retryConnection()` path. Broader network
+UX and Keychain persistence are deferred to private-alpha hardening.

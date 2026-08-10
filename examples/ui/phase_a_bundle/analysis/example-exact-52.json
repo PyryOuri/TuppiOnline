@@ -1,0 +1,124 @@
+{
+  "schema_version": "tuppi.analysis.post_match.v1",
+  "match_ref": "example-exact-52",
+  "analyses": [
+    {
+      "schema_version": "tuppi.analysis.post_match.v1",
+      "analysis_id": "example-exact-52-show-1",
+      "match_ref": "example-exact-52",
+      "event_index": 1,
+      "deal_number": 0,
+      "trick_index": null,
+      "seat": 1,
+      "decision_kind": "SHOWING",
+      "title": "Ensimmäinen RAMI-näyttö",
+      "summary": "Pelaaja näytti ruutukolmosen RAMIksi. Tämä valinta johti ottelun ensimmäisen jaon RAMI-sopimukseen.",
+      "played_action": {
+        "type": "show",
+        "seat": 1,
+        "shown_card": "3D",
+        "declared_contract": "RAMI"
+      },
+      "recommended_action": {
+        "type": "show",
+        "seat": 1,
+        "shown_card": "3D",
+        "declared_contract": "RAMI"
+      },
+      "recommendation": "Fixture-esimerkissä toteutunut näyttö vastaa suositeltua vaihtoehtoa.",
+      "alternatives": [
+        {
+          "rank": 2,
+          "action": {
+            "type": "show",
+            "seat": 1,
+            "shown_card": "4D",
+            "declared_contract": "RAMI"
+          },
+          "title": "Toinen RAMI-kortti",
+          "assessment": "Mahdollinen",
+          "reason": "Sama sopimus olisi edelleen ollut mahdollinen, mutta tämä fixture ei arvioi vaihtoehdon tarkkaa piste-eroa."
+        },
+        {
+          "rank": 3,
+          "action": {
+            "type": "show",
+            "seat": 1,
+            "shown_card": "3D",
+            "declared_contract": "NOLO"
+          },
+          "title": "NOLO samalla kortilla",
+          "assessment": "Eri sopimus",
+          "reason": "Sopimusvalinta muuttaa koko jaon tavoitetta, joten sitä pitää verrata erillisenä päätöksenä."
+        }
+      ],
+      "explanation": [
+        "RAMI ja NOLO erotetaan analyysissä toisistaan ennen korttien vertailua.",
+        "Näytetty kortti pysyy julkisena ja näkyy myös replayn tapahtumissa.",
+        "Tämä paneeli näyttää tapahtuman julkisen päätösrakenteen, ei pelaajan piilokättä."
+      ],
+      "limitations": [
+        "Kyseessä on UI-H2:n deterministinen fixture-esimerkki.",
+        "Tämä sisältö ei vielä ole tuotannon vahvuus- tai piste-ennuste."
+      ],
+      "source": "ui_h2_fixture"
+    },
+    {
+      "schema_version": "tuppi.analysis.post_match.v1",
+      "analysis_id": "example-exact-52-trick-0",
+      "match_ref": "example-exact-52",
+      "event_index": 4,
+      "deal_number": 0,
+      "trick_index": 0,
+      "seat": 0,
+      "decision_kind": "TRICK_PLAY",
+      "title": "Ensimmäisen tikin aloitus",
+      "summary": "Pelaaja aloitti ensimmäisen tikin herttakakkosella. Replay näyttää vaihtoehdot samasta julkisesta päätöskohdasta.",
+      "played_action": {
+        "type": "play",
+        "seat": 0,
+        "card": "2H"
+      },
+      "recommended_action": {
+        "type": "play",
+        "seat": 0,
+        "card": "2H"
+      },
+      "recommendation": "Fixture-esimerkissä toteutunut aloitus on merkitty suositelluksi vaihtoehdoksi.",
+      "alternatives": [
+        {
+          "rank": 2,
+          "action": {
+            "type": "play",
+            "seat": 0,
+            "card": "3H"
+          },
+          "title": "Korkeampi hertta",
+          "assessment": "Laillinen vaihtoehto",
+          "reason": "Kortti oli tilanteessa laillinen, mutta sen vaikutus kumppanin mahdollisuuksiin arvioidaan vasta myöhemmässä analyysipalvelussa."
+        },
+        {
+          "rank": 3,
+          "action": {
+            "type": "play",
+            "seat": 0,
+            "card": "2D"
+          },
+          "title": "Ruutukakkonen",
+          "assessment": "Laillinen vaihtoehto",
+          "reason": "Ruutukortti olisi muuttanut aloitussävyä, mutta fixture ei yksinään anna sille numeerista arvoa."
+        }
+      ],
+      "explanation": [
+        "Aloittajan kortti määrää ensimmäisen tikin pelisävyn.",
+        "Kaikki paneelissa näkyvät vaihtoehdot ovat tämän replay-kohdan laillisia kortteja.",
+        "Kumppanin ja vastustajien piilokäsiä ei näytetä analyysissä."
+      ],
+      "limitations": [
+        "Kyseessä on UI-H2:n deterministinen fixture-esimerkki.",
+        "Tuotannon PIMC- tai muun search-analyysin arviot tulevat myöhemmästä server-projektiosta."
+      ],
+      "source": "ui_h2_fixture"
+    }
+  ]
+}

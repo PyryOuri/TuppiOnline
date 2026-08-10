@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/network/action_acknowledgement.schema.json",
+  "title": "Tuppi network action acknowledgement",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "client_action_id", "match_ref", "last_event_index", "accepted_event_indices"],
+  "properties": {
+    "schema_version": {"const": "tuppi.network.action_acknowledgement.v1"},
+    "status": {
+      "enum": ["accepted", "duplicate", "rejected", "stale"]
+    },
+    "client_action_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "match_ref": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,96}$"},
+    "last_event_index": {"type": "integer", "minimum": -1},
+    "code": {"type": "string", "minLength": 1, "maxLength": 64},
+    "accepted_event_indices": {
+      "type": "array",
+      "items": {"type": "integer", "minimum": 0}
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "rejected"}}, "required": ["status"]},
+      "then": {"required": ["code"]}
+    }
+  ]
+}

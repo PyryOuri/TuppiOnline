@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tuppi-research"
-version = "0.11.0"
-description = "Deterministic Tuppi rules, engine, complete-match evaluation, frozen baseline agents, classical imperfect-information research baselines, behavioural belief diagnostics, and optional learned-policy experiments"
+version = "0.12.0"
+description = "Deterministic Tuppi rules and research infrastructure with a private-alpha server, protocol fixtures, and optional learned-policy experiments"
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
 dependencies = []
@@ -20,6 +20,10 @@ learning = [
   "numpy>=2,<3",
   "torch>=2.13,<2.14",
 ]
+server = [
+  "uvicorn>=0.30,<1",
+  "websockets>=13,<17",
+]
 
 [project.scripts]
 tuppi-legacy = "tuppi_legacy.run:entrypoint"
@@ -29,6 +33,8 @@ tuppi-agents = "tuppi_agents.runner:entrypoint"
 tuppi-match = "tuppi_match.runner:entrypoint"
 tuppi-exact = "tuppi_exact.runner:entrypoint"
 tuppi-search = "tuppi_search.runner:entrypoint"
+tuppi-ui-fixtures = "tuppi_ui_fixtures.exporter:main"
+tuppi-server = "tuppi_server.app:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -274,6 +280,26 @@ where = ["src"]
   "docs/belief/calibration.md",
   "docs/belief/phase5g_b_results.md",
 ]
+"share/tuppi-network/schemas" = [
+  "schemas/network/action_acknowledgement.schema.json",
+  "schemas/network/http_api.schema.json",
+  "schemas/network/post_match_analysis.schema.json",
+  "schemas/network/protocol_manifest.json",
+  "schemas/network/protocol_manifest.schema.json",
+  "schemas/network/showing_ui_hints.schema.json",
+  "schemas/network/transport_cases.schema.json",
+  "schemas/network/websocket_message.schema.json",
+  "schemas/network/wire_recordings.schema.json",
+]
+"share/tuppi-product/docs" = [
+  "docs/ui/local_product_runtime.md",
+  "docs/ui/network_protocol_v1.md",
+  "docs/ui/phase_a_protocol_bundle.md",
+  "docs/ui/phase_d_server.md",
+  "docs/ui/phase_f_persistence.md",
+  "docs/ui/phase_h2_analysis.md",
+  "docs/ui/product_architecture.md",
+]
 
 [tool.pytest.ini_options]
 testpaths = [
@@ -288,5 +314,7 @@ testpaths = [
   "tests/search",
   "tests/belief",
   "tests/learning",
+  "tests/ui",
+  "tests/server",
 ]
 addopts = "-ra"
