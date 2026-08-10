@@ -11,6 +11,7 @@ The wire contract reuses, without a client-specific game-state translation:
 
 - `tuppi.engine.player_observation.v1`;
 - `tuppi.engine.public_event.v1`;
+- `tuppi.engine.deal_result.v1`;
 - `tuppi.engine.match_result.v1`.
 
 The schemas for these payloads remain under `schemas/engine/`. Swift has
@@ -23,7 +24,9 @@ those production DTOs on every test run.
 - create-room request/result;
 - join-room request/result;
 - AI-seat configuration request/result;
+- host-controlled room settings request/result (AI delay in milliseconds);
 - ready request/result;
+- authenticated completed-deal analysis request/result;
 - authenticated safe post-match analysis request/result;
 - server error.
 
@@ -43,10 +46,13 @@ without another engine transition, `stale` returns the current cursor and is
 followed by an authorized reconnect projection, and `rejected` includes a
 bounded error code.
 
-The completed-match analysis result is `tuppi.analysis.post_match.v2`. It is a
-seat-scoped, ranked response with `Exact`, `Rule-based`, and `Reference`
+The completed-match analysis result is `tuppi.analysis.post_match.v2`. The
+per-deal result is `tuppi.analysis.completed_deal.v1`. Both are
+seat-scoped, ranked responses with `Exact`, `Rule-based`, and `Reference`
 evidence categories. `Reference` is expressly not an optimality claim. The
-endpoint rejects active matches; no live WebSocket message contains analysis.
+per-deal endpoint is available during an active match only when the room has
+one human and three AI seats. Active human-vs-human matches remain locked until
+the match ends. No live WebSocket message contains analysis.
 The versioned union schema retains v1 only for committed fixture compatibility.
 
 ## Reconnect
@@ -58,6 +64,7 @@ applied by the client. `reconnect_result.payload` contains:
 status: connected
 observation: raw tuppi.engine.player_observation.v1
 event_delta: public events after the supplied cursor
+completed_deals: canonical public tuppi.engine.deal_result.v1 records
 match_result: optional canonical terminal result
 ```
 

@@ -35,7 +35,12 @@ from tuppi_engine.serialization import action_from_data, action_to_data
 from tuppi_rules import MatchScore
 
 from .deal_generation import generate_live_deal
-from .projection import project_event_batch, project_match_result, project_observation
+from .projection import (
+    project_completed_deals,
+    project_event_batch,
+    project_match_result,
+    project_observation,
+)
 
 
 PROTOCOL_VERSION = "tuppi.network.v1"
@@ -360,6 +365,10 @@ class LiveMatchRunner:
             raise ValueError("last_applied_event_index must be an integer >= -1")
         result = {
             "status": "connected",
+            "completed_deals": project_completed_deals(
+                self.state,
+                after_event_index=last_applied_event_index,
+            ),
             "event_delta": project_event_batch(
                 self.state.public_events,
                 after_event_index=last_applied_event_index,
@@ -405,6 +414,7 @@ class LiveMatchRunner:
         action: Action,
         on_human_action: Callable[[], Awaitable[None]] | None = None,
         on_state_change: Callable[[], Awaitable[None]] | None = None,
+        ai_action_delay_seconds: float | None = None,
     ) -> dict[str, object]:
         """Submit an action while allowing the server to pace AI turn starts."""
 
@@ -423,6 +433,7 @@ class LiveMatchRunner:
             await on_human_action()
         await self._run_ai_until_human_or_terminal_async(
             on_state_change=on_state_change,
+            delay_seconds=ai_action_delay_seconds,
         )
         return self._complete_human_submission(pending)
 
@@ -430,11 +441,13 @@ class LiveMatchRunner:
         self,
         *,
         on_state_change: Callable[[], Awaitable[None]] | None = None,
+        ai_action_delay_seconds: float | None = None,
     ) -> None:
         """Advance AI seats with the live-action delay between every move."""
 
         await self._run_ai_until_human_or_terminal_async(
             on_state_change=on_state_change,
+            delay_seconds=ai_action_delay_seconds,
         )
 
     def _prepare_human_submission(
@@ -598,13 +611,17 @@ class LiveMatchRunner:
         self,
         *,
         on_state_change: Callable[[], Awaitable[None]] | None = None,
+        delay_seconds: float | None = None,
     ) -> None:
+        delay = AI_ACTION_DELAY_SECONDS if delay_seconds is None else delay_seconds
+        if not isinstance(delay, (int, float)) or isinstance(delay, bool) or not 0 <= delay <= 60:
+            raise ValueError("AI action delay must be numeric and in 0..60")
         while not self.terminal:
             self._ensure_deal_started()
             actor = self.current_actor
             if actor is None or actor not in self.ai_seats:
                 return
-            await asyncio.sleep(AI_ACTION_DELAY_SECONDS)
+            await asyncio.sleep(delay)
             self._apply_ai_action(actor)
             if on_state_change is not None:
                 await on_state_change()

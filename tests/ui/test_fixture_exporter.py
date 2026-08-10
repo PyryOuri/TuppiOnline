@@ -51,6 +51,7 @@ def test_reconnect_recordings_use_the_live_raw_observation_shape(tmp_path: Path)
         if case["name"] not in reconnect_names:
             continue
         observation = case["response"]["payload"]["observation"]
+        assert isinstance(case["response"]["payload"]["completed_deals"], list)
         assert observation["schema_version"] == "tuppi.engine.player_observation.v1"
         assert "snapshot_index" not in observation
         assert "showing_ui_hints" not in observation
@@ -66,10 +67,14 @@ def test_protocol_manifest_covers_every_implemented_message() -> None:
         "join_room_result",
         "configure_room_request",
         "configure_room_result",
+        "room_settings_request",
+        "room_settings_result",
         "ready_request",
         "ready_result",
         "analysis_request",
         "analysis_result",
+        "completed_deal_analysis_request",
+        "completed_deal_analysis_result",
         "server_error",
         "hello",
         "hello_ack",
@@ -85,6 +90,8 @@ def test_protocol_manifest_covers_every_implemented_message() -> None:
         "ping",
         "pong",
     }
+
+
 def test_seat_fixture_does_not_contain_opponent_hidden_hands(tmp_path: Path) -> None:
     output = export_bundle(tmp_path / "bundle", ("verbal_fallback",))
     match_input = match_input_from_data(

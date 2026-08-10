@@ -87,6 +87,10 @@ class TuppiASGIApp:
             await self._json_response(send, 400, {"error": str(exc) or "invalid_request"})
             return
         await self._json_response(send, 200, response)
+        if path.endswith("/settings"):
+            parts = [part for part in path.split("/") if part]
+            if len(parts) == 4:
+                await self._broadcast_lobby(parts[2].upper())
 
     def _http_command(self, path: str, payload: dict[str, object]) -> dict[str, object]:
         if path == "/v1/rooms":
@@ -105,6 +109,24 @@ class TuppiASGIApp:
             }
 
         parts = [part for part in path.split("/") if part]
+        if (
+            len(parts) == 6
+            and parts[0:2] == ["v1", "rooms"]
+            and parts[3] == "deals"
+            and parts[5] == "analysis"
+        ):
+            self._require_fields(payload, required={"session_token"})
+            try:
+                deal_number = int(parts[4])
+            except ValueError as exc:
+                raise ProtocolError("invalid_deal_number") from exc
+            if str(deal_number) != parts[4]:
+                raise ProtocolError("invalid_deal_number")
+            return self.rooms.completed_deal_analysis_for_session(
+                code=parts[2].upper(),
+                token=self._string(payload, "session_token"),
+                deal_number=deal_number,
+            )
         if len(parts) == 4 and parts[0:2] == ["v1", "rooms"]:
             code = parts[2].upper()
             command = parts[3]
@@ -135,6 +157,17 @@ class TuppiASGIApp:
                     code=code,
                     host_token=self._string(payload, "session_token"),
                     ai_seats=self._ai_seats(payload.get("ai_seats", [])),
+                )
+                return {"lobby": room.snapshot()}
+            if command == "settings":
+                self._require_fields(
+                    payload,
+                    required={"session_token", "ai_action_delay_ms"},
+                )
+                room = self.rooms.set_ai_action_delay(
+                    code=code,
+                    host_token=self._string(payload, "session_token"),
+                    ai_action_delay_ms=self._integer(payload, "ai_action_delay_ms"),
                 )
                 return {"lobby": room.snapshot()}
             if command == "ready":
@@ -322,6 +355,7 @@ class TuppiASGIApp:
                 action=action,
                 on_human_action=publish_human_action,
                 on_state_change=publish_ai_action,
+                ai_action_delay_seconds=room.ai_action_delay_ms / 1000,
             )
             if result.get("status") == "accepted":
                 self.rooms.persist(room)
@@ -351,6 +385,10 @@ class TuppiASGIApp:
                     "reconnect_result",
                     {
                         "event_delta": result["event_delta"],
+                        "completed_deals": runner.reconnect(
+                            seat=session.seat,
+                            last_applied_event_index=runner.event_cursor,
+                        )["completed_deals"],
                         "observation": result["latest_observation"],
                         "status": "connected",
                     },
@@ -390,7 +428,10 @@ class TuppiASGIApp:
             self.rooms.persist(room)
             await self._broadcast_match(room.code)
 
-        await runner.run_ai_async(on_state_change=publish_ai_action)
+        await runner.run_ai_async(
+            on_state_change=publish_ai_action,
+            ai_action_delay_seconds=room.ai_action_delay_ms / 1000,
+        )
         self.rooms.persist(room)
         if runner.terminal:
             room.lifecycle = "completed"
@@ -402,11 +443,13 @@ class TuppiASGIApp:
             token=connection.token,
         )
         runner = self._require_runner(room)
+        reconnect = runner.reconnect(
+            seat=session.seat,
+            last_applied_event_index=connection.last_event_index,
+        )
         payload = {
-            "event_batch": runner.reconnect(
-                seat=session.seat,
-                last_applied_event_index=connection.last_event_index,
-            )["event_delta"],
+            "completed_deals": reconnect["completed_deals"],
+            "event_batch": reconnect["event_delta"],
             "last_event_index": runner.event_cursor,
             "match_ref": runner.match_ref,
             "observation": runner.observation(session.seat),
@@ -460,6 +503,13 @@ class TuppiASGIApp:
         value = payload.get(key)
         if not isinstance(value, str) or not value.strip():
             raise ProtocolError(f"{key} is required")
+        return value
+
+    @staticmethod
+    def _integer(payload: dict[str, object], key: str) -> int:
+        value = payload.get(key)
+        if type(value) is not int:
+            raise ProtocolError(f"{key} must be an integer")
         return value
 
     @staticmethod

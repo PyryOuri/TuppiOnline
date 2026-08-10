@@ -34,6 +34,7 @@ from tuppi_engine.validation import is_sha256_identifier, is_valid_match_ref
 
 POST_MATCH_ANALYSIS_SCHEMA_VERSION = "tuppi.analysis.post_match.v1"
 POST_MATCH_DIAGNOSTICS_SCHEMA_VERSION = "tuppi.analysis.post_match.v2"
+COMPLETED_DEAL_DIAGNOSTICS_SCHEMA_VERSION = "tuppi.analysis.completed_deal.v1"
 AGENT_DIAGNOSTICS_SCHEMA_VERSION = "tuppi.agents.decision_diagnostics.v1"
 PIMC_DIAGNOSTICS_SCHEMA_VERSION = "tuppi.search.pimc_decision_diagnostics.v1"
 
@@ -487,6 +488,123 @@ def validate_post_match_analysis_response(
         raise AnalysisProjectionError("post-match analysis is not canonical JSON") from exc
     if type(canonical) is not dict:
         raise AnalysisProjectionError("post-match analysis must remain an object")
+    return canonical
+
+
+_COMPLETED_DEAL_RESPONSE_KEYS = frozenset(
+    {
+        "schema_version",
+        "match_ref",
+        "deal_ref",
+        "deal_number",
+        "seat",
+        "summary",
+        "analyses",
+    }
+)
+_COMPLETED_DEAL_SUMMARY_KEYS = frozenset(
+    {
+        "contract",
+        "diagnostic_count",
+        "outcome",
+        "points",
+        "score_before",
+        "score_after",
+        "team_tricks",
+    }
+)
+
+
+def validate_completed_deal_analysis_response(
+    value: Mapping[str, object],
+    *,
+    expected_match_ref: str | None = None,
+    expected_deal_number: int | None = None,
+    public_events: Sequence[Mapping[str, object]] | None = None,
+) -> dict[str, object]:
+    """Validate one seat-scoped, completed-deal diagnostic envelope."""
+
+    response = _require_mapping(value, "completed-deal analysis response")
+    _reject_client_private_keys(response)
+    if set(response) != _COMPLETED_DEAL_RESPONSE_KEYS:
+        raise AnalysisProjectionError(
+            "completed-deal analysis response fields are invalid"
+        )
+    if response["schema_version"] != COMPLETED_DEAL_DIAGNOSTICS_SCHEMA_VERSION:
+        raise AnalysisProjectionError(
+            "unsupported completed-deal analysis schema_version"
+        )
+    match_ref = _require_text(response["match_ref"], "match_ref", 96)
+    if not is_valid_match_ref(match_ref):
+        raise AnalysisProjectionError("completed-deal match_ref is invalid")
+    if expected_match_ref is not None and match_ref != expected_match_ref:
+        raise AnalysisProjectionError("completed-deal analysis belongs to another match")
+    deal_number = _require_int(
+        response["deal_number"], "deal_number", minimum=0
+    )
+    if expected_deal_number is not None and deal_number != expected_deal_number:
+        raise AnalysisProjectionError("completed-deal analysis targets another deal")
+    expected_deal_ref = f"{match_ref}/deal:{deal_number}"
+    if response["deal_ref"] != expected_deal_ref:
+        raise AnalysisProjectionError("completed-deal deal_ref is invalid")
+    seat = _require_int(response["seat"], "seat", minimum=0, maximum=3)
+
+    summary = _require_mapping(response["summary"], "summary")
+    if set(summary) != _COMPLETED_DEAL_SUMMARY_KEYS:
+        raise AnalysisProjectionError("completed-deal summary fields are invalid")
+    if summary["contract"] not in {"RAMI", "NOLO"}:
+        raise AnalysisProjectionError("completed-deal contract is invalid")
+    if summary["outcome"] not in {"NOLO", "MADE_RAMI", "STOLEN_RAMI"}:
+        raise AnalysisProjectionError("completed-deal outcome is invalid")
+    diagnostic_count = _require_int(
+        summary["diagnostic_count"],
+        "summary.diagnostic_count",
+        minimum=0,
+        maximum=10,
+    )
+    _require_int(summary["points"], "summary.points", minimum=0)
+    _require_score_pair(summary["score_before"], "summary.score_before")
+    _require_score_pair(summary["score_after"], "summary.score_after")
+    team_tricks = _require_score_pair(summary["team_tricks"], "summary.team_tricks")
+    if sum(team_tricks) != 13:
+        raise AnalysisProjectionError("completed-deal team_tricks must total 13")
+    analyses = response["analyses"]
+    if type(analyses) is not list or len(analyses) != diagnostic_count:
+        raise AnalysisProjectionError("completed-deal diagnostic count disagrees")
+    if any(
+        type(item) is not dict or item.get("deal_number") != deal_number
+        for item in analyses
+    ):
+        raise AnalysisProjectionError("completed-deal analysis contains another deal")
+
+    # Reuse the hardened v2 decision validation and event binding.  The proxy
+    # summary is validation-only and is never returned to the client.
+    _validate_post_match_diagnostics_response(
+        {
+            "schema_version": POST_MATCH_DIAGNOSTICS_SCHEMA_VERSION,
+            "match_ref": match_ref,
+            "seat": seat,
+            "summary": {
+                "deal_count": deal_number + 1,
+                "diagnostic_count": diagnostic_count,
+                "final_score": summary["score_after"],
+                "winner_team": 0,
+            },
+            "analyses": analyses,
+        },
+        expected_match_ref=match_ref,
+        public_events=public_events,
+    )
+    try:
+        canonical = strict_json_loads(
+            canonical_json_bytes(dict(response)).decode("utf-8")
+        )
+    except Exception as exc:
+        raise AnalysisProjectionError(
+            "completed-deal analysis is not canonical JSON"
+        ) from exc
+    if type(canonical) is not dict:
+        raise AnalysisProjectionError("completed-deal analysis must remain an object")
     return canonical
 
 

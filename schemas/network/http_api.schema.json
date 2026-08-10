@@ -7,11 +7,13 @@
     {"$ref": "#/$defs/createRoomRequest"},
     {"$ref": "#/$defs/joinRoomRequest"},
     {"$ref": "#/$defs/configureRoomRequest"},
+    {"$ref": "#/$defs/roomSettingsRequest"},
     {"$ref": "#/$defs/sessionRequest"},
     {"$ref": "#/$defs/roomBootstrap"},
     {"$ref": "#/$defs/roomStatusResponse"},
     {"$ref": "#/$defs/serverError"},
-    {"$ref": "https://example.invalid/tuppi/schemas/network/post_match_analysis.schema.json"}
+    {"$ref": "https://example.invalid/tuppi/schemas/network/post_match_analysis.schema.json"},
+    {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis.schema.json"}
   ],
   "$defs": {
     "seat": {"type": "integer", "minimum": 0, "maximum": 3},
@@ -51,8 +53,9 @@
     "lobbySnapshot": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["lifecycle", "room_code", "seats"],
+      "required": ["ai_action_delay_ms", "lifecycle", "room_code", "seats"],
       "properties": {
+        "ai_action_delay_ms": {"enum": [0, 500, 1000, 1500, 2000, 2500, 3000, 4000, 5000]},
         "lifecycle": {
           "enum": ["created", "configured", "waiting", "ready", "playing", "completed"]
         },
@@ -97,6 +100,15 @@
       "properties": {
         "session_token": {"$ref": "#/$defs/sessionToken"},
         "ai_seats": {"$ref": "#/$defs/aiSeats"}
+      }
+    },
+    "roomSettingsRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session_token", "ai_action_delay_ms"],
+      "properties": {
+        "session_token": {"$ref": "#/$defs/sessionToken"},
+        "ai_action_delay_ms": {"enum": [0, 500, 1000, 1500, 2000, 2500, 3000, 4000, 5000]}
       }
     },
     "sessionRequest": {

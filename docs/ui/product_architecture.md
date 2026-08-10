@@ -27,7 +27,7 @@ SwiftUI application
 - `tuppi_engine.MatchState` is authoritative for legality and transitions.
 - `src/tuppi_server/projection.py` is the sole state-to-wire boundary. It
   accepts authoritative state and calls the canonical player-observation,
-  public-event, or public-match-result serializers.
+  public-event, completed-deal, or public-match-result serializers.
 - Network code cannot serialize `MatchState`, `DealState`, explicit deals, or
   initial hands. Sentinel tests cover initial state, showing, trick play,
   stale responses, reconnect, terminal result, and ordinary logging.
@@ -51,9 +51,18 @@ The Swift client keeps room/session credentials in memory. A server can restart
 and the same running client can reconnect; restarting the client loses those
 credentials. Keychain storage and account identity are deliberately deferred.
 
-The filtered `tuppi.analysis.post_match.v1` endpoint is post-match only. It
-does not expose search, belief, learning, or hidden-hand diagnostics and is not
-a claim of a production coaching system.
+Each completed 13-trick deal is projected as the canonical public
+`tuppi.engine.deal_result.v1` record. Swift archives those records immediately,
+idempotently by `deal_ref`, grouped under `match_ref`; incomplete deals and
+private starting hands are never client history records. The filtered analysis
+endpoints do not expose search, belief, learning, or hidden-hand diagnostics.
+Per-deal analysis may run before 52 only in a one-human/three-bot practice room;
+competitive human rooms remain locked until the terminal result.
+
+AI pacing is room state. The host selects a supported millisecond delay before
+the match starts, all lobby clients receive the value, and persistence restores
+it after a server restart. The environment setting remains only the default for
+new rooms.
 
 ## Current acceptance boundary
 

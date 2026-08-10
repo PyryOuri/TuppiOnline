@@ -30,6 +30,7 @@ from tuppi_engine import (
     apply_match_action,
     begin_explicit_deal,
     create_match,
+    deal_result_to_data,
     event_to_data,
     explicit_deal_from_data,
     match_observation_for,
@@ -46,7 +47,9 @@ from tuppi_rules import (
 )
 
 from .analysis import (
+    COMPLETED_DEAL_DIAGNOSTICS_SCHEMA_VERSION,
     POST_MATCH_DIAGNOSTICS_SCHEMA_VERSION,
+    validate_completed_deal_analysis_response,
     validate_post_match_analysis_response,
 )
 from .match_runner import LiveMatchRunner
@@ -88,6 +91,7 @@ def reconstruct_historical_decisions(
     runner: LiveMatchRunner,
     *,
     seat: int,
+    deal_number: int | None = None,
 ) -> tuple[HistoricalDecision, ...]:
     """Replay durable private material and recover ``seat``'s formal inputs.
 
@@ -100,8 +104,14 @@ def reconstruct_historical_decisions(
         raise TypeError("historical reconstruction requires a LiveMatchRunner")
     if type(seat) is not int or seat not in range(4):
         raise ValueError("analysis seat must be an integer in 0..3")
-    if not runner.terminal:
+    if deal_number is None and not runner.terminal:
         raise ValueError("post-match reconstruction requires a terminal match")
+    if deal_number is not None and (
+        type(deal_number) is not int
+        or deal_number < 0
+        or deal_number >= len(runner.state.completed_deals)
+    ):
+        raise ValueError("completed-deal reconstruction requires a completed deal")
 
     record = runner.persistence_record()
     initial_score = record["initial_score"]
@@ -164,7 +174,9 @@ def reconstruct_historical_decisions(
         event_index = accepted_events[0]["event_index"]
         if type(event_index) is not int:
             raise ValueError("accepted action event index is invalid")
-        if action.seat == seat:
+        if action.seat == seat and (
+            deal_number is None or before.active_deal.deal_number == deal_number
+        ):
             decisions.append(
                 HistoricalDecision(
                     action_index=action_index,
@@ -175,12 +187,26 @@ def reconstruct_historical_decisions(
                 )
             )
 
-    if not state.terminal:
-        raise ValueError("persisted accepted actions do not reach a terminal match")
-    if project_event_batch(state.public_events) != record["public_events"]:
-        raise ValueError("historical reconstruction disagrees with public history")
-    if state.score != runner.state.score:
-        raise ValueError("historical reconstruction disagrees with final score")
+        if (
+            deal_number is not None
+            and before.active_deal.deal_number == deal_number
+            and len(state.completed_deals) > deal_number
+        ):
+            break
+
+    if deal_number is None:
+        if not state.terminal:
+            raise ValueError("persisted accepted actions do not reach a terminal match")
+        if project_event_batch(state.public_events) != record["public_events"]:
+            raise ValueError("historical reconstruction disagrees with public history")
+        if state.score != runner.state.score:
+            raise ValueError("historical reconstruction disagrees with final score")
+    elif (
+        len(state.completed_deals) <= deal_number
+        or state.completed_deals[deal_number].public_result
+        != runner.state.completed_deals[deal_number].public_result
+    ):
+        raise ValueError("historical reconstruction disagrees with completed deal")
     return tuple(decisions)
 
 
@@ -192,37 +218,7 @@ def generate_post_match_diagnostics(
     """Generate and validate the real, seat-scoped post-match response."""
 
     decisions = reconstruct_historical_decisions(runner, seat=seat)
-    specification = phase4_specifications_by_profile_key()[REFERENCE_PROFILE_KEY]
-    reference = construct_registered_agent(specification, seat=seat)
-    candidates: list[_Candidate] = []
-
-    for decision in decisions:
-        exact = _exact_candidate(decision)
-        if exact is not None:
-            candidates.append(exact)
-            # Exact evidence supersedes a heuristic disagreement at this state.
-            continue
-
-        rule = _rule_candidate(decision, runner)
-        if rule is not None:
-            candidates.append(rule)
-            continue
-
-        preferred = reference.choose_action(decision.observation)
-        if preferred != decision.action:
-            candidates.append(_reference_candidate(decision, preferred))
-
-    # Never return every disagreement.  Keep the strongest evidence first and
-    # at most one item for any historical decision.
-    candidates.sort(
-        key=lambda candidate: (
-            -candidate.priority,
-            candidate.item["event_index"],
-        )
-    )
-    selected_candidates = _rank_useful_candidates(candidates)
-    selected = [candidate.item for candidate in selected_candidates]
-    selected.sort(key=lambda item: item["event_index"])
+    selected = _selected_diagnostics(decisions, runner=runner, seat=seat)
     result = project_match_result(runner.state)
     response: dict[str, object] = {
         "schema_version": POST_MATCH_DIAGNOSTICS_SCHEMA_VERSION,
@@ -241,6 +237,77 @@ def generate_post_match_diagnostics(
         expected_match_ref=runner.match_ref,
         public_events=project_event_batch(runner.state.public_events),
     )
+
+
+def generate_completed_deal_diagnostics(
+    runner: LiveMatchRunner,
+    *,
+    seat: int,
+    deal_number: int,
+) -> dict[str, object]:
+    """Generate diagnostics for one completed deal without waiting for 52."""
+
+    decisions = reconstruct_historical_decisions(
+        runner,
+        seat=seat,
+        deal_number=deal_number,
+    )
+    selected = _selected_diagnostics(decisions, runner=runner, seat=seat)
+    result = deal_result_to_data(
+        runner.state.completed_deals[deal_number].public_result
+    )
+    response: dict[str, object] = {
+        "schema_version": COMPLETED_DEAL_DIAGNOSTICS_SCHEMA_VERSION,
+        "match_ref": runner.match_ref,
+        "deal_ref": result["deal_ref"],
+        "deal_number": deal_number,
+        "seat": seat,
+        "summary": {
+            "contract": result["contract"],
+            "diagnostic_count": len(selected),
+            "outcome": result["outcome"],
+            "points": result["deal_score"]["points"],
+            "score_before": result["score_before"],
+            "score_after": result["score_after"],
+            "team_tricks": result["team_tricks"],
+        },
+        "analyses": selected,
+    }
+    return validate_completed_deal_analysis_response(
+        response,
+        expected_match_ref=runner.match_ref,
+        expected_deal_number=deal_number,
+        public_events=result["events"],
+    )
+
+
+def _selected_diagnostics(
+    decisions: tuple[HistoricalDecision, ...],
+    *,
+    runner: LiveMatchRunner,
+    seat: int,
+) -> list[dict[str, object]]:
+    specification = phase4_specifications_by_profile_key()[REFERENCE_PROFILE_KEY]
+    reference = construct_registered_agent(specification, seat=seat)
+    candidates: list[_Candidate] = []
+    for decision in decisions:
+        exact = _exact_candidate(decision)
+        if exact is not None:
+            candidates.append(exact)
+            continue
+        rule = _rule_candidate(decision, runner)
+        if rule is not None:
+            candidates.append(rule)
+            continue
+        preferred = reference.choose_action(decision.observation)
+        if preferred != decision.action:
+            candidates.append(_reference_candidate(decision, preferred))
+    candidates.sort(
+        key=lambda candidate: (-candidate.priority, candidate.item["event_index"])
+    )
+    selected = [candidate.item for candidate in _rank_useful_candidates(candidates)]
+    selected.sort(key=lambda item: item["event_index"])
+    return selected
 
 
 def _rank_useful_candidates(candidates: list[_Candidate]) -> list[_Candidate]:

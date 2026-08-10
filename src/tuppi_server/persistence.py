@@ -15,7 +15,8 @@ import re
 from tuppi_engine import atomic_write_canonical_json, strict_json_load_file
 
 
-ROOM_RECORD_SCHEMA_VERSION = "tuppi.server.room_record.v1"
+ROOM_RECORD_SCHEMA_VERSION = "tuppi.server.room_record.v2"
+LEGACY_ROOM_RECORD_SCHEMA_VERSION = "tuppi.server.room_record.v1"
 POST_MATCH_ANALYSIS_RECORD_SCHEMA_VERSION = (
     "tuppi.server.post_match_analysis_record.v1"
 )

@@ -70,6 +70,48 @@ def test_file_persistence_restores_room_sessions_and_live_runner(tmp_path) -> No
     assert restored_room.runner.observation(0) == room.runner.observation(0)  # type: ignore[union-attr]
 
 
+def test_host_bot_delay_is_persisted_and_locked_after_start(tmp_path) -> None:
+    manager = RoomManager(persistence_dir=tmp_path)
+    room, host = manager.create_room(
+        display_name="Pelaaja",
+        ai_seats=frozenset({1, 2, 3}),
+    )
+    manager.set_ai_action_delay(
+        code=room.code,
+        host_token=host.token,
+        ai_action_delay_ms=1500,
+    )
+    assert room.snapshot()["ai_action_delay_ms"] == 1500
+    restored = RoomManager(persistence_dir=tmp_path).get(room.code)
+    assert restored.ai_action_delay_ms == 1500
+
+    manager.mark_ready(code=room.code, token=host.token)
+    with pytest.raises(RoomError, match="settings_locked"):
+        manager.set_ai_action_delay(
+            code=room.code,
+            host_token=host.token,
+            ai_action_delay_ms=1000,
+        )
+
+
+def test_bot_delay_accepts_only_supported_host_values() -> None:
+    manager = RoomManager()
+    room, host = manager.create_room(display_name="Isäntä")
+    _, guest = manager.join_room(code=room.code, display_name="Vierailija")
+    with pytest.raises(RoomError, match="host_required"):
+        manager.set_ai_action_delay(
+            code=room.code,
+            host_token=guest.token,
+            ai_action_delay_ms=1000,
+        )
+    with pytest.raises(RoomError, match="invalid_ai_action_delay"):
+        manager.set_ai_action_delay(
+            code=room.code,
+            host_token=host.token,
+            ai_action_delay_ms=1250,
+        )
+
+
 def test_tampered_persisted_room_fails_closed(tmp_path) -> None:
     manager = RoomManager(persistence_dir=tmp_path)
     room, host = manager.create_room(

@@ -88,8 +88,12 @@
     "matchUpdatePayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["event_batch", "last_event_index", "match_ref", "observation"],
+      "required": ["completed_deals", "event_batch", "last_event_index", "match_ref", "observation"],
       "properties": {
+        "completed_deals": {
+          "type": "array",
+          "items": {"$ref": "https://example.invalid/tuppi/schemas/engine/deal_result.schema.json"}
+        },
         "event_batch": {
           "type": "array",
           "items": {"$ref": "https://example.invalid/tuppi/schemas/engine/public_event_log.schema.json#/$defs/event"}
@@ -108,8 +112,12 @@
     "reconnectResultPayload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["event_delta", "observation", "status"],
+      "required": ["completed_deals", "event_delta", "observation", "status"],
       "properties": {
+        "completed_deals": {
+          "type": "array",
+          "items": {"$ref": "https://example.invalid/tuppi/schemas/engine/deal_result.schema.json"}
+        },
         "event_delta": {
           "type": "array",
           "items": {"$ref": "https://example.invalid/tuppi/schemas/engine/public_event_log.schema.json#/$defs/event"}

@@ -25,6 +25,11 @@ defaults to `~/Library/Application Support/Tuppi/server` and may be isolated
 with `TUPPI_SERVER_DATA_DIR`. It contains credentials and private hands and
 must not be committed or shared with clients.
 
+`TUPPI_SERVER_AI_ACTION_DELAY_SECONDS` sets the default for newly created
+rooms. The room host can then select 0, 0.5, 1, 1.5, 2, 2.5, 3, 4, or 5 seconds
+from the Swift lobby before play starts; the stored wire value is integer
+milliseconds and survives a server restart.
+
 ## Fixture synchronization
 
 From the Python repository:
@@ -50,10 +55,12 @@ TUPPI_PRODUCT_PORT=18765 \
 swift test --filter LocalInteropTests/testRealPythonServerRoundTripReconnectAndRestart
 ```
 
-It checks compatibility, room creation, AI profile exposure, readiness, a
+It checks compatibility, room creation, room-level AI delay, AI profile
+exposure, readiness, a
 canonical observation, accepted/duplicate/stale actions, disconnect/reconnect,
 raw reconnect-observation decoding, persistent server restart, restored event
-cursor, and continued play. Credentials intentionally remain in the test/client
+cursor, continued play, canonical per-deal delivery, and early solo-practice
+deal diagnostics. Credentials intentionally remain in the test/client
 process across only the server restart.
 
 The server answers application `ping` with `pong`. The client retains its

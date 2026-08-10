@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis.schema.json",
+  "title": "Seat-scoped diagnostics for one completed Tuppi deal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "match_ref", "deal_ref", "deal_number", "seat", "summary", "analyses"],
+  "properties": {
+    "schema_version": {"const": "tuppi.analysis.completed_deal.v1"},
+    "match_ref": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,96}$"},
+    "deal_ref": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,96}/deal:(?:0|[1-9][0-9]*)$", "maxLength": 128},
+    "deal_number": {"type": "integer", "minimum": 0},
+    "seat": {"type": "integer", "minimum": 0, "maximum": 3},
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract", "diagnostic_count", "outcome", "points", "score_before", "score_after", "team_tricks"],
+      "properties": {
+        "contract": {"enum": ["RAMI", "NOLO"]},
+        "diagnostic_count": {"type": "integer", "minimum": 0, "maximum": 10},
+        "outcome": {"enum": ["NOLO", "MADE_RAMI", "STOLEN_RAMI"]},
+        "points": {"type": "integer", "minimum": 0, "maximum": 56},
+        "score_before": {"type": "array", "prefixItems": [{"type": "integer", "minimum": 0}, {"type": "integer", "minimum": 0}], "items": false, "minItems": 2, "maxItems": 2},
+        "score_after": {"type": "array", "prefixItems": [{"type": "integer", "minimum": 0}, {"type": "integer", "minimum": 0}], "items": false, "minItems": 2, "maxItems": 2},
+        "team_tricks": {"type": "array", "prefixItems": [{"type": "integer", "minimum": 0, "maximum": 13}, {"type": "integer", "minimum": 0, "maximum": 13}], "items": false, "minItems": 2, "maxItems": 2}
+      }
+    },
+    "analyses": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {"$ref": "https://example.invalid/tuppi/schemas/network/post_match_diagnostics_v2.schema.json#/$defs/analysis"}
+    }
+  }
+}

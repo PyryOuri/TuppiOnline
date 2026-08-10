@@ -14,6 +14,7 @@ from tuppi_rules import FULL_DECK, card_to_code
 from tuppi_server.analysis import validate_post_match_analysis_response
 from tuppi_server.match_runner import LiveMatchRunner
 from tuppi_server.post_match_diagnostics import (
+    generate_completed_deal_diagnostics,
     generate_post_match_diagnostics,
     reconstruct_historical_decisions,
 )
@@ -70,6 +71,27 @@ def _terminal_runner() -> LiveMatchRunner:
 @cache
 def _seat_zero_response() -> dict[str, object]:
     return generate_post_match_diagnostics(_terminal_runner(), seat=0)
+
+
+@cache
+def _one_completed_deal_runner() -> LiveMatchRunner:
+    runner = LiveMatchRunner(
+        match_ref="completed-deal-diagnostics-test",
+        ai_seats=frozenset({1, 2, 3}),
+    )
+    action_index = 0
+    while not runner.state.completed_deals:
+        observation = runner.observation(0)
+        runner.submit(
+            seat=0,
+            client_action_id=f"one-deal:{action_index}",
+            match_ref=runner.match_ref,
+            expected_event_index=runner.event_cursor,
+            action=action_from_data(observation["legal_actions"][-1]),
+        )
+        action_index += 1
+    assert not runner.terminal
+    return runner
 
 
 def _action_card(action: dict[str, object]) -> str:
@@ -203,6 +225,46 @@ def test_analysis_endpoint_is_terminal_only_and_generates_after_restart_material
     response = manager.post_match_analysis_for_session(code=room.code, token=host.token)
     assert response["schema_version"] == "tuppi.analysis.post_match.v2"
     assert response["seat"] == host.seat
+
+
+def test_completed_deal_generator_is_available_before_52_and_stays_deal_scoped() -> None:
+    runner = _one_completed_deal_runner()
+    response = generate_completed_deal_diagnostics(runner, seat=0, deal_number=0)
+    assert response["schema_version"] == "tuppi.analysis.completed_deal.v1"
+    assert response["deal_ref"].endswith("/deal:0")
+    assert response["summary"]["diagnostic_count"] == len(response["analyses"])
+    assert all(item["deal_number"] == 0 for item in response["analyses"])
+    assert "/deal:1" not in json.dumps(response, sort_keys=True)
+    validate_instance(
+        response,
+        "https://example.invalid/tuppi/schemas/network/completed_deal_analysis.schema.json",
+    )
+
+
+def test_completed_deal_analysis_is_early_only_for_solo_ai_practice() -> None:
+    manager = RoomManager()
+    room, host = manager.create_room(
+        display_name="Pelaaja",
+        ai_seats=frozenset({1, 2, 3}),
+    )
+    room.runner = _one_completed_deal_runner()
+    response = manager.completed_deal_analysis_for_session(
+        code=room.code,
+        token=host.token,
+        deal_number=0,
+    )
+    assert response["seat"] == 0
+
+    competitive = RoomManager()
+    room, host = competitive.create_room(display_name="Isäntä")
+    competitive.join_room(code=room.code, display_name="Vierailija")
+    room.runner = _one_completed_deal_runner()
+    with pytest.raises(RoomError, match="analysis_locked_until_match_complete"):
+        competitive.completed_deal_analysis_for_session(
+            code=room.code,
+            token=host.token,
+            deal_number=0,
+        )
 
 
 def test_empty_v2_response_is_valid_for_a_completed_match_with_no_findings() -> None:

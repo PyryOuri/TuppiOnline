@@ -382,6 +382,16 @@ def _transport_cases(recording: dict[str, Any]) -> dict[str, object]:
             if event["event_index"] == index
         ]
 
+    def completed_deals_at(index: int) -> list[dict[str, object]]:
+        terminal_result = recording.get("terminal_result")
+        if type(terminal_result) is not dict:
+            return []
+        return [
+            deal
+            for deal in terminal_result["deals"]
+            if max(event["event_index"] for event in deal["events"]) <= index
+        ]
+
     return {
         "schema_version": "tuppi.ui.transport_cases.v2",
         "protocol_version": NETWORK_PROTOCOL_VERSION,
@@ -397,6 +407,7 @@ def _transport_cases(recording: dict[str, Any]) -> dict[str, object]:
                 "response": {
                     "message_type": "reconnect_result",
                     "payload": {
+                        "completed_deals": completed_deals_at(showing["event_index"]),
                         "event_delta": [],
                         "observation": showing["observation"],
                         "status": "connected",
@@ -414,6 +425,7 @@ def _transport_cases(recording: dict[str, Any]) -> dict[str, object]:
                 "response": {
                     "message_type": "reconnect_result",
                     "payload": {
+                        "completed_deals": completed_deals_at(trick["event_index"]),
                         "event_delta": event_at(trick["event_index"]),
                         "observation": _snapshot_for_seat(
                             snapshots,
@@ -435,6 +447,7 @@ def _transport_cases(recording: dict[str, Any]) -> dict[str, object]:
                 "response": {
                     "message_type": "reconnect_result",
                     "payload": {
+                        "completed_deals": completed_deals_at(reset["event_index"]),
                         "event_delta": event_at(reset["event_index"]),
                         "observation": reset["observation"],
                         "status": "connected",
@@ -566,21 +579,25 @@ def _wire_recordings(
         for seat in range(4)
     ]
     waiting_lobby = {
+        "ai_action_delay_ms": 5000,
         "lifecycle": "waiting",
         "room_code": room_code,
         "seats": open_seats,
     }
     configured_lobby = {
+        "ai_action_delay_ms": 5000,
         "lifecycle": "configured",
         "room_code": room_code,
         "seats": configured_seats,
     }
     joined_lobby = {
+        "ai_action_delay_ms": 5000,
         "lifecycle": "waiting",
         "room_code": room_code,
         "seats": joined_seats,
     }
     playing_lobby = {
+        "ai_action_delay_ms": 5000,
         "lifecycle": "playing",
         "room_code": room_code,
         "seats": playing_seats,
@@ -638,6 +655,17 @@ def _wire_recordings(
             "response": {"lobby": configured_lobby},
         },
         {
+            "name": "room_settings",
+            "method": "POST",
+            "path": f"/v1/rooms/{room_code}/settings",
+            "request_schema_ref": f"{HTTP_SCHEMA_ROOT}#/$defs/roomSettingsRequest",
+            "request": {"session_token": token, "ai_action_delay_ms": 2000},
+            "response_schema_ref": f"{HTTP_SCHEMA_ROOT}#/$defs/roomStatusResponse",
+            "response": {
+                "lobby": {**configured_lobby, "ai_action_delay_ms": 2000}
+            },
+        },
+        {
             "name": "ready",
             "method": "POST",
             "path": f"/v1/rooms/{room_code}/ready",
@@ -654,6 +682,31 @@ def _wire_recordings(
             "request": {"session_token": token},
             "response_schema_ref": "https://example.invalid/tuppi/schemas/network/post_match_analysis.schema.json",
             "response": analysis,
+        },
+        {
+            "name": "completed_deal_analysis",
+            "method": "POST",
+            "path": f"/v1/rooms/{room_code}/deals/0/analysis",
+            "request_schema_ref": f"{HTTP_SCHEMA_ROOT}#/$defs/sessionRequest",
+            "request": {"session_token": token},
+            "response_schema_ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis.schema.json",
+            "response": {
+                "schema_version": "tuppi.analysis.completed_deal.v1",
+                "match_ref": match_ref,
+                "deal_ref": terminal_result["deals"][0]["deal_ref"],
+                "deal_number": 0,
+                "seat": analysis.get("seat", 0),
+                "summary": {
+                    "contract": terminal_result["deals"][0]["contract"],
+                    "diagnostic_count": 0,
+                    "outcome": terminal_result["deals"][0]["outcome"],
+                    "points": terminal_result["deals"][0]["deal_score"]["points"],
+                    "score_before": terminal_result["deals"][0]["score_before"],
+                    "score_after": terminal_result["deals"][0]["score_after"],
+                    "team_tricks": terminal_result["deals"][0]["team_tricks"],
+                },
+                "analyses": [],
+            },
         },
         {
             "name": "server_error",
@@ -719,6 +772,7 @@ def _wire_recordings(
         {
             "message_type": "match_update",
             "payload": {
+                "completed_deals": [],
                 "event_batch": [],
                 "last_event_index": showing["event_index"],
                 "match_ref": match_ref,
@@ -763,6 +817,7 @@ def _wire_recordings(
         {
             "message_type": "match_update",
             "payload": {
+                "completed_deals": terminal_result["deals"],
                 "event_batch": [],
                 "last_event_index": terminal["event_index"],
                 "match_ref": match_ref,
@@ -896,6 +951,7 @@ def export_bundle(output_dir: Path, scenario_names: tuple[str, ...] | None = Non
             "canonical_engine_schemas": [
                 "tuppi.engine.player_observation.v1",
                 "tuppi.engine.public_event.v1",
+                "tuppi.engine.deal_result.v1",
                 "tuppi.engine.match_result.v1",
             ],
             "protocol_manifest": "protocol-manifest.json",
@@ -915,6 +971,7 @@ def export_bundle(output_dir: Path, scenario_names: tuple[str, ...] | None = Non
             "canonical_engine_schemas": [
                 "tuppi.engine.player_observation.v1",
                 "tuppi.engine.public_event.v1",
+                "tuppi.engine.deal_result.v1",
                 "tuppi.engine.match_result.v1",
             ],
             "compatibility": "compatibility.json",

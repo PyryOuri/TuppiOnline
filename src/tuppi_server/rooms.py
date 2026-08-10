@@ -16,9 +16,17 @@ from .analysis import (
     RecordedDecisionAnalysis,
     validate_post_match_analysis_response,
 )
-from .match_runner import DEFAULT_AI_PROFILE_KEY, LiveMatchRunner
-from .post_match_diagnostics import generate_post_match_diagnostics
+from .match_runner import (
+    AI_ACTION_DELAY_SECONDS,
+    DEFAULT_AI_PROFILE_KEY,
+    LiveMatchRunner,
+)
+from .post_match_diagnostics import (
+    generate_completed_deal_diagnostics,
+    generate_post_match_diagnostics,
+)
 from .persistence import (
+    LEGACY_ROOM_RECORD_SCHEMA_VERSION,
     ROOM_RECORD_SCHEMA_VERSION,
     FileRoomStore,
     PersistenceError,
@@ -28,6 +36,23 @@ from .projection import project_event_batch
 
 class RoomError(Exception):
     """A user-facing room operation failed."""
+
+
+AI_ACTION_DELAY_OPTIONS_MS = (
+    0,
+    500,
+    1000,
+    1500,
+    2000,
+    2500,
+    3000,
+    4000,
+    5000,
+)
+DEFAULT_AI_ACTION_DELAY_MS = min(
+    AI_ACTION_DELAY_OPTIONS_MS,
+    key=lambda value: abs(value - round(AI_ACTION_DELAY_SECONDS * 1000)),
+)
 
 
 @dataclass(slots=True)
@@ -47,6 +72,7 @@ class Room:
     runner: LiveMatchRunner | None = None
     lifecycle: str = "created"
     post_match_analysis: dict[str, object] | None = None
+    ai_action_delay_ms: int = DEFAULT_AI_ACTION_DELAY_MS
 
     def session_for_seat(self, seat: int) -> Session | None:
         return next((item for item in self.sessions.values() if item.seat == seat), None)
@@ -80,6 +106,7 @@ class Room:
                 }
             )
         return {
+            "ai_action_delay_ms": self.ai_action_delay_ms,
             "lifecycle": self.lifecycle,
             "room_code": self.code,
             "seats": seats,
@@ -89,6 +116,7 @@ class Room:
         """Return private room/session/match material for the file store."""
 
         return {
+            "ai_action_delay_ms": self.ai_action_delay_ms,
             "ai_seats": sorted(self.ai_seats),
             "host_token": self.host_token,
             "lifecycle": self.lifecycle,
@@ -186,6 +214,29 @@ class RoomManager:
                 raise RoomError("seat_occupied")
         room.ai_seats = set(ai_seats)
         room.lifecycle = "configured"
+        self.persist(room)
+        return room
+
+    def set_ai_action_delay(
+        self,
+        *,
+        code: str,
+        host_token: str,
+        ai_action_delay_ms: int,
+    ) -> Room:
+        """Update host-controlled AI pacing before the match starts."""
+
+        room = self.get(code)
+        if room.host_token != host_token:
+            raise RoomError("host_required")
+        if room.runner is not None:
+            raise RoomError("settings_locked")
+        if (
+            type(ai_action_delay_ms) is not int
+            or ai_action_delay_ms not in AI_ACTION_DELAY_OPTIONS_MS
+        ):
+            raise RoomError("invalid_ai_action_delay")
+        room.ai_action_delay_ms = ai_action_delay_ms
         self.persist(room)
         return room
 
@@ -316,6 +367,32 @@ class RoomManager:
             raise RoomError("analysis_not_available")
         return generate_post_match_diagnostics(room.runner, seat=session.seat)
 
+    def completed_deal_analysis_for_session(
+        self,
+        *,
+        code: str,
+        token: str,
+        deal_number: int,
+    ) -> dict[str, object]:
+        """Return one completed-deal diagnostic envelope when disclosure is safe."""
+
+        room, session = self.session(code=code, token=token)
+        if room.runner is None:
+            raise RoomError("match_not_started")
+        if (
+            type(deal_number) is not int
+            or deal_number < 0
+            or deal_number >= len(room.runner.state.completed_deals)
+        ):
+            raise RoomError("deal_not_complete")
+        if not room.runner.terminal and not self._is_solo_ai_practice(room, session):
+            raise RoomError("analysis_locked_until_match_complete")
+        return generate_completed_deal_diagnostics(
+            room.runner,
+            seat=session.seat,
+            deal_number=deal_number,
+        )
+
     def get(self, code: str) -> Room:
         normalized = code.strip().upper()
         if normalized not in self._rooms:
@@ -336,6 +413,14 @@ class RoomManager:
             return False
         return all(
             session.ready for session in room.sessions.values()
+        )
+
+    @staticmethod
+    def _is_solo_ai_practice(room: Room, session: Session) -> bool:
+        return (
+            len(room.sessions) == 1
+            and session.seat == 0
+            and room.ai_seats == {1, 2, 3}
         )
 
     @staticmethod
@@ -393,7 +478,7 @@ class RoomManager:
 
     @staticmethod
     def _room_from_record(record: dict[str, object]) -> Room:
-        expected = {
+        expected_v1 = {
             "ai_seats",
             "host_token",
             "lifecycle",
@@ -402,10 +487,18 @@ class RoomManager:
             "sessions",
             "runner",
         }
+        expected_v2 = expected_v1 | {"ai_action_delay_ms"}
+        schema_version = record.get("schema_version")
+        if schema_version == ROOM_RECORD_SCHEMA_VERSION:
+            expected = expected_v2
+            ai_action_delay_ms = record.get("ai_action_delay_ms")
+        elif schema_version == LEGACY_ROOM_RECORD_SCHEMA_VERSION:
+            expected = expected_v1
+            ai_action_delay_ms = DEFAULT_AI_ACTION_DELAY_MS
+        else:
+            raise PersistenceError("unsupported room record schema_version")
         if set(record) != expected:
             raise PersistenceError("persisted room fields are invalid")
-        if record["schema_version"] != ROOM_RECORD_SCHEMA_VERSION:
-            raise PersistenceError("unsupported room record schema_version")
         code = record["room_code"]
         host_token = record["host_token"]
         lifecycle = record["lifecycle"]
@@ -424,11 +517,17 @@ class RoomManager:
             raise PersistenceError("persisted ai_seats are invalid")
         if type(sessions_data) is not list:
             raise PersistenceError("persisted sessions must be an array")
+        if (
+            type(ai_action_delay_ms) is not int
+            or ai_action_delay_ms not in AI_ACTION_DELAY_OPTIONS_MS
+        ):
+            raise PersistenceError("persisted ai_action_delay_ms is invalid")
         room = Room(
             code=code,
             host_token=host_token,
             ai_seats=set(ai_seats_data),
             lifecycle=lifecycle,
+            ai_action_delay_ms=ai_action_delay_ms,
         )
         for raw_session in sessions_data:
             if type(raw_session) is not dict or set(raw_session) != {

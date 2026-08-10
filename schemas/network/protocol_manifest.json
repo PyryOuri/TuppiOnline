@@ -5,6 +5,7 @@
   "canonical_payloads": [
     {"identity": "tuppi.engine.player_observation.v1", "schema_ref": "https://example.invalid/tuppi/schemas/engine/player_observation.schema.json"},
     {"identity": "tuppi.engine.public_event.v1", "schema_ref": "https://example.invalid/tuppi/schemas/engine/public_event_log.schema.json#/$defs/event"},
+    {"identity": "tuppi.engine.deal_result.v1", "schema_ref": "https://example.invalid/tuppi/schemas/engine/deal_result.schema.json"},
     {"identity": "tuppi.engine.match_result.v1", "schema_ref": "https://example.invalid/tuppi/schemas/engine/match_result.schema.json"}
   ],
   "messages": [
@@ -15,10 +16,14 @@
     {"id": "join_room_result", "transport": "http", "direction": "server_to_client", "schema_ref": "https://example.invalid/tuppi/schemas/network/http_api.schema.json#/$defs/roomBootstrap"},
     {"id": "configure_room_request", "transport": "http", "direction": "client_to_server", "schema_ref": "https://example.invalid/tuppi/schemas/network/http_api.schema.json#/$defs/configureRoomRequest"},
     {"id": "configure_room_result", "transport": "http", "direction": "server_to_client", "schema_ref": "https://example.invalid/tuppi/schemas/network/http_api.schema.json#/$defs/roomStatusResponse"},
+    {"id": "room_settings_request", "transport": "http", "direction": "client_to_server", "schema_ref": "https://example.invalid/tuppi/schemas/network/http_api.schema.json#/$defs/roomSettingsRequest"},
+    {"id": "room_settings_result", "transport": "http", "direction": "server_to_client", "schema_ref": "https://example.invalid/tuppi/schemas/network/http_api.schema.json#/$defs/roomStatusResponse"},
     {"id": "ready_request", "transport": "http", "direction": "client_to_server", "schema_ref": "https://example.invalid/tuppi/schemas/network/http_api.schema.json#/$defs/sessionRequest"},
     {"id": "ready_result", "transport": "http", "direction": "server_to_client", "schema_ref": "https://example.invalid/tuppi/schemas/network/http_api.schema.json#/$defs/roomStatusResponse"},
     {"id": "analysis_request", "transport": "http", "direction": "client_to_server", "schema_ref": "https://example.invalid/tuppi/schemas/network/http_api.schema.json#/$defs/sessionRequest"},
     {"id": "analysis_result", "transport": "http", "direction": "server_to_client", "schema_ref": "https://example.invalid/tuppi/schemas/network/post_match_analysis.schema.json"},
+    {"id": "completed_deal_analysis_request", "transport": "http", "direction": "client_to_server", "schema_ref": "https://example.invalid/tuppi/schemas/network/http_api.schema.json#/$defs/sessionRequest"},
+    {"id": "completed_deal_analysis_result", "transport": "http", "direction": "server_to_client", "schema_ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis.schema.json"},
     {"id": "server_error", "transport": "http", "direction": "server_to_client", "schema_ref": "https://example.invalid/tuppi/schemas/network/http_api.schema.json#/$defs/serverError"},
     {"id": "hello", "transport": "websocket", "direction": "client_to_server", "schema_ref": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json#/$defs/hello"},
     {"id": "hello_ack", "transport": "websocket", "direction": "server_to_client", "schema_ref": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json#/$defs/helloAcknowledgement"},

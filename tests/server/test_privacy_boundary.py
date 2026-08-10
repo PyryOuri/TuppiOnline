@@ -7,7 +7,11 @@ import logging
 from tuppi_engine import action_from_data
 from tuppi_server import LiveMatchRunner
 from tuppi_server.app import TuppiASGIApp
-from tuppi_server.projection import project_event_batch, project_match_result
+from tuppi_server.projection import (
+    project_completed_deals,
+    project_event_batch,
+    project_match_result,
+)
 from tuppi_server.rooms import RoomManager
 from tuppi_rules import FULL_DECK
 
@@ -163,6 +167,10 @@ def test_terminal_server_result_contains_no_private_state_keys() -> None:
     assert runner.terminal
     result = project_match_result(runner.state)
     assert not (set(_keys(result)) & BANNED_WIRE_KEYS)
+    completed = project_completed_deals(runner.state)
+    assert completed
+    assert not (set(_keys(completed)) & BANNED_WIRE_KEYS)
+    assert all(item["schema_version"] == "tuppi.engine.deal_result.v1" for item in completed)
 
 
 def test_ordinary_server_logging_does_not_emit_tokens_or_hidden_hands(caplog) -> None:
