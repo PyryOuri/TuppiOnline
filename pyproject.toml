@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tuppi-research"
-version = "0.10.0"
-description = "Deterministic Tuppi rules, engine, deal and complete-match evaluation, baseline agents, exact inference and solving, uniform-feasible PIMC, information-set search, behavioural hidden-hand belief diagnostics, and legacy archive"
+version = "0.11.0"
+description = "Deterministic Tuppi rules, engine, complete-match evaluation, frozen baseline agents, classical imperfect-information research baselines, behavioural belief diagnostics, and optional learned-policy experiments"
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
 dependencies = []
@@ -15,6 +15,10 @@ dev = [
   "hypothesis>=6.100,<7",
   "jsonschema>=4.20,<5",
   "pytest>=8,<9",
+]
+learning = [
+  "numpy>=2,<3",
+  "torch>=2.13,<2.14",
 ]
 
 [project.scripts]
@@ -236,6 +240,20 @@ where = ["src"]
   "examples/search/README.md",
   "examples/search/assemble_phase5d_a_report.py",
 ]
+
+"share/tuppi-learning/schemas" = [
+  "schemas/learning/actor_configuration.schema.json",
+  "schemas/learning/checkpoint_metadata.schema.json",
+  "schemas/learning/dataset_manifest.schema.json",
+  "schemas/learning/evaluation_summary.schema.json",
+]
+"share/tuppi-learning/docs" = [
+  "docs/learning/behavior_cloning.md",
+  "docs/learning/ctde_training.md",
+  "docs/learning/observation_encoder.md",
+  "docs/learning/phase6_architecture.md",
+  "docs/learning/phase6_results.md",
+]
 "share/tuppi-search/reports" = [
   "reports/phase5c/pimc_registry.json",
   "reports/phase5c/search_benchmark.json",
@@ -269,5 +287,6 @@ testpaths = [
   "tests/exact",
   "tests/search",
   "tests/belief",
+  "tests/learning",
 ]
 addopts = "-ra"

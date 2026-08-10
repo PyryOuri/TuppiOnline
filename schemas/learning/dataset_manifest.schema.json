@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tuppi Phase 6 dataset manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["dataset_id", "dataset_version", "initial_dealer_schedule", "profile_schedule", "root_seed", "safety_cap", "schema_version", "score_schedule", "split_counts", "split_streams", "target_agent_id"],
+  "properties": {
+    "dataset_id": {"type": "string", "pattern": "^dataset:sha256:[0-9a-f]{64}$"},
+    "dataset_version": {"type": "string"},
+    "initial_dealer_schedule": {"type": "string"},
+    "profile_schedule": {"type": "array", "items": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "string"}}},
+    "root_seed": {},
+    "safety_cap": {"type": "integer", "minimum": 1},
+    "schema_version": {"const": "tuppi.learning.dataset_manifest.v1"},
+    "score_schedule": {"type": "array", "items": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "integer"}}},
+    "split_counts": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "split_streams": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}},
+    "target_agent_id": {"type": "string", "pattern": "^agent:sha256:[0-9a-f]{64}$"}
+  }
+}

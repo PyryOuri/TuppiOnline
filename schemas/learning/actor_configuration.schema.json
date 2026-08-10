@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tuppi Phase 6 actor configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["action_encoder_version", "architecture_version", "card_embedding_dim", "context_hidden_dim", "encoder_version", "history_hidden_dim", "inference_rule", "preprocessing_version", "state_dim"],
+  "properties": {
+    "action_encoder_version": {"type": "string"},
+    "architecture_version": {"type": "string"},
+    "card_embedding_dim": {"type": "integer", "minimum": 1},
+    "context_hidden_dim": {"type": "integer", "minimum": 1},
+    "encoder_version": {"type": "string"},
+    "history_hidden_dim": {"type": "integer", "minimum": 1},
+    "inference_rule": {"type": "string"},
+    "preprocessing_version": {"type": "string"},
+    "state_dim": {"type": "integer", "minimum": 1}
+  }
+}

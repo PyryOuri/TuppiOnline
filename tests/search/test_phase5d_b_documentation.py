@@ -74,10 +74,3 @@ def test_phase5d_b_source_does_not_modify_pimc_configuration_or_recurse():
     assert "UniformFeasiblePimcAgent" not in text
     simulation_body = text.split("def _run_simulation", 1)[1].split("def _failure", 1)[0]
     assert "construct_root_info_uct_agent(" not in simulation_body
-
-
-def test_phase5d_b_package_version_is_incremented():
-    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    # Phase 5G-B is a separately versioned belief-layer release; this guard
-    # ensures the Phase 5G-A package version is not silently retained.
-    assert 'version = "0.10.0"' in pyproject

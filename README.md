@@ -5,12 +5,12 @@ authoritative rules specification, the Phase 2 deterministic clean engine,
 the Phase 3 deterministic evaluation framework, the Phase 4 transparent
 baseline-agent ladder, the Phase 5A complete-match evaluation protocol, the
 Phase 5B exact inference and solving layer, the Phase 5C uniform-feasible PIMC
-search baseline, and the Phase 5D-A decomposition of that baseline's failure.
-Phase 5D-B and Phase 5E added observation-safe root information-set UCT and
-multi-observer re-determinizing search; Phase 5F accelerates the latter without
-changing its semantics and records its first valid unsealed strength evaluation.
+search baseline, and the later Phase 5 information-set search and behavioural
+belief experiments. Phase 5 is closed as a negative classical-search programme.
+Phase 6 adds an optional observation-only learned-policy experiment and records
+its bounded imitation failure; no learned policy is integrated into gameplay.
 
-Nine boundaries matter:
+Eleven boundaries matter:
 
 1. `Archive/` contains byte-for-byte frozen historical artifacts.
 2. `src/tuppi_legacy/` verifies and executes the old emulator through an
@@ -37,6 +37,12 @@ Nine boundaries matter:
    root-player information-set UCT, and observation-safe multi-observer
    re-determinizing search. They are baselines, not equilibrium solvers, and the
    dependency direction is one-way again: nothing earlier may reference it.
+10. `src/tuppi_belief/` owns the observation-safe behavioural likelihood model.
+    It updates an exact hard-feasible prior from public action history and is not
+    connected to a search agent.
+11. `src/tuppi_learning/` owns the optional learned-policy experiment. Its actor
+    accepts only formal player observations and legal actions; its centralized
+    critic is training-only. Core packages neither import nor require PyTorch.
 
 The archival ruleset identifier is **`legacy_v9_unverified`**. It is not the
 target ruleset, is preserved only for historical comparison, and must not be
@@ -112,9 +118,16 @@ source "$HOME/.venvs/tuppi-research/bin/activate"
 python -m pip install -e '.[dev]'
 ```
 
-There are no runtime dependencies outside the Python standard library and no
-machine-learning dependencies. Development tests use pytest, Hypothesis, and
-JSON Schema validation.
+The core installation has no runtime dependencies outside the Python standard
+library. Development tests use pytest, Hypothesis, and JSON Schema validation.
+Phase 6 neural tooling is isolated in the optional `learning` dependency group:
+
+```bash
+.venv/bin/python -m pip install '.[dev,learning]'
+```
+
+Importing the rules, engine, evaluation, agent, exact, search, or belief layers
+does not import or require NumPy or PyTorch.
 
 ## Tests
 
@@ -714,6 +727,19 @@ Phase 5G-B adds an observation-safe, causal action-likelihood belief layer over 
 exact hard-feasible prior. It is evaluated on independent synthetic known-policy
 streams and is deliberately not connected to any search agent yet; see
 `docs/belief/phase5g_b_results.md` for the held-out decision and limitations.
+
+Phase 5 is now closed as a negative classical-search programme. Phase 6 adds
+an optional PyTorch learning layer under `src/tuppi_learning/`. Its shared
+seat-relative actor receives only formal observations and legal actions; its
+centralized critic is training-only. The corrected clone reached 85.27%
+held-out action agreement and then recorded 0/1/31 in a direct 32-pair
+comparison against `partner_aware_v1`. The explicit R4 kill criterion stopped
+Phase 6 before PPO/self-play. No learned model is integrated into the engine,
+evaluator, search, or belief layers.
+
+Learning architecture and results are documented in `docs/learning/`; bulk
+datasets and checkpoint weights remain under the permitted external
+`/Users/pyryouri/Developer/TuppiRuns/phase6` directory.
 
 ## Storage discipline
 
