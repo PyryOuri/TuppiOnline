@@ -44,9 +44,9 @@ Thirteen boundaries matter:
     accepts only formal player observations and legal actions; its centralized
     critic is training-only. Core packages neither import nor require PyTorch.
 12. `src/tuppi_server/` owns the authoritative private-alpha room, transport,
-    projection, AI-seat, persistence, and restart-recovery boundary. It consumes
-    the current engine and agents; it does not reimplement rules or expose
-    private state.
+    projection, AI-seat, persistence, restart-recovery, and completed-match
+    diagnostics boundary. It consumes the current engine and agents; it does
+    not reimplement rules or expose private live state.
 13. `src/tuppi_ui_fixtures/` exports deterministic privacy-safe protocol fixtures
     from the engine examples. Python schemas and the exporter are the protocol
     source of truth for the separately versioned Swift client.

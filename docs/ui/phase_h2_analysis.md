@@ -1,92 +1,96 @@
-# UI-H2 — Post-match decision analysis
+# UI-H2 — Real post-match diagnostics
 
-The first UI-H2 slice is a replay-only analysis panel. It is not available in
-the live table and cannot affect a submitted action.
+UI-H2 is a completed-match-only diagnostic pipeline. It never runs during an
+active competitive game and cannot affect an accepted action.
 
-## Contract
+## Authoritative contract
 
-The client-facing contract is `tuppi.analysis.post_match.v1`, defined in
-`schemas/network/post_match_analysis.schema.json`. It is a filtered product
-projection, not a transport copy of the research search diagnostics.
-
-The payload may contain:
-
-- the public match reference and event index;
-- the analyzed seat and decision phase;
-- the played and recommended legal actions;
-- ranked alternatives;
-- human-readable explanation and limitations;
-- a source identifier.
-
-The payload must not contain:
-
-- private initial hands or opponent cards;
-- explicit live deal identifiers or server randomness;
-- search seeds, sampled worlds, hidden-hand assignments, or search trees;
-- unbounded raw engine observations.
-
-The Python agent repository already has privacy-safe diagnostic structures, but
-those structures are not sent directly to the client. The server adapter now
-lives in `src/tuppi_server/analysis.py`. It accepts only the serialized
-`tuppi.agents.decision_diagnostics.v1` record plus bounded, user-facing
-explanation metadata and constructs the response field-by-field.
-
-The adapter requires the analyzed action to match a public
-`show_accepted`/`card_played` event. It also verifies the match reference,
-deal number, seat, phase, trick index, canonical engine action, selected
-candidate, and deterministic score ordering. If an authorized visible-card
-set is supplied, every card named by the diagnostics and output must be in
-that set.
-
-The adapter rejects PIMC/search diagnostics and recursively rejects private
-keys such as `world_set`, `decision_seed`, hidden hands, explicit deals, and
-full observations. Raw score vectors, feature contributions, rule IDs,
-observation digests, agent identities, and search metadata are never copied
-to the client response.
-
-The server now stores only the filtered envelope as a private
-`analysis-<ROOMCODE>.json` artifact next to the UI-F room record. It can be
-retrieved by an authenticated participant with:
+The live endpoint returns `tuppi.analysis.post_match.v2`. The versioned union
+schema is `schemas/network/post_match_analysis.schema.json`; the strict v2
+shape is `schemas/network/post_match_diagnostics_v2.schema.json`. Legacy
+`tuppi.analysis.post_match.v1` remains schema-valid only so old deterministic
+fixture replays keep decoding.
 
 ```text
 POST /v1/rooms/{room_code}/analysis
 {"session_token":"..."}
 ```
 
-The endpoint is read-only. Before storing, loading after restart, or returning
-the response, the server binds every analysis to the authoritative public
-event log and checks the accepted action, event index, deal number, phase, and
-trick index. Existing UI-F room records remain compatible because the analysis
-artifact is separate from the private runner record.
+The endpoint authenticates the room participant, requires a terminal runner,
+and generates a response only for that participant's seat. It returns a public
+match summary and zero to ten ranked decision items. Every item is bound to the
+accepted `show_accepted` or `card_played` public event and contains the actual
+action, suggested action, historical legal actions, contract/role/trick/score
+context, deterministic explanation text, and an explicit evidence label.
 
-The live playing AI and production analysis generator remain separate. The
-default `partner_aware_v1` playing agent is not presented as an analysis
-engine and cannot create fake recommendations merely to populate this
-endpoint. If a justified analysis generator is introduced later, its server-side hook is
-`RoomManager.record_post_match_analyses(...)`; there is still no client-facing
-analysis write endpoint.
+## Historical reconstruction
 
-## Current implementation
+`src/tuppi_server/post_match_diagnostics.py` replays the durable explicit deals
+and accepted actions from the initial match state. Immediately before each
+local-seat action it creates the canonical formal `PlayerObservation`. This is
+the only input sent to `partner_aware_v1`; the reference policy never receives
+the final deal, opponent hands, or a reconstructed omniscient observation.
 
-The Swift client includes two deterministic `ui_h2_fixture` analyses for the
-`example-exact-52` match fixture:
+The complete finished deal is available only to the server-side post-match
+exact and deterministic rule checks. The generated client response is
+seat-scoped and is validated again against the authoritative public event log.
+Raw observations, private hands, search trees, score vectors, rule-feature
+contributions, belief particles, and training diagnostics are not serialized.
 
-- the initial RAMI showing;
-- the first trick-play decision.
+## Evidence sources
 
-Selecting an analysis jumps the replay cursor to its event. The panel labels
-fixture content explicitly and displays its limitations, so demo content cannot
-be mistaken for a production strength estimate.
+- `Exact` / `perfect_information_exact`: the frozen Phase 5B solver compares
+  legal plays when at most four tricks remain. A diagnostic is emitted only
+  for a positive exact trick-value loss. The payload records chosen value,
+  best value, difference, and tied optimal cards. It is labelled explicitly as
+  a perfect-information late-game result.
+- `Rule-based` / `objective_rule_pattern`: conservative deterministic findings
+  currently cover a cheaper legal card that wins the same realised trick and
+  overtaking a currently winning partner when a legal card would leave the
+  partner ahead. Explanations state their counterfactual limit.
+- `Reference` / `reference_policy_only`: `partner_aware_v1` is queried with the
+  historical formal observation. Disagreement is a comparison, never proof of
+  an error or mathematical optimality.
 
-## Non-goals
+PIMC, root UCT, multi-observer ISMCTS, and behavioural-belief particles are not
+imported or used as coaching authorities.
 
-This phase does not expose raw PIMC diagnostics, perfect-information oracle
-comparisons, hidden-hand inference, coaching scores, or live recommendations.
+Exact findings rank first, then objective tactical findings, important showing
+comparisons, and remaining reference disagreements. At most one diagnostic is
+returned for one historical decision, and the response is capped at ten rather
+than returning every disagreement.
 
-## Validation
+## Persistence and restart
 
-The adapter tests validate the response against
-`schemas/network/post_match_analysis.schema.json` and cover showing, trick
-play, event mismatches, PIMC rejection, nested private keys, unauthorized
-card codes, deterministic alternative ordering, authenticated retrieval,
-restart persistence, public-event binding, and tamper rejection.
+The generator is deterministic from the restart-safe private match record, so
+it can regenerate the same seat-scoped response after server restart while the
+client retains its room/session credential. Raw solver or AI diagnostics are
+not persisted. Historical filtered v1 analysis artifacts are still validated
+on load for compatibility and tamper detection, but a real `LiveMatchRunner`
+uses the v2 generator.
+
+## Swift behavior
+
+The normal result screen appears first and offers `Analysoi peli`. The Swift
+client fetches v2 through its production HTTP client, verifies match and seat
+identity, stores the filtered response with local public match history, and
+opens replay. Choosing an item jumps to its exact public event and highlights
+the played card and suggested alternative. Exact, rule-based, and reference
+labels remain visible. Replay remains available for empty or failed analysis.
+
+Room/session credentials remain memory-only. Server-process restart recovery
+works while the client remains open; client-process restart recovery and
+Keychain storage remain deferred to physical private-alpha hardening.
+
+## Verification boundary
+
+Automated Python tests cover historical state/observation reconstruction,
+exact output, reference replay, ranking, strict schemas, seat scoping, public
+event binding, empty responses, restart material, and terminal-only exposure.
+Swift tests cover production DTO decoding, loading/error/empty state,
+source labels, replay navigation, action highlighting, persisted replay data,
+and live-play rejection. The opt-in localhost test completes a real match,
+requests v2 diagnostics, decodes them, and resolves a replay cursor.
+
+Physical two-Mac/LAN, firewall, signing, notarization, and real-player quality
+review are separate acceptance gates.

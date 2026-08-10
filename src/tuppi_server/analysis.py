@@ -33,6 +33,7 @@ from tuppi_engine.validation import is_sha256_identifier, is_valid_match_ref
 
 
 POST_MATCH_ANALYSIS_SCHEMA_VERSION = "tuppi.analysis.post_match.v1"
+POST_MATCH_DIAGNOSTICS_SCHEMA_VERSION = "tuppi.analysis.post_match.v2"
 AGENT_DIAGNOSTICS_SCHEMA_VERSION = "tuppi.agents.decision_diagnostics.v1"
 PIMC_DIAGNOSTICS_SCHEMA_VERSION = "tuppi.search.pimc_decision_diagnostics.v1"
 
@@ -436,6 +437,12 @@ def validate_post_match_analysis_response(
     """
 
     response = _require_mapping(value, "post-match analysis response")
+    if response.get("schema_version") == POST_MATCH_DIAGNOSTICS_SCHEMA_VERSION:
+        return _validate_post_match_diagnostics_response(
+            response,
+            expected_match_ref=expected_match_ref,
+            public_events=public_events,
+        )
     _reject_client_private_keys(response)
     if set(response) != {"schema_version", "match_ref", "analyses"}:
         raise AnalysisProjectionError("post-match analysis response fields are invalid")
@@ -481,6 +488,315 @@ def validate_post_match_analysis_response(
     if type(canonical) is not dict:
         raise AnalysisProjectionError("post-match analysis must remain an object")
     return canonical
+
+
+_V2_RESPONSE_KEYS = frozenset(
+    {"schema_version", "match_ref", "seat", "summary", "analyses"}
+)
+_V2_SUMMARY_KEYS = frozenset(
+    {"deal_count", "diagnostic_count", "final_score", "winner_team"}
+)
+_V2_ANALYSIS_KEYS = _ANALYSIS_KEYS | frozenset(
+    {
+        "confidence",
+        "source_id",
+        "reason_code",
+        "legal_actions",
+        "equivalent_actions",
+        "context",
+        "quantitative",
+    }
+)
+_V2_CONTEXT_KEYS = frozenset(
+    {"contract", "player_role", "trick_number", "current_trick", "score", "team_tricks"}
+)
+_V2_QUANTITATIVE_KEYS = frozenset(
+    {"metric", "chosen_value", "best_value", "difference", "unit"}
+)
+_V2_SOURCES = frozenset({"Exact", "Rule-based", "Reference"})
+_V2_CONFIDENCE = frozenset(
+    {"perfect_information_exact", "objective_rule_pattern", "reference_policy_only"}
+)
+_V2_PLAYER_ROLES = frozenset(
+    {"showing_player", "nolo_player", "declarer", "declarer_partner", "defender"}
+)
+
+
+def _validate_post_match_diagnostics_response(
+    response: Mapping[str, object],
+    *,
+    expected_match_ref: str | None,
+    public_events: Sequence[Mapping[str, object]] | None,
+) -> dict[str, object]:
+    """Validate the real, seat-scoped v2 diagnostics response."""
+
+    _reject_client_private_keys(response)
+    if set(response) != _V2_RESPONSE_KEYS:
+        raise AnalysisProjectionError("post-match diagnostics response fields are invalid")
+    match_ref = _require_text(response["match_ref"], "match_ref", 96)
+    if not is_valid_match_ref(match_ref):
+        raise AnalysisProjectionError("post-match diagnostics match_ref is invalid")
+    if expected_match_ref is not None and match_ref != expected_match_ref:
+        raise AnalysisProjectionError("post-match diagnostics belongs to another match")
+    seat = _require_int(response["seat"], "seat", minimum=0, maximum=3)
+
+    summary = _require_mapping(response["summary"], "summary")
+    if set(summary) != _V2_SUMMARY_KEYS:
+        raise AnalysisProjectionError("post-match diagnostics summary fields are invalid")
+    deal_count = _require_int(summary["deal_count"], "summary.deal_count", minimum=1)
+    diagnostic_count = _require_int(
+        summary["diagnostic_count"], "summary.diagnostic_count", minimum=0, maximum=10
+    )
+    _require_score_pair(summary["final_score"], "summary.final_score")
+    _require_int(summary["winner_team"], "summary.winner_team", minimum=0, maximum=1)
+
+    analyses = response["analyses"]
+    if type(analyses) is not list:
+        raise AnalysisProjectionError("post-match diagnostics analyses must be an array")
+    if len(analyses) != diagnostic_count or len(analyses) > 10:
+        raise AnalysisProjectionError("post-match diagnostics count disagrees with summary")
+    seen_ids: set[str] = set()
+    seen_decisions: set[tuple[int, int]] = set()
+    for index, raw in enumerate(analyses):
+        analysis = _require_mapping(raw, f"analyses[{index}]")
+        _validate_v2_analysis(
+            analysis,
+            match_ref=match_ref,
+            response_seat=seat,
+            deal_count=deal_count,
+            label=f"analyses[{index}]",
+        )
+        analysis_id = analysis["analysis_id"]
+        assert isinstance(analysis_id, str)
+        if analysis_id in seen_ids:
+            raise AnalysisProjectionError("post-match diagnostics ids are duplicated")
+        seen_ids.add(analysis_id)
+        decision_key = (analysis["event_index"], analysis["seat"])
+        if decision_key in seen_decisions:
+            raise AnalysisProjectionError("post-match diagnostics repeat a decision")
+        seen_decisions.add(decision_key)
+
+    if public_events is not None:
+        _validate_response_public_events(response, public_events)
+    try:
+        canonical = strict_json_loads(
+            canonical_json_bytes(dict(response)).decode("utf-8")
+        )
+    except Exception as exc:
+        raise AnalysisProjectionError("post-match diagnostics is not canonical JSON") from exc
+    if type(canonical) is not dict:
+        raise AnalysisProjectionError("post-match diagnostics must remain an object")
+    return canonical
+
+
+def _validate_v2_analysis(
+    analysis: Mapping[str, object],
+    *,
+    match_ref: str,
+    response_seat: int,
+    deal_count: int,
+    label: str,
+) -> None:
+    if set(analysis) != _V2_ANALYSIS_KEYS:
+        raise AnalysisProjectionError(f"{label} fields are invalid")
+    if analysis["schema_version"] != POST_MATCH_DIAGNOSTICS_SCHEMA_VERSION:
+        raise AnalysisProjectionError(f"{label} schema_version is invalid")
+    if analysis["match_ref"] != match_ref:
+        raise AnalysisProjectionError(f"{label}.match_ref disagrees")
+    analysis_id = _require_text(analysis["analysis_id"], f"{label}.analysis_id", 128)
+    if _ANALYSIS_ID_PATTERN.fullmatch(analysis_id) is None:
+        raise AnalysisProjectionError(f"{label}.analysis_id is invalid")
+    _require_int(analysis["event_index"], f"{label}.event_index", minimum=0)
+    _require_int(
+        analysis["deal_number"],
+        f"{label}.deal_number",
+        minimum=0,
+        maximum=deal_count - 1,
+    )
+    seat = _require_int(analysis["seat"], f"{label}.seat", minimum=0, maximum=3)
+    if seat != response_seat:
+        raise AnalysisProjectionError(f"{label}.seat disagrees with authenticated seat")
+    decision_kind = analysis["decision_kind"]
+    if decision_kind not in {"SHOWING", "TRICK_PLAY"}:
+        raise AnalysisProjectionError(f"{label}.decision_kind is invalid")
+    trick_index = analysis["trick_index"]
+    if decision_kind == "SHOWING":
+        if trick_index is not None:
+            raise AnalysisProjectionError(f"{label}.showing trick_index must be null")
+    else:
+        _require_int(trick_index, f"{label}.trick_index", minimum=0, maximum=12)
+
+    played, played_data = _canonical_action(
+        _require_mapping(analysis["played_action"], f"{label}.played_action"),
+        f"{label}.played_action",
+    )
+    recommended, recommended_data = _canonical_action(
+        _require_mapping(
+            analysis["recommended_action"], f"{label}.recommended_action"
+        ),
+        f"{label}.recommended_action",
+    )
+    for action, action_name in (
+        (played, "played_action"),
+        (recommended, "recommended_action"),
+    ):
+        _validate_action_for_seat(action, seat, f"{label}.{action_name}")
+        _validate_phase_action(action, decision_kind, f"{label}.{action_name}")
+    if played_data == recommended_data:
+        raise AnalysisProjectionError(f"{label} must compare different actions")
+
+    for field_name, maximum in (
+        ("title", 200),
+        ("summary", 2000),
+        ("recommendation", 2000),
+        ("source_id", 128),
+        ("reason_code", 128),
+    ):
+        _require_text(analysis[field_name], f"{label}.{field_name}", maximum)
+    source = analysis["source"]
+    confidence = analysis["confidence"]
+    if source not in _V2_SOURCES:
+        raise AnalysisProjectionError(f"{label}.source is invalid")
+    if confidence not in _V2_CONFIDENCE:
+        raise AnalysisProjectionError(f"{label}.confidence is invalid")
+    expected_confidence = {
+        "Exact": "perfect_information_exact",
+        "Rule-based": "objective_rule_pattern",
+        "Reference": "reference_policy_only",
+    }[source]
+    if confidence != expected_confidence:
+        raise AnalysisProjectionError(f"{label}.source and confidence disagree")
+    if not _require_text_array(analysis["explanation"], f"{label}.explanation", 1000):
+        raise AnalysisProjectionError(f"{label}.explanation must be nonempty")
+    if not _require_text_array(analysis["limitations"], f"{label}.limitations", 1000):
+        raise AnalysisProjectionError(f"{label}.limitations must be nonempty")
+
+    legal_actions = _validate_v2_action_array(
+        analysis["legal_actions"],
+        seat=seat,
+        decision_kind=decision_kind,
+        label=f"{label}.legal_actions",
+        require_nonempty=True,
+    )
+    if tuple(sorted(played_data.items())) not in legal_actions:
+        raise AnalysisProjectionError(f"{label}.played_action is not in legal_actions")
+    if tuple(sorted(recommended_data.items())) not in legal_actions:
+        raise AnalysisProjectionError(f"{label}.recommended_action is not in legal_actions")
+    equivalent_actions = _validate_v2_action_array(
+        analysis["equivalent_actions"],
+        seat=seat,
+        decision_kind=decision_kind,
+        label=f"{label}.equivalent_actions",
+        require_nonempty=False,
+    )
+    if not equivalent_actions <= legal_actions:
+        raise AnalysisProjectionError(f"{label}.equivalent_actions are not legal actions")
+
+    alternatives = analysis["alternatives"]
+    if type(alternatives) is not list or len(alternatives) != 1:
+        raise AnalysisProjectionError(f"{label}.alternatives must contain one suggestion")
+    alternative = _require_mapping(alternatives[0], f"{label}.alternatives[0]")
+    if set(alternative) != _ALTERNATIVE_KEYS:
+        raise AnalysisProjectionError(f"{label}.alternatives[0] fields are invalid")
+    alternative_action, alternative_data = _canonical_action(
+        _require_mapping(alternative["action"], f"{label}.alternatives[0].action"),
+        f"{label}.alternatives[0].action",
+    )
+    _validate_action_for_seat(alternative_action, seat, f"{label}.alternatives[0].action")
+    _validate_phase_action(
+        alternative_action, decision_kind, f"{label}.alternatives[0].action"
+    )
+    if alternative_data != recommended_data:
+        raise AnalysisProjectionError(f"{label}.first alternative is not recommended_action")
+    for key, maximum in (("title", 200), ("assessment", 200), ("reason", 1000)):
+        _require_text(alternative[key], f"{label}.alternatives[0].{key}", maximum)
+    if _require_int(alternative["rank"], f"{label}.alternatives[0].rank", minimum=1) != 1:
+        raise AnalysisProjectionError(f"{label}.alternatives[0].rank must be one")
+
+    context = _require_mapping(analysis["context"], f"{label}.context")
+    if set(context) != _V2_CONTEXT_KEYS:
+        raise AnalysisProjectionError(f"{label}.context fields are invalid")
+    if context["contract"] is not None and context["contract"] not in {"RAMI", "NOLO"}:
+        raise AnalysisProjectionError(f"{label}.context.contract is invalid")
+    player_role = _require_text(
+        context["player_role"], f"{label}.context.player_role", 64
+    )
+    if player_role not in _V2_PLAYER_ROLES:
+        raise AnalysisProjectionError(f"{label}.context.player_role is invalid")
+    trick_number = context["trick_number"]
+    if decision_kind == "SHOWING":
+        if trick_number is not None:
+            raise AnalysisProjectionError(f"{label}.context.trick_number must be null")
+    else:
+        _require_int(trick_number, f"{label}.context.trick_number", minimum=1, maximum=13)
+        if trick_number != trick_index + 1:
+            raise AnalysisProjectionError(f"{label}.context.trick_number disagrees")
+    current_trick = context["current_trick"]
+    if type(current_trick) is not list or len(current_trick) > 3:
+        raise AnalysisProjectionError(f"{label}.context.current_trick is invalid")
+    for play_index, play_raw in enumerate(current_trick):
+        play = _require_mapping(play_raw, f"{label}.context.current_trick[{play_index}]")
+        if set(play) != {"seat", "card"}:
+            raise AnalysisProjectionError(f"{label}.context.current_trick fields are invalid")
+        _require_int(play["seat"], "current trick seat", minimum=0, maximum=3)
+        _canonical_action(
+            {"type": "play", "seat": play["seat"], "card": play["card"]},
+            "current trick card",
+        )
+    _require_score_pair(context["score"], f"{label}.context.score")
+    _require_score_pair(context["team_tricks"], f"{label}.context.team_tricks")
+
+    quantitative = analysis["quantitative"]
+    if quantitative is not None:
+        value = _require_mapping(quantitative, f"{label}.quantitative")
+        if set(value) != _V2_QUANTITATIVE_KEYS:
+            raise AnalysisProjectionError(f"{label}.quantitative fields are invalid")
+        _require_text(value["metric"], f"{label}.quantitative.metric", 128)
+        _require_text(value["unit"], f"{label}.quantitative.unit", 64)
+        for key in ("chosen_value", "best_value", "difference"):
+            number = value[key]
+            if type(number) not in {int, float} or isinstance(number, bool):
+                raise AnalysisProjectionError(f"{label}.quantitative.{key} is not numeric")
+            if not math.isfinite(float(number)):
+                raise AnalysisProjectionError(f"{label}.quantitative.{key} is not finite")
+        if float(value["difference"]) < 0:
+            raise AnalysisProjectionError(f"{label}.quantitative.difference is negative")
+        if source != "Exact":
+            raise AnalysisProjectionError(f"{label}.quantitative requires Exact source")
+    elif source == "Exact":
+        raise AnalysisProjectionError(f"{label}.Exact diagnostic requires quantitative values")
+
+
+def _validate_v2_action_array(
+    value: object,
+    *,
+    seat: int,
+    decision_kind: str,
+    label: str,
+    require_nonempty: bool,
+) -> set[tuple[tuple[str, object], ...]]:
+    if type(value) is not list or (require_nonempty and not value):
+        raise AnalysisProjectionError(f"{label} must be an array")
+    actions: set[tuple[tuple[str, object], ...]] = set()
+    for index, raw in enumerate(value):
+        action, data = _canonical_action(
+            _require_mapping(raw, f"{label}[{index}]"), f"{label}[{index}]"
+        )
+        _validate_action_for_seat(action, seat, f"{label}[{index}]")
+        _validate_phase_action(action, decision_kind, f"{label}[{index}]")
+        key = tuple(sorted(data.items()))
+        if key in actions:
+            raise AnalysisProjectionError(f"{label} contains duplicate actions")
+        actions.add(key)
+    return actions
+
+
+def _require_score_pair(value: object, label: str) -> tuple[int, int]:
+    if type(value) is not list or len(value) != 2:
+        raise AnalysisProjectionError(f"{label} must contain two integers")
+    first = _require_int(value[0], f"{label}[0]", minimum=0)
+    second = _require_int(value[1], f"{label}[1]", minimum=0)
+    return first, second
 
 
 def _validate_response_public_events(

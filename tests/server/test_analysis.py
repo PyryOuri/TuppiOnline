@@ -23,6 +23,7 @@ from tuppi_server.match_runner import LiveMatchRunner
 from tuppi_server.persistence import PersistenceError
 from tuppi_server.projection import project_event_batch
 from tuppi_server.rooms import RoomManager
+from tuppi_ui_fixtures.validation import validate_instance
 
 
 MATCH_REF = "analysis-test"
@@ -202,7 +203,10 @@ def test_projection_is_schema_valid_and_filters_raw_diagnostics() -> None:
     )
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(schema)
-    Draft202012Validator(schema).validate(response)
+    validate_instance(
+        response,
+        "https://example.invalid/tuppi/schemas/network/post_match_analysis.schema.json",
+    )
 
     _assert_no_key(response, "observation_digest")
     _assert_no_key(response, "score_vector")
@@ -441,10 +445,12 @@ def test_post_match_analysis_survives_room_restart(tmp_path) -> None:
     )
     assert restored_session.seat == 0
     assert restored_room.post_match_analysis == response
-    assert restored_manager.post_match_analysis_for_session(
+    regenerated = restored_manager.post_match_analysis_for_session(
         code=room.code,
         token=host.token,
-    ) == response
+    )
+    assert regenerated["schema_version"] == "tuppi.analysis.post_match.v2"
+    assert regenerated["seat"] == host.seat
 
     analysis_path = tmp_path / f"analysis-{room.code}.json"
     tampered = json.loads(analysis_path.read_text(encoding="utf-8"))

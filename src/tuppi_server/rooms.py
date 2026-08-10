@@ -17,6 +17,7 @@ from .analysis import (
     validate_post_match_analysis_response,
 )
 from .match_runner import DEFAULT_AI_PROFILE_KEY, LiveMatchRunner
+from .post_match_diagnostics import generate_post_match_diagnostics
 from .persistence import (
     ROOM_RECORD_SCHEMA_VERSION,
     FileRoomStore,
@@ -297,16 +298,23 @@ class RoomManager:
     ) -> dict[str, object]:
         """Return stored analysis only to an authenticated room participant."""
 
-        room, _ = self.session(code=code, token=token)
+        room, session = self.session(code=code, token=token)
         if room.runner is None or not room.runner.terminal:
             raise RoomError("match_not_complete")
-        if room.post_match_analysis is None:
+        # A stored v1 envelope is retained only for compatibility with the
+        # historical fixture/demo hook.  Real completed rooms reconstruct a
+        # fresh seat-scoped v2 response from their durable match record.  This
+        # also makes diagnostics available after a server restart without
+        # persisting raw AI or exact-solver internals.
+        if not isinstance(room.runner, LiveMatchRunner) and room.post_match_analysis is not None:
+            return validate_post_match_analysis_response(
+                room.post_match_analysis,
+                expected_match_ref=room.runner.match_ref,
+                public_events=project_event_batch(room.runner.state.public_events),
+            )
+        if not isinstance(room.runner, LiveMatchRunner):
             raise RoomError("analysis_not_available")
-        return validate_post_match_analysis_response(
-            room.post_match_analysis,
-            expected_match_ref=room.runner.match_ref,
-            public_events=project_event_batch(room.runner.state.public_events),
-        )
+        return generate_post_match_diagnostics(room.runner, seat=session.seat)
 
     def get(self, code: str) -> Room:
         normalized = code.strip().upper()

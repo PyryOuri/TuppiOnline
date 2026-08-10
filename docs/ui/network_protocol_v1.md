@@ -43,6 +43,12 @@ without another engine transition, `stale` returns the current cursor and is
 followed by an authorized reconnect projection, and `rejected` includes a
 bounded error code.
 
+The completed-match analysis result is `tuppi.analysis.post_match.v2`. It is a
+seat-scoped, ranked response with `Exact`, `Rule-based`, and `Reference`
+evidence categories. `Reference` is expressly not an optimality claim. The
+endpoint rejects active matches; no live WebSocket message contains analysis.
+The versioned union schema retains v1 only for committed fixture compatibility.
+
 ## Reconnect
 
 `reconnect.payload.last_applied_event_index` is the last public event already

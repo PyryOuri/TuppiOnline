@@ -284,6 +284,8 @@ where = ["src"]
   "schemas/network/action_acknowledgement.schema.json",
   "schemas/network/http_api.schema.json",
   "schemas/network/post_match_analysis.schema.json",
+  "schemas/network/post_match_analysis_v1.schema.json",
+  "schemas/network/post_match_diagnostics_v2.schema.json",
   "schemas/network/protocol_manifest.json",
   "schemas/network/protocol_manifest.schema.json",
   "schemas/network/showing_ui_hints.schema.json",
@@ -300,6 +302,7 @@ where = ["src"]
   "docs/ui/phase_h2_analysis.md",
   "docs/ui/product_architecture.md",
   "docs/ui/product_stabilization_1.md",
+  "docs/ui/product_stabilization_2.md",
 ]
 
 [tool.pytest.ini_options]

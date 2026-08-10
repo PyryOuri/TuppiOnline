@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/network/post_match_diagnostics_v2.schema.json",
+  "title": "Real seat-scoped Tuppi post-match diagnostics",
+  "description": "Ranked deterministic diagnostics generated only from a completed authoritative match.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "match_ref", "seat", "summary", "analyses"],
+  "properties": {
+    "schema_version": {"const": "tuppi.analysis.post_match.v2"},
+    "match_ref": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,96}$"},
+    "seat": {"type": "integer", "minimum": 0, "maximum": 3},
+    "summary": {"$ref": "#/$defs/summary"},
+    "analyses": {"type": "array", "maxItems": 10, "items": {"$ref": "#/$defs/analysis"}}
+  },
+  "$defs": {
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deal_count", "diagnostic_count", "final_score", "winner_team"],
+      "properties": {
+        "deal_count": {"type": "integer", "minimum": 1},
+        "diagnostic_count": {"type": "integer", "minimum": 0, "maximum": 10},
+        "final_score": {"$ref": "#/$defs/integerPair"},
+        "winner_team": {"type": "integer", "minimum": 0, "maximum": 1}
+      }
+    },
+    "analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "analysis_id", "match_ref", "event_index", "deal_number", "trick_index", "seat", "decision_kind", "title", "summary", "played_action", "recommended_action", "recommendation", "alternatives", "explanation", "limitations", "source", "confidence", "source_id", "reason_code", "legal_actions", "equivalent_actions", "context", "quantitative"],
+      "properties": {
+        "schema_version": {"const": "tuppi.analysis.post_match.v2"},
+        "analysis_id": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,128}$"},
+        "match_ref": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,96}$"},
+        "event_index": {"type": "integer", "minimum": 0},
+        "deal_number": {"type": "integer", "minimum": 0},
+        "trick_index": {"type": ["integer", "null"], "minimum": 0, "maximum": 12},
+        "seat": {"type": "integer", "minimum": 0, "maximum": 3},
+        "decision_kind": {"enum": ["SHOWING", "TRICK_PLAY"]},
+        "title": {"type": "string", "minLength": 1, "maxLength": 200},
+        "summary": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "played_action": {"$ref": "#/$defs/action"},
+        "recommended_action": {"$ref": "#/$defs/action"},
+        "recommendation": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "alternatives": {"type": "array", "minItems": 1, "maxItems": 1, "items": {"$ref": "#/$defs/alternative"}},
+        "explanation": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1, "maxLength": 1000}},
+        "limitations": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1, "maxLength": 1000}},
+        "source": {"enum": ["Exact", "Rule-based", "Reference"]},
+        "confidence": {"enum": ["perfect_information_exact", "objective_rule_pattern", "reference_policy_only"]},
+        "source_id": {"type": "string", "minLength": 1, "maxLength": 128},
+        "reason_code": {"type": "string", "minLength": 1, "maxLength": 128},
+        "legal_actions": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/action"}},
+        "equivalent_actions": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/action"}},
+        "context": {"$ref": "#/$defs/context"},
+        "quantitative": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/quantitative"}]}
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract", "player_role", "trick_number", "current_trick", "score", "team_tricks"],
+      "properties": {
+        "contract": {"enum": ["RAMI", "NOLO", null]},
+        "player_role": {"enum": ["showing_player", "nolo_player", "declarer", "declarer_partner", "defender"]},
+        "trick_number": {"type": ["integer", "null"], "minimum": 1, "maximum": 13},
+        "current_trick": {"type": "array", "maxItems": 3, "items": {"$ref": "#/$defs/playedCard"}},
+        "score": {"$ref": "#/$defs/integerPair"},
+        "team_tricks": {"$ref": "#/$defs/integerPair"}
+      }
+    },
+    "quantitative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metric", "chosen_value", "best_value", "difference", "unit"],
+      "properties": {
+        "metric": {"type": "string", "minLength": 1, "maxLength": 128},
+        "chosen_value": {"type": "number"},
+        "best_value": {"type": "number"},
+        "difference": {"type": "number", "minimum": 0},
+        "unit": {"type": "string", "minLength": 1, "maxLength": 64}
+      }
+    },
+    "action": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "seat", "card"],
+          "properties": {
+            "type": {"const": "play"},
+            "seat": {"type": "integer", "minimum": 0, "maximum": 3},
+            "card": {"$ref": "#/$defs/card"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "seat", "shown_card", "declared_contract"],
+          "properties": {
+            "type": {"const": "show"},
+            "seat": {"type": "integer", "minimum": 0, "maximum": 3},
+            "shown_card": {"$ref": "#/$defs/card"},
+            "declared_contract": {"enum": ["RAMI", "NOLO"]}
+          }
+        }
+      ]
+    },
+    "playedCard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seat", "card"],
+      "properties": {
+        "seat": {"type": "integer", "minimum": 0, "maximum": 3},
+        "card": {"$ref": "#/$defs/card"}
+      }
+    },
+    "alternative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rank", "action", "title", "assessment", "reason"],
+      "properties": {
+        "rank": {"type": "integer", "minimum": 1},
+        "action": {"$ref": "#/$defs/action"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 200},
+        "assessment": {"type": "string", "minLength": 1, "maxLength": 200},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 1000}
+      }
+    },
+    "integerPair": {
+      "type": "array",
+      "prefixItems": [{"type": "integer", "minimum": 0}, {"type": "integer", "minimum": 0}],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "card": {"type": "string", "pattern": "^(?:[2-9]|10|J|Q|K|A)[HDCS]$"}
+  },
+  "$comment": "Reference means comparison only. Exact means Phase 5B perfect-information late-game output. No search tree, belief particle, raw private hand, or training diagnostic is permitted."
+}
