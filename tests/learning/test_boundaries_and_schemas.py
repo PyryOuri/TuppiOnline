@@ -32,7 +32,7 @@ def test_learning_schemas_are_strict_objects() -> None:
 
 def test_product_package_increment_does_not_change_frozen_learning_layer() -> None:
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-    assert pyproject["project"]["version"] == "0.12.0"
+    assert pyproject["project"]["version"] == "0.13.0"
     assert LEARNING_LAYER_VERSION == "0.11.0"
 
 

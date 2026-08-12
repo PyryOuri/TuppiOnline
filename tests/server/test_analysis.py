@@ -449,7 +449,7 @@ def test_post_match_analysis_survives_room_restart(tmp_path) -> None:
         code=room.code,
         token=host.token,
     )
-    assert regenerated["schema_version"] == "tuppi.analysis.post_match.v2"
+    assert regenerated["schema_version"] == "tuppi.analysis.post_match.v3"
     assert regenerated["seat"] == host.seat
 
     analysis_path = tmp_path / f"analysis-{room.code}.json"

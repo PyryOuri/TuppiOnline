@@ -20,8 +20,14 @@ LEGACY_ROOM_RECORD_SCHEMA_VERSION = "tuppi.server.room_record.v1"
 POST_MATCH_ANALYSIS_RECORD_SCHEMA_VERSION = (
     "tuppi.server.post_match_analysis_record.v1"
 )
+COMPLETED_DEAL_ANALYSIS_RECORD_SCHEMA_VERSION = (
+    "tuppi.server.completed_deal_analysis_record.v1"
+)
 _ROOM_CODE = re.compile(r"^[A-Z0-9]{6}$")
 _ANALYSIS_FILE = re.compile(r"^analysis-([A-Z0-9]{6})\.json$")
+_DEAL_ANALYSIS_FILE = re.compile(
+    r"^deal-analysis-([A-Z0-9]{6})-(0|[1-9][0-9]*)-([0-3])\.json$"
+)
 
 
 class PersistenceError(Exception):
@@ -148,3 +154,127 @@ class FileRoomStore:
                 raise PersistenceError(f"invalid analysis persistence filename: {path.name}")
             codes.append(match.group(1))
         return tuple(codes)
+
+    def save_completed_deal_analysis(
+        self,
+        *,
+        room_code: str,
+        deal_number: int,
+        seat: int,
+        response: dict[str, object],
+        analysis_schema_version: str,
+        bot_policy_id: str,
+    ) -> None:
+        """Persist one authenticated-seat review cache entry atomically."""
+
+        self._validate_deal_analysis_identity(room_code, deal_number, seat)
+        if type(response) is not dict:
+            raise PersistenceError("completed-deal analysis response must be an object")
+        if response.get("schema_version") != analysis_schema_version:
+            raise PersistenceError("completed-deal analysis schema metadata disagrees")
+        policy = response.get("bot_policy")
+        if type(policy) is not dict or policy.get("policy_id") != bot_policy_id:
+            raise PersistenceError("completed-deal analysis policy metadata disagrees")
+        record = {
+            "analysis": response,
+            "analysis_schema_version": analysis_schema_version,
+            "bot_policy_id": bot_policy_id,
+            "deal_number": deal_number,
+            "room_code": room_code,
+            "schema_version": COMPLETED_DEAL_ANALYSIS_RECORD_SCHEMA_VERSION,
+            "seat": seat,
+        }
+        try:
+            self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
+            os.chmod(self.root, 0o700)
+            target = self.root / self._deal_analysis_filename(
+                room_code, deal_number, seat
+            )
+            atomic_write_canonical_json(target, record)
+            os.chmod(target, 0o600)
+        except OSError as exc:
+            raise PersistenceError(
+                f"cannot persist completed-deal analysis for room {room_code}: {exc}"
+            ) from exc
+
+    def load_completed_deal_analysis(
+        self,
+        *,
+        room_code: str,
+        deal_number: int,
+        seat: int,
+        analysis_schema_version: str,
+        bot_policy_id: str,
+    ) -> dict[str, object] | None:
+        """Load a current cache entry; obsolete schema/policy entries invalidate."""
+
+        self._validate_deal_analysis_identity(room_code, deal_number, seat)
+        if not self.root.exists():
+            return None
+        target = self.root / self._deal_analysis_filename(
+            room_code, deal_number, seat
+        )
+        if target.is_symlink():
+            raise PersistenceError("completed-deal analysis entry is a symbolic link")
+        if not target.exists():
+            return None
+        if not target.is_file():
+            raise PersistenceError("completed-deal analysis entry is not a regular file")
+        try:
+            value = strict_json_load_file(target)
+        except Exception as exc:
+            raise PersistenceError(
+                f"cannot load completed-deal analysis for room {room_code}"
+            ) from exc
+        expected = {
+            "analysis",
+            "analysis_schema_version",
+            "bot_policy_id",
+            "deal_number",
+            "room_code",
+            "schema_version",
+            "seat",
+        }
+        if type(value) is not dict or set(value) != expected:
+            raise PersistenceError("persisted completed-deal analysis fields are invalid")
+        if value["schema_version"] != COMPLETED_DEAL_ANALYSIS_RECORD_SCHEMA_VERSION:
+            raise PersistenceError(
+                "unsupported completed-deal analysis record schema_version"
+            )
+        if (
+            value["room_code"] != room_code
+            or value["deal_number"] != deal_number
+            or value["seat"] != seat
+        ):
+            raise PersistenceError("persisted completed-deal analysis identity disagrees")
+        # A deliberate schema or policy bump invalidates an otherwise well-formed
+        # cache instead of trying to coerce old replay semantics.
+        if (
+            value["analysis_schema_version"] != analysis_schema_version
+            or value["bot_policy_id"] != bot_policy_id
+        ):
+            return None
+        response = value["analysis"]
+        if type(response) is not dict:
+            raise PersistenceError("persisted completed-deal analysis must be an object")
+        return response
+
+    @staticmethod
+    def _validate_deal_analysis_identity(
+        room_code: str,
+        deal_number: int,
+        seat: int,
+    ) -> None:
+        if _ROOM_CODE.fullmatch(room_code) is None:
+            raise PersistenceError("completed-deal analysis room_code is invalid")
+        if type(deal_number) is not int or deal_number < 0:
+            raise PersistenceError("completed-deal analysis deal_number is invalid")
+        if type(seat) is not int or seat not in range(4):
+            raise PersistenceError("completed-deal analysis seat is invalid")
+
+    @staticmethod
+    def _deal_analysis_filename(room_code: str, deal_number: int, seat: int) -> str:
+        filename = f"deal-analysis-{room_code}-{deal_number}-{seat}.json"
+        if _DEAL_ANALYSIS_FILE.fullmatch(filename) is None:
+            raise PersistenceError("completed-deal analysis filename is invalid")
+        return filename

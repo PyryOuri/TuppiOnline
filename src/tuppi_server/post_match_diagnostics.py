@@ -15,8 +15,12 @@ import hashlib
 from typing import Mapping
 
 from tuppi_agents import (
+    RuleBasedPolicy,
+    ScoredActions,
+    build_features,
     construct_registered_agent,
     phase4_specifications_by_profile_key,
+    showing_scalars,
 )
 from tuppi_engine import (
     Action,
@@ -47,8 +51,9 @@ from tuppi_rules import (
 )
 
 from .analysis import (
-    COMPLETED_DEAL_DIAGNOSTICS_SCHEMA_VERSION,
-    POST_MATCH_DIAGNOSTICS_SCHEMA_VERSION,
+    COMPLETED_DEAL_REVIEW_SCHEMA_VERSION,
+    POST_MATCH_REVIEW_SCHEMA_VERSION,
+    VERDICT_NOTES,
     validate_completed_deal_analysis_response,
     validate_post_match_analysis_response,
 )
@@ -85,6 +90,149 @@ class HistoricalDecision:
 class _Candidate:
     priority: int
     item: dict[str, object]
+
+
+@dataclass(frozen=True, slots=True)
+class _ReferenceView:
+    """Where one historical action sat in the frozen reference's own ranking.
+
+    The reference scores *every* legal action, so a disagreement has a size: the
+    played action's rank, and how many actions the policy scored strictly above
+    it.  ``indifferent`` separates a real disagreement from a decision the
+    reference did not care about, where the played action tied with its pick and
+    only the documented engine-index tie-break chose between them.
+    """
+
+    action: Action
+    agreed: bool
+    showing: bool
+    legal_action_count: int
+    played_rank: int
+    strictly_better_count: int
+    indifferent: bool
+    contract_reasoning: dict[str, object] | None
+
+    def to_data(self) -> dict[str, object]:
+        return {
+            "legal_action_count": self.legal_action_count,
+            "played_rank": self.played_rank,
+            "reference_action": action_to_data(self.action),
+            "reference_indifferent": self.indifferent,
+            "reference_profile": REFERENCE_PROFILE_KEY,
+            "strictly_better_count": self.strictly_better_count,
+        }
+
+
+def _reference_view(
+    policy: RuleBasedPolicy, decision: HistoricalDecision
+) -> _ReferenceView:
+    """Rank the played action with the reference policy's public ranking."""
+
+    ranking = policy.decide(decision.observation, diagnostics=False).scored
+    played = decision.action
+    candidates = ranking.candidates
+    played_candidate = next(
+        (item for item in candidates if item.action == played), None
+    )
+    if played_candidate is None:  # pragma: no cover - reconstruction proved legality
+        raise ValueError("the played action is absent from the reference ranking")
+    played_vector = tuple(float(value) for value in played_candidate.score_vector)
+    strictly_better = sum(
+        1
+        for item in candidates
+        if tuple(float(value) for value in item.score_vector) > played_vector
+    )
+    ordered = ranking.ranked()
+    played_rank = 1 + next(
+        index for index, item in enumerate(ordered) if item.action == played
+    )
+    agreed = ranking.action == played
+    showing = isinstance(played, ShowAction)
+    return _ReferenceView(
+        action=ranking.action,
+        agreed=agreed,
+        showing=showing,
+        legal_action_count=len(candidates),
+        played_rank=played_rank,
+        strictly_better_count=strictly_better,
+        indifferent=not agreed and strictly_better == 0,
+        contract_reasoning=(
+            _contract_reasoning(policy, decision, ranking) if showing else None
+        ),
+    )
+
+
+def _contract_reasoning(
+    policy: RuleBasedPolicy,
+    decision: HistoricalDecision,
+    ranking: ScoredActions,
+) -> dict[str, object]:
+    """Expose the scalars and closed-set notes behind a RAMI/NOLO choice.
+
+    ``showing_scalars`` is the agent package's documented accessor for exactly
+    these numbers.  Only notes inside :data:`VERDICT_NOTES` are forwarded, so a
+    new internal reason code cannot reach a client until somebody adds it there.
+    """
+
+    profile = policy.profile
+    features = build_features(
+        decision.observation, include_inference=profile.uses_public_inference
+    )
+    reference_action = ranking.action
+    if not isinstance(reference_action, ShowAction):  # pragma: no cover - showing phase
+        raise ValueError("a showing decision must rank show actions")
+    notes = tuple(
+        code for code in ranking.selected.reason_codes if code in VERDICT_NOTES
+    )
+    return {
+        "declared_contract": decision.action.declared_contract.value,
+        "metrics": [
+            {"name": name, "value": float(value)}
+            for name, value in showing_scalars(features, profile)
+        ],
+        "reference_contract": reference_action.declared_contract.value,
+        "verdict_notes": list(dict.fromkeys(notes)),
+    }
+
+
+def _reference_agreement(views: Mapping[int, _ReferenceView]) -> dict[str, object]:
+    """Summarize how often the analysed seat matched the reference policy."""
+
+    ordered = tuple(views[key] for key in sorted(views))
+    showing = tuple(view for view in ordered if view.showing)
+    trick = tuple(view for view in ordered if not view.showing)
+    decisions = len(ordered)
+    return {
+        "decision_count": decisions,
+        # A decision with one legal action is forced, so it agrees by
+        # construction.  Reporting the count lets a reader judge the headline
+        # share instead of being flattered by it.
+        "forced_decision_count": sum(
+            1 for view in ordered if view.legal_action_count == 1
+        ),
+        "indifferent_count": sum(1 for view in ordered if view.indifferent),
+        "lower_rank_count": sum(1 for view in ordered if view.played_rank > 2),
+        "match_count": sum(1 for view in ordered if view.agreed),
+        "mean_legal_action_count": _mean(
+            tuple(float(view.legal_action_count) for view in ordered)
+        ),
+        "mean_played_rank": _mean(tuple(float(view.played_rank) for view in ordered)),
+        "reference_profile": REFERENCE_PROFILE_KEY,
+        "second_rank_count": sum(1 for view in ordered if view.played_rank == 2),
+        "showing_decision_count": len(showing),
+        "showing_match_count": sum(1 for view in showing if view.agreed),
+        "top_rank_count": sum(1 for view in ordered if view.played_rank == 1),
+        "trick_decision_count": len(trick),
+        "trick_match_count": sum(1 for view in trick if view.agreed),
+    }
+
+
+def _mean(values: tuple[float, ...]) -> float:
+    """Round to three decimals so the payload stays canonical and comparable."""
+
+    if not values:
+        return 0.0
+    return round(sum(values) / len(values), 3)
 
 
 def reconstruct_historical_decisions(
@@ -218,16 +366,17 @@ def generate_post_match_diagnostics(
     """Generate and validate the real, seat-scoped post-match response."""
 
     decisions = reconstruct_historical_decisions(runner, seat=seat)
-    selected = _selected_diagnostics(decisions, runner=runner, seat=seat)
+    selected, agreement = _reviewed_diagnostics(decisions, runner=runner, seat=seat)
     result = project_match_result(runner.state)
     response: dict[str, object] = {
-        "schema_version": POST_MATCH_DIAGNOSTICS_SCHEMA_VERSION,
+        "schema_version": POST_MATCH_REVIEW_SCHEMA_VERSION,
         "match_ref": runner.match_ref,
         "seat": seat,
         "summary": {
             "deal_count": len(runner.state.completed_deals),
             "diagnostic_count": len(selected),
             "final_score": result["final_score"],
+            "reference_agreement": agreement,
             "winner_team": result["winner_team"],
         },
         "analyses": selected,
@@ -252,12 +401,12 @@ def generate_completed_deal_diagnostics(
         seat=seat,
         deal_number=deal_number,
     )
-    selected = _selected_diagnostics(decisions, runner=runner, seat=seat)
+    selected, agreement = _reviewed_diagnostics(decisions, runner=runner, seat=seat)
     result = deal_result_to_data(
         runner.state.completed_deals[deal_number].public_result
     )
     response: dict[str, object] = {
-        "schema_version": COMPLETED_DEAL_DIAGNOSTICS_SCHEMA_VERSION,
+        "schema_version": COMPLETED_DEAL_REVIEW_SCHEMA_VERSION,
         "match_ref": runner.match_ref,
         "deal_ref": result["deal_ref"],
         "deal_number": deal_number,
@@ -267,6 +416,7 @@ def generate_completed_deal_diagnostics(
             "diagnostic_count": len(selected),
             "outcome": result["outcome"],
             "points": result["deal_score"]["points"],
+            "reference_agreement": agreement,
             "score_before": result["score_before"],
             "score_after": result["score_after"],
             "team_tricks": result["team_tricks"],
@@ -281,33 +431,44 @@ def generate_completed_deal_diagnostics(
     )
 
 
-def _selected_diagnostics(
+def _reviewed_diagnostics(
     decisions: tuple[HistoricalDecision, ...],
     *,
     runner: LiveMatchRunner,
     seat: int,
-) -> list[dict[str, object]]:
+) -> tuple[list[dict[str, object]], dict[str, object]]:
+    """Return the ranked diagnostics and the seat's full agreement summary.
+
+    The reference ranking is computed for *every* reconstructed decision, not
+    only the ones that become a diagnostic, because the agreement statistics
+    describe the whole match rather than the ten selected items.
+    """
+
     specification = phase4_specifications_by_profile_key()[REFERENCE_PROFILE_KEY]
     reference = construct_registered_agent(specification, seat=seat)
+    views = {
+        decision.action_index: _reference_view(reference, decision)
+        for decision in decisions
+    }
     candidates: list[_Candidate] = []
     for decision in decisions:
-        exact = _exact_candidate(decision)
+        view = views[decision.action_index]
+        exact = _exact_candidate(decision, view)
         if exact is not None:
             candidates.append(exact)
             continue
-        rule = _rule_candidate(decision, runner)
+        rule = _rule_candidate(decision, runner, view)
         if rule is not None:
             candidates.append(rule)
             continue
-        preferred = reference.choose_action(decision.observation)
-        if preferred != decision.action:
-            candidates.append(_reference_candidate(decision, preferred))
+        if not view.agreed:
+            candidates.append(_reference_candidate(decision, view))
     candidates.sort(
         key=lambda candidate: (-candidate.priority, candidate.item["event_index"])
     )
     selected = [candidate.item for candidate in _rank_useful_candidates(candidates)]
     selected.sort(key=lambda item: item["event_index"])
-    return selected
+    return selected, _reference_agreement(views)
 
 
 def _rank_useful_candidates(candidates: list[_Candidate]) -> list[_Candidate]:
@@ -335,7 +496,9 @@ def _rank_useful_candidates(candidates: list[_Candidate]) -> list[_Candidate]:
     return selected
 
 
-def _exact_candidate(decision: HistoricalDecision) -> _Candidate | None:
+def _exact_candidate(
+    decision: HistoricalDecision, view: _ReferenceView
+) -> _Candidate | None:
     if not isinstance(decision.action, PlayCardAction):
         return None
     state = decision.deal_state
@@ -362,6 +525,7 @@ def _exact_candidate(decision: HistoricalDecision) -> _Candidate | None:
         priority=1000 + regret * 20 + _late_importance(decision),
         item=_item(
             decision,
+            view,
             source="Exact",
             confidence="perfect_information_exact",
             source_id=EXACT_SOURCE_ID,
@@ -397,6 +561,7 @@ def _exact_candidate(decision: HistoricalDecision) -> _Candidate | None:
 def _rule_candidate(
     decision: HistoricalDecision,
     runner: LiveMatchRunner,
+    view: _ReferenceView,
 ) -> _Candidate | None:
     if not isinstance(decision.action, PlayCardAction):
         return None
@@ -432,6 +597,7 @@ def _rule_candidate(
             priority=700 + _late_importance(decision),
             item=_item(
                 decision,
+                view,
                 source="Rule-based",
                 confidence="objective_rule_pattern",
                 source_id=RULE_SOURCE_ID,
@@ -485,6 +651,7 @@ def _rule_candidate(
                     priority=660 + _late_importance(decision),
                     item=_item(
                         decision,
+                        view,
                         source="Rule-based",
                         confidence="objective_rule_pattern",
                         source_id=RULE_SOURCE_ID,
@@ -509,27 +676,47 @@ def _rule_candidate(
 
 def _reference_candidate(
     decision: HistoricalDecision,
-    preferred: Action,
+    view: _ReferenceView,
 ) -> _Candidate:
     showing = isinstance(decision.action, ShowAction)
+    preferred = view.action
+    position = (
+        f"Pelattu vaihtoehto oli sijalla {view.played_rank}/{view.legal_action_count} "
+        f"vertailupolitiikan järjestyksessä"
+    )
+    if view.indifferent:
+        position += " ja sai saman pisteytyksen kuin sen oma valinta"
+    else:
+        position += f"; {view.strictly_better_count} vaihtoehtoa arvioitiin paremmaksi"
     text = (
         f"{REFERENCE_PROFILE_KEY} valitsi samasta historiallisesta pelaajahavainnosta "
-        f"vaihtoehdon {_action_title(preferred)}."
+        f"vaihtoehdon {_action_title(preferred)}. {position}."
     )
+    # An indifferent decision is ranked below a measured disagreement: the
+    # reference scored the played action exactly as highly as its own pick.
+    priority = (520 if showing else 400) + _late_importance(decision)
+    if view.indifferent:
+        priority -= 200
     return _Candidate(
-        priority=(520 if showing else 400) + _late_importance(decision),
+        priority=priority,
         item=_item(
             decision,
+            view,
             source="Reference",
             confidence="reference_policy_only",
             source_id=REFERENCE_SOURCE_ID,
-            reason_code="reference_policy_disagreement",
+            reason_code=(
+                "reference_policy_tie_break"
+                if view.indifferent
+                else "reference_policy_disagreement"
+            ),
             title=("Näyttövertailu" if showing else "Vertailupolitiikka valitsi toisin"),
             summary=text,
             recommended=preferred,
             recommendation=f"Vertailuvaihtoehto: {_action_title(preferred)}.",
             explanation=(
                 f"{REFERENCE_PROFILE_KEY} sai vain päätöshetken muodollisen pelaajahavainnon.",
+                position + ".",
             ),
             limitations=(
                 f"{REFERENCE_PROFILE_KEY} on käytännön vertailupolitiikka, ei matemaattinen optimi tai todiste virheestä.",
@@ -540,6 +727,7 @@ def _reference_candidate(
 
 def _item(
     decision: HistoricalDecision,
+    view: _ReferenceView,
     *,
     source: str,
     confidence: str,
@@ -572,7 +760,7 @@ def _item(
     contract = None if observation.contract is None else observation.contract.value
     trick_index = None if isinstance(decision.action, ShowAction) else len(state.completed_tricks)
     return {
-        "schema_version": POST_MATCH_DIAGNOSTICS_SCHEMA_VERSION,
+        "schema_version": POST_MATCH_REVIEW_SCHEMA_VERSION,
         "analysis_id": analysis_id,
         "match_ref": decision.state.match_ref,
         "event_index": decision.event_index,
@@ -594,6 +782,8 @@ def _item(
         "reason_code": reason_code,
         "legal_actions": legal,
         "equivalent_actions": [action_to_data(action) for action in equivalent],
+        "contract_reasoning": view.contract_reasoning,
+        "reference_ranking": view.to_data(),
         "context": {
             "contract": contract,
             "player_role": _player_role(observation),

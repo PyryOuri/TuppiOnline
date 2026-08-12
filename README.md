@@ -161,6 +161,21 @@ The default private-alpha AI profile is the observation-only
 seed. Protocol schemas live in `schemas/network/`; fixture export and client
 synchronization are documented in `docs/ui/`.
 
+Completed-match review returns `tuppi.analysis.post_match.v3`: ranked `Exact`,
+`Rule-based`, and `Reference` diagnostics, plus how often the analysed seat chose
+the same action as `partner_aware_v1`, where each played action sat in that
+policy's own ranking, and the scalars behind a RAMI/NOLO showing comparison.
+Those are derived reference numbers over the player's own legal actions, not an
+optimality claim and not a search or belief output; see
+`docs/ui/phase_h2_analysis.md`.
+
+Completed-deal review returns `tuppi.analysis.completed_deal.v3`. In addition to
+the seat-scoped diagnostics, it contains the authoritative played deal and a
+four-seat `partner_aware_v1` replay that starts from the same retained hands,
+dealer, forehand, and pre-deal score. The replay chooses its own showing and
+play actions, is deterministic, and is cached by room, deal, seat, schema, and
+policy version. The endpoint stays closed until that deal is complete.
+
 ## Tests
 
 ```bash

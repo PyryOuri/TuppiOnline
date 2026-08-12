@@ -9,9 +9,18 @@ Implemented:
 - `partner_aware_v1` reference comparisons without hidden information;
 - Phase 5B exact perfect-information analysis for the last four tricks;
 - conservative deterministic tactical findings;
-- ranked, seat-scoped `tuppi.analysis.post_match.v2` responses;
+- ranked, seat-scoped `tuppi.analysis.post_match.v3` responses;
 - Swift fetch/loading/error/empty state and local history storage;
 - replay jump plus actual/alternative card highlighting;
+- trick-based replay showing all four hands at the end of each trick, derived
+  from the archived public deal result;
+- reference-agreement statistics for the analysed seat, per-decision rank in the
+  reference policy's ordering, and the RAMI/NOLO scalars behind a showing
+  comparison (`tuppi.analysis.post_match.v3`);
+- completed-deal `tuppi.analysis.completed_deal.v3` with a cached deterministic
+  four-seat `partner_aware_v1` replay of the exact retained shuffle and
+  partnership-relative comparison;
+- a separate `Analysoi jako` macOS window with human/bot replay switching;
 - intentional leave with reconnect cancellation and complete state clearing;
 - visible manual retry after a failed/disconnected established session;
 - local Swift-to-Python complete-match and analysis acceptance coverage.

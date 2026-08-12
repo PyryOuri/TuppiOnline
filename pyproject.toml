@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tuppi-research"
-version = "0.12.1"
+version = "0.13.0"
 description = "Deterministic Tuppi rules and research infrastructure with a private-alpha server, protocol fixtures, and optional learned-policy experiments"
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
@@ -283,10 +283,14 @@ where = ["src"]
 "share/tuppi-network/schemas" = [
   "schemas/network/action_acknowledgement.schema.json",
   "schemas/network/completed_deal_analysis.schema.json",
+  "schemas/network/completed_deal_analysis_v1.schema.json",
+  "schemas/network/completed_deal_analysis_v2.schema.json",
+  "schemas/network/completed_deal_analysis_v3.schema.json",
   "schemas/network/http_api.schema.json",
   "schemas/network/post_match_analysis.schema.json",
   "schemas/network/post_match_analysis_v1.schema.json",
   "schemas/network/post_match_diagnostics_v2.schema.json",
+  "schemas/network/post_match_diagnostics_v3.schema.json",
   "schemas/network/protocol_manifest.json",
   "schemas/network/protocol_manifest.schema.json",
   "schemas/network/showing_ui_hints.schema.json",

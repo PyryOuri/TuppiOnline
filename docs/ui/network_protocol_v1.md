@@ -46,14 +46,30 @@ without another engine transition, `stale` returns the current cursor and is
 followed by an authorized reconnect projection, and `rejected` includes a
 bounded error code.
 
-The completed-match analysis result is `tuppi.analysis.post_match.v2`. The
-per-deal result is `tuppi.analysis.completed_deal.v1`. Both are
-seat-scoped, ranked responses with `Exact`, `Rule-based`, and `Reference`
+The completed-match analysis result is `tuppi.analysis.post_match.v3`. The
+current per-deal result is `tuppi.analysis.completed_deal.v3`. Both contain
+seat-scoped, ranked diagnostics with `Exact`, `Rule-based`, and `Reference`
 evidence categories. `Reference` is expressly not an optimality claim. The
-per-deal endpoint is available during an active match only when the room has
-one human and three AI seats. Active human-vs-human matches remain locked until
-the match ends. No live WebSocket message contains analysis.
-The versioned union schema retains v1 only for committed fixture compatibility.
+per-deal endpoint is available to an authenticated participant as soon as the
+requested deal is complete, in any room; an incomplete deal returns
+`deal_not_complete`. The whole-match endpoint still requires a finished match.
+No live WebSocket message contains analysis or completed-deal hidden state.
+
+Post-match v3 and completed-deal v2/v3 carry
+`summary.reference_agreement` (how often the analysed
+seat matched the reference policy across every reconstructed decision),
+per-item `reference_ranking` (where the played action sat in that policy's own
+ordering), and, for showing decisions, `contract_reasoning` (the RAMI/NOLO
+scalars and closed-set verdict notes). Completed-deal v3 additionally carries
+the authoritative original hands and played result, a full four-bot
+`partner_aware_v1` result for that exact retained deal, policy/determinism
+metadata, and partnership-relative comparison values. It is a benchmark, not an
+optimal-play claim. See `docs/ui/phase_h2_analysis.md` for the boundary argument.
+The versioned union schemas retain earlier versions for committed fixture and
+archived-history compatibility. Because the overall transport remains
+`tuppi.network.v1`, the Swift live-session boundary accepts completed-deal
+v1/v2/v3 and the current/preceding post-match versions; unknown versions still
+fail closed.
 
 ## Reconnect
 

@@ -54,10 +54,26 @@ credentials. Keychain storage and account identity are deliberately deferred.
 Each completed 13-trick deal is projected as the canonical public
 `tuppi.engine.deal_result.v1` record. Swift archives those records immediately,
 idempotently by `deal_ref`, grouped under `match_ref`; incomplete deals and
-private starting hands are never client history records. The filtered analysis
-endpoints do not expose search, belief, learning, or hidden-hand diagnostics.
-Per-deal analysis may run before 52 only in a one-human/three-bot practice room;
-competitive human rooms remain locked until the terminal result.
+active-deal private hands are never client history records. A completed-deal v3
+analysis may add that finished deal's now-public original hands to its local
+archive. The filtered analysis endpoints do not expose search, belief, learning,
+or hidden-hand diagnostics from live play.
+
+The server's durable `ResearchDealResult` retains the original four hands and
+canonical played result. Completed-deal v3 uses those exact hands to build an
+`ExplicitDeal` and lets four fresh `partner_aware_v1` agents independently play
+showing and all 13 tricks through the production engine from the original
+dealer and score. The post-deal response contains both canonical results and the
+original hands; the Swift replay also reconstructs hands from each result's 52
+public plays and verifies that reconstruction against the server payload. No
+live projection contains this data.
+
+The analysis endpoints additionally return reference-agreement statistics and,
+on showing decisions, the reference policy's RAMI/NOLO scalars.
+Per-deal analysis is available to every participant as soon as a deal is
+complete, in any room; only the whole-match endpoint waits for the terminal
+result. Swift opens it as a value-keyed secondary macOS window, so the table can
+remain open and usable while completed deals are reviewed.
 
 AI pacing is room state. The host selects a supported millisecond delay before
 the match starts, all lobby clients receive the value, and persistence restores

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from copy import deepcopy
 from dataclasses import dataclass, field
 import os
 from pathlib import Path
@@ -11,20 +12,23 @@ import string
 
 from .analysis import (
     AnalysisProjectionError,
+    COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION,
     POST_MATCH_ANALYSIS_SCHEMA_VERSION,
     project_post_match_analysis,
     RecordedDecisionAnalysis,
     validate_post_match_analysis_response,
+)
+from .completed_deal_review import (
+    BOT_REPLAY_POLICY_ID,
+    generate_completed_deal_review,
+    validate_completed_deal_review_against_runner,
 )
 from .match_runner import (
     AI_ACTION_DELAY_SECONDS,
     DEFAULT_AI_PROFILE_KEY,
     LiveMatchRunner,
 )
-from .post_match_diagnostics import (
-    generate_completed_deal_diagnostics,
-    generate_post_match_diagnostics,
-)
+from .post_match_diagnostics import generate_post_match_diagnostics
 from .persistence import (
     LEGACY_ROOM_RECORD_SCHEMA_VERSION,
     ROOM_RECORD_SCHEMA_VERSION,
@@ -72,6 +76,9 @@ class Room:
     runner: LiveMatchRunner | None = None
     lifecycle: str = "created"
     post_match_analysis: dict[str, object] | None = None
+    completed_deal_analyses: dict[tuple[int, int], dict[str, object]] = field(
+        default_factory=dict
+    )
     ai_action_delay_ms: int = DEFAULT_AI_ACTION_DELAY_MS
 
     def session_for_seat(self, seat: int) -> Session | None:
@@ -354,7 +361,7 @@ class RoomManager:
             raise RoomError("match_not_complete")
         # A stored v1 envelope is retained only for compatibility with the
         # historical fixture/demo hook.  Real completed rooms reconstruct a
-        # fresh seat-scoped v2 response from their durable match record.  This
+        # fresh seat-scoped v3 response from their durable match record.  This
         # also makes diagnostics available after a server restart without
         # persisting raw AI or exact-solver internals.
         if not isinstance(room.runner, LiveMatchRunner) and room.post_match_analysis is not None:
@@ -374,7 +381,19 @@ class RoomManager:
         token: str,
         deal_number: int,
     ) -> dict[str, object]:
-        """Return one completed-deal diagnostic envelope when disclosure is safe."""
+        """Return one completed-deal diagnostic envelope when disclosure is safe.
+
+        A *completed* deal is analysable by any authenticated participant, in any
+        room, without waiting for 52.  Disclosure is safe because the deal is
+        over: all 52 of its cards were played publicly, the response is scoped to
+        the requesting seat's own decisions, and the next deal is an independent
+        shuffle, so nothing about current or future hidden play is revealed.
+
+        The remaining cost is social rather than informational: a player can
+        consult a review aid between deals while the table remains usable. It is
+        symmetric, because every participant has the same endpoint. A deal that
+        is still in progress stays closed.
+        """
 
         room, session = self.session(code=code, token=token)
         if room.runner is None:
@@ -385,13 +404,42 @@ class RoomManager:
             or deal_number >= len(room.runner.state.completed_deals)
         ):
             raise RoomError("deal_not_complete")
-        if not room.runner.terminal and not self._is_solo_ai_practice(room, session):
-            raise RoomError("analysis_locked_until_match_complete")
-        return generate_completed_deal_diagnostics(
+        cache_key = (deal_number, session.seat)
+        cached = room.completed_deal_analyses.get(cache_key)
+        if cached is None and self._store is not None:
+            cached = self._store.load_completed_deal_analysis(
+                room_code=room.code,
+                deal_number=deal_number,
+                seat=session.seat,
+                analysis_schema_version=COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION,
+                bot_policy_id=BOT_REPLAY_POLICY_ID,
+            )
+        if cached is not None:
+            validated = validate_completed_deal_review_against_runner(
+                cached,
+                runner=room.runner,
+                seat=session.seat,
+                deal_number=deal_number,
+            )
+            room.completed_deal_analyses[cache_key] = validated
+            return deepcopy(validated)
+
+        generated = generate_completed_deal_review(
             room.runner,
             seat=session.seat,
             deal_number=deal_number,
         )
+        room.completed_deal_analyses[cache_key] = generated
+        if self._store is not None:
+            self._store.save_completed_deal_analysis(
+                room_code=room.code,
+                deal_number=deal_number,
+                seat=session.seat,
+                response=generated,
+                analysis_schema_version=COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION,
+                bot_policy_id=BOT_REPLAY_POLICY_ID,
+            )
+        return deepcopy(generated)
 
     def get(self, code: str) -> Room:
         normalized = code.strip().upper()
@@ -413,14 +461,6 @@ class RoomManager:
             return False
         return all(
             session.ready for session in room.sessions.values()
-        )
-
-    @staticmethod
-    def _is_solo_ai_practice(room: Room, session: Session) -> bool:
-        return (
-            len(room.sessions) == 1
-            and session.seat == 0
-            and room.ai_seats == {1, 2, 3}
         )
 
     @staticmethod

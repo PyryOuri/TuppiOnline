@@ -34,9 +34,25 @@ from tuppi_engine.validation import is_sha256_identifier, is_valid_match_ref
 
 POST_MATCH_ANALYSIS_SCHEMA_VERSION = "tuppi.analysis.post_match.v1"
 POST_MATCH_DIAGNOSTICS_SCHEMA_VERSION = "tuppi.analysis.post_match.v2"
+POST_MATCH_REVIEW_SCHEMA_VERSION = "tuppi.analysis.post_match.v3"
 COMPLETED_DEAL_DIAGNOSTICS_SCHEMA_VERSION = "tuppi.analysis.completed_deal.v1"
+COMPLETED_DEAL_REVIEW_SCHEMA_VERSION = "tuppi.analysis.completed_deal.v2"
+COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION = "tuppi.analysis.completed_deal.v3"
 AGENT_DIAGNOSTICS_SCHEMA_VERSION = "tuppi.agents.decision_diagnostics.v1"
 PIMC_DIAGNOSTICS_SCHEMA_VERSION = "tuppi.search.pimc_decision_diagnostics.v1"
+
+#: Ranked-diagnostics payload versions, oldest first.  A live server emits the
+#: newest; older versions stay acceptable so committed fixtures and a client's
+#: locally persisted history keep decoding.
+RANKED_ANALYSIS_SCHEMA_VERSIONS: tuple[str, ...] = (
+    POST_MATCH_DIAGNOSTICS_SCHEMA_VERSION,
+    POST_MATCH_REVIEW_SCHEMA_VERSION,
+)
+COMPLETED_DEAL_SCHEMA_VERSIONS: tuple[str, ...] = (
+    COMPLETED_DEAL_DIAGNOSTICS_SCHEMA_VERSION,
+    COMPLETED_DEAL_REVIEW_SCHEMA_VERSION,
+    COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION,
+)
 
 _MANDATORY_LIMITATION = (
     "Analyysi käyttää vain analysoidun pelaajan sallittua tietoa ja julkista "
@@ -438,7 +454,7 @@ def validate_post_match_analysis_response(
     """
 
     response = _require_mapping(value, "post-match analysis response")
-    if response.get("schema_version") == POST_MATCH_DIAGNOSTICS_SCHEMA_VERSION:
+    if response.get("schema_version") in RANKED_ANALYSIS_SCHEMA_VERSIONS:
         return _validate_post_match_diagnostics_response(
             response,
             expected_match_ref=expected_match_ref,
@@ -502,6 +518,17 @@ _COMPLETED_DEAL_RESPONSE_KEYS = frozenset(
         "analyses",
     }
 )
+_COMPLETED_DEAL_BOT_REPLAY_RESPONSE_KEYS = _COMPLETED_DEAL_RESPONSE_KEYS | frozenset(
+    {
+        "deal_id",
+        "local_team",
+        "initial_hands",
+        "bot_policy",
+        "actual_result",
+        "bot_replay",
+        "comparison",
+    }
+)
 _COMPLETED_DEAL_SUMMARY_KEYS = frozenset(
     {
         "contract",
@@ -511,6 +538,63 @@ _COMPLETED_DEAL_SUMMARY_KEYS = frozenset(
         "score_before",
         "score_after",
         "team_tricks",
+    }
+)
+_COMPLETED_DEAL_REVIEW_SUMMARY_KEYS = _COMPLETED_DEAL_SUMMARY_KEYS | frozenset(
+    {"reference_agreement"}
+)
+
+_BOT_POLICY_KEYS = frozenset(
+    {"profile", "policy_id", "determinism", "analysis_seed", "bot_seats"}
+)
+_DEAL_RESULT_KEYS = frozenset(
+    {
+        "contract",
+        "deal_number",
+        "deal_ref",
+        "deal_score",
+        "dealer",
+        "declarer",
+        "event_log_id",
+        "events",
+        "first_leader",
+        "forehand",
+        "match_ref",
+        "match_terminal",
+        "next_dealer",
+        "outcome",
+        "ruleset_id",
+        "schema_version",
+        "score_after",
+        "score_before",
+        "show_actions",
+        "team_tricks",
+        "tricks",
+    }
+)
+_DEAL_SCORE_KEYS = frozenset(
+    {"declaring_team", "points", "stolen_rami", "winner_team"}
+)
+_SHOW_RESULT_KEYS = frozenset(
+    {"declared_contract", "seat", "shown_card", "verbal_required"}
+)
+_TRICK_RESULT_KEYS = frozenset({"leader", "plays", "trick_index", "winner"})
+_PLAY_RESULT_KEYS = frozenset({"card", "seat"})
+_COMPARISON_KEYS = frozenset(
+    {
+        "local_team",
+        "actual_tricks",
+        "bot_tricks",
+        "trick_difference",
+        "actual_deal_points",
+        "bot_deal_points",
+        "deal_point_difference",
+        "actual_match_score_after",
+        "bot_match_score_after",
+        "match_score_difference",
+        "actual_score_margin_after",
+        "bot_score_margin_after",
+        "match_score_margin_difference",
     }
 )
 
@@ -526,14 +610,26 @@ def validate_completed_deal_analysis_response(
 
     response = _require_mapping(value, "completed-deal analysis response")
     _reject_client_private_keys(response)
-    if set(response) != _COMPLETED_DEAL_RESPONSE_KEYS:
+    schema_version = response.get("schema_version")
+    bot_review = schema_version == COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION
+    expected_response_keys = (
+        _COMPLETED_DEAL_BOT_REPLAY_RESPONSE_KEYS
+        if bot_review
+        else _COMPLETED_DEAL_RESPONSE_KEYS
+    )
+    if set(response) != expected_response_keys:
         raise AnalysisProjectionError(
             "completed-deal analysis response fields are invalid"
         )
-    if response["schema_version"] != COMPLETED_DEAL_DIAGNOSTICS_SCHEMA_VERSION:
+    schema_version = response["schema_version"]
+    if schema_version not in COMPLETED_DEAL_SCHEMA_VERSIONS:
         raise AnalysisProjectionError(
             "unsupported completed-deal analysis schema_version"
         )
+    review = schema_version in {
+        COMPLETED_DEAL_REVIEW_SCHEMA_VERSION,
+        COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION,
+    }
     match_ref = _require_text(response["match_ref"], "match_ref", 96)
     if not is_valid_match_ref(match_ref):
         raise AnalysisProjectionError("completed-deal match_ref is invalid")
@@ -550,8 +646,15 @@ def validate_completed_deal_analysis_response(
     seat = _require_int(response["seat"], "seat", minimum=0, maximum=3)
 
     summary = _require_mapping(response["summary"], "summary")
-    if set(summary) != _COMPLETED_DEAL_SUMMARY_KEYS:
+    expected_summary_keys = (
+        _COMPLETED_DEAL_REVIEW_SUMMARY_KEYS if review else _COMPLETED_DEAL_SUMMARY_KEYS
+    )
+    if set(summary) != expected_summary_keys:
         raise AnalysisProjectionError("completed-deal summary fields are invalid")
+    if review:
+        _validate_reference_agreement(
+            summary["reference_agreement"], "summary.reference_agreement"
+        )
     if summary["contract"] not in {"RAMI", "NOLO"}:
         raise AnalysisProjectionError("completed-deal contract is invalid")
     if summary["outcome"] not in {"NOLO", "MADE_RAMI", "STOLEN_RAMI"}:
@@ -577,24 +680,39 @@ def validate_completed_deal_analysis_response(
     ):
         raise AnalysisProjectionError("completed-deal analysis contains another deal")
 
-    # Reuse the hardened v2 decision validation and event binding.  The proxy
-    # summary is validation-only and is never returned to the client.
+    # Reuse the hardened ranked-decision validation and event binding.  The
+    # proxy summary is validation-only and is never returned to the client.
+    proxy_summary: dict[str, object] = {
+        "deal_count": deal_number + 1,
+        "diagnostic_count": diagnostic_count,
+        "final_score": summary["score_after"],
+        "winner_team": 0,
+    }
+    if review:
+        proxy_summary["reference_agreement"] = summary["reference_agreement"]
     _validate_post_match_diagnostics_response(
         {
-            "schema_version": POST_MATCH_DIAGNOSTICS_SCHEMA_VERSION,
+            "schema_version": (
+                POST_MATCH_REVIEW_SCHEMA_VERSION
+                if review
+                else POST_MATCH_DIAGNOSTICS_SCHEMA_VERSION
+            ),
             "match_ref": match_ref,
             "seat": seat,
-            "summary": {
-                "deal_count": deal_number + 1,
-                "diagnostic_count": diagnostic_count,
-                "final_score": summary["score_after"],
-                "winner_team": 0,
-            },
+            "summary": proxy_summary,
             "analyses": analyses,
         },
         expected_match_ref=match_ref,
         public_events=public_events,
     )
+    if bot_review:
+        _validate_completed_deal_bot_replay(
+            response,
+            match_ref=match_ref,
+            deal_ref=expected_deal_ref,
+            deal_number=deal_number,
+            seat=seat,
+        )
     try:
         canonical = strict_json_loads(
             canonical_json_bytes(dict(response)).decode("utf-8")
@@ -606,6 +724,292 @@ def validate_completed_deal_analysis_response(
     if type(canonical) is not dict:
         raise AnalysisProjectionError("completed-deal analysis must remain an object")
     return canonical
+
+
+def _validate_completed_deal_bot_replay(
+    response: Mapping[str, object],
+    *,
+    match_ref: str,
+    deal_ref: str,
+    deal_number: int,
+    seat: int,
+) -> None:
+    """Validate the public, post-deal-only replay and comparison extension."""
+
+    deal_id = _require_text(response["deal_id"], "deal_id", 71)
+    if not is_sha256_identifier(deal_id):
+        raise AnalysisProjectionError("completed-deal deal_id is invalid")
+    local_team = _require_int(response["local_team"], "local_team", 0, 1)
+    if local_team != seat % 2:
+        raise AnalysisProjectionError("completed-deal local_team disagrees with seat")
+
+    hands = response["initial_hands"]
+    if type(hands) is not list or len(hands) != 4:
+        raise AnalysisProjectionError("completed-deal initial_hands must contain four hands")
+    normalized_hands: list[tuple[str, ...]] = []
+    for hand_seat, raw_hand in enumerate(hands):
+        if type(raw_hand) is not list or len(raw_hand) != 13:
+            raise AnalysisProjectionError(
+                f"completed-deal initial_hands[{hand_seat}] must contain 13 cards"
+            )
+        cards = tuple(
+            _require_card_code(card, f"initial_hands[{hand_seat}]")
+            for card in raw_hand
+        )
+        if len(set(cards)) != 13:
+            raise AnalysisProjectionError("completed-deal hand contains duplicate cards")
+        normalized_hands.append(cards)
+    if len(set(card for hand in normalized_hands for card in hand)) != 52:
+        raise AnalysisProjectionError("completed-deal initial_hands do not form a deck")
+
+    policy = _require_mapping(response["bot_policy"], "bot_policy")
+    if set(policy) != _BOT_POLICY_KEYS:
+        raise AnalysisProjectionError("completed-deal bot_policy fields are invalid")
+    if policy["profile"] != "partner_aware_v1":
+        raise AnalysisProjectionError("completed-deal bot policy is invalid")
+    _require_text(policy["policy_id"], "bot_policy.policy_id", 256)
+    if policy["determinism"] != "deterministic" or policy["analysis_seed"] is not None:
+        raise AnalysisProjectionError("completed-deal bot determinism metadata is invalid")
+    if policy["bot_seats"] != [0, 1, 2, 3]:
+        raise AnalysisProjectionError("completed-deal replay must use four bot seats")
+
+    actual = _validate_review_deal_result(
+        response["actual_result"],
+        label="actual_result",
+        match_ref=match_ref,
+        deal_ref=deal_ref,
+        deal_number=deal_number,
+        hands=normalized_hands,
+    )
+    bot = _validate_review_deal_result(
+        response["bot_replay"],
+        label="bot_replay",
+        match_ref=match_ref,
+        deal_ref=deal_ref,
+        deal_number=deal_number,
+        hands=normalized_hands,
+    )
+    for field in ("dealer", "forehand", "score_before"):
+        if actual[field] != bot[field]:
+            raise AnalysisProjectionError(
+                f"completed-deal bot replay {field} differs from the actual deal"
+            )
+
+    summary = _require_mapping(response["summary"], "summary")
+    expected_summary = {
+        "contract": actual["contract"],
+        "outcome": actual["outcome"],
+        "points": _require_mapping(actual["deal_score"], "actual_result.deal_score")[
+            "points"
+        ],
+        "score_before": actual["score_before"],
+        "score_after": actual["score_after"],
+        "team_tricks": actual["team_tricks"],
+    }
+    if any(summary[key] != value for key, value in expected_summary.items()):
+        raise AnalysisProjectionError("completed-deal summary disagrees with actual_result")
+    _validate_review_comparison(
+        response["comparison"],
+        actual=actual,
+        bot=bot,
+        local_team=local_team,
+    )
+
+
+def _validate_review_deal_result(
+    value: object,
+    *,
+    label: str,
+    match_ref: str,
+    deal_ref: str,
+    deal_number: int,
+    hands: Sequence[Sequence[str]],
+) -> Mapping[str, object]:
+    result = _require_mapping(value, label)
+    if set(result) != _DEAL_RESULT_KEYS:
+        raise AnalysisProjectionError(f"{label} fields are invalid")
+    if result["schema_version"] != "tuppi.engine.deal_result.v1":
+        raise AnalysisProjectionError(f"{label}.schema_version is invalid")
+    if result["ruleset_id"] != "project_target_v1":
+        raise AnalysisProjectionError(f"{label}.ruleset_id is invalid")
+    if (
+        result["match_ref"] != match_ref
+        or result["deal_ref"] != deal_ref
+        or result["deal_number"] != deal_number
+    ):
+        raise AnalysisProjectionError(f"{label} identity is invalid")
+    dealer = _require_int(result["dealer"], f"{label}.dealer", 0, 3)
+    forehand = _require_int(result["forehand"], f"{label}.forehand", 0, 3)
+    if forehand != (dealer + 1) % 4:
+        raise AnalysisProjectionError(f"{label}.forehand disagrees with dealer")
+    if result["contract"] not in {"RAMI", "NOLO"}:
+        raise AnalysisProjectionError(f"{label}.contract is invalid")
+    declarer = result["declarer"]
+    if result["contract"] == "RAMI":
+        _require_int(declarer, f"{label}.declarer", 0, 3)
+    elif declarer is not None:
+        raise AnalysisProjectionError(f"{label}.NOLO declarer must be null")
+    _require_int(result["first_leader"], f"{label}.first_leader", 0, 3)
+    if result["outcome"] not in {"NOLO", "MADE_RAMI", "STOLEN_RAMI"}:
+        raise AnalysisProjectionError(f"{label}.outcome is invalid")
+    score_before = _require_score_pair(result["score_before"], f"{label}.score_before")
+    score_after = _require_score_pair(result["score_after"], f"{label}.score_after")
+    if type(result["match_terminal"]) is not bool:
+        raise AnalysisProjectionError(f"{label}.match_terminal must be a boolean")
+    next_dealer = result["next_dealer"]
+    if next_dealer is not None:
+        _require_int(next_dealer, f"{label}.next_dealer", 0, 3)
+    event_log_id = _require_text(result["event_log_id"], f"{label}.event_log_id", 71)
+    if not is_sha256_identifier(event_log_id):
+        raise AnalysisProjectionError(f"{label}.event_log_id is invalid")
+    if type(result["events"]) is not list or not result["events"]:
+        raise AnalysisProjectionError(f"{label}.events must be a nonempty array")
+
+    shows = result["show_actions"]
+    if type(shows) is not list or not 1 <= len(shows) <= 4:
+        raise AnalysisProjectionError(f"{label}.show_actions are invalid")
+    expected_show_seats = tuple((forehand + offset) % 4 for offset in range(len(shows)))
+    for index, raw in enumerate(shows):
+        show = _require_mapping(raw, f"{label}.show_actions[{index}]")
+        if set(show) != _SHOW_RESULT_KEYS:
+            raise AnalysisProjectionError(f"{label}.show_actions[{index}] fields are invalid")
+        show_seat = _require_int(show["seat"], f"{label}.show_actions[{index}].seat", 0, 3)
+        if show_seat != expected_show_seats[index]:
+            raise AnalysisProjectionError(f"{label}.show_actions are out of order")
+        card = _require_card_code(
+            show["shown_card"], f"{label}.show_actions[{index}].shown_card"
+        )
+        if card not in hands[show_seat]:
+            raise AnalysisProjectionError(f"{label} shown card is not in the seat's hand")
+        if show["declared_contract"] not in {"RAMI", "NOLO"}:
+            raise AnalysisProjectionError(f"{label} shown contract is invalid")
+        if type(show["verbal_required"]) is not bool:
+            raise AnalysisProjectionError(f"{label} verbal_required must be a boolean")
+    if result["contract"] == "RAMI":
+        if shows[-1]["declared_contract"] != "RAMI":
+            raise AnalysisProjectionError(f"{label} RAMI showing did not stop on RAMI")
+    elif len(shows) != 4 or any(show["declared_contract"] != "NOLO" for show in shows):
+        raise AnalysisProjectionError(f"{label} NOLO showing must contain four NOLO actions")
+
+    tricks = result["tricks"]
+    if type(tricks) is not list or len(tricks) != 13:
+        raise AnalysisProjectionError(f"{label}.tricks must contain 13 tricks")
+    played_by_seat: list[list[str]] = [[], [], [], []]
+    winner_counts = [0, 0]
+    for index, raw in enumerate(tricks):
+        trick = _require_mapping(raw, f"{label}.tricks[{index}]")
+        if set(trick) != _TRICK_RESULT_KEYS or trick["trick_index"] != index:
+            raise AnalysisProjectionError(f"{label}.tricks[{index}] fields are invalid")
+        _require_int(trick["leader"], f"{label}.tricks[{index}].leader", 0, 3)
+        winner = _require_int(trick["winner"], f"{label}.tricks[{index}].winner", 0, 3)
+        winner_counts[winner % 2] += 1
+        plays = trick["plays"]
+        if type(plays) is not list or len(plays) != 4:
+            raise AnalysisProjectionError(f"{label}.tricks[{index}].plays are invalid")
+        for raw_play in plays:
+            play = _require_mapping(raw_play, f"{label}.tricks[{index}].plays")
+            if set(play) != _PLAY_RESULT_KEYS:
+                raise AnalysisProjectionError(f"{label} play fields are invalid")
+            play_seat = _require_int(play["seat"], f"{label} play seat", 0, 3)
+            played_by_seat[play_seat].append(
+                _require_card_code(play["card"], f"{label} played card")
+            )
+    if any(
+        len(played_by_seat[played_seat]) != 13
+        or set(played_by_seat[played_seat]) != set(hands[played_seat])
+        for played_seat in range(4)
+    ):
+        raise AnalysisProjectionError(f"{label} transcript does not use the original hands")
+    team_tricks = _require_score_pair(result["team_tricks"], f"{label}.team_tricks")
+    if team_tricks != tuple(winner_counts) or sum(team_tricks) != 13:
+        raise AnalysisProjectionError(f"{label}.team_tricks disagree with the transcript")
+
+    deal_score = _require_mapping(result["deal_score"], f"{label}.deal_score")
+    if set(deal_score) != _DEAL_SCORE_KEYS:
+        raise AnalysisProjectionError(f"{label}.deal_score fields are invalid")
+    _require_int(deal_score["winner_team"], f"{label}.deal_score.winner_team", 0, 1)
+    _require_int(deal_score["points"], f"{label}.deal_score.points", 0, 56)
+    declaring_team = deal_score["declaring_team"]
+    if declaring_team is not None:
+        _require_int(declaring_team, f"{label}.deal_score.declaring_team", 0, 1)
+    if type(deal_score["stolen_rami"]) is not bool:
+        raise AnalysisProjectionError(f"{label}.deal_score.stolen_rami must be a boolean")
+    # The production engine is the final scoring validator.  These checks bind
+    # the redundant envelope fields before cached transcripts are replayed.
+    if result["contract"] == "NOLO" and (
+        declaring_team is not None or deal_score["stolen_rami"]
+    ):
+        raise AnalysisProjectionError(f"{label}.NOLO deal_score is invalid")
+    if result["contract"] == "RAMI" and declaring_team != int(declarer) % 2:
+        raise AnalysisProjectionError(f"{label}.RAMI declaring team is invalid")
+    if score_before == score_after:
+        raise AnalysisProjectionError(f"{label} score did not transition")
+    return result
+
+
+def _validate_review_comparison(
+    value: object,
+    *,
+    actual: Mapping[str, object],
+    bot: Mapping[str, object],
+    local_team: int,
+) -> None:
+    comparison = _require_mapping(value, "comparison")
+    if set(comparison) != _COMPARISON_KEYS:
+        raise AnalysisProjectionError("completed-deal comparison fields are invalid")
+    if comparison["local_team"] != local_team:
+        raise AnalysisProjectionError("completed-deal comparison local_team disagrees")
+    for key in _COMPARISON_KEYS - {"local_team"}:
+        if type(comparison[key]) is not int:
+            raise AnalysisProjectionError(f"comparison.{key} must be an integer")
+
+    actual_tricks = _require_score_pair(actual["team_tricks"], "actual_result.team_tricks")[
+        local_team
+    ]
+    bot_tricks = _require_score_pair(bot["team_tricks"], "bot_replay.team_tricks")[
+        local_team
+    ]
+    actual_score = _require_mapping(actual["deal_score"], "actual_result.deal_score")
+    bot_score = _require_mapping(bot["deal_score"], "bot_replay.deal_score")
+    actual_points = (
+        actual_score["points"]
+        if actual_score["winner_team"] == local_team
+        else -actual_score["points"]
+    )
+    bot_points = (
+        bot_score["points"]
+        if bot_score["winner_team"] == local_team
+        else -bot_score["points"]
+    )
+    actual_after = _require_score_pair(actual["score_after"], "actual_result.score_after")
+    bot_after = _require_score_pair(bot["score_after"], "bot_replay.score_after")
+    opponent = 1 - local_team
+    actual_margin = actual_after[local_team] - actual_after[opponent]
+    bot_margin = bot_after[local_team] - bot_after[opponent]
+    expected = {
+        "local_team": local_team,
+        "actual_tricks": actual_tricks,
+        "bot_tricks": bot_tricks,
+        "trick_difference": bot_tricks - actual_tricks,
+        "actual_deal_points": actual_points,
+        "bot_deal_points": bot_points,
+        "deal_point_difference": bot_points - actual_points,
+        "actual_match_score_after": actual_after[local_team],
+        "bot_match_score_after": bot_after[local_team],
+        "match_score_difference": bot_after[local_team] - actual_after[local_team],
+        "actual_score_margin_after": actual_margin,
+        "bot_score_margin_after": bot_margin,
+        "match_score_margin_difference": bot_margin - actual_margin,
+    }
+    if comparison != expected:
+        raise AnalysisProjectionError("completed-deal comparison arithmetic is invalid")
+
+
+def _require_card_code(value: object, label: str) -> str:
+    card = _require_text(value, label, 3)
+    if _CARD_CODE_PATTERN.fullmatch(card) is None:
+        raise AnalysisProjectionError(f"{label} is not a canonical card code")
+    return card
 
 
 _V2_RESPONSE_KEYS = frozenset(
@@ -639,6 +1043,76 @@ _V2_PLAYER_ROLES = frozenset(
     {"showing_player", "nolo_player", "declarer", "declarer_partner", "defender"}
 )
 
+# --------------------------------------------------------------------------- v3
+#
+# v3 adds three review fields the earlier contract deliberately withheld:
+# aggregate reference agreement, the played action's position in the reference
+# policy's own ranking, and the scalars behind a RAMI/NOLO choice.
+#
+# This is a deliberate, documented widening of the client boundary, not an
+# accident.  It stays narrow in three ways: every field is constructed here
+# rather than forwarded from a ``DecisionDiagnostics`` mapping, the notes come
+# from a closed token set, and the private-key guard below is unchanged, so a
+# raw diagnostics dictionary still fails closed.  Nothing here reveals another
+# seat's card, a hidden hand, an observation digest, or any search/belief value.
+_V3_SUMMARY_KEYS = _V2_SUMMARY_KEYS | frozenset({"reference_agreement"})
+_V3_ANALYSIS_KEYS = _V2_ANALYSIS_KEYS | frozenset(
+    {"reference_ranking", "contract_reasoning"}
+)
+_AGREEMENT_KEYS = frozenset(
+    {
+        "reference_profile",
+        "decision_count",
+        "forced_decision_count",
+        "match_count",
+        "showing_decision_count",
+        "showing_match_count",
+        "trick_decision_count",
+        "trick_match_count",
+        "indifferent_count",
+        "top_rank_count",
+        "second_rank_count",
+        "lower_rank_count",
+        "mean_played_rank",
+        "mean_legal_action_count",
+    }
+)
+_AGREEMENT_COUNT_KEYS = tuple(
+    sorted(
+        _AGREEMENT_KEYS - {"reference_profile", "mean_played_rank", "mean_legal_action_count"}
+    )
+)
+_RANKING_KEYS = frozenset(
+    {
+        "reference_profile",
+        "reference_action",
+        "played_rank",
+        "legal_action_count",
+        "strictly_better_count",
+        "reference_indifferent",
+    }
+)
+_CONTRACT_REASONING_KEYS = frozenset(
+    {"declared_contract", "reference_contract", "metrics", "verdict_notes"}
+)
+_METRIC_KEYS = frozenset({"name", "value"})
+_METRIC_NAME_PATTERN = re.compile(r"[a-z][a-z0-9_]{0,63}")
+#: The closed set of showing-verdict tokens a client may receive.  A policy
+#: reason code outside this set is dropped rather than forwarded.
+VERDICT_NOTES = frozenset(
+    {
+        "rami_threshold_met",
+        "nolo_veto_applied",
+        "rami_declared",
+        "nolo_declared",
+        "match_protect_terminal_lead",
+        "match_reset_opponent_rise",
+        "legacy_protect_large_rise",
+        "legacy_gamble_for_reset",
+        "legacy_expected_value_choice",
+    }
+)
+
 
 def _validate_post_match_diagnostics_response(
     response: Mapping[str, object],
@@ -646,9 +1120,13 @@ def _validate_post_match_diagnostics_response(
     expected_match_ref: str | None,
     public_events: Sequence[Mapping[str, object]] | None,
 ) -> dict[str, object]:
-    """Validate the real, seat-scoped v2 diagnostics response."""
+    """Validate the real, seat-scoped ranked diagnostics response (v2 or v3)."""
 
     _reject_client_private_keys(response)
+    schema_version = response.get("schema_version")
+    if schema_version not in RANKED_ANALYSIS_SCHEMA_VERSIONS:
+        raise AnalysisProjectionError("unsupported ranked analysis schema_version")
+    review = schema_version == POST_MATCH_REVIEW_SCHEMA_VERSION
     if set(response) != _V2_RESPONSE_KEYS:
         raise AnalysisProjectionError("post-match diagnostics response fields are invalid")
     match_ref = _require_text(response["match_ref"], "match_ref", 96)
@@ -659,7 +1137,7 @@ def _validate_post_match_diagnostics_response(
     seat = _require_int(response["seat"], "seat", minimum=0, maximum=3)
 
     summary = _require_mapping(response["summary"], "summary")
-    if set(summary) != _V2_SUMMARY_KEYS:
+    if set(summary) != (_V3_SUMMARY_KEYS if review else _V2_SUMMARY_KEYS):
         raise AnalysisProjectionError("post-match diagnostics summary fields are invalid")
     deal_count = _require_int(summary["deal_count"], "summary.deal_count", minimum=1)
     diagnostic_count = _require_int(
@@ -667,6 +1145,10 @@ def _validate_post_match_diagnostics_response(
     )
     _require_score_pair(summary["final_score"], "summary.final_score")
     _require_int(summary["winner_team"], "summary.winner_team", minimum=0, maximum=1)
+    if review:
+        _validate_reference_agreement(
+            summary["reference_agreement"], "summary.reference_agreement"
+        )
 
     analyses = response["analyses"]
     if type(analyses) is not list:
@@ -682,6 +1164,7 @@ def _validate_post_match_diagnostics_response(
             match_ref=match_ref,
             response_seat=seat,
             deal_count=deal_count,
+            schema_version=schema_version,
             label=f"analyses[{index}]",
         )
         analysis_id = analysis["analysis_id"]
@@ -714,10 +1197,12 @@ def _validate_v2_analysis(
     response_seat: int,
     deal_count: int,
     label: str,
+    schema_version: str = POST_MATCH_DIAGNOSTICS_SCHEMA_VERSION,
 ) -> None:
-    if set(analysis) != _V2_ANALYSIS_KEYS:
+    review = schema_version == POST_MATCH_REVIEW_SCHEMA_VERSION
+    if set(analysis) != (_V3_ANALYSIS_KEYS if review else _V2_ANALYSIS_KEYS):
         raise AnalysisProjectionError(f"{label} fields are invalid")
-    if analysis["schema_version"] != POST_MATCH_DIAGNOSTICS_SCHEMA_VERSION:
+    if analysis["schema_version"] != schema_version:
         raise AnalysisProjectionError(f"{label} schema_version is invalid")
     if analysis["match_ref"] != match_ref:
         raise AnalysisProjectionError(f"{label}.match_ref disagrees")
@@ -883,6 +1368,197 @@ def _validate_v2_analysis(
             raise AnalysisProjectionError(f"{label}.quantitative requires Exact source")
     elif source == "Exact":
         raise AnalysisProjectionError(f"{label}.Exact diagnostic requires quantitative values")
+
+    if not review:
+        return
+    _validate_reference_ranking(
+        analysis["reference_ranking"],
+        seat=seat,
+        decision_kind=decision_kind,
+        played_data=played_data,
+        legal_actions=legal_actions,
+        label=f"{label}.reference_ranking",
+    )
+    reasoning = analysis["contract_reasoning"]
+    if decision_kind == "SHOWING":
+        declared = played.declared_contract.value
+        _validate_contract_reasoning(
+            reasoning,
+            declared_contract=declared,
+            label=f"{label}.contract_reasoning",
+        )
+    elif reasoning is not None:
+        raise AnalysisProjectionError(
+            f"{label}.contract_reasoning belongs only to a showing decision"
+        )
+
+
+def _validate_reference_agreement(value: object, label: str) -> None:
+    """Check the aggregate agreement block for internal consistency."""
+
+    agreement = _require_mapping(value, label)
+    if set(agreement) != _AGREEMENT_KEYS:
+        raise AnalysisProjectionError(f"{label} fields are invalid")
+    _require_text(agreement["reference_profile"], f"{label}.reference_profile", 64)
+    counts = {
+        key: _require_int(agreement[key], f"{label}.{key}", minimum=0)
+        for key in _AGREEMENT_COUNT_KEYS
+    }
+    decisions = counts["decision_count"]
+    if counts["showing_decision_count"] + counts["trick_decision_count"] != decisions:
+        raise AnalysisProjectionError(f"{label} phase decision counts do not total")
+    if counts["showing_match_count"] + counts["trick_match_count"] != counts["match_count"]:
+        raise AnalysisProjectionError(f"{label} phase match counts do not total")
+    rank_total = (
+        counts["top_rank_count"] + counts["second_rank_count"] + counts["lower_rank_count"]
+    )
+    if rank_total != decisions:
+        raise AnalysisProjectionError(f"{label} rank buckets do not total the decisions")
+    # The reference's own pick is always rank one, so agreements are exactly the
+    # top-rank decisions.  Anything else means the ranking and the match counter
+    # were derived from different comparisons.
+    if counts["match_count"] != counts["top_rank_count"]:
+        raise AnalysisProjectionError(f"{label} match count disagrees with top-rank count")
+    for key in ("match_count", "indifferent_count", "forced_decision_count"):
+        if counts[key] > decisions:
+            raise AnalysisProjectionError(f"{label}.{key} exceeds the decision count")
+    # A forced decision has one legal action, so it is always an agreement.
+    if counts["forced_decision_count"] > counts["match_count"]:
+        raise AnalysisProjectionError(f"{label} forced decisions exceed the agreements")
+    if counts["showing_match_count"] > counts["showing_decision_count"]:
+        raise AnalysisProjectionError(f"{label}.showing_match_count exceeds its decisions")
+    if counts["trick_match_count"] > counts["trick_decision_count"]:
+        raise AnalysisProjectionError(f"{label}.trick_match_count exceeds its decisions")
+    mean_rank = _require_finite(agreement["mean_played_rank"], f"{label}.mean_played_rank")
+    mean_legal = _require_finite(
+        agreement["mean_legal_action_count"], f"{label}.mean_legal_action_count"
+    )
+    if decisions == 0:
+        if mean_rank != 0.0 or mean_legal != 0.0:
+            raise AnalysisProjectionError(f"{label} means must be zero without decisions")
+        return
+    if mean_rank < 1.0:
+        raise AnalysisProjectionError(f"{label}.mean_played_rank must be at least one")
+    if mean_legal < 1.0:
+        raise AnalysisProjectionError(f"{label}.mean_legal_action_count must be at least one")
+    if mean_rank > mean_legal:
+        raise AnalysisProjectionError(f"{label}.mean_played_rank exceeds the legal mean")
+
+
+def _validate_reference_ranking(
+    value: object,
+    *,
+    seat: int,
+    decision_kind: str,
+    played_data: Mapping[str, object],
+    legal_actions: set[tuple[tuple[str, object], ...]],
+    label: str,
+) -> None:
+    """Check one decision's position inside the reference policy's ranking."""
+
+    ranking = _require_mapping(value, label)
+    if set(ranking) != _RANKING_KEYS:
+        raise AnalysisProjectionError(f"{label} fields are invalid")
+    _require_text(ranking["reference_profile"], f"{label}.reference_profile", 64)
+    action, action_data = _canonical_action(
+        _require_mapping(ranking["reference_action"], f"{label}.reference_action"),
+        f"{label}.reference_action",
+    )
+    _validate_action_for_seat(action, seat, f"{label}.reference_action")
+    _validate_phase_action(action, decision_kind, f"{label}.reference_action")
+    if tuple(sorted(action_data.items())) not in legal_actions:
+        raise AnalysisProjectionError(f"{label}.reference_action is not a legal action")
+    legal_count = _require_int(
+        ranking["legal_action_count"], f"{label}.legal_action_count", minimum=1
+    )
+    if legal_count != len(legal_actions):
+        raise AnalysisProjectionError(f"{label}.legal_action_count disagrees")
+    played_rank = _require_int(
+        ranking["played_rank"], f"{label}.played_rank", minimum=1, maximum=legal_count
+    )
+    strictly_better = _require_int(
+        ranking["strictly_better_count"],
+        f"{label}.strictly_better_count",
+        minimum=0,
+        maximum=legal_count - 1,
+    )
+    if strictly_better >= played_rank:
+        raise AnalysisProjectionError(
+            f"{label}.strictly_better_count is inconsistent with played_rank"
+        )
+    indifferent = ranking["reference_indifferent"]
+    if type(indifferent) is not bool:
+        raise AnalysisProjectionError(f"{label}.reference_indifferent must be a boolean")
+
+    # The three states are mutually exclusive and fully determined:
+    #   agreed       -> the played action *is* the reference pick: rank 1, none better.
+    #   indifferent  -> a different action that scored identically; only the
+    #                   documented engine-index tie-break separated them.
+    #   disagreement -> at least one action the reference scored strictly higher.
+    agreed = action_data == dict(played_data)
+    if agreed:
+        if played_rank != 1 or strictly_better != 0 or indifferent:
+            raise AnalysisProjectionError(
+                f"{label}.agreement must rank first with nothing better and no indifference"
+            )
+        return
+    if indifferent:
+        if strictly_better != 0 or played_rank == 1:
+            raise AnalysisProjectionError(
+                f"{label}.reference_indifferent contradicts the recorded position"
+            )
+    elif strictly_better < 1:
+        raise AnalysisProjectionError(
+            f"{label}.disagreement requires a strictly better action or indifference"
+        )
+
+
+def _validate_contract_reasoning(
+    value: object,
+    *,
+    declared_contract: str,
+    label: str,
+) -> None:
+    """Check the scalars and closed-set notes behind a RAMI/NOLO comparison."""
+
+    reasoning = _require_mapping(value, label)
+    if set(reasoning) != _CONTRACT_REASONING_KEYS:
+        raise AnalysisProjectionError(f"{label} fields are invalid")
+    for key in ("declared_contract", "reference_contract"):
+        if reasoning[key] not in {"RAMI", "NOLO"}:
+            raise AnalysisProjectionError(f"{label}.{key} is invalid")
+    if reasoning["declared_contract"] != declared_contract:
+        raise AnalysisProjectionError(f"{label}.declared_contract disagrees with the action")
+    metrics = reasoning["metrics"]
+    if type(metrics) is not list or not metrics:
+        raise AnalysisProjectionError(f"{label}.metrics must be a nonempty array")
+    seen: set[str] = set()
+    for index, raw in enumerate(metrics):
+        metric = _require_mapping(raw, f"{label}.metrics[{index}]")
+        if set(metric) != _METRIC_KEYS:
+            raise AnalysisProjectionError(f"{label}.metrics[{index}] fields are invalid")
+        name = _require_text(metric["name"], f"{label}.metrics[{index}].name", 64)
+        if _METRIC_NAME_PATTERN.fullmatch(name) is None:
+            raise AnalysisProjectionError(f"{label}.metrics[{index}].name is invalid")
+        if name in seen:
+            raise AnalysisProjectionError(f"{label}.metrics repeat {name}")
+        seen.add(name)
+        _require_finite(metric["value"], f"{label}.metrics[{index}].value")
+    notes = _require_text_array(reasoning["verdict_notes"], f"{label}.verdict_notes", 64)
+    if len(set(notes)) != len(notes):
+        raise AnalysisProjectionError(f"{label}.verdict_notes are duplicated")
+    unknown = sorted(set(notes) - VERDICT_NOTES)
+    if unknown:
+        raise AnalysisProjectionError(f"{label}.verdict_notes are not recognised: {unknown}")
+
+
+def _require_finite(value: object, label: str) -> float:
+    if type(value) not in {int, float} or isinstance(value, bool):
+        raise AnalysisProjectionError(f"{label} is not numeric")
+    number = float(value)
+    if not math.isfinite(number):
+        raise AnalysisProjectionError(f"{label} is not finite")
+    return number
 
 
 def _validate_v2_action_array(
