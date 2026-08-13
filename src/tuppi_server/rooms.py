@@ -152,8 +152,19 @@ class RoomManager:
     store without requiring PostgreSQL or Redis.
     """
 
-    def __init__(self, persistence_dir: str | Path | None = None) -> None:
+    def __init__(
+        self,
+        persistence_dir: str | Path | None = None,
+        *,
+        contract_rollout_samples: int = 0,
+    ) -> None:
         self._rooms: dict[str, Room] = {}
+        if (
+            type(contract_rollout_samples) is not int
+            or not 0 <= contract_rollout_samples <= 64
+        ):
+            raise ValueError("contract_rollout_samples must be in 0..64")
+        self._contract_rollout_samples = contract_rollout_samples
         self._store = (
             None if persistence_dir is None else FileRoomStore(persistence_dir)
         )
@@ -168,7 +179,12 @@ class RoomManager:
             if configured
             else Path.home() / "Library" / "Application Support" / "Tuppi" / "server"
         )
-        return cls(root)
+        raw_samples = os.environ.get("TUPPI_CONTRACT_ROLLOUT_SAMPLES", "8")
+        try:
+            samples = int(raw_samples)
+        except ValueError as exc:
+            raise ValueError("TUPPI_CONTRACT_ROLLOUT_SAMPLES must be an integer") from exc
+        return cls(root, contract_rollout_samples=samples)
 
     def create_room(
         self,
@@ -261,6 +277,7 @@ class RoomManager:
             room.runner = LiveMatchRunner(
                 match_ref=f"room-{room.code.lower()}",
                 ai_seats=frozenset(room.ai_seats),
+                contract_rollout_samples=self._contract_rollout_samples,
                 auto_run_ai=auto_run_ai,
             )
             room.lifecycle = "playing"

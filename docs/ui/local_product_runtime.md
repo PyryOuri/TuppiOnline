@@ -30,6 +30,11 @@ rooms. The room host can then select 0, 0.5, 1, 1.5, 2, 2.5, 3, 4, or 5 seconds
 from the Swift lobby before play starts; the stored wire value is integer
 milliseconds and survives a server restart.
 
+`TUPPI_CONTRACT_ROLLOUT_SAMPLES` controls the observation-safe paired
+RAMI/NOLO continuations used only for close bot showing decisions. The private
+alpha defaults to 8 possible hidden worlds; use `0` to retain the frozen
+heuristic without background evaluation. Values must be integers from 0 to 64.
+
 ## Fixture synchronization
 
 From the Python repository:

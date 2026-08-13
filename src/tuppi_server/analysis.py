@@ -31,13 +31,16 @@ from tuppi_engine import (
 )
 from tuppi_engine.validation import is_sha256_identifier, is_valid_match_ref
 
+from .contract_evaluation import validate_contract_evaluation_record
+
 
 POST_MATCH_ANALYSIS_SCHEMA_VERSION = "tuppi.analysis.post_match.v1"
 POST_MATCH_DIAGNOSTICS_SCHEMA_VERSION = "tuppi.analysis.post_match.v2"
 POST_MATCH_REVIEW_SCHEMA_VERSION = "tuppi.analysis.post_match.v3"
 COMPLETED_DEAL_DIAGNOSTICS_SCHEMA_VERSION = "tuppi.analysis.completed_deal.v1"
 COMPLETED_DEAL_REVIEW_SCHEMA_VERSION = "tuppi.analysis.completed_deal.v2"
-COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION = "tuppi.analysis.completed_deal.v3"
+LEGACY_COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION = "tuppi.analysis.completed_deal.v3"
+COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION = "tuppi.analysis.completed_deal.v4"
 AGENT_DIAGNOSTICS_SCHEMA_VERSION = "tuppi.agents.decision_diagnostics.v1"
 PIMC_DIAGNOSTICS_SCHEMA_VERSION = "tuppi.search.pimc_decision_diagnostics.v1"
 
@@ -51,6 +54,7 @@ RANKED_ANALYSIS_SCHEMA_VERSIONS: tuple[str, ...] = (
 COMPLETED_DEAL_SCHEMA_VERSIONS: tuple[str, ...] = (
     COMPLETED_DEAL_DIAGNOSTICS_SCHEMA_VERSION,
     COMPLETED_DEAL_REVIEW_SCHEMA_VERSION,
+    LEGACY_COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION,
     COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION,
 )
 
@@ -529,6 +533,9 @@ _COMPLETED_DEAL_BOT_REPLAY_RESPONSE_KEYS = _COMPLETED_DEAL_RESPONSE_KEYS | froze
         "comparison",
     }
 )
+_COMPLETED_DEAL_CONTRACT_EVALUATION_RESPONSE_KEYS = (
+    _COMPLETED_DEAL_BOT_REPLAY_RESPONSE_KEYS | frozenset({"contract_evaluations"})
+)
 _COMPLETED_DEAL_SUMMARY_KEYS = frozenset(
     {
         "contract",
@@ -611,12 +618,16 @@ def validate_completed_deal_analysis_response(
     response = _require_mapping(value, "completed-deal analysis response")
     _reject_client_private_keys(response)
     schema_version = response.get("schema_version")
-    bot_review = schema_version == COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION
-    expected_response_keys = (
-        _COMPLETED_DEAL_BOT_REPLAY_RESPONSE_KEYS
-        if bot_review
-        else _COMPLETED_DEAL_RESPONSE_KEYS
-    )
+    bot_review = schema_version in {
+        LEGACY_COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION,
+        COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION,
+    }
+    if schema_version == COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION:
+        expected_response_keys = _COMPLETED_DEAL_CONTRACT_EVALUATION_RESPONSE_KEYS
+    elif bot_review:
+        expected_response_keys = _COMPLETED_DEAL_BOT_REPLAY_RESPONSE_KEYS
+    else:
+        expected_response_keys = _COMPLETED_DEAL_RESPONSE_KEYS
     if set(response) != expected_response_keys:
         raise AnalysisProjectionError(
             "completed-deal analysis response fields are invalid"
@@ -628,6 +639,7 @@ def validate_completed_deal_analysis_response(
         )
     review = schema_version in {
         COMPLETED_DEAL_REVIEW_SCHEMA_VERSION,
+        LEGACY_COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION,
         COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION,
     }
     match_ref = _require_text(response["match_ref"], "match_ref", 96)
@@ -712,6 +724,12 @@ def validate_completed_deal_analysis_response(
             deal_ref=expected_deal_ref,
             deal_number=deal_number,
             seat=seat,
+        )
+    if schema_version == COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION:
+        _validate_contract_evaluations(
+            response["contract_evaluations"],
+            deal_number=deal_number,
+            actual_result=response["actual_result"],
         )
     try:
         canonical = strict_json_loads(
@@ -814,6 +832,47 @@ def _validate_completed_deal_bot_replay(
         bot=bot,
         local_team=local_team,
     )
+
+
+def _validate_contract_evaluations(
+    value: object,
+    *,
+    deal_number: int,
+    actual_result: object,
+) -> None:
+    if type(value) is not list or len(value) > 4:
+        raise AnalysisProjectionError("contract_evaluations must contain at most four records")
+    result = _require_mapping(actual_result, "actual_result")
+    events = result.get("events")
+    if type(events) is not list:
+        raise AnalysisProjectionError("actual_result events are unavailable")
+    show_by_decision_index: dict[int, Mapping[str, object]] = {}
+    for raw in events:
+        if type(raw) is not dict or raw.get("event_type") != "show_accepted":
+            continue
+        event_index = raw.get("event_index")
+        payload = raw.get("payload")
+        if type(event_index) is int and type(payload) is dict:
+            show_by_decision_index[event_index - 1] = payload
+    identities: set[tuple[int, int]] = set()
+    for raw in value:
+        try:
+            record = validate_contract_evaluation_record(raw)
+        except ValueError as exc:
+            raise AnalysisProjectionError("contract evaluation record is invalid") from exc
+        if record["deal_number"] != deal_number:
+            raise AnalysisProjectionError("contract evaluation belongs to another deal")
+        identity = (record["seat"], record["event_index"])
+        if identity in identities:
+            raise AnalysisProjectionError("contract evaluation is duplicated")
+        identities.add(identity)
+        shown = show_by_decision_index.get(record["event_index"])
+        if (
+            shown is None
+            or shown.get("seat") != record["seat"]
+            or shown.get("declared_contract") != record["selected_contract"]
+        ):
+            raise AnalysisProjectionError("contract evaluation disagrees with accepted show")
 
 
 def _validate_review_deal_result(

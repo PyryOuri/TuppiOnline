@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis.schema.json",
   "title": "Versioned Tuppi completed-deal analysis endpoint response",
-  "description": "The endpoint returns a v3 completed-deal review with an authoritative same-shuffle bot replay. Legacy v1/v2 remain accepted for persisted client compatibility.",
+  "description": "The endpoint returns a v4 completed-deal review with an authoritative same-shuffle bot replay and observation-safe contract estimates. Legacy v1-v3 remain accepted for persisted client compatibility.",
   "oneOf": [
     {
       "$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v1.schema.json"
@@ -12,6 +12,9 @@
     },
     {
       "$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v3.schema.json"
+    },
+    {
+      "$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v4.schema.json"
     }
   ]
 }

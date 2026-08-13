@@ -80,6 +80,9 @@ def generate_completed_deal_review(
         "actual_result": deal_result_to_data(actual),
         "bot_replay": deal_result_to_data(bot_result),
         "comparison": _comparison(actual, bot_result, seat=seat),
+        "contract_evaluations": list(
+            runner.contract_evaluations_for_deal(deal_number)
+        ),
     }
     return validate_completed_deal_review_against_runner(
         response,
@@ -138,6 +141,10 @@ def validate_completed_deal_review_against_runner(
         raise ValueError("completed-deal bot transcript is not an engine result")
     if validated["comparison"] != _comparison(actual, replayed, seat=seat):
         raise ValueError("completed-deal comparison disagrees with its results")
+    if validated["contract_evaluations"] != list(
+        runner.contract_evaluations_for_deal(deal_number)
+    ):
+        raise ValueError("completed-deal contract evaluations disagree with live records")
     return validated
 
 

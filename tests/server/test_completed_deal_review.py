@@ -365,7 +365,7 @@ def test_cache_invalidates_on_analysis_schema_or_policy_change(tmp_path: Path) -
         room_code="ABC123",
         deal_number=0,
         seat=0,
-        analysis_schema_version="tuppi.analysis.completed_deal.v4",
+        analysis_schema_version="tuppi.analysis.completed_deal.v5",
         bot_policy_id=BOT_REPLAY_POLICY_ID,
     ) is None
     assert store.load_completed_deal_analysis(

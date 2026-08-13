@@ -13,6 +13,7 @@ import os
 from typing import Any, Awaitable, Callable
 
 from tuppi_agents import (
+    RuleBasedPolicy,
     construct_registered_agent,
     phase4_specifications_by_profile_key,
 )
@@ -34,6 +35,11 @@ from tuppi_engine import (
 from tuppi_engine.serialization import action_from_data, action_to_data
 from tuppi_rules import MatchScore
 
+from .contract_evaluation import (
+    MAXIMUM_SAMPLES,
+    evaluate_contract_choice,
+    validate_contract_evaluation_record,
+)
 from .deal_generation import generate_live_deal
 from .projection import (
     project_completed_deals,
@@ -45,7 +51,8 @@ from .projection import (
 
 PROTOCOL_VERSION = "tuppi.network.v1"
 ACK_SCHEMA_VERSION = "tuppi.network.action_acknowledgement.v1"
-MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v2"
+MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v3"
+PREVIOUS_MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v2"
 LEGACY_MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v1"
 DEFAULT_AI_PROFILE_KEY = "partner_aware_v1"
 TEST_AI_PROFILE_KEY = "first_legal_action_v1"
@@ -91,6 +98,7 @@ class AcceptedActionRecord:
     accepted_event_indices: tuple[int, ...]
     event_batch: tuple[dict[str, object], ...]
     acknowledgement: dict[str, object]
+    contract_evaluation: dict[str, object] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,6 +123,7 @@ class LiveMatchRunner:
         initial_score: MatchScore | None = None,
         ai_seats: frozenset[int] = frozenset(),
         ai_profile_key: str = DEFAULT_AI_PROFILE_KEY,
+        contract_rollout_samples: int = 0,
         auto_run_ai: bool = True,
     ) -> None:
         self.state: MatchState = create_match(
@@ -126,6 +135,12 @@ class LiveMatchRunner:
         if any(seat not in range(4) for seat in self.ai_seats):
             raise ValueError("ai_seats must contain only seats 0..3")
         self.ai_profile_key = ai_profile_key
+        if (
+            type(contract_rollout_samples) is not int
+            or not 0 <= contract_rollout_samples <= MAXIMUM_SAMPLES
+        ):
+            raise ValueError("contract_rollout_samples must be in 0..64")
+        self.contract_rollout_samples = contract_rollout_samples
         self._ai_agents = _construct_ai_agents(
             self.ai_seats,
             profile_key=self.ai_profile_key,
@@ -156,19 +171,34 @@ class LiveMatchRunner:
             "schema_version",
         }
         required_v2 = required_v1 | {"ai_profile_key"}
+        required_v3 = required_v2 | {"contract_rollout_samples"}
         schema_version = record.get("schema_version")
         if schema_version == MATCH_RECORD_SCHEMA_VERSION:
+            required = required_v3
+            ai_profile_key = record.get("ai_profile_key")
+            contract_rollout_samples = record.get("contract_rollout_samples")
+            action_record_version = 3
+        elif schema_version == PREVIOUS_MATCH_RECORD_SCHEMA_VERSION:
             required = required_v2
             ai_profile_key = record.get("ai_profile_key")
+            contract_rollout_samples = 0
+            action_record_version = 2
         elif schema_version == LEGACY_MATCH_RECORD_SCHEMA_VERSION:
             required = required_v1
             ai_profile_key = TEST_AI_PROFILE_KEY
+            contract_rollout_samples = 0
+            action_record_version = 1
         else:
             raise ValueError("unsupported match persistence schema_version")
         if set(record) != required:
             raise ValueError("match persistence record fields are invalid")
         if not isinstance(ai_profile_key, str):
             raise ValueError("persisted ai_profile_key must be a string")
+        if (
+            type(contract_rollout_samples) is not int
+            or not 0 <= contract_rollout_samples <= MAXIMUM_SAMPLES
+        ):
+            raise ValueError("persisted contract_rollout_samples is invalid")
         match_ref = record["match_ref"]
         initial_score_data = record["initial_score"]
         initial_dealer = record["initial_dealer"]
@@ -210,6 +240,7 @@ class LiveMatchRunner:
         if any(seat not in range(4) for seat in runner.ai_seats):
             raise ValueError("persisted ai_seats contains an invalid seat")
         runner.ai_profile_key = ai_profile_key
+        runner.contract_rollout_samples = contract_rollout_samples
         runner._ai_agents = _construct_ai_agents(
             runner.ai_seats,
             profile_key=runner.ai_profile_key,
@@ -234,6 +265,8 @@ class LiveMatchRunner:
                 "expected_event_index",
                 "seat",
             }
+            if action_record_version == 3:
+                expected_fields.add("contract_evaluation")
             if set(raw_record) != expected_fields:
                 raise ValueError("persisted action record fields are invalid")
             action_index = raw_record["action_index"]
@@ -243,6 +276,11 @@ class LiveMatchRunner:
             accepted_indices = raw_record["accepted_event_indices"]
             event_batch = raw_record["event_batch"]
             acknowledgement = raw_record["acknowledgement"]
+            contract_evaluation = (
+                raw_record.get("contract_evaluation")
+                if action_record_version == 3
+                else None
+            )
             if action_index != runner._next_action_index:
                 raise ValueError("persisted action indices are not contiguous")
             if type(seat) is not int or seat not in range(4):
@@ -266,6 +304,19 @@ class LiveMatchRunner:
             action = action_from_data(raw_record["action"])
             if action.seat != seat:
                 raise ValueError("persisted action seat disagrees with action")
+            if contract_evaluation is not None:
+                contract_evaluation = validate_contract_evaluation_record(
+                    contract_evaluation
+                )
+                declared_contract = getattr(action, "declared_contract", None)
+                if (
+                    contract_evaluation["seat"] != seat
+                    or contract_evaluation["event_index"] != expected_event_index
+                    or declared_contract is None
+                    or contract_evaluation["selected_contract"]
+                    != declared_contract.value
+                ):
+                    raise ValueError("persisted contract evaluation disagrees with action")
             before_event_count = len(runner.state.public_events)
             try:
                 runner.state = apply_match_action(runner.state, action)
@@ -292,6 +343,7 @@ class LiveMatchRunner:
                 accepted_event_indices=tuple(accepted_indices),
                 event_batch=direct_event_batch,
                 acknowledgement=acknowledgement,
+                contract_evaluation=contract_evaluation,
             )
             runner._accepted_actions.append(restored)
             if not client_action_id.startswith("ai:"):
@@ -328,6 +380,20 @@ class LiveMatchRunner:
     def observation(self, seat: int) -> dict[str, object]:
         return project_observation(self.state, seat=seat)
 
+    def contract_evaluations_for_deal(
+        self, deal_number: int
+    ) -> tuple[dict[str, object], ...]:
+        if type(deal_number) is not int or deal_number < 0:
+            raise ValueError("deal_number must be nonnegative")
+        return tuple(
+            record.contract_evaluation
+            for record in sorted(
+                self._accepted_actions, key=lambda item: item.action_index
+            )
+            if record.contract_evaluation is not None
+            and record.contract_evaluation["deal_number"] == deal_number
+        )
+
     def persistence_record(self) -> dict[str, object]:
         """Return private durable material for restart recovery only."""
 
@@ -342,6 +408,7 @@ class LiveMatchRunner:
                     "event_batch": list(record.event_batch),
                     "expected_event_index": record.expected_event_index,
                     "seat": record.seat,
+                    "contract_evaluation": record.contract_evaluation,
                 }
                 for record in sorted(
                     self._accepted_actions, key=lambda item: item.action_index
@@ -349,6 +416,7 @@ class LiveMatchRunner:
             ],
             "ai_seats": sorted(self.ai_seats),
             "ai_profile_key": self.ai_profile_key,
+            "contract_rollout_samples": self.contract_rollout_samples,
             "deals": [explicit_deal_to_data(deal) for deal in self._deals],
             "initial_dealer": self.state.initial_dealer,
             "initial_score": [
@@ -543,6 +611,7 @@ class LiveMatchRunner:
             ),
             event_batch=direct_event_batch,
             acknowledgement=provisional_acknowledgement,
+            contract_evaluation=None,
         )
         self._records[client_action_id] = provisional_record
         self._accepted_actions.append(provisional_record)
@@ -586,6 +655,7 @@ class LiveMatchRunner:
             accepted_event_indices=accepted_event_indices,
             event_batch=pending.direct_event_batch,
             acknowledgement=acknowledgement,
+            contract_evaluation=None,
         )
         self._records[pending.client_action_id] = record
         self._accepted_actions = [
@@ -605,7 +675,8 @@ class LiveMatchRunner:
             actor = self.current_actor
             if actor is None or actor not in self.ai_seats:
                 return
-            self._apply_ai_action(actor)
+            action, evaluation = self._choose_ai_action(actor)
+            self._apply_ai_action(actor, action=action, contract_evaluation=evaluation)
 
     async def _run_ai_until_human_or_terminal_async(
         self,
@@ -622,13 +693,43 @@ class LiveMatchRunner:
             if actor is None or actor not in self.ai_seats:
                 return
             await asyncio.sleep(delay)
-            self._apply_ai_action(actor)
+            action, evaluation = await asyncio.to_thread(self._choose_ai_action, actor)
+            self._apply_ai_action(actor, action=action, contract_evaluation=evaluation)
             if on_state_change is not None:
                 await on_state_change()
 
-    def _apply_ai_action(self, actor: int) -> None:
+    def _choose_ai_action(
+        self, actor: int
+    ) -> tuple[Action, dict[str, object] | None]:
         observation = match_observation_for(self.state, actor)
-        action = self._ai_agents[actor].choose_action(observation)
+        agent = self._ai_agents[actor]
+        if observation.phase is EnginePhase.SHOWING and isinstance(agent, RuleBasedPolicy):
+            decision = evaluate_contract_choice(
+                observation,
+                policy=agent,
+                agents={
+                    seat: self._ai_agents.get(seat)
+                    or _construct_ai_agents(
+                        frozenset({seat}), profile_key=self.ai_profile_key
+                    )[seat]
+                    for seat in range(4)
+                },
+                deal_number=len(self.state.completed_deals),
+                event_index=self.event_cursor,
+                sample_count=self.contract_rollout_samples,
+            )
+            return decision.action, decision.record
+        return agent.choose_action(observation), None
+
+    def _apply_ai_action(
+        self,
+        actor: int,
+        *,
+        action: Action | None = None,
+        contract_evaluation: dict[str, object] | None = None,
+    ) -> None:
+        if action is None:
+            action, contract_evaluation = self._choose_ai_action(actor)
         before_event_count = len(self.state.public_events)
         expected_event_index = self.event_cursor
         self.state = apply_match_action(self.state, action)
@@ -662,6 +763,7 @@ class LiveMatchRunner:
                 ),
                 event_batch=event_batch,
                 acknowledgement=acknowledgement,
+                contract_evaluation=contract_evaluation,
             )
         )
         self._next_action_index += 1

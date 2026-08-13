@@ -22,6 +22,37 @@ def test_solo_room_starts_with_three_ai_seats() -> None:
     assert room.runner.current_actor == 0
 
 
+def test_environment_enables_bounded_contract_rollouts_by_default(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("TUPPI_SERVER_DATA_DIR", str(tmp_path))
+    monkeypatch.delenv("TUPPI_CONTRACT_ROLLOUT_SAMPLES", raising=False)
+    manager = RoomManager.from_environment()
+    room, host = manager.create_room(
+        display_name="Pelaaja",
+        ai_seats=frozenset({1, 2, 3}),
+    )
+    manager.mark_ready(code=room.code, token=host.token)
+    assert room.runner is not None
+    assert room.runner.contract_rollout_samples == 8
+
+
+def test_environment_contract_rollout_count_is_configurable_and_validated(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("TUPPI_SERVER_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("TUPPI_CONTRACT_ROLLOUT_SAMPLES", "2")
+    assert RoomManager.from_environment()._contract_rollout_samples == 2
+
+    monkeypatch.setenv("TUPPI_CONTRACT_ROLLOUT_SAMPLES", "many")
+    with pytest.raises(ValueError, match="integer"):
+        RoomManager.from_environment()
+
+    monkeypatch.setenv("TUPPI_CONTRACT_ROLLOUT_SAMPLES", "65")
+    with pytest.raises(ValueError, match="0..64"):
+        RoomManager.from_environment()
+
+
 def test_private_room_assigns_open_human_seats_and_requires_all_ready() -> None:
     manager = RoomManager()
     room, host = manager.create_room(display_name="Isäntä")

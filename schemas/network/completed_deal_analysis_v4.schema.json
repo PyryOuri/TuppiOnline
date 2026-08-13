@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v4.schema.json",
+  "title": "Completed Tuppi deal review with contract estimates",
+  "description": "Post-deal diagnostics, same-shuffle bot replay, and privacy-safe paired RAMI/NOLO estimates made for live bot showing decisions.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "match_ref",
+    "deal_ref",
+    "deal_id",
+    "deal_number",
+    "seat",
+    "local_team",
+    "initial_hands",
+    "bot_policy",
+    "actual_result",
+    "bot_replay",
+    "comparison",
+    "summary",
+    "analyses",
+    "contract_evaluations"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.analysis.completed_deal.v4"},
+    "match_ref": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v3.schema.json#/properties/match_ref"},
+    "deal_ref": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v3.schema.json#/properties/deal_ref"},
+    "deal_id": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v3.schema.json#/properties/deal_id"},
+    "deal_number": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v3.schema.json#/properties/deal_number"},
+    "seat": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v3.schema.json#/properties/seat"},
+    "local_team": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v3.schema.json#/properties/local_team"},
+    "initial_hands": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v3.schema.json#/properties/initial_hands"},
+    "bot_policy": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v3.schema.json#/properties/bot_policy"},
+    "actual_result": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v3.schema.json#/properties/actual_result"},
+    "bot_replay": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v3.schema.json#/properties/bot_replay"},
+    "comparison": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v3.schema.json#/properties/comparison"},
+    "summary": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v3.schema.json#/properties/summary"},
+    "analyses": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v3.schema.json#/properties/analyses"},
+    "contract_evaluations": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {"$ref": "#/$defs/contractEvaluation"}
+    }
+  },
+  "$defs": {
+    "contract": {"enum": ["RAMI", "NOLO"]},
+    "nullableContractOutcome": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/contractOutcome"}
+      ]
+    },
+    "contractOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requested_contract",
+        "sample_count",
+        "expected_deal_utility",
+        "expected_tricks",
+        "deal_win_probability",
+        "expected_points_scored",
+        "expected_points_conceded",
+        "rami_success_probability",
+        "stolen_rami_probability",
+        "resolved_rami_probability",
+        "resolved_nolo_probability"
+      ],
+      "properties": {
+        "requested_contract": {"$ref": "#/$defs/contract"},
+        "sample_count": {"type": "integer", "minimum": 1, "maximum": 64},
+        "expected_deal_utility": {"type": "number", "minimum": -56, "maximum": 56},
+        "expected_tricks": {"type": "number", "minimum": 0, "maximum": 13},
+        "deal_win_probability": {"type": "number", "minimum": 0, "maximum": 1},
+        "expected_points_scored": {"type": "number", "minimum": 0, "maximum": 56},
+        "expected_points_conceded": {"type": "number", "minimum": 0, "maximum": 56},
+        "rami_success_probability": {"type": "number", "minimum": 0, "maximum": 1},
+        "stolen_rami_probability": {"type": "number", "minimum": 0, "maximum": 1},
+        "resolved_rami_probability": {"type": "number", "minimum": 0, "maximum": 1},
+        "resolved_nolo_probability": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "pairedOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rami_minus_nolo_mean_utility",
+        "standard_error",
+        "rami_better_count",
+        "nolo_better_count",
+        "tie_count",
+        "stable"
+      ],
+      "properties": {
+        "rami_minus_nolo_mean_utility": {"type": "number", "minimum": -112, "maximum": 112},
+        "standard_error": {"type": "number", "minimum": 0},
+        "rami_better_count": {"type": "integer", "minimum": 0, "maximum": 64},
+        "nolo_better_count": {"type": "integer", "minimum": 0, "maximum": 64},
+        "tie_count": {"type": "integer", "minimum": 0, "maximum": 64},
+        "stable": {"type": "boolean"}
+      }
+    },
+    "heuristic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selected_contract", "metrics", "rami_boundary_distance", "nolo_veto_headroom"],
+      "properties": {
+        "selected_contract": {"$ref": "#/$defs/contract"},
+        "metrics": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "value"],
+            "properties": {
+              "name": {"type": "string", "minLength": 1},
+              "value": {"type": "number"}
+            }
+          }
+        },
+        "rami_boundary_distance": {"type": "number"},
+        "nolo_veto_headroom": {"type": "number"}
+      }
+    },
+    "contractEvaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "evaluator_id",
+        "measure",
+        "deal_number",
+        "event_index",
+        "seat",
+        "heuristic",
+        "triggered",
+        "sample_count",
+        "seed_id",
+        "rami",
+        "nolo",
+        "paired",
+        "recommended_contract",
+        "selected_contract",
+        "selection_source",
+        "fallback_reason"
+      ],
+      "properties": {
+        "schema_version": {"const": "tuppi.server.contract_evaluation.v1"},
+        "evaluator_id": {"const": "uniform_feasible_paired_partner_aware_v1"},
+        "measure": {"const": "uniform_over_hard_feasible_assignments"},
+        "deal_number": {"type": "integer", "minimum": 0},
+        "event_index": {"type": "integer", "minimum": 0},
+        "seat": {"type": "integer", "minimum": 0, "maximum": 3},
+        "heuristic": {"$ref": "#/$defs/heuristic"},
+        "triggered": {"type": "boolean"},
+        "sample_count": {"type": "integer", "minimum": 0, "maximum": 64},
+        "seed_id": {"type": ["string", "null"], "pattern": "^contract-eval-v1:[0-9a-f]{64}$"},
+        "rami": {"$ref": "#/$defs/nullableContractOutcome"},
+        "nolo": {"$ref": "#/$defs/nullableContractOutcome"},
+        "paired": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/pairedOutcome"}
+          ]
+        },
+        "recommended_contract": {"$ref": "#/$defs/contract"},
+        "selected_contract": {"$ref": "#/$defs/contract"},
+        "selection_source": {"enum": ["heuristic", "paired_rollout"]},
+        "fallback_reason": {
+          "enum": [null, "evaluation_disabled", "outside_boundary", "evaluation_failed", "rollout_inconclusive"]
+        }
+      }
+    }
+  }
+}
