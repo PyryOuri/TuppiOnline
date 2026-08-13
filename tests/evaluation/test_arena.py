@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 import json
 import shutil
+from statistics import fmean
 
 import pytest
 
@@ -29,7 +30,7 @@ from tuppi_eval.records import (
 from tuppi_eval.registry import AgentRegistry
 from tuppi_eval.schedules import EvaluationMode
 from tuppi_eval.serialization import strict_json_load_file
-from tuppi_rules import FULL_DECK, MatchScore
+from tuppi_rules import FULL_DECK, MatchScore, Team, match_transition_value
 
 from .support import baseline_teams, comparison_config, evaluation_inputs
 
@@ -44,6 +45,42 @@ def test_finite_run_is_semantically_deterministic_and_path_independent(tmp_path)
     ]
     assert first.result.summary["primary_inference"]["independent_base_deals"] == 2
     assert first.result.summary["primary_inference"]["transformed_games"] == 16
+    supporting = first.result.summary["supporting_inference"]
+    assert supporting["available"] is True
+    assert supporting["promotion_eligible"] is False
+    assert supporting["role"] == "development_screening_only"
+    assert supporting["deal_win_advantage"]["independent_base_deals"] == 2
+    assert supporting["deal_win_advantage"]["transformed_games"] == 16
+    by_id = {record.record_id: record for record in first.result.game_records}
+    expected_deal_wins = []
+    expected_transitions = []
+    for block in first.result.duplicate_blocks:
+        block_records = tuple(by_id[record_id] for record_id in block.game_record_ids)
+        expected_deal_wins.append(
+            fmean(
+                1.0 if record.winner_external_team == "A" else -1.0
+                for record in block_records
+            )
+        )
+        expected_transitions.append(
+            fmean(
+                match_transition_value(
+                    MatchScore(*record.score_after),
+                    Team(0 if record.seat_external_teams[0] == "A" else 1),
+                )
+                for record in block_records
+            )
+        )
+    assert supporting["deal_win_advantage"]["mean_paired_utility"] == fmean(
+        expected_deal_wins
+    )
+    assert supporting["deal_win_advantage"]["team_a_deal_win_probability"] == (
+        1.0 + fmean(expected_deal_wins)
+    ) / 2.0
+    assert supporting["match_transition_utility"]["mean_paired_utility"] == fmean(
+        expected_transitions
+    )
+    assert supporting == second.result.summary["supporting_inference"]
     assert len(tuple((tmp_path / "a" / "raw").glob("*.json"))) == 16
     assert evaluation_result_from_data(evaluation_result_to_data(first.result)) == first.result
     assert "hands" not in json.dumps(first.result.summary)
@@ -150,6 +187,35 @@ def test_illegal_actions_are_quarantined_and_never_scored_as_outcomes(tmp_path) 
     assert len(tuple((tmp_path / "failure" / "quarantine").glob("*.json"))) == 8
 
 
+def test_supporting_transition_metric_uses_terminal_and_reset_score_states(
+    tmp_path,
+) -> None:
+    for label, starting_score, result_field in (
+        ("reset", MatchScore(48, 0), "reset"),
+        ("terminal", MatchScore(0, 48), "terminal"),
+    ):
+        _, _, _, bank, schedule, config = evaluation_inputs(
+            starting_score=starting_score
+        )
+        arena = run_evaluation(
+            config, bank, schedule, output_directory=tmp_path / label
+        )
+        records = arena.result.game_records
+        assert any(getattr(record, result_field) for record in records)
+        expected = fmean(
+            match_transition_value(
+                MatchScore(*record.score_after),
+                Team(0 if record.seat_external_teams[0] == "A" else 1),
+            )
+            for record in records
+        )
+        supporting = arena.result.summary["supporting_inference"]
+        assert (
+            supporting["match_transition_utility"]["mean_paired_utility"]
+            == expected
+        )
+
+
 def test_per_action_timeout_is_a_structured_failure(tmp_path) -> None:
     registry, team_a, team_b, bank, _, _ = evaluation_inputs()
     schedule, config = comparison_config(
@@ -236,3 +302,12 @@ def test_match_mode_executes_explicit_common_deal_sequence(tmp_path) -> None:
     assert result.result.failure_count == 0
     assert all(record.terminal and record.deals_played == 1 for record in result.result.game_records)
     assert result.result.summary["outcome_metrics"]["match_win_rate_team_a"] is not None
+    assert result.result.summary["supporting_inference"] == {
+        "available": False,
+        "promotion_eligible": False,
+        "reason": (
+            "Supporting deal endpoints are only defined for deal-mode duplicate "
+            "blocks; use tuppi_match complete complementary pairs for strength."
+        ),
+        "role": "development_screening_only",
+    }

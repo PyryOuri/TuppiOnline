@@ -9,6 +9,7 @@ from tuppi_rules import (
     Team,
     TerminalMatchError,
     is_match_terminal,
+    match_transition_value,
     match_winner,
     score_nolo,
     score_rami,
@@ -64,6 +65,15 @@ def test_terminal_detection_uses_greater_than_or_equal() -> None:
     assert is_match_terminal(MatchScore(52, 0))
     assert is_match_terminal(MatchScore(56, 0))
     assert is_match_terminal(MatchScore(0, 100))
+
+
+def test_match_transition_value_respects_terminal_reset_and_orientation() -> None:
+    assert match_transition_value(MatchScore(20, 0), Team.TEAM_0) == 20 / 52
+    assert match_transition_value(MatchScore(20, 0), Team.TEAM_1) == -20 / 52
+    assert match_transition_value(MatchScore(), Team.TEAM_0) == 0.0
+    assert match_transition_value(MatchScore(52, 0), Team.TEAM_0) == 1.0
+    assert match_transition_value(MatchScore(56, 0), Team.TEAM_0) == 1.0
+    assert match_transition_value(MatchScore(52, 0), Team.TEAM_1) == -1.0
 
 
 @pytest.mark.parametrize(

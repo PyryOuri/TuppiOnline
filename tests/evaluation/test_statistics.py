@@ -4,7 +4,7 @@ import math
 
 from hypothesis import given, settings, strategies as st
 
-from tuppi_eval.statistics import paired_statistical_summary
+from tuppi_eval.statistics import paired_statistical_summary, paired_value_summary
 
 from .support import synthetic_block
 
@@ -30,6 +30,24 @@ def test_known_paired_dataset_mean_interval_and_independent_count() -> None:
     assert result["win_tie_loss_blocks"] == {"loss": 0, "tie": 0, "win": 4}
     assert result["sign_test_p_value"] == 0.125
     assert result["paired_permutation_method"] == "exact_sign_flip"
+
+
+def test_generic_paired_values_preserve_one_observation_per_block() -> None:
+    values = (0.5, -0.25, 0.0)
+    result = paired_value_summary(
+        values,
+        incomplete_block_count=2,
+        transformed_game_count=40,
+        confidence_level=0.95,
+        analysis_seed="supporting-metric",
+        bootstrap_replicates=500,
+        permutation_replicates=500,
+    )
+    assert result["independent_base_deals"] == 3
+    assert result["transformed_games"] == 40
+    assert result["incomplete_block_count"] == 2
+    assert result["mean_paired_utility"] == sum(values) / len(values)
+    assert result["win_tie_loss_blocks"] == {"loss": 1, "tie": 1, "win": 1}
 
 
 def test_bootstrap_and_permutation_are_reproducible_and_seed_separated() -> None:

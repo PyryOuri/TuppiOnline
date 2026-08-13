@@ -510,6 +510,7 @@ def _comparison_report(
         "name": specification.name,
         "outcome_metrics": summary["outcome_metrics"],
         "primary_inference": summary["primary_inference"],
+        "supporting_inference": summary["supporting_inference"],
         "result_class": specification.result_class,
         "result_id": run.result.result_id,
         "strata": {

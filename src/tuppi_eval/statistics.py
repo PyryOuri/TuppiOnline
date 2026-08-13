@@ -92,20 +92,50 @@ def paired_statistical_summary(
 
     if type(blocks) is not tuple:
         raise EvaluationValidationError("blocks must be an immutable tuple")
+    values = tuple(
+        block.paired_utility
+        for block in blocks
+        if block.complete and block.paired_utility is not None
+    )
+    return paired_value_summary(
+        values,
+        incomplete_block_count=len(blocks) - len(values),
+        transformed_game_count=sum(len(block.game_record_ids) for block in blocks),
+        confidence_level=confidence_level,
+        analysis_seed=analysis_seed,
+        bootstrap_replicates=bootstrap_replicates,
+        permutation_replicates=permutation_replicates,
+    )
+
+
+def paired_value_summary(
+    values: tuple[float, ...],
+    *,
+    incomplete_block_count: int,
+    transformed_game_count: int,
+    confidence_level: float,
+    analysis_seed: int | str,
+    bootstrap_replicates: int,
+    permutation_replicates: int,
+) -> dict[str, object]:
+    """Summarize arbitrary values already reduced to independent block units."""
+
+    if type(values) is not tuple or any(
+        type(value) not in (int, float) or not math.isfinite(value)
+        for value in values
+    ):
+        raise EvaluationValidationError("values must be an immutable finite tuple")
+    if type(incomplete_block_count) is not int or incomplete_block_count < 0:
+        raise EvaluationValidationError("incomplete_block_count must be nonnegative")
+    if type(transformed_game_count) is not int or transformed_game_count < 0:
+        raise EvaluationValidationError("transformed_game_count must be nonnegative")
     if not 0.5 < confidence_level < 1:
         raise EvaluationValidationError("confidence_level must be in (0.5, 1)")
     if type(bootstrap_replicates) is not int or bootstrap_replicates <= 0:
         raise EvaluationValidationError("bootstrap_replicates must be positive")
     if type(permutation_replicates) is not int or permutation_replicates <= 0:
         raise EvaluationValidationError("permutation_replicates must be positive")
-    values = tuple(
-        block.paired_utility
-        for block in blocks
-        if block.complete and block.paired_utility is not None
-    )
     independent_count = len(values)
-    transformed_game_count = sum(len(block.game_record_ids) for block in blocks)
-    incomplete_count = len(blocks) - independent_count
     if not values:
         return {
             "analysis_seed": analysis_seed,
@@ -114,7 +144,7 @@ def paired_statistical_summary(
             "confidence_interval": None,
             "confidence_level": confidence_level,
             "effect_size_cohens_dz": None,
-            "incomplete_block_count": incomplete_count,
+            "incomplete_block_count": incomplete_block_count,
             "independent_base_deals": 0,
             "mean_paired_utility": None,
             "median_paired_utility": None,
@@ -184,7 +214,7 @@ def paired_statistical_summary(
         "confidence_interval": interval,
         "confidence_level": confidence_level,
         "effect_size_cohens_dz": effect_size,
-        "incomplete_block_count": incomplete_count,
+        "incomplete_block_count": incomplete_block_count,
         "independent_base_deals": independent_count,
         "mean_paired_utility": mean_value,
         "median_paired_utility": median_value,

@@ -5,6 +5,7 @@ from __future__ import annotations
 from .errors import InvalidMatchScoreError, TerminalMatchError
 from .model import DealScore, MatchScore, Team
 from .scoring import validate_deal_score
+from .seating import opposing_team, validate_team
 
 
 MATCH_TARGET = 52
@@ -28,6 +29,25 @@ def match_winner(score: MatchScore) -> Team | None:
     if validated.team1 >= MATCH_TARGET:
         return Team.TEAM_1
     return None
+
+
+def match_transition_value(score_after: MatchScore, root_team: Team) -> float:
+    """Return the bounded root-team value of an authoritative score state.
+
+    Terminal wins and losses are worth ``+1`` and ``-1``.  A nonterminal state
+    is the root team's signed rising-score lead divided by the target.  This is
+    a deterministic ordering of post-deal states, not an estimate of exact
+    nonterminal match equity.
+    """
+
+    validated = _validate_match_score(score_after)
+    root = validate_team(root_team)
+    winner = match_winner(validated)
+    if winner is not None:
+        return 1.0 if winner is root else -1.0
+    return (
+        validated.for_team(root) - validated.for_team(opposing_team(root))
+    ) / MATCH_TARGET
 
 
 def transition_rising_score(current: MatchScore, deal_score: DealScore) -> MatchScore:

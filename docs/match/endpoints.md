@@ -46,6 +46,13 @@ cannot answer the question".
 | Variance per unit | low | high; a match is a single binary outcome |
 | Good for | trick-play and showing changes | anything whose objective is the match |
 
+Deal-mode summary schema `tuppi.eval.summary.v2` now adds paired deal-win
+advantage and paired post-deal match-transition utility as development screens.
+They make “wins more deals” and “improves the immediate rising-score state”
+visible without pretending either is a completed-match outcome. The final
+strength gate remains the complete-match endpoint. See
+[model-performance methodology](../evaluation/model_performance_methodology.md).
+
 The deal-level evaluator is not deprecated. It remains the cheaper,
 higher-resolution instrument for changes whose effect is local to a deal, and it
 stays in `src/tuppi_eval/`. It simply must not be used to adjudicate

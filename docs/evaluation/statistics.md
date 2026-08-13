@@ -45,6 +45,14 @@ zeros.
 
 ## Secondary metrics
 
+Summary schema `tuppi.eval.summary.v2` also reports two paired supporting
+endpoints in deal mode: deal-win advantage and authoritative post-deal
+match-transition utility. Like the primary deal-point endpoint, each is reduced
+to one value per complete eight-game duplicate block before bootstrap,
+confidence intervals, tests, or win/tie/loss counts. They are explicitly
+development-screening metrics and are not promotion eligible. See
+[model-performance methodology](model_performance_methodology.md).
+
 Descriptive transformed-game metrics include Team A/B deal-win rates, reset
 rate, winning deal points by team, RAMI and NOLO rates, successful/stolen RAMI,
 mean tricks, match win rate in match mode, decision-failure rate, and mean/p50/

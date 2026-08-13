@@ -31,7 +31,13 @@ from .errors import (
     RulesError,
     TerminalMatchError,
 )
-from .match import MATCH_TARGET, is_match_terminal, match_winner, transition_rising_score
+from .match import (
+    MATCH_TARGET,
+    is_match_terminal,
+    match_transition_value,
+    match_winner,
+    transition_rising_score,
+)
 from .model import (
     Card,
     Color,
@@ -139,6 +145,7 @@ __all__ = (
     "is_match_terminal",
     "is_show_rank_eligible",
     "legal_cards",
+    "match_transition_value",
     "match_winner",
     "opposing_team",
     "partner_for_seat",

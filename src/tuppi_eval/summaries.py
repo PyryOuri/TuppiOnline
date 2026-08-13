@@ -5,13 +5,16 @@ from __future__ import annotations
 from collections import defaultdict
 from statistics import fmean
 
+from tuppi_rules import MatchScore, Team, match_transition_value
+
 from .config import EvaluationConfiguration
 from .records import DuplicateBlockRecord, ExecutionStatus, GameRecord
-from .statistics import paired_statistical_summary
+from .statistics import paired_statistical_summary, paired_value_summary
 
 
-SUMMARY_SCHEMA_VERSION = "tuppi.eval.summary.v1"
+SUMMARY_SCHEMA_VERSION = "tuppi.eval.summary.v2"
 SMALL_STRATUM_WARNING_THRESHOLD = 10
+MATCH_TRANSITION_UTILITY_ID = "tuppi.search.utility.match_transition.v1"
 
 
 def _percentile(values: list[float], probability: float) -> float | None:
@@ -52,6 +55,86 @@ def _rami_outcome(record: GameRecord) -> str:
         if record.declaring_external_team == record.winner_external_team
         else "stolen_rami"
     )
+
+
+def _supporting_inference(
+    successful: tuple[GameRecord, ...],
+    blocks: tuple[DuplicateBlockRecord, ...],
+    config: EvaluationConfiguration,
+) -> dict[str, object]:
+    """Build screening endpoints without changing the independent unit."""
+
+    if config.evaluation_mode.value != "deal":
+        return {
+            "available": False,
+            "promotion_eligible": False,
+            "reason": (
+                "Supporting deal endpoints are only defined for deal-mode duplicate "
+                "blocks; use tuppi_match complete complementary pairs for strength."
+            ),
+            "role": "development_screening_only",
+        }
+
+    by_id = {record.record_id: record for record in successful}
+    deal_win_values: list[float] = []
+    transition_values: list[float] = []
+    for block in blocks:
+        block_records = tuple(by_id.get(record_id) for record_id in block.game_record_ids)
+        if (
+            not block.complete
+            or len(block_records) != 8
+            or any(record is None for record in block_records)
+        ):
+            continue
+        complete_records = tuple(
+            record for record in block_records if record is not None
+        )
+        deal_win_values.append(
+            fmean(
+                1.0 if record.winner_external_team == "A" else -1.0
+                for record in complete_records
+            )
+        )
+        transition_values.append(
+            fmean(
+                match_transition_value(
+                    MatchScore(*record.score_after),  # type: ignore[arg-type]
+                    Team(_external_engine_team(record, "A")),
+                )
+                for record in complete_records
+            )
+        )
+
+    common = {
+        "incomplete_block_count": len(blocks) - len(deal_win_values),
+        "transformed_game_count": sum(len(block.game_record_ids) for block in blocks),
+        "confidence_level": config.confidence_level,
+        "bootstrap_replicates": config.bootstrap_replicates,
+        "permutation_replicates": config.permutation_replicates,
+    }
+    deal_win = paired_value_summary(
+        tuple(deal_win_values),
+        analysis_seed=f"{config.seed_hierarchy.analysis_seed}:deal-win-v1",
+        **common,
+    )
+    mean_deal_win = deal_win["mean_paired_utility"]
+    deal_win["team_a_deal_win_probability"] = (
+        None if mean_deal_win is None else (1.0 + mean_deal_win) / 2.0
+    )
+    transition = paired_value_summary(
+        tuple(transition_values),
+        analysis_seed=f"{config.seed_hierarchy.analysis_seed}:match-transition-v1",
+        **common,
+    )
+    transition["utility_id"] = MATCH_TRANSITION_UTILITY_ID
+    return {
+        "available": True,
+        "deal_win_advantage": deal_win,
+        "independent_unit": "complete_eight_game_duplicate_block",
+        "match_transition_utility": transition,
+        "promotion_eligible": False,
+        "role": "development_screening_only",
+    }
 
 
 def _strata(records: tuple[GameRecord, ...]) -> dict[str, object]:
@@ -238,5 +321,6 @@ def build_evaluation_summary(
             "not transformed games, as independent observations."
         ),
         "schema_version": SUMMARY_SCHEMA_VERSION,
+        "supporting_inference": _supporting_inference(successful, blocks, config),
         "strata": _strata(successful),
     }

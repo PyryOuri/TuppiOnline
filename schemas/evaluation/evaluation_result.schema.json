@@ -27,9 +27,34 @@
     },
     "summary": {
       "type": "object",
-      "required": ["schema_version", "evaluation_id", "evaluation_mode", "primary_metric_definition", "primary_inference", "outcome_metrics", "contract_metrics", "execution_metrics", "strata"]
+      "additionalProperties": false,
+      "required": ["schema_version", "evaluation_id", "evaluation_mode", "primary_metric_definition", "primary_inference", "supporting_inference", "outcome_metrics", "contract_metrics", "execution_metrics", "strata"],
+      "properties": {
+        "schema_version": {"const": "tuppi.eval.summary.v2"},
+        "evaluation_id": {"type": "string", "pattern": "^eval:sha256:[0-9a-f]{64}$"},
+        "evaluation_mode": {"enum": ["deal", "match"]},
+        "primary_metric_definition": {"type": "string", "minLength": 1},
+        "primary_inference": {"type": "object"},
+        "supporting_inference": {
+          "type": "object",
+          "required": ["available", "promotion_eligible", "role"],
+          "properties": {
+            "available": {"type": "boolean"},
+            "promotion_eligible": {"const": false},
+            "role": {"const": "development_screening_only"},
+            "reason": {"type": "string", "minLength": 1},
+            "independent_unit": {"const": "complete_eight_game_duplicate_block"},
+            "deal_win_advantage": {"type": "object"},
+            "match_transition_utility": {"type": "object"}
+          }
+        },
+        "outcome_metrics": {"type": "object"},
+        "contract_metrics": {"type": "object"},
+        "execution_metrics": {"type": "object"},
+        "strata": {"type": "object"}
+      }
     },
     "failure_count": {"type": "integer", "minimum": 0}
   },
-  "$comment": "Primary inference consumes only complete duplicate-block values. Operational durations do not affect result_id."
+  "$comment": "All inference consumes only complete duplicate-block values. Deal-level supporting inference is screening-only and cannot support promotion. Operational durations do not affect result_id."
 }

@@ -60,12 +60,11 @@ from tuppi_exact import deal_outcome_for_split, match_score_after_split
 from tuppi_rules import (
     Contract,
     DealScore,
-    MATCH_TARGET,
     MatchScore,
     TRICKS_PER_DEAL,
     Team,
     is_match_terminal,
-    opposing_team,
+    match_transition_value,
     team_for_seat,
 )
 
@@ -215,12 +214,7 @@ def _deal_result_value(summary: DealOutcomeSummary) -> float:
 
 
 def _match_transition_value(summary: DealOutcomeSummary) -> float:
-    after = summary.match_score_after
-    own = after.for_team(summary.root_team)
-    opponent = after.for_team(opposing_team(summary.root_team))
-    if is_match_terminal(after):
-        return 1.0 if own >= opponent else -1.0
-    return (own - opponent) / MATCH_TARGET
+    return match_transition_value(summary.match_score_after, summary.root_team)
 
 
 def _trick_split_value(summary: DealOutcomeSummary) -> float:

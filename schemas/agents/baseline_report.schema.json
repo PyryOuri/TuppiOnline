@@ -109,6 +109,7 @@
         "transformed_games": {"type": "integer", "minimum": 1},
         "censored_games": {"type": "integer", "minimum": 0},
         "primary_inference": {"$ref": "#/$defs/inference"},
+        "supporting_inference": {"type": "object"},
         "outcome_metrics": {"type": "object"},
         "contract_metrics": {"type": "object"},
         "execution_metrics": {"type": "object"},
