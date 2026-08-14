@@ -15,11 +15,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from tuppi_agents import (
+    RuleBasedPolicy,
     construct_registered_agent,
     phase4_specifications_by_profile_key,
 )
 from tuppi_engine import (
     DealResult,
+    EnginePhase,
     ExplicitDeal,
     ResearchDealResult,
     action_from_data,
@@ -35,6 +37,7 @@ from .analysis import (
     COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION,
     validate_completed_deal_analysis_response,
 )
+from .contract_evaluation import evaluate_contract_choice
 from .match_runner import LiveMatchRunner
 from .post_match_diagnostics import (
     REFERENCE_PROFILE_KEY,
@@ -66,7 +69,10 @@ def generate_completed_deal_review(
         deal_number=deal_number,
     )
     actual = research.public_result
-    bot_result, policy = _run_reference_replay(research)
+    bot_result, policy, bot_contract_evaluations = _run_reference_replay(
+        research,
+        sample_count=runner.contract_rollout_samples,
+    )
     response = {
         **diagnostics,
         "schema_version": COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION,
@@ -83,6 +89,7 @@ def generate_completed_deal_review(
         "contract_evaluations": list(
             runner.contract_evaluations_for_deal(deal_number)
         ),
+        "bot_replay_contract_evaluations": list(bot_contract_evaluations),
     }
     return validate_completed_deal_review_against_runner(
         response,
@@ -182,23 +189,48 @@ def _initial_state(research: ResearchDealResult):
 
 def _run_reference_replay(
     research: ResearchDealResult,
-) -> tuple[DealResult, dict[str, object]]:
+    *,
+    sample_count: int,
+) -> tuple[DealResult, dict[str, object], tuple[dict[str, object], ...]]:
     agents = tuple(
         construct_registered_agent(_BOT_REPLAY_SPECIFICATION, seat=seat)
         for seat in range(4)
     )
+    if any(not isinstance(agent, RuleBasedPolicy) for agent in agents):
+        raise RuntimeError("bot replay contract evaluation requires rule-based agents")
+    agents_by_seat = {seat: agent for seat, agent in enumerate(agents)}
     state = _initial_state(research)
     accepted = 0
+    contract_evaluations: list[dict[str, object]] = []
     while not state.complete:
         actor = state.current_actor
         if actor is None:
             raise RuntimeError("bot replay has no current actor")
-        action = agents[actor].choose_action(observation_for(state, actor))
+        observation = observation_for(state, actor)
+        if state.phase is EnginePhase.SHOWING:
+            policy = agents[actor]
+            assert isinstance(policy, RuleBasedPolicy)
+            evaluation = evaluate_contract_choice(
+                observation,
+                policy=policy,
+                agents=agents_by_seat,
+                deal_number=research.public_result.deal_number,
+                event_index=state.events[-1].event_index,
+                sample_count=sample_count,
+            )
+            action = evaluation.action
+            contract_evaluations.append(evaluation.record)
+        else:
+            action = agents[actor].choose_action(observation)
         state = apply_action(state, action)
         accepted += 1
         if accepted > 56:
             raise RuntimeError("bot replay exceeded four shows plus 52 card plays")
-    return deal_result_from_state(state), _policy_data()
+    return (
+        deal_result_from_state(state),
+        _policy_data(),
+        tuple(contract_evaluations),
+    )
 
 
 def _policy_data() -> dict[str, object]:

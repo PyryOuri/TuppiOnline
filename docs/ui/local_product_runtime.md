@@ -34,6 +34,10 @@ milliseconds and survives a server restart.
 RAMI/NOLO continuations used only for close bot showing decisions. The private
 alpha defaults to 8 possible hidden worlds; use `0` to retain the frozen
 heuristic without background evaluation. Values must be integers from 0 to 64.
+Completed-deal analysis schema v5 records these estimates separately for the
+human-played deal's bots and for the same-shuffle four-bot replay. This lets the
+client identify the replay bot that used the authenticated player's seat and
+cards without mislabelling it as a participant in the original deal.
 
 ## Fixture synchronization
 

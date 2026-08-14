@@ -16,10 +16,14 @@ from tuppi_rules import (
     score_nolo,
     score_rami_for_declarer,
 )
-from tuppi_server.analysis import COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION
+from tuppi_server.analysis import (
+    AnalysisProjectionError,
+    COMPLETED_DEAL_BOT_REPLAY_SCHEMA_VERSION,
+)
 from tuppi_server.completed_deal_review import (
     BOT_REPLAY_POLICY_ID,
     generate_completed_deal_review,
+    validate_completed_deal_review_against_runner,
 )
 from tuppi_server.match_runner import LiveMatchRunner
 from tuppi_server.persistence import FileRoomStore
@@ -175,6 +179,23 @@ def test_bot_replay_uses_the_exact_authoritative_deal_and_four_bot_seats() -> No
     assert response["bot_policy"]["bot_seats"] == [0, 1, 2, 3]
     assert response["bot_policy"]["determinism"] == "deterministic"
     assert response["bot_policy"]["analysis_seed"] is None
+    replay_evaluations = response["bot_replay_contract_evaluations"]
+    assert isinstance(replay_evaluations, list)
+    assert [item["seat"] for item in replay_evaluations] == [
+        show["seat"] for show in bot["show_actions"]
+    ]
+    assert [item["selected_contract"] for item in replay_evaluations] == [
+        show["declared_contract"] for show in bot["show_actions"]
+    ]
+    missing_replay_evaluation = json.loads(json.dumps(response))
+    missing_replay_evaluation["bot_replay_contract_evaluations"].pop()
+    with pytest.raises(AnalysisProjectionError, match="every showing decision"):
+        validate_completed_deal_review_against_runner(
+            missing_replay_evaluation,
+            runner=runner,
+            seat=0,
+            deal_number=0,
+        )
     assert len(bot["tricks"]) == 13
     assert sum(bot["team_tricks"]) == 13
 
@@ -339,7 +360,9 @@ def test_completed_deal_review_cache_survives_restart_without_rerunning_policy(
     monkeypatch.setattr(
         review_module,
         "_run_reference_replay",
-        lambda research: (_ for _ in ()).throw(AssertionError("policy reran")),
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("policy reran")
+        ),
     )
     restored = RoomManager(tmp_path)
     third = restored.completed_deal_analysis_for_session(
@@ -365,7 +388,7 @@ def test_cache_invalidates_on_analysis_schema_or_policy_change(tmp_path: Path) -
         room_code="ABC123",
         deal_number=0,
         seat=0,
-        analysis_schema_version="tuppi.analysis.completed_deal.v5",
+        analysis_schema_version="tuppi.analysis.completed_deal.v6",
         bot_policy_id=BOT_REPLAY_POLICY_ID,
     ) is None
     assert store.load_completed_deal_analysis(
