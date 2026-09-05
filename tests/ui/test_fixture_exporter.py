@@ -75,6 +75,8 @@ def test_protocol_manifest_covers_every_implemented_message() -> None:
         "analysis_result",
         "completed_deal_analysis_request",
         "completed_deal_analysis_result",
+        "training_analysis_request",
+        "training_analysis_result",
         "server_error",
         "hello",
         "hello_ack",

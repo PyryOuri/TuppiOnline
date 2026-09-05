@@ -17,6 +17,11 @@ from tuppi_agents import (
     construct_registered_agent,
     phase4_specifications_by_profile_key,
 )
+from tuppi_agents.void_lead import (
+    BASE_PROFILE_KEY,
+    VOID_LEAD_PROFILE_KEY,
+    construct_void_lead_agent,
+)
 from tuppi_engine import (
     Action,
     EngineError,
@@ -47,6 +52,7 @@ from .projection import (
     project_match_result,
     project_observation,
 )
+from .training_analysis import generate_training_analysis
 
 
 PROTOCOL_VERSION = "tuppi.network.v1"
@@ -54,7 +60,16 @@ ACK_SCHEMA_VERSION = "tuppi.network.action_acknowledgement.v1"
 MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v3"
 PREVIOUS_MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v2"
 LEGACY_MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v1"
-DEFAULT_AI_PROFILE_KEY = "partner_aware_v1"
+#: The live AI. Seats play the strongest policy available, which is the
+#: registered baseline plus the void-seeking NOLO lead - measured at -0.69 tricks
+#: and +14 points of deal-win rate against the plain baseline, and still ahead
+#: when the opponents lead the same way. See docs/valuation/void_seeking_lead.md.
+DEFAULT_AI_PROFILE_KEY = VOID_LEAD_PROFILE_KEY
+#: The registered profile the live AI is built on. Separate from the reported
+#: identity because the Phase 4 registry is frozen by digest.
+BASE_AI_PROFILE_KEY = BASE_PROFILE_KEY
+#: Still accepted, so a room can deliberately request the plain baseline.
+LEGACY_AI_PROFILE_KEY = BASE_PROFILE_KEY
 TEST_AI_PROFILE_KEY = "first_legal_action_v1"
 
 
@@ -79,7 +94,12 @@ def _construct_ai_agents(
 ) -> dict[int, object]:
     if profile_key == TEST_AI_PROFILE_KEY:
         return {seat: FirstLegalActionAgent() for seat in seats}
-    if profile_key != DEFAULT_AI_PROFILE_KEY:
+    if profile_key == DEFAULT_AI_PROFILE_KEY:
+        return {
+            seat: construct_void_lead_agent(seat, profile_key=BASE_AI_PROFILE_KEY)
+            for seat in seats
+        }
+    if profile_key != LEGACY_AI_PROFILE_KEY:
         raise ValueError(f"unsupported live AI profile: {profile_key}")
     specification = phase4_specifications_by_profile_key()[profile_key]
     return {
@@ -379,6 +399,18 @@ class LiveMatchRunner:
 
     def observation(self, seat: int) -> dict[str, object]:
         return project_observation(self.state, seat=seat)
+
+    def training_analysis(self, seat: int) -> dict[str, object]:
+        """Return live suit-split and card-location training odds for ``seat``.
+
+        Built from ``seat``'s own formal observation of the current deal, so
+        this is meaningful any time a deal is in progress - the caller
+        (``RoomManager.training_analysis_for_session``) rejects the case
+        where no deal is active.
+        """
+
+        observation = match_observation_for(self.state, seat)
+        return generate_training_analysis(observation)
 
     def contract_evaluations_for_deal(
         self, deal_number: int

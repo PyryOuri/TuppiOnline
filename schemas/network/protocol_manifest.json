@@ -24,6 +24,8 @@
     {"id": "analysis_result", "transport": "http", "direction": "server_to_client", "schema_ref": "https://example.invalid/tuppi/schemas/network/post_match_analysis.schema.json"},
     {"id": "completed_deal_analysis_request", "transport": "http", "direction": "client_to_server", "schema_ref": "https://example.invalid/tuppi/schemas/network/http_api.schema.json#/$defs/sessionRequest"},
     {"id": "completed_deal_analysis_result", "transport": "http", "direction": "server_to_client", "schema_ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis.schema.json"},
+    {"id": "training_analysis_request", "transport": "http", "direction": "client_to_server", "schema_ref": "https://example.invalid/tuppi/schemas/network/http_api.schema.json#/$defs/sessionRequest"},
+    {"id": "training_analysis_result", "transport": "http", "direction": "server_to_client", "schema_ref": "https://example.invalid/tuppi/schemas/network/training_analysis.schema.json"},
     {"id": "server_error", "transport": "http", "direction": "server_to_client", "schema_ref": "https://example.invalid/tuppi/schemas/network/http_api.schema.json#/$defs/serverError"},
     {"id": "hello", "transport": "websocket", "direction": "client_to_server", "schema_ref": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json#/$defs/hello"},
     {"id": "hello_ack", "transport": "websocket", "direction": "server_to_client", "schema_ref": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json#/$defs/helloAcknowledgement"},

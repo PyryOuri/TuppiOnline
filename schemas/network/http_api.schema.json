@@ -13,7 +13,8 @@
     {"$ref": "#/$defs/roomStatusResponse"},
     {"$ref": "#/$defs/serverError"},
     {"$ref": "https://example.invalid/tuppi/schemas/network/post_match_analysis.schema.json"},
-    {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis.schema.json"}
+    {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis.schema.json"},
+    {"$ref": "https://example.invalid/tuppi/schemas/network/training_analysis.schema.json"}
   ],
   "$defs": {
     "seat": {"type": "integer", "minimum": 0, "maximum": 3},
@@ -40,7 +41,7 @@
         "kind": {"enum": ["open", "human", "ai"]},
         "ready": {"type": "boolean"},
         "seat": {"$ref": "#/$defs/seat"},
-        "agent_profile": {"const": "partner_aware_v1"}
+        "agent_profile": {"enum": ["partner_aware_v1", "partner_aware_lead_v2"]}
       },
       "allOf": [
         {

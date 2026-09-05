@@ -148,6 +148,12 @@ class TuppiASGIApp:
                     code=code,
                     token=self._string(payload, "session_token"),
                 )
+            if command == "training_analysis":
+                self._require_fields(payload, required={"session_token"})
+                return self.rooms.training_analysis_for_session(
+                    code=code,
+                    token=self._string(payload, "session_token"),
+                )
             if command == "configure":
                 self._require_fields(
                     payload,

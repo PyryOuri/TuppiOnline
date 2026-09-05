@@ -22,6 +22,25 @@ def test_solo_room_starts_with_three_ai_seats() -> None:
     assert room.runner.current_actor == 0
 
 
+def test_training_analysis_requires_an_active_deal_and_is_seat_scoped() -> None:
+    manager = RoomManager()
+    room, host = manager.create_room(
+        display_name="Pelaaja",
+        ai_seats=frozenset({1, 2, 3}),
+    )
+
+    with pytest.raises(RoomError, match="no_active_deal"):
+        manager.training_analysis_for_session(code=room.code, token=host.token)
+
+    manager.mark_ready(code=room.code, token=host.token)
+    response = manager.training_analysis_for_session(code=room.code, token=host.token)
+    assert response["seat"] == host.seat
+    assert response["other_seats"] == [
+        seat for seat in range(4) if seat != host.seat
+    ]
+    assert set(response["suit_splits"]) == {"spades", "hearts", "diamonds", "clubs"}
+
+
 def test_environment_enables_bounded_contract_rollouts_by_default(
     tmp_path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

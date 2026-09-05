@@ -391,6 +391,27 @@ class RoomManager:
             raise RoomError("analysis_not_available")
         return generate_post_match_diagnostics(room.runner, seat=session.seat)
 
+    def training_analysis_for_session(
+        self,
+        *,
+        code: str,
+        token: str,
+    ) -> dict[str, object]:
+        """Return this session's own live suit-split and card-location odds.
+
+        Valid only while a deal is in progress. The response is derived
+        entirely from the requesting seat's own formal observation (own hand
+        plus public history), the same information already available to that
+        player, so it carries no more privacy risk than the observation
+        itself. There is deliberately no seat parameter: the seat is always
+        the authenticated session's own.
+        """
+
+        room, session = self.session(code=code, token=token)
+        if room.runner is None or room.runner.terminal:
+            raise RoomError("no_active_deal")
+        return room.runner.training_analysis(session.seat)
+
     def completed_deal_analysis_for_session(
         self,
         *,
