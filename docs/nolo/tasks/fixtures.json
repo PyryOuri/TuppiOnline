@@ -1,0 +1,513 @@
+{
+  "schema_version": "tuppi.nolo.task_fixtures.v1",
+  "visibility": "research_private_synthetic_fixture",
+  "usage": "Initial hands are test-replay inputs only. Decision and policy entry points receive PlayerObservation, never these private fixtures. Counts refer to all legal paths, not probabilities.",
+  "source_framing": "docs/nolo/framings/1.md",
+  "root_seed": "nolo-framing-2026-09-05",
+  "actual_play_policy": "partner_aware_lead_v2 at all four seats; forced canonical NOLO shows",
+  "fixtures": [
+    {
+      "id": "A",
+      "corpus_index": 31,
+      "dealer": 3,
+      "starting_score": [
+        0,
+        0
+      ],
+      "initial_hands": [
+        [
+          "AD",
+          "5D",
+          "9C",
+          "KS",
+          "6H",
+          "AS",
+          "6D",
+          "7H",
+          "JD",
+          "7S",
+          "3D",
+          "KD",
+          "AH"
+        ],
+        [
+          "AC",
+          "QS",
+          "4D",
+          "4S",
+          "10H",
+          "KH",
+          "2S",
+          "6S",
+          "7C",
+          "KC",
+          "9S",
+          "6C",
+          "10C"
+        ],
+        [
+          "3H",
+          "5H",
+          "JS",
+          "8C",
+          "10S",
+          "QD",
+          "8H",
+          "2C",
+          "9H",
+          "3S",
+          "8D",
+          "8S",
+          "9D"
+        ],
+        [
+          "10D",
+          "5C",
+          "7D",
+          "2H",
+          "JC",
+          "JH",
+          "4H",
+          "2D",
+          "4C",
+          "3C",
+          "5S",
+          "QC",
+          "QH"
+        ]
+      ],
+      "play_prefix": [
+        [
+          "9C",
+          "7C",
+          "8C",
+          "5C"
+        ],
+        [
+          "6H",
+          "10H",
+          "9H",
+          "QH"
+        ],
+        [
+          "5S",
+          "AS",
+          "QS",
+          "JS"
+        ],
+        [
+          "7H",
+          "KH",
+          "8H",
+          "JH"
+        ],
+        [
+          "4D",
+          "8D",
+          "7D",
+          "AD"
+        ],
+        [
+          "AH",
+          "AC",
+          "5H",
+          "4H"
+        ],
+        [
+          "7S",
+          "6S",
+          "3S",
+          "QC"
+        ],
+        [
+          "KS",
+          "9S",
+          "10S",
+          "JC"
+        ],
+        [
+          "3D",
+          "KC",
+          "9D",
+          "2D"
+        ],
+        [
+          "2C",
+          "3C",
+          "KD",
+          "10C"
+        ],
+        [
+          "6C"
+        ]
+      ],
+      "expected": {
+        "actor": 2,
+        "completed_tricks": 10,
+        "position": 1,
+        "team_tricks": [
+          7,
+          3
+        ],
+        "own_hand": [
+          "3H",
+          "QD",
+          "8S"
+        ],
+        "baseline_action": "QD",
+        "hard_support_count": 20,
+        "unconstrained_partition_count": 560,
+        "all_legal_terminal_path_counts": {
+          "8S": {
+            "7": 1680
+          },
+          "QD": {
+            "7": 360,
+            "8": 360,
+            "9": 480
+          },
+          "3H": {
+            "7": 360,
+            "8": 360,
+            "9": 480
+          }
+        },
+        "actual_layout_minimax": {
+          "3H": 9,
+          "QD": 9,
+          "8S": 7
+        }
+      }
+    },
+    {
+      "id": "B",
+      "corpus_index": 6,
+      "dealer": 2,
+      "starting_score": [
+        0,
+        0
+      ],
+      "initial_hands": [
+        [
+          "3D",
+          "9H",
+          "AH",
+          "10H",
+          "KS",
+          "2D",
+          "9C",
+          "8D",
+          "KC",
+          "3H",
+          "JD",
+          "3C",
+          "8S"
+        ],
+        [
+          "QC",
+          "8H",
+          "9D",
+          "7C",
+          "KD",
+          "5D",
+          "10S",
+          "10C",
+          "JS",
+          "QS",
+          "7D",
+          "7S",
+          "6C"
+        ],
+        [
+          "6D",
+          "5S",
+          "9S",
+          "AC",
+          "3S",
+          "4D",
+          "JH",
+          "10D",
+          "6S",
+          "6H",
+          "5H",
+          "4S",
+          "7H"
+        ],
+        [
+          "QH",
+          "KH",
+          "QD",
+          "4C",
+          "2C",
+          "JC",
+          "2S",
+          "8C",
+          "4H",
+          "AD",
+          "AS",
+          "2H",
+          "5C"
+        ]
+      ],
+      "play_prefix": [
+        [
+          "2S",
+          "8S",
+          "7S",
+          "9S"
+        ],
+        [
+          "AC",
+          "JC",
+          "KC",
+          "QC"
+        ],
+        [
+          "4D",
+          "AD",
+          "JD",
+          "KD"
+        ],
+        [
+          "QD",
+          "8D",
+          "9D",
+          "10D"
+        ],
+        [
+          "AS",
+          "KS",
+          "QS",
+          "6S"
+        ],
+        [
+          "2H",
+          "AH",
+          "8H",
+          "JH"
+        ],
+        [
+          "2D",
+          "7D",
+          "6D",
+          "KH"
+        ],
+        [
+          "5D",
+          "7H",
+          "QH",
+          "3D"
+        ],
+        [
+          "10S",
+          "5S",
+          "4H",
+          "10H"
+        ],
+        [
+          "JS",
+          "4S",
+          "8C",
+          "9H"
+        ],
+        [
+          "6C",
+          "6H",
+          "5C"
+        ]
+      ],
+      "expected": {
+        "actor": 0,
+        "completed_tricks": 10,
+        "position": 3,
+        "team_tricks": [
+          3,
+          7
+        ],
+        "own_hand": [
+          "9C",
+          "3H",
+          "3C"
+        ],
+        "baseline_action": "3C",
+        "hard_support_count": 2,
+        "unconstrained_partition_count": 90,
+        "all_legal_terminal_path_counts": {
+          "9C": {
+            "4": 16,
+            "6": 8
+          },
+          "3C": {
+            "3": 8,
+            "5": 8
+          }
+        },
+        "actual_layout_minimax": {
+          "9C": 4,
+          "3C": 5
+        }
+      }
+    },
+    {
+      "id": "C",
+      "corpus_index": 1,
+      "dealer": 1,
+      "starting_score": [
+        0,
+        0
+      ],
+      "initial_hands": [
+        [
+          "KD",
+          "9S",
+          "AC",
+          "2S",
+          "JC",
+          "9C",
+          "10H",
+          "6H",
+          "3S",
+          "7H",
+          "6S",
+          "9D",
+          "7D"
+        ],
+        [
+          "8D",
+          "3D",
+          "5D",
+          "4C",
+          "AS",
+          "KS",
+          "5C",
+          "2C",
+          "8H",
+          "JH",
+          "JD",
+          "QS",
+          "10S"
+        ],
+        [
+          "JS",
+          "9H",
+          "KC",
+          "5S",
+          "4H",
+          "7C",
+          "2D",
+          "2H",
+          "10D",
+          "6D",
+          "AD",
+          "QH",
+          "3C"
+        ],
+        [
+          "8S",
+          "8C",
+          "5H",
+          "6C",
+          "4S",
+          "3H",
+          "7S",
+          "10C",
+          "QD",
+          "4D",
+          "QC",
+          "AH",
+          "KH"
+        ]
+      ],
+      "play_prefix": [
+        [
+          "5S",
+          "4S",
+          "3S",
+          "AS"
+        ],
+        [
+          "8H",
+          "4H",
+          "5H",
+          "7H"
+        ],
+        [
+          "JH",
+          "9H",
+          "3H",
+          "10H"
+        ],
+        [
+          "2C",
+          "3C",
+          "6C",
+          "AC"
+        ],
+        [
+          "6H",
+          "KS",
+          "2H",
+          "AH"
+        ],
+        [
+          "KH",
+          "KD",
+          "QS",
+          "QH"
+        ],
+        [
+          "4D",
+          "7D",
+          "5D",
+          "AD"
+        ],
+        [
+          "JS",
+          "8S",
+          "9S",
+          "10S"
+        ],
+        [
+          "7C",
+          "8C",
+          "9C",
+          "5C"
+        ],
+        [
+          "9D",
+          "8D",
+          "6D",
+          "QD"
+        ],
+        [
+          "7S",
+          "6S",
+          "JD"
+        ]
+      ],
+      "expected": {
+        "actor": 2,
+        "completed_tricks": 10,
+        "position": 3,
+        "team_tricks": [
+          4,
+          6
+        ],
+        "own_hand": [
+          "KC",
+          "2D",
+          "10D"
+        ],
+        "baseline_action": "KC",
+        "hard_support_count": 24,
+        "unconstrained_partition_count": 90,
+        "all_legal_terminal_path_counts": null,
+        "actual_layout_minimax": {
+          "KC": 6,
+          "2D": 6,
+          "10D": 5
+        }
+      }
+    }
+  ]
+}
