@@ -1,0 +1,103 @@
+{
+ "breakdowns": {
+  "deviations_by_remaining_tricks": {
+   "2": 4,
+   "3": 9
+  },
+  "deviations_by_role": {
+   "discard": 5,
+   "follow": 4,
+   "lead": 4
+  },
+  "eligible_by_remaining_tricks": {
+   "2": 886,
+   "3": 899
+  },
+  "eligible_by_role": {
+   "discard": 813,
+   "follow": 460,
+   "lead": 512
+  },
+  "eligible_by_support_size": {
+   "<=1": 80,
+   "<=10": 325,
+   "<=100": 197,
+   "<=2": 168,
+   "<=25": 228,
+   "<=5": 216,
+   "<=50": 199,
+   "unresolved": 372
+  },
+  "resolved_by_claim": {
+   "NO_DEVIATION": 1400,
+   "SECURITY_ONLY": 6,
+   "UNIVERSAL": 7
+  },
+  "score_relevant_by_claim": {
+   "SECURITY_ONLY": 6,
+   "UNIVERSAL": 7
+  }
+ },
+ "cap_reached": false,
+ "denominators": {
+  "card_plays": 13312,
+  "complete_supports": 1456,
+  "completed_searches": 1413,
+  "deals_attempted": 256,
+  "deals_completed": 256,
+  "distinct_deals_with_a_deviation": 13,
+  "eligible_choices": 1785,
+  "score_relevant_deviations": 13,
+  "verified_deviations": 13
+ },
+ "distinct_deals": [
+  "nolo-info-coverage-v1#107",
+  "nolo-info-coverage-v1#121",
+  "nolo-info-coverage-v1#159",
+  "nolo-info-coverage-v1#164",
+  "nolo-info-coverage-v1#166",
+  "nolo-info-coverage-v1#174",
+  "nolo-info-coverage-v1#203",
+  "nolo-info-coverage-v1#243",
+  "nolo-info-coverage-v1#246",
+  "nolo-info-coverage-v1#40",
+  "nolo-info-coverage-v1#73",
+  "nolo-info-coverage-v1#88",
+  "nolo-info-coverage-v1#91"
+ ],
+ "errors": [],
+ "outcome": "GO",
+ "run": {
+  "budget": {
+   "max_engine_transitions": 100000,
+   "max_remaining_tricks": 3,
+   "max_worlds": 100
+  },
+  "cached_search": false,
+  "cap_hours": 4.0,
+  "deals": 256,
+  "seed": "nolo-info-coverage-v1",
+  "wall_seconds": 4726.207594708016,
+  "workers": 10
+ },
+ "schema_version": "tuppi.nolo.coverage.v1",
+ "soundness": {
+  "failing_positions": [],
+  "failures": {
+   "continuation_violation": 0,
+   "false_certificate": 0,
+   "illegal_choice": 0,
+   "information_leak": 0,
+   "truth_outside_support": 0
+  },
+  "passed": true
+ },
+ "threshold": 5,
+ "unresolved": {
+  "by_status": {
+   "SEARCH_BUDGET": 43,
+   "SUPPORT_BUDGET": 329
+  },
+  "eligible_but_unresolved": 372
+ }
+}

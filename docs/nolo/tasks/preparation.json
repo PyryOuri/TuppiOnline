@@ -1,0 +1,42 @@
+{
+  "schema_version": "tuppi.nolo.task_preparation.v1",
+  "date": "2026-09-05",
+  "python_executable": "/Users/pyryouri/.venvs/tuppi-product/bin/python",
+  "python_version": "3.14.2",
+  "scope": "Task specification and preparation only. No tuppi_nolo implementation, candidate policy, new coverage bank, or strength trial has been created or run.",
+  "checks": [
+    {
+      "name": "Original source manifest unchanged",
+      "status": "PASS"
+    },
+    {
+      "name": "A fixture engine replay, baseline QD, actual-layout oracle values, hard support 20",
+      "status": "PASS"
+    },
+    {
+      "name": "B fixture engine replay, baseline 3C, actual-layout oracle values, hard support 2",
+      "status": "PASS"
+    },
+    {
+      "name": "C fixture engine replay, baseline KC, actual-layout oracle values, hard support 24",
+      "status": "PASS"
+    },
+    {
+      "name": "Framing standalone reproducer rerun: A all 560 partitions, 20 legal; exact all-action terminal counts",
+      "status": "PASS"
+    },
+    {
+      "name": "Framing standalone reproducer rerun: B all 90 partitions, 2 legal; correct and incorrect continuation counts",
+      "status": "PASS"
+    },
+    {
+      "name": "C independent remaining-partition replay: 90 attempted, 24 legal; five minimax-pair frequencies and all terminal counts",
+      "status": "PASS"
+    }
+  ],
+  "fixture_sha256": "b05adf7da1731f8d96968020e28ce7d16632028d8c5b1ba37906b89d7d44af2a",
+  "implementation_tasks": "NOT_STARTED",
+  "new_coverage_screen": "NOT_RUN",
+  "paired_strength_trial": "NOT_RUN",
+  "threshold_provenance": "N06 20 percent work reduction, N07 five new deals, and N09 0.05 trick improvement / two percentage point win noninferiority margin are prospective task-design choices, not observed results or power guarantees."
+}

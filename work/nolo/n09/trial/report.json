@@ -1,0 +1,378 @@
+{
+ "cap_reached": false,
+ "counters": {
+  "BB": {
+   "baseline_kept": 0,
+   "corrections": 0,
+   "decisions": 0,
+   "fallbacks": 0,
+   "fallbacks_by_reason": {},
+   "latency_seconds": 0.0,
+   "max_latency_seconds": 0,
+   "plan_commitments": 0,
+   "plan_executions": 0,
+   "plan_mismatches": 0,
+   "security_only": 0,
+   "universal": 0
+  },
+  "BC": {
+   "baseline_kept": 1399,
+   "corrections": 9,
+   "decisions": 13312,
+   "fallbacks": 11890,
+   "fallbacks_by_reason": {
+    "nolo_fallback_out_of_range": 11496,
+    "nolo_fallback_search_unresolved": 394
+   },
+   "latency_seconds": 55726.35518644887,
+   "max_latency_seconds": 439.71006750001106,
+   "plan_commitments": 9,
+   "plan_executions": 14,
+   "plan_mismatches": 0,
+   "security_only": 6,
+   "universal": 3
+  },
+  "CB": {
+   "baseline_kept": 1421,
+   "corrections": 12,
+   "decisions": 13312,
+   "fallbacks": 11860,
+   "fallbacks_by_reason": {
+    "nolo_fallback_out_of_range": 11484,
+    "nolo_fallback_search_unresolved": 376
+   },
+   "latency_seconds": 56463.65457652128,
+   "max_latency_seconds": 500.05743804201484,
+   "plan_commitments": 12,
+   "plan_executions": 19,
+   "plan_mismatches": 0,
+   "security_only": 7,
+   "universal": 5
+  },
+  "CC": {
+   "baseline_kept": 2819,
+   "corrections": 21,
+   "decisions": 26624,
+   "fallbacks": 23751,
+   "fallbacks_by_reason": {
+    "nolo_fallback_out_of_range": 22980,
+    "nolo_fallback_search_unresolved": 771
+   },
+   "latency_seconds": 109954.36126812466,
+   "max_latency_seconds": 360.3296302089875,
+   "plan_commitments": 21,
+   "plan_executions": 33,
+   "plan_mismatches": 0,
+   "security_only": 13,
+   "universal": 8
+  }
+ },
+ "incomplete": [],
+ "notes": [
+  "D_B: mean +0.0098 tricks is below the 0.05 threshold",
+  "D_B: lower trick bound -0.0039 does not exceed zero",
+  "D_C: mean +0.0098 tricks is below the 0.05 threshold",
+  "D_C: lower trick bound -0.0039 does not exceed zero"
+ ],
+ "outcome": "INCONCLUSIVE",
+ "primary": {
+  "D_B": {
+   "baseline_arm": "BB",
+   "candidate_arm": "CB",
+   "deal_wins": {
+    "analysis_seed": "nolo-info-strength-analysis-v1",
+    "bootstrap_confidence_interval": [
+     0.0,
+     0.005859375
+    ],
+    "bootstrap_replicates": 5000,
+    "confidence_interval": [
+     -0.0018749296573047918,
+     0.005781179657304791
+    ],
+    "confidence_level": 0.95,
+    "effect_size_cohens_dz": 0.044194173824159216,
+    "incomplete_block_count": 0,
+    "independent_base_deals": 512,
+    "mean_paired_utility": 0.001953125,
+    "median_paired_utility": 0.0,
+    "method_id": "tuppi.eval.paired_statistics.v1",
+    "paired_permutation_method": "monte_carlo_sign_flip",
+    "paired_permutation_p_value": 1.0,
+    "paired_permutation_replicates": 5000,
+    "sign_test_p_value": 1.0,
+    "standard_error": 0.001953125,
+    "transformed_games": 0,
+    "warning": null,
+    "win_tie_loss_blocks": {
+     "loss": 0,
+     "tie": 511,
+     "win": 1
+    }
+   },
+   "team": 0,
+   "tricks": {
+    "analysis_seed": "nolo-info-strength-analysis-v1",
+    "bootstrap_confidence_interval": [
+     -0.00390625,
+     0.0234375
+    ],
+    "bootstrap_replicates": 5000,
+    "confidence_interval": [
+     -0.0040241504393861115,
+     0.02355540043938611
+    ],
+    "confidence_level": 0.95,
+    "effect_size_cohens_dz": 0.061341721508425665,
+    "incomplete_block_count": 0,
+    "independent_base_deals": 512,
+    "mean_paired_utility": 0.009765625,
+    "median_paired_utility": 0.0,
+    "method_id": "tuppi.eval.paired_statistics.v1",
+    "paired_permutation_method": "monte_carlo_sign_flip",
+    "paired_permutation_p_value": 0.28434313137372524,
+    "paired_permutation_replicates": 5000,
+    "sign_test_p_value": 0.125,
+    "standard_error": 0.007035728997143879,
+    "transformed_games": 0,
+    "warning": null,
+    "win_tie_loss_blocks": {
+     "loss": 1,
+     "tie": 505,
+     "win": 6
+    }
+   }
+  },
+  "D_C": {
+   "baseline_arm": "BC",
+   "candidate_arm": "CC",
+   "deal_wins": {
+    "analysis_seed": "nolo-info-strength-analysis-v1",
+    "bootstrap_confidence_interval": [
+     0.0,
+     0.005859375
+    ],
+    "bootstrap_replicates": 5000,
+    "confidence_interval": [
+     -0.0018749296573047918,
+     0.005781179657304791
+    ],
+    "confidence_level": 0.95,
+    "effect_size_cohens_dz": 0.044194173824159216,
+    "incomplete_block_count": 0,
+    "independent_base_deals": 512,
+    "mean_paired_utility": 0.001953125,
+    "median_paired_utility": 0.0,
+    "method_id": "tuppi.eval.paired_statistics.v1",
+    "paired_permutation_method": "monte_carlo_sign_flip",
+    "paired_permutation_p_value": 1.0,
+    "paired_permutation_replicates": 5000,
+    "sign_test_p_value": 1.0,
+    "standard_error": 0.001953125,
+    "transformed_games": 0,
+    "warning": null,
+    "win_tie_loss_blocks": {
+     "loss": 0,
+     "tie": 511,
+     "win": 1
+    }
+   },
+   "team": 0,
+   "tricks": {
+    "analysis_seed": "nolo-info-strength-analysis-v1",
+    "bootstrap_confidence_interval": [
+     -0.00390625,
+     0.0234375
+    ],
+    "bootstrap_replicates": 5000,
+    "confidence_interval": [
+     -0.0040241504393861115,
+     0.02355540043938611
+    ],
+    "confidence_level": 0.95,
+    "effect_size_cohens_dz": 0.061341721508425665,
+    "incomplete_block_count": 0,
+    "independent_base_deals": 512,
+    "mean_paired_utility": 0.009765625,
+    "median_paired_utility": 0.0,
+    "method_id": "tuppi.eval.paired_statistics.v1",
+    "paired_permutation_method": "monte_carlo_sign_flip",
+    "paired_permutation_p_value": 0.28434313137372524,
+    "paired_permutation_replicates": 5000,
+    "sign_test_p_value": 0.125,
+    "standard_error": 0.007035728997143879,
+    "transformed_games": 0,
+    "warning": null,
+    "win_tie_loss_blocks": {
+     "loss": 1,
+     "tie": 505,
+     "win": 6
+    }
+   }
+  }
+ },
+ "run": {
+  "budget": {
+   "max_engine_transitions": 100000,
+   "max_remaining_tricks": 3,
+   "max_worlds": 100
+  },
+  "cap_hours": 8.0,
+  "deals": 512,
+  "seed": "nolo-info-strength-v1",
+  "wall_seconds": 16393.2743585,
+  "workers": 14
+ },
+ "schema_version": "tuppi.nolo.paired_trial.v1",
+ "secondary_orientation_only": {
+  "D_B_team1": {
+   "baseline_arm": "BB",
+   "candidate_arm": "BC",
+   "deal_wins": {
+    "analysis_seed": "nolo-info-strength-analysis-v1",
+    "bootstrap_confidence_interval": [
+     0.0,
+     0.005859375
+    ],
+    "bootstrap_replicates": 5000,
+    "confidence_interval": [
+     -0.0018749296573047918,
+     0.005781179657304791
+    ],
+    "confidence_level": 0.95,
+    "effect_size_cohens_dz": 0.044194173824159216,
+    "incomplete_block_count": 0,
+    "independent_base_deals": 512,
+    "mean_paired_utility": 0.001953125,
+    "median_paired_utility": 0.0,
+    "method_id": "tuppi.eval.paired_statistics.v1",
+    "paired_permutation_method": "monte_carlo_sign_flip",
+    "paired_permutation_p_value": 1.0,
+    "paired_permutation_replicates": 5000,
+    "sign_test_p_value": 1.0,
+    "standard_error": 0.001953125,
+    "transformed_games": 0,
+    "warning": null,
+    "win_tie_loss_blocks": {
+     "loss": 0,
+     "tie": 511,
+     "win": 1
+    }
+   },
+   "team": 1,
+   "tricks": {
+    "analysis_seed": "nolo-info-strength-analysis-v1",
+    "bootstrap_confidence_interval": [
+     -0.001953125,
+     0.02734375
+    ],
+    "bootstrap_replicates": 5000,
+    "confidence_interval": [
+     -0.0050506925520904696,
+     0.02458194255209047
+    ],
+    "confidence_level": 0.95,
+    "effect_size_cohens_dz": 0.05709168703307136,
+    "incomplete_block_count": 0,
+    "independent_base_deals": 512,
+    "mean_paired_utility": 0.009765625,
+    "median_paired_utility": 0.0,
+    "method_id": "tuppi.eval.paired_statistics.v1",
+    "paired_permutation_method": "monte_carlo_sign_flip",
+    "paired_permutation_p_value": 0.378124375124975,
+    "paired_permutation_replicates": 5000,
+    "sign_test_p_value": 0.625,
+    "standard_error": 0.0075594845971455075,
+    "transformed_games": 0,
+    "warning": null,
+    "win_tie_loss_blocks": {
+     "loss": 1,
+     "tie": 508,
+     "win": 3
+    }
+   }
+  },
+  "D_C_team1": {
+   "baseline_arm": "CB",
+   "candidate_arm": "CC",
+   "deal_wins": {
+    "analysis_seed": "nolo-info-strength-analysis-v1",
+    "bootstrap_confidence_interval": [
+     0.0,
+     0.005859375
+    ],
+    "bootstrap_replicates": 5000,
+    "confidence_interval": [
+     -0.0018749296573047918,
+     0.005781179657304791
+    ],
+    "confidence_level": 0.95,
+    "effect_size_cohens_dz": 0.044194173824159216,
+    "incomplete_block_count": 0,
+    "independent_base_deals": 512,
+    "mean_paired_utility": 0.001953125,
+    "median_paired_utility": 0.0,
+    "method_id": "tuppi.eval.paired_statistics.v1",
+    "paired_permutation_method": "monte_carlo_sign_flip",
+    "paired_permutation_p_value": 1.0,
+    "paired_permutation_replicates": 5000,
+    "sign_test_p_value": 1.0,
+    "standard_error": 0.001953125,
+    "transformed_games": 0,
+    "warning": null,
+    "win_tie_loss_blocks": {
+     "loss": 0,
+     "tie": 511,
+     "win": 1
+    }
+   },
+   "team": 1,
+   "tricks": {
+    "analysis_seed": "nolo-info-strength-analysis-v1",
+    "bootstrap_confidence_interval": [
+     -0.001953125,
+     0.02734375
+    ],
+    "bootstrap_replicates": 5000,
+    "confidence_interval": [
+     -0.0050506925520904696,
+     0.02458194255209047
+    ],
+    "confidence_level": 0.95,
+    "effect_size_cohens_dz": 0.05709168703307136,
+    "incomplete_block_count": 0,
+    "independent_base_deals": 512,
+    "mean_paired_utility": 0.009765625,
+    "median_paired_utility": 0.0,
+    "method_id": "tuppi.eval.paired_statistics.v1",
+    "paired_permutation_method": "monte_carlo_sign_flip",
+    "paired_permutation_p_value": 0.378124375124975,
+    "paired_permutation_replicates": 5000,
+    "sign_test_p_value": 0.625,
+    "standard_error": 0.0075594845971455075,
+    "transformed_games": 0,
+    "warning": null,
+    "win_tie_loss_blocks": {
+     "loss": 1,
+     "tie": 508,
+     "win": 3
+    }
+   }
+  }
+ },
+ "sound": true,
+ "thresholds": {
+  "analysis_seed": "nolo-info-strength-analysis-v1",
+  "bootstrap_replicates": 5000,
+  "confidence_level": 0.95,
+  "deal_win_noninferiority_margin": -0.02,
+  "permutation_replicates": 5000,
+  "trick_improvement": 0.05
+ },
+ "violations": {
+  "blocks_attempted": 512,
+  "blocks_complete": 512,
+  "incomplete_blocks": 0,
+  "plan_mismatches": 0
+ }
+}

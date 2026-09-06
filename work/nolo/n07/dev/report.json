@@ -1,0 +1,94 @@
+{
+ "breakdowns": {
+  "deviations_by_remaining_tricks": {
+   "2": 2,
+   "3": 3
+  },
+  "deviations_by_role": {
+   "discard": 1,
+   "follow": 2,
+   "lead": 2
+  },
+  "eligible_by_remaining_tricks": {
+   "2": 232,
+   "3": 220
+  },
+  "eligible_by_role": {
+   "discard": 203,
+   "follow": 121,
+   "lead": 128
+  },
+  "eligible_by_support_size": {
+   "<=1": 20,
+   "<=10": 78,
+   "<=100": 43,
+   "<=2": 45,
+   "<=25": 62,
+   "<=5": 63,
+   "<=50": 47,
+   "unresolved": 94
+  },
+  "resolved_by_claim": {
+   "NO_DEVIATION": 353,
+   "SECURITY_ONLY": 2,
+   "UNIVERSAL": 3
+  },
+  "score_relevant_by_claim": {
+   "SECURITY_ONLY": 2,
+   "UNIVERSAL": 3
+  }
+ },
+ "cap_reached": false,
+ "denominators": {
+  "card_plays": 3328,
+  "complete_supports": 368,
+  "completed_searches": 358,
+  "deals_attempted": 64,
+  "deals_completed": 64,
+  "distinct_deals_with_a_deviation": 4,
+  "eligible_choices": 452,
+  "score_relevant_deviations": 5,
+  "verified_deviations": 5
+ },
+ "distinct_deals": [
+  "nolo-info-dev-v1#30",
+  "nolo-info-dev-v1#35",
+  "nolo-info-dev-v1#36",
+  "nolo-info-dev-v1#56"
+ ],
+ "errors": [],
+ "outcome": "NO_USEFUL_SIGNAL",
+ "run": {
+  "budget": {
+   "max_engine_transitions": 100000,
+   "max_remaining_tricks": 3,
+   "max_worlds": 100
+  },
+  "cached_search": false,
+  "cap_hours": 4.0,
+  "deals": 64,
+  "seed": "nolo-info-dev-v1",
+  "wall_seconds": 1235.8990489590215,
+  "workers": 10
+ },
+ "schema_version": "tuppi.nolo.coverage.v1",
+ "soundness": {
+  "failing_positions": [],
+  "failures": {
+   "continuation_violation": 0,
+   "false_certificate": 0,
+   "illegal_choice": 0,
+   "information_leak": 0,
+   "truth_outside_support": 0
+  },
+  "passed": true
+ },
+ "threshold": 5,
+ "unresolved": {
+  "by_status": {
+   "SEARCH_BUDGET": 10,
+   "SUPPORT_BUDGET": 84
+  },
+  "eligible_but_unresolved": 94
+ }
+}
