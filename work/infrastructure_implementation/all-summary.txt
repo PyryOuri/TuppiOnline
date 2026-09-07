@@ -1,0 +1,41 @@
+paired workload all  reps/process=5  order=ABBAABBAABBA
+
+INF-01  twelve-deal batch CPU  (baseline -> combined)
+  measurements: 30 vs 30
+  whole batch (pooled median)         1837.585 ms ->  1194.701 ms   34.99% less  gate>=25%  PASS
+  per-round medians baseline: [1.8283, 1.8985, 1.9036, 1.8492, 1.8226, 1.8319]
+  per-round medians combined:  [1.2278, 1.2098, 1.1982, 1.1767, 1.16, 1.1705]
+  stratum NOLO (timed sections)        632.751 ms ->   410.088 ms   35.19% less  gate>=20%  PASS
+  stratum RAMI (timed sections)        572.694 ms ->   371.120 ms   35.20% less  gate>=20%  PASS
+  stratum natural (timed sections)     624.752 ms ->   399.177 ms   36.11% less
+  fresh process, first batch          1855.835 ms ->  1204.750 ms   35.08% less
+  action digests identical: True (1 distinct)
+
+INF-02  fast-UCT decisions  (baseline -> combined)
+  six positions, budget 2               86.850 ms ->    62.221 ms   28.36% less
+  six positions, budget 4              152.487 ms ->   115.474 ms   24.27% less
+  six positions, budget 8              286.642 ms ->   224.104 ms   21.82% less  gate>=10%  PASS
+  six positions, budget 16             555.775 ms ->   438.852 ms   21.04% less
+  per position, budget 8:
+      NOLO-0                            81.694 ms ->    72.042 ms   11.81% less
+      NOLO-6                            45.746 ms ->    35.185 ms   23.09% less
+      NOLO-12                           17.161 ms ->     6.431 ms   62.52% less
+      RAMI-0                            80.335 ms ->    70.152 ms   12.68% less
+      RAMI-6                            44.760 ms ->    33.909 ms   24.24% less
+      RAMI-12                           16.946 ms ->     6.386 ms   62.32% less
+  four void-lead agents                  5.382 ms ->     1.282 ms   76.19% less
+  four separate construct calls          4.402 ms ->     4.385 ms    0.39% less
+  decision payload digests identical: True
+
+INF-03  live match_update CPU  (baseline -> combined)
+   0 tricks showi 4 recipient(s)         1.848 ms ->     0.485 ms   73.76% less
+   0 tricks showi 1 recipient(s)         0.505 ms ->     0.165 ms   67.36% less
+   0 tricks trick 4 recipient(s)         2.452 ms ->     0.586 ms   76.12% less
+   0 tricks trick 1 recipient(s)         0.644 ms ->     0.190 ms   70.40% less
+   6 tricks trick 4 recipient(s)         8.908 ms ->     1.715 ms   80.75% less  gate>=35%  PASS
+   6 tricks trick 1 recipient(s)         2.263 ms ->     0.472 ms   79.13% less
+  12 tricks trick 4 recipient(s)        13.898 ms ->     2.626 ms   81.10% less  gate>=35%  PASS
+  12 tricks trick 1 recipient(s)         3.498 ms ->     0.701 ms   79.98% less
+  13 tricks deal_ 4 recipient(s)        26.326 ms ->     9.250 ms   64.87% less
+  13 tricks deal_ 1 recipient(s)         6.615 ms ->     2.340 ms   64.63% less
+  payload byte counts identical: True

@@ -1,0 +1,112 @@
+{
+  "capture_bytes": 24165678,
+  "capture_file_sha256": "10b9c741533e5fd9cb0661b6bc9c5640c893966758130e7e4f9f643c9ecb74a2",
+  "completed_review": {
+    "digest": "7c85f4a3cf1187c9bf2f6c5393792c4dc032843da9a3bfaf63452704c845ff84",
+    "equal": true
+  },
+  "engine_batch": {
+    "action_digests": [
+      "aeec21d2a85d74192bc265d9390543fd16945149f0d53ab6032e48f25a14efb7",
+      "29ae8b8fbf82c84bc3e75d61376ace555f720a87f3f3ac6cdfd30c8ec2c0498f",
+      "fbf001fa887a4c497d2b85c5e9f160be0fc5d02d244716797af5127c6df809fe",
+      "16c5c0e3fb99cde628c4c8a822c85b7d3d8f073eaa8f74711be4db225922dc32",
+      "96c35b4355254aa8b796cb09b01997b697849130644e8e8fa212f37953215818",
+      "402460f606bb7e4a6f0689d17826a7967bd841586969d202bf09bf561effd0ef",
+      "2b5ea245bff9ee89e55959b0406c1632d6ce129f2431d25c27d02fd88879c111",
+      "845d321e975ca8741aaad7b0d712c540924a76ab9e7e766a14c9eeef5e37d8fc",
+      "8a262de6477aed19ea1748d8f887273c4b81e63798d56dccb435db5f59a055d8",
+      "072b25914577d0ff2d49b6ee402bd867351957228b2bfb69467dea25c96bf8ac",
+      "26f6c1661df602f51d98a4ccf0a09afcf6d275c3404c4c1a9ba98840aff7b36f",
+      "6095b98b4e096970fcba69a593873ac569503dca05c743f7af22aa5035030953"
+    ],
+    "actions": 656,
+    "deal_result_digest": "bb86045853b993f22e84eb420ccd89ef9ba5ff65684fa66a5801495b6e86d340",
+    "deals": 12,
+    "resolved": [
+      "NOLO",
+      "NOLO",
+      "NOLO",
+      "NOLO",
+      "RAMI",
+      "RAMI",
+      "RAMI",
+      "RAMI",
+      "RAMI",
+      "RAMI",
+      "RAMI",
+      "RAMI"
+    ],
+    "trace_digest": "bdb2dad406a6713d0d389a82639b0439372054449a5f9ddbc7b3de647d44ce6c",
+    "trace_steps": 668
+  },
+  "full_matches": {
+    "count": 3,
+    "deals": [
+      40,
+      40,
+      29
+    ],
+    "digest": "1da3870bb8caabe3106ad0dad06e42b81a44e9abac29f609a5c097aa1115584d",
+    "terminal": [
+      false,
+      false,
+      true
+    ]
+  },
+  "live_messages": {
+    "digest": "e0368ae9cec51755384848236a3ef549266eef092c1676fda2caa5b599a67d46",
+    "groups": 31
+  },
+  "rejections": {
+    "accepted": [
+      "match/initial_score/apply",
+      "match/initial_score/observation",
+      "match/initial_score/validate"
+    ],
+    "cases": 216,
+    "classes": [
+      "InvalidActionError",
+      "InvalidSeatError",
+      "StateInvariantError",
+      "TerminalStateError",
+      "WrongActorError",
+      "WrongPhaseError"
+    ],
+    "digest": "b314c4ba22d72e44ad9a1c57cc68e1147e5f7a186072d7d81a143c7e572d35b3"
+  },
+  "uct": {
+    "digest": "0558dd6e162589e156fe8dc297d5b6675d3cf2bd1a0fa8628205fd57471608dd",
+    "per_row": {
+      "NOLO-0/16": "5bcb443e90aeed58d5779c58c3fd15c1466a0a9323a3935728edfc7edf9de8e7",
+      "NOLO-0/2": "5c50d4c4c29cc8ff605462652bb07b39c1f05775b8d6554e4c4dea39797bc121",
+      "NOLO-0/4": "ff4afd852548c32f8b53e511016b0927e7811aacf2c35da0ca955c80e88cc088",
+      "NOLO-0/8": "135837fb43d65417003d9f723c705e701148b769a212f193f501bb9d94d8bf9f",
+      "NOLO-12/16": "22df0516177a50ee0363fcb512b5540bb11582f201f548e6b976da1ca14c4420",
+      "NOLO-12/2": "50ce1d26c3618b636c4d4faa0eebf62fd5fcd64a3de12f7bd91358837f2396dc",
+      "NOLO-12/4": "088203f7fa87f65173d699c73a2ef4f85b9a58cb2ff84c73c61c733011513f1a",
+      "NOLO-12/8": "6c6ac42fe2c7723bc786ac41e2e9b8500051d5ce69c646456b11f88d4552c8d7",
+      "NOLO-6/16": "d85095b4b58351f4c0ec11bbd2180f940a552d06612d4b102599b81e8c570d81",
+      "NOLO-6/2": "458bf90db774e7c9b1261380bd4e5bd71cb14c0d2d9bd0cc3f55c55ee7b29a5a",
+      "NOLO-6/4": "bdd188c394657840cbfcbd550861cfcc3df2c4ee36a1f379b96cadef1f0b697a",
+      "NOLO-6/8": "d4a5d220a649e7dd6eb34cbad1da7a6533792fb901e92c188293471dc2b9e651",
+      "RAMI-0/16": "ff9584397ca35c79994632191f888343cd211e738a2684b013347e9538ba7e57",
+      "RAMI-0/2": "9bbb89554f6c9e3b7782bc11ee527bfaae44642fb8fb52a63ed5ce5072e8e18d",
+      "RAMI-0/4": "968c606f730c794187b318b7b995cb7fa8237a580208b6e5ac4ee0c40902d3ce",
+      "RAMI-0/8": "fc6299dc1a0a4ee4878f5a3a39f5e74039fa6e9cff5dc7ea0540739f79d77fb1",
+      "RAMI-12/16": "cbfbb16f58bc917f0c1f18ba453a1faf19ee9d252f2e4d3662c6887811c4c29f",
+      "RAMI-12/2": "592af0567fe5fd83efa81a9f32434a493d6cf46f427c3f815328593204a69a63",
+      "RAMI-12/4": "54b22c2e6ebce5f650c62fed250a3ffa8c0f3aa8cc493ed29c1440b3eb26cf6d",
+      "RAMI-12/8": "c5fbd88fb60e18b8320ac692f73939bad084341ae8d65848fa01ee9f31e57027",
+      "RAMI-6/16": "d368e09883cd37e6f15a62ecc769c960f6d8b5b93c5fd8e208d221007b63683e",
+      "RAMI-6/2": "900ce1b00867cf40930373aefa2974abe58966c116a72b7c3a9cd28860c189a2",
+      "RAMI-6/4": "1a4f5ddf60a9daf8287d852ecb413fd955ac05db285e9b0cdbcefd448a490374",
+      "RAMI-6/8": "7483ea9a266f9f253b2e8a81a45fe377294120a88dcc3ae13c8d07b102af5ceb",
+      "registry/None": "ef18596f592c4292df5124c52a47d926c56cdaa23cc46aa1571055bc41b2c7ca",
+      "void_lead_error/None": "8c7e5ac5c23c34b133363b31a818bb0a59caa7fcabebb15e8c04c7899fd25870",
+      "void_seeking_agents/None": "8dc7091639575bc0645a09b1a9cbf2b06e077ffb1c91eaedd45bb065613bf4b2",
+      "void_seeking_agents_subset/None": "9499bf4300c3f76a0d61787d21377359399e2e0b72fbe174abe68fee1a87c4c3"
+    },
+    "rows": 28
+  }
+}

@@ -26,10 +26,10 @@ from .errors import (
     WrongPhaseError,
 )
 from .events import PublicEvent
-from .observations import PlayerObservation, observation_for
+from .observations import PlayerObservation, _observation_for_validated
 from .results import DealResult, MatchResult, ResearchDealResult
 from .state import DealState, EnginePhase, validate_deal_state
-from .transitions import apply_action, research_deal_result_from_state
+from .transitions import _apply_action_validated, research_deal_result_from_state
 from .validation import is_valid_match_ref
 
 
@@ -136,7 +136,9 @@ def apply_match_action(state: MatchState, action: Action) -> MatchState:
     if state.active_deal is None:
         raise StateInvariantError("active phase has no private deal state")
     old_event_count = len(state.active_deal.events)
-    active = apply_action(state.active_deal, action)
+    # validate_match_state above already revalidated this active deal, so the
+    # dispatcher below repeats neither that work nor any of its own checks.
+    active = _apply_action_validated(state.active_deal, action)
     new_public_events = state.public_events + active.events[old_event_count:]
     completed = state.completed_deals
     score = state.score
@@ -165,7 +167,11 @@ def match_observation_for(state: MatchState, observing_seat: int) -> PlayerObser
     validate_match_state(state)
     if state.active_deal is None:
         raise WrongPhaseError("there is no active deal to observe")
-    return observation_for(state.active_deal, observing_seat)
+    # The match validation above revalidated the active deal; the seat check is
+    # the same one ``observation_for`` performs, in the same order.
+    return _observation_for_validated(
+        state.active_deal, validate_seat(observing_seat)
+    )
 
 
 def play_active_deal(

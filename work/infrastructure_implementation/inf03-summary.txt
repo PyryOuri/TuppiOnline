@@ -1,0 +1,14 @@
+paired workload inf03  reps/process=5  order=ABBAABBAABBA
+
+INF-03  live match_update CPU  (baseline -> inf03)
+   0 tricks showi 4 recipient(s)         1.844 ms ->     1.105 ms   40.09% less
+   0 tricks showi 1 recipient(s)         0.500 ms ->     0.291 ms   41.86% less
+   0 tricks trick 4 recipient(s)         2.390 ms ->     1.295 ms   45.80% less
+   0 tricks trick 1 recipient(s)         0.642 ms ->     0.389 ms   39.33% less
+   6 tricks trick 4 recipient(s)         8.859 ms ->     4.555 ms   48.58% less  gate>=35%  PASS
+   6 tricks trick 1 recipient(s)         2.235 ms ->     1.164 ms   47.94% less
+  12 tricks trick 4 recipient(s)        13.982 ms ->     7.223 ms   48.34% less  gate>=35%  PASS
+  12 tricks trick 1 recipient(s)         3.543 ms ->     1.838 ms   48.12% less
+  13 tricks deal_ 4 recipient(s)        26.652 ms ->    15.247 ms   42.79% less
+  13 tricks deal_ 1 recipient(s)         6.673 ms ->     3.697 ms   44.60% less
+  payload byte counts identical: True

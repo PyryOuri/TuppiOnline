@@ -1,0 +1,12 @@
+paired workload inf01  reps/process=5  order=ABBAABBAABBA
+
+INF-01  twelve-deal batch CPU  (baseline -> inf01)
+  measurements: 30 vs 30
+  whole batch (pooled median)         1827.863 ms ->  1157.251 ms   36.69% less  gate>=25%  PASS
+  per-round medians baseline: [1.8203, 1.8132, 1.8361, 1.8296, 1.8409, 1.8187]
+  per-round medians inf01:  [1.1552, 1.1545, 1.1589, 1.1712, 1.1486, 1.1598]
+  stratum NOLO (timed sections)        629.538 ms ->   397.240 ms   36.90% less  gate>=20%  PASS
+  stratum RAMI (timed sections)        570.785 ms ->   361.209 ms   36.72% less  gate>=20%  PASS
+  stratum natural (timed sections)     617.667 ms ->   390.782 ms   36.73% less
+  fresh process, first batch          1824.708 ms ->  1166.272 ms   36.08% less
+  action digests identical: True (1 distinct)

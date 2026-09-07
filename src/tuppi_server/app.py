@@ -449,6 +449,9 @@ class TuppiASGIApp:
             token=connection.token,
         )
         runner = self._require_runner(room)
+        # One authenticated reconnect supplies every part of this update: the
+        # seat's observation and, at termination, its match result. Nothing
+        # awaits in between, so no cross-seat state can be shared here.
         reconnect = runner.reconnect(
             seat=session.seat,
             last_applied_event_index=connection.last_event_index,
@@ -458,13 +461,10 @@ class TuppiASGIApp:
             "event_batch": reconnect["event_delta"],
             "last_event_index": runner.event_cursor,
             "match_ref": runner.match_ref,
-            "observation": runner.observation(session.seat),
+            "observation": reconnect["observation"],
         }
         if runner.terminal:
-            payload["match_result"] = runner.reconnect(
-                seat=session.seat,
-                last_applied_event_index=connection.last_event_index,
-            ).get("match_result")
+            payload["match_result"] = reconnect.get("match_result")
         connection.last_event_index = runner.event_cursor
         await self._send_message(connection.send, "match_update", payload)
 

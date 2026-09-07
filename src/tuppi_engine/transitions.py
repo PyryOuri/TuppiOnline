@@ -70,6 +70,19 @@ def apply_action(state: DealState, action: Action) -> DealState:
     """Validate and apply exactly one action; never repair or substitute it."""
 
     validate_deal_state(state)
+    return _apply_action_validated(state, action)
+
+
+def _apply_action_validated(state: DealState, action: Action) -> DealState:
+    """Apply one action to a state the immediate caller just validated.
+
+    Every actor, phase, action-type and follow-suit check below is retained,
+    and the constructed successor state validates itself as before. The input
+    exemption covers exactly one synchronous call from a public boundary in
+    this package; it is never carried across an agent callback, an await, a
+    separate public call, or deserialisation.
+    """
+
     if state.phase in (EnginePhase.DEAL_COMPLETE, EnginePhase.MATCH_COMPLETE):
         raise TerminalStateError("the deal is complete and accepts no more actions")
     if state.phase is EnginePhase.SHOWING:

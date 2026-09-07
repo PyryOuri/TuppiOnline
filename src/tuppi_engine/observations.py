@@ -90,7 +90,17 @@ class PlayerObservation:
 
 def legal_actions_for(state: DealState, observing_seat: int) -> tuple[Action, ...]:
     validate_deal_state(state)
-    seat = validate_seat(observing_seat)
+    return _legal_actions_for_validated(state, validate_seat(observing_seat))
+
+
+def _legal_actions_for_validated(state: DealState, seat: int) -> tuple[Action, ...]:
+    """Order the legal actions of a state the immediate caller just validated.
+
+    The exemption covers exactly one synchronous call from a public boundary in
+    this package. It is never carried across an agent callback, an await, a
+    separate public call, or deserialisation: those must revalidate.
+    """
+
     if state.current_actor != seat or state.complete:
         return ()
     hand = state.hands[seat]
@@ -126,7 +136,17 @@ def observation_for(state: DealState, observing_seat: int) -> PlayerObservation:
     """Copy only information legally available to one player."""
 
     validate_deal_state(state)
-    seat = validate_seat(observing_seat)
+    return _observation_for_validated(state, validate_seat(observing_seat))
+
+
+def _observation_for_validated(state: DealState, seat: int) -> PlayerObservation:
+    """Project a state the immediate caller just validated, for a checked seat.
+
+    ``match_observation_for`` reuses its own match validation - which already
+    revalidates the active deal - through this helper and the legal-action
+    helper above, so one public observation performs one full deal validation.
+    """
+
     current_score = state.ending_score or state.starting_score
     return PlayerObservation(
         match_ref=state.match_ref,
@@ -150,7 +170,7 @@ def observation_for(state: DealState, observing_seat: int) -> PlayerObservation:
         current_trick=tuple(state.current_trick),
         team_tricks=state.team_tricks,
         match_score=current_score,
-        legal_actions=legal_actions_for(state, seat),
+        legal_actions=_legal_actions_for_validated(state, seat),
         deal_terminal=state.complete,
         match_terminal=state.terminal,
     )

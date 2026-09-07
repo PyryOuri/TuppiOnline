@@ -1,0 +1,17 @@
+paired workload inf02  reps/process=5  order=ABBAABBAABBA
+
+INF-02  fast-UCT decisions  (baseline -> inf02)
+  six positions, budget 2               85.001 ms ->    61.000 ms   28.24% less
+  six positions, budget 4              150.116 ms ->   113.292 ms   24.53% less
+  six positions, budget 8              282.104 ms ->   219.008 ms   22.37% less  gate>=10%  PASS
+  six positions, budget 16             543.031 ms ->   430.342 ms   20.75% less
+  per position, budget 8:
+      NOLO-0                            82.225 ms ->    70.384 ms   14.40% less
+      NOLO-6                            44.678 ms ->    34.418 ms   22.96% less
+      NOLO-12                           16.443 ms ->     6.294 ms   61.72% less
+      RAMI-0                            79.043 ms ->    68.469 ms   13.38% less
+      RAMI-6                            43.317 ms ->    33.207 ms   23.34% less
+      RAMI-12                           16.398 ms ->     6.235 ms   61.97% less
+  four void-lead agents                  5.258 ms ->     1.227 ms   76.66% less
+  four separate construct calls          4.244 ms ->     4.307 ms   -1.48% less
+  decision payload digests identical: True

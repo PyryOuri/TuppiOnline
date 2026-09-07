@@ -413,8 +413,16 @@ def _frozen_policy_specification(policy_key: str) -> AgentSpecification:
         raise SearchConfigurationError(f"unknown frozen rollout policy {policy_key!r}") from exc
 
 
-def _build_non_root_agents(*, configuration: RootInfoUctConfiguration, root_seat: int) -> tuple[object | None, ...]:
-    specification = _frozen_policy_specification(configuration.rollout_policy_key)
+def _build_non_root_agents(
+    *, specification: AgentSpecification, root_seat: int
+) -> tuple[object | None, ...]:
+    """Fresh runtime agents for every non-root seat of one simulation.
+
+    The immutable specification is resolved once per decision and passed in;
+    the runtime objects themselves are never shared between seats or
+    simulations.
+    """
+
     return tuple(
         None if seat == root_seat else construct_agent(specification, seat=seat)
         for seat in range(4)
@@ -438,8 +446,11 @@ def _run_simulation_authoritative(
     root_seat: int,
     tree: RootInfoUctTree,
     configuration: RootInfoUctConfiguration,
+    rollout_specification: AgentSpecification,
 ) -> float:
-    agents = _build_non_root_agents(configuration=configuration, root_seat=root_seat)
+    agents = _build_non_root_agents(
+        specification=rollout_specification, root_seat=root_seat
+    )
     path: list[tuple[UctInformationNode, str]] = []
     keys: list[str] = []
     actions_simulated = 0
@@ -510,10 +521,13 @@ def _run_simulation_fast(
     root_seat: int,
     tree: RootInfoUctTree,
     configuration: RootInfoUctConfiguration,
+    rollout_specification: AgentSpecification,
 ) -> float:
     """Run one simulation on the validated search-local trick state."""
 
-    agents = _build_non_root_agents(configuration=configuration, root_seat=root_seat)
+    agents = _build_non_root_agents(
+        specification=rollout_specification, root_seat=root_seat
+    )
     path: list[tuple[UctInformationNode, str]] = []
     keys: list[str] = []
     actions_simulated = 0
@@ -672,6 +686,11 @@ def decide(
         ) from exc
 
     tree = RootInfoUctTree()
+    # The fixed rollout policy is content-addressed metadata: resolve it once
+    # per decision instead of rebuilding the catalogue for every simulation.
+    rollout_specification = _frozen_policy_specification(
+        configuration.rollout_policy_key
+    )
     completed = 0
     for assignment in assignments:
         try:
@@ -696,6 +715,7 @@ def decide(
                     root_seat=root_seat,
                     tree=tree,
                     configuration=configuration,
+                    rollout_specification=rollout_specification,
                 )
             else:
                 _run_simulation_authoritative(
@@ -703,6 +723,7 @@ def decide(
                     root_seat=root_seat,
                     tree=tree,
                     configuration=configuration,
+                    rollout_specification=rollout_specification,
                 )
         except RootInfoUctDecisionError:
             raise
@@ -764,7 +785,7 @@ def decide(
         rollout_policy_ids=tuple(
             "root_information_set_tree_v1"
             if seat == root_seat
-            else _frozen_policy_specification(configuration.rollout_policy_key).agent_id
+            else rollout_specification.agent_id
             for seat in range(4)
         ),
         showing_delegated=False,
