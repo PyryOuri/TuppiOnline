@@ -1,8 +1,13 @@
 # Running the corpus on the Fedora host
 
 The operational half of `docs/database/phase7_charter.md`, for the primary
-generation host of decision D6: **Intel i7-6700K, 4 physical cores / 4 threads,
-48 GB RAM, fast SSD, GTX 1070, no wall-clock limit.**
+generation host of decision D6: **Intel i7-6700K, 4 cores / 8 threads, 31.3 GB
+RAM, fast SSD, Fedora 44, CPython 3.14.7, GTX 1070, no wall-clock limit.**
+
+**Calibrated 2026-09-08 (work package P1: done).** The gate passed - identical
+play over 8 255 checkpoints - and the box measured **0.53x the dev Mac per core**
+and **138.4 deals/s on 8 workers**, putting 10M deals at **20.1 hours**. §0's
+expectations below have been replaced with those measurements.
 
 **There is a second machine, and for generation it is the better one.** The M3
 Max MacBook Pro (14 cores, 36 GB, no CUDA) ran the T0 pilot at a measured **556
@@ -62,12 +67,14 @@ PYTHONPATH=src python3 work/phase7_planning/calibrate.py
 A venv with `.[dev]` is needed only to run the *test suite* (§1), which is
 optional for P1.
 
-**One expected difference on Fedora.** Fedora ships Python 3.13, which has no
-`compression.zstd` (that arrived in 3.14), so shard compression falls back to
-zlib and `bytes per deal` will read about **72 instead of 70**. That is not a
-defect and it does not affect reproducibility: the shard digest deliberately
-covers the *uncompressed* payload, so a shard written under either codec
-verifies against the same digest.
+**A predicted difference that did not occur.** This section expected Fedora to
+ship Python 3.13, which has no `compression.zstd`, and warned that shards would
+fall back to zlib at about 72 bytes per deal. The box runs **CPython 3.14.7**,
+newer than the development machine, so zstd is present and bytes per deal
+measured **68.3** against the Mac's 68.6. The fallback path is still there and
+still correct - the shard digest deliberately covers the *uncompressed* payload,
+so a shard written under either codec verifies against the same digest - it just
+never engages here.
 
 ### 0.3 The one command
 
@@ -103,12 +110,18 @@ for using it at all.
 Reference values, measured on the development machine (M3 Max, CPython 3.14.2,
 mean of two runs) **by this same script**:
 
-| Measurement | dev Mac | expected on the 6700K |
-| --- | ---: | --- |
-| authoritative engine | 415 actions/s | ~150-200 |
-| trusted mode | 3 497 actions/s, 64.0 deals/s | ~1 200-1 750, ~22-32 deals/s |
-| trusted speedup | 8.4x | should hold - it is a work reduction, not a hardware effect |
-| parallel, per worker | 43.2 deals/s | ~15-22 |
+| Measurement | dev Mac | expected | **measured on the 6700K** |
+| --- | ---: | --- | ---: |
+| authoritative engine | 415 actions/s | ~150-200 | **251.6** |
+| trusted mode | 3 497 actions/s | ~1 200-1 750 | **1 843.1** |
+| trusted mode | 64.0 deals/s | ~22-32 | **33.7** |
+| trusted speedup | 8.4x | should hold | **7.3x** |
+| parallel, per worker | 43.2 deals/s | ~15-22 | **17.3** |
+| 10M deals | ~5.2 h | ~37 h | **20.1 h** |
+
+Every expectation held or was beaten. The speedup came in at 7.3x rather than
+8.4x, consistent with this host showing a smaller within-match cost growth
+(+41% against the Mac's +75%): less history cost to elide means less to gain.
 
 Do not compare against the standalone benchmark scripts in the same directory:
 they use different stream seeds, and because the elided validation cost is
@@ -125,10 +138,12 @@ free -g | head -2
 df -h /var/lib
 ```
 
-**Hyper-threading.** The 6700K is a 4-core/8-thread part and the host reports 4
-threads, so HT appears to be off. This workload is memory-latency-bound and
-usually gains 15-30% from it. If it can be enabled in the firmware, re-run with
-`--workers 8` and compare; it is free throughput if it holds up.
+**Hyper-threading: measured, and nearly worthless here.** It is *on* - the host
+reports 8 usable CPUs, not the 4 recorded in D6. But per-worker throughput
+halves under it: 17.3 deals/s against 33.7 single-core. Eight threads give
+138.4 deals/s where four physical cores at full speed would give 134.8, a gain
+of about **+3%**. The 15-30% this section used to expect did not materialise.
+Use 8 workers if you like, but do not plan around the difference.
 
 ---
 

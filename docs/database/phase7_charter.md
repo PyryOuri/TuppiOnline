@@ -27,7 +27,7 @@ time and expensive to revisit.
 | **D3** | **E1a.** The fast path is a `trusted` transition mode inside the authoritative engine, gated by E1b's differential harness. | No second state machine. The engine gains a path that skips its own invariants, so the differential gate and the in-run revalidation sample are load-bearing, not optional. |
 | **D4** | **The reference policy is `partner_aware_lead_v2`**, and both it and `partner_aware_discard_v3` are committed and given content-addressed identities. | B1 unblocked. `discard_v3` is committed and registered but is *not* the reference: it enters the corpus through the population stratum, so the corpus can later settle whether it should be promoted. See §6.5 B1. |
 | **D5** | **10M deals, and the regeneration recipe is a first-class artifact.** T4 (100M) is dropped rather than deferred. | §7.2's T1-T3 stand; T4 is removed. The recipe - manifest, seeds, code identity, and a one-command rebuild - is specified as a deliverable in its own right (§4.2). |
-| **D6** | **Two hosts**: the Fedora box (Intel i7-6700K, 4 physical cores / 4 threads, 48 GB, GTX 1070, no wall-clock limit) is primary; an **M3 Max MacBook Pro (14 cores, 36 GB, no CUDA) is available as a backup**. | §7.1 now gives both. The Mac is a measured ~7x faster generator and the only CUDA device is on the slower box, so the natural split is **generate on the Mac, train on the 1070** - which also drops T1 from ~37 h to ~5 h and makes P5 an optimisation rather than a gate. |
+| **D6** | **Two hosts**: the Fedora box (Intel i7-6700K, **4 cores / 8 threads**, **31.3 GB**, Fedora 44, CPython 3.14.7, GTX 1070, no wall-clock limit) is primary; an **M3 Max MacBook Pro (14 cores, 36 GB, no CUDA) is available as a backup**. Measured on 2026-09-08 by `work/phase7_planning/calibrate.py`; hyper-threading is **on** and memory is 31.3 GB, both differing from what was reported when D6 was taken. | §7.1 now gives both. The Mac is a measured ~7x faster generator and the only CUDA device is on the slower box, so the natural split is **generate on the Mac, train on the 1070** - which also drops T1 from ~37 h to ~5 h and makes P5 an optimisation rather than a gate. |
 
 | **D7** | **The external review's argument is adopted.** The first programme is a tightly scoped **showing intervention** measured against an executable continuation - not a belief network, not a value network, and not a larger imitation corpus. **T1 is deferred.** | This supersedes the §8 ordering of P6 and P9-P12 and the §2 ordering of N1-N4. See `work/phase7_planning/nn_architecture_review.md` for the argument, `..._review_checks.md` for what was verified, and `docs/showing/` for the programme that replaces them. The corpus layer, the trusted mode and the identities all stand; what changes is that the corpus is now generated **to order for a specific experiment** rather than in bulk first. |
 
@@ -724,64 +724,68 @@ Two hosts are available (D6), with opposite strengths:
 | | **Fedora box** (primary) | **MacBook Pro** (backup) |
 | --- | --- | --- |
 | CPU | Intel i7-6700K, Skylake 2015 | Apple M3 Max |
-| cores | 4 physical / 4 threads | **14 (10 performance + 4 efficiency)** |
-| memory | 48 GB | 36 GB unified |
+| cores | **4 physical / 8 threads** (HT on) | 14 (10 performance + 4 efficiency) |
+| memory | **31.3 GB** | 36 GB unified |
+| OS / Python | Fedora 44, CPython 3.14.7 | macOS 26.6, CPython 3.14.2 |
 | GPU | **GTX 1070**, 8 GB, sm_61 | Metal / MPS only, **no CUDA** |
 | wall clock | unlimited | it is somebody's laptop |
 
-**Generation on the Mac is measured, not assumed: 556 deals/s on 12 workers**
-(46 per worker, near-linear to 12), so **10M deals is ~5 hours there** against
-~37 hours on the Fedora box. Since the only CUDA device is on the slower
-machine, the natural split for a supervised programme is **generate on the Mac,
-train on the 1070**, and P5's optimisation work stops being a gate on P6.
+**Both hosts are now measured** (`work/phase7_planning/calibrate.py`, 2026-09-08).
+The assumption band this section used to carry is gone.
 
-That split is awkward only if a network ends up inside the generation loop - the
-14-core machine cannot run CUDA and the CUDA machine has 4 cores. Note also that
-Phase 6 recorded **MPS as built but unavailable** on the Mac, so treat Metal
-acceleration as unverified and the Mac as a fast CPU machine.
+| | Fedora box | dev Mac | ratio |
+| --- | ---: | ---: | ---: |
+| authoritative engine | 251.6 act/s | 415.0 | 0.61x |
+| trusted mode | 1 843.1 act/s | 3 497.0 | 0.53x |
+| trusted mode | **33.7 deals/s** | 64.0 | 0.53x |
+| trusted speedup | 7.3x | 8.4x | 0.87x |
+| parallel, all threads | **138.4 deals/s** (8 workers) | 534.7 (12 workers) | 0.26x |
+| parallel, per worker | 17.3 deals/s | 43.2 | 0.40x |
+| bytes per deal | 68.3 | 68.6 | - |
+| **10M deals** | **20.1 h** | ~5.2 h | - |
 
-The rest of this section sizes the **Fedora** box, which is the host that has no
-wall-clock limit and is therefore the one T1 should be planned against.
+**The correctness gate passed on the Fedora box**: identical play over 8 255
+checkpoints. Generation there is valid.
 
-Measured per-core trusted-mode rate with the **reference** policy is 47.3
-deals/s on an M3 Max (§1.3). A 6700K is a 2015 Skylake part, and this workload is
-branchy, allocation-heavy, pointer-chasing Python - the profile that scales worst
-across a decade of single-thread improvement. **Assume 0.35-0.50x per core:
-16.6-23.7 deals/s, taken as 20 below.** This is an assumption, and P1 replaces
-it with a measurement.
+Four things came out differently than assumed, and three of them matter:
 
-The full mixture is also slower than plain self-play, because the softened and
-forced strata request the policy's whole ranking rather than just its choice.
-The T0 pilot measured **44 deals/s per worker on the Mac** against 47.3 for
-self-play, so the mixture costs about 7%.
+1. **The box is faster per core than assumed** - 0.53x the Mac rather than the
+   0.35-0.50x band this section guessed. T1 is **20.1 hours**, not ~37.
+2. **Hyper-threading is on, and it is worth almost nothing here.** The host
+   reports 8 usable CPUs, not the 4 D6 recorded. But per-worker throughput
+   halves under it: 17.3 deals/s against 33.7 single-core. Eight threads deliver
+   138.4 deals/s where four physical cores at full speed would give 134.8 - a
+   gain of about **+3%**, not the 15-30% the runbook expected. Do not plan
+   around it.
+3. **Memory is 31.3 GB, not 48.** Irrelevant at these corpus sizes - T1 is
+   0.68 GB - but it changes the headroom for in-RAM tensor materialisation.
+4. It runs **CPython 3.14.7**, newer than the development machine's 3.14.2, so
+   `compression.zstd` is present and the zlib fallback never engages. Bytes per
+   deal matches the Mac to within 0.4%.
 
-| Workers | deals/s | deals/day | 10M deals |
-| ---: | ---: | ---: | ---: |
-| 3 (one core left to the OS) | 56 | 4.8M | **~50 h** |
-| 4 (fully committed) | 74 | 6.4M | **~37 h** |
-| 4, with exact endgame labels | 53 | 4.6M | **~52 h** |
+**What this now prices.** Under decision D7 the 10M-deal T1 run is deferred, so
+these rates matter less as a corpus calendar and more as the cost of the
+*targeted* rollouts the showing programme needs:
 
-So T1 is a **one-and-a-half to two day run**, not the ten hours an eight-core box
-would give. With no wall-clock limit that is acceptable, and nothing in §5.2 or
-§7.2 has to be traded away to fit it. But it changes the value of §6's
-optimisation work sharply: **E2 (~35% of the trusted path), E3 (~27%) and the E5
-PyPy measurement are the difference between ~37 hours and plausibly under 12**,
-so P5 should be finished before P6 rather than treated as an optional follow-up.
+| Workload | Fedora | dev Mac |
+| --- | ---: | ---: |
+| S1, 131 072 rollouts (`docs/showing/hypotheses_s1.md`) | **16 min** | 4 min |
+| S2 training set, ~440 000 rollouts | 53 min | 14 min |
+| 1M rollouts | 2.0 h | 31 min |
+
+Every experiment in the adopted programme is a coffee break on either machine.
+That is the strongest argument for the review's ordering: the whole first
+programme costs less than one T1 shard.
 
 Operational notes:
 
-- **Hyper-threading.** The 6700K is a 4-core/8-thread part, and the host is
-  reported as 4 threads, so HT appears to be disabled. This workload is
-  memory-latency-bound and typically gains 15-30% from HT. If it can be enabled,
-  measure 4 workers against 8 in P1; it is free throughput if it holds up.
-- One worker per hardware thread, `OMP_NUM_THREADS=1` in each (no BLAS work, so
-  oversubscription only hurts).
-- The GPU is **idle during generation**, which is 100% CPU-bound pure Python.
-- 48 GB RAM means the entire T1 corpus (~2 GB) sits in page cache, and derived
-  tensor materialisations can be held in RAM outright.
-- Sustained all-core load for one to two days: confirm the 6700K is holding its
-  all-core turbo and not thermally throttling into a much lower table.
-- Disk is a non-issue at these sizes.
+- One worker per hardware thread gave the best total throughput, but note item 2
+  before assuming that is worth the contention.
+- `OMP_NUM_THREADS=1` in each worker; there is no BLAS work.
+- The GPU is idle during generation.
+- Sustained load: the box showed a +41% per-action cost rise within a match
+  (3.381 -> 4.768 ms/action), close to the Mac's +75% pattern, confirming the
+  quadratic history term is a property of the code and not of the host.
 
 ### 7.2 Sizing recommendation
 
@@ -842,7 +846,7 @@ splits disjoint, and DuckDB returning the expected counts. Only then launch T1.
 | # | Package | Depends on | Output |
 | --- | --- | --- | --- |
 | **P0** | **B1**: pin, register, and commit the reference policy stack | - | **done** - `partner_aware_lead_v2` = `agent:sha256:252fe227...`, `discard_v3` = `agent:sha256:4b52fd90...` |
-| **P1** | Calibrate `work/phase7_planning/` on the Fedora host; confirm cores, RAM, disk, PyTorch/Pascal status | - | **next** - see `docs/database/fedora_runbook.md` §0 |
+| **P1** | Calibrate the Fedora host | - | **done 2026-09-08** - gate passed, 0.53x per core, 138.4 deals/s on 8 workers, 10M deals = 20.1 h. PyTorch/Pascal status still unchecked |
 | **P2** | Implement the D2 forced-branch showing stratum (both thresholds) | P0 | **done** - `forced_contract_pair`, ~8.4% of deals |
 | **P3** | **E1** trusted transition path plus differential gate | - | **done** - `tuppi_engine.trusted`, 11.1x, byte-identical |
 | **P4** | Corpus schema, writer, catalogue, integrity and privacy tests | P3 | **done** - `tuppi_corpus`, T0 pilot 141 601 deals, gates green. Parquet export not built |
