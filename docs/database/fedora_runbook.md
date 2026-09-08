@@ -24,28 +24,98 @@ The charter's throughput table is an *assumption* - that a 6700K core delivers
 0.35-0.50x of the M3 Max core the measurements were taken on. Replace it with a
 measurement first, because everything downstream is sized from it.
 
-```bash
-cd /path/to/TuppiProject
-python -m venv ~/.venvs/tuppi && ~/.venvs/tuppi/bin/pip install -e '.[dev]'
+### 0.1 Getting the code there
 
-PYTHONPATH=src ~/.venvs/tuppi/bin/python work/phase7_planning/bench_authoritative.py 20
-PYTHONPATH=src ~/.venvs/tuppi/bin/python work/phase7_planning/bench_history_growth.py
-PYTHONPATH=src ~/.venvs/tuppi/bin/python work/phase7_planning/bench_fastpath_gate.py 6
-PYTHONPATH=src ~/.venvs/tuppi/bin/python work/phase7_planning/bench_match_length.py 200
+The repository's own idiom for moving between machines is a **git bundle**
+(`origin` is one). A bundle of the Phase 7 branch is self-contained - verified
+by cloning it into an empty directory and running the calibration from the clone
+alone, 742 tracked files, nothing else needed:
+
+```bash
+# on the development machine
+git bundle create ~/Developer/tuppi-phase7-calibrate.bundle \
+  phase7/reference-policy-identity
+git bundle verify ~/Developer/tuppi-phase7-calibrate.bundle   # "complete history"
 ```
 
-Reference values from the development Mac (M3 Max, CPython 3.14.2, one core):
+Copy that one ~2.4 MB file across by any means (`scp`, USB, whatever), then:
 
-| Measurement | Mac | Expect on the 6700K |
+```bash
+# on the Fedora box
+git clone -b phase7/reference-policy-identity \
+  /path/to/tuppi-phase7-calibrate.bundle TuppiProject
+cd TuppiProject
+```
+
+### 0.2 There is nothing to install
+
+**Calibration needs only CPython 3.11-3.14 and the standard library.** Every
+import in `tuppi_rules`, `tuppi_engine`, `tuppi_agents`, `tuppi_match` and
+`tuppi_corpus` is stdlib - the project declares `dependencies = []` and means it.
+No virtualenv, no pip, no compiler:
+
+```bash
+python3 --version          # 3.11 <= x < 3.15
+PYTHONPATH=src python3 work/phase7_planning/calibrate.py
+```
+
+A venv with `.[dev]` is needed only to run the *test suite* (§1), which is
+optional for P1.
+
+**One expected difference on Fedora.** Fedora ships Python 3.13, which has no
+`compression.zstd` (that arrived in 3.14), so shard compression falls back to
+zlib and `bytes per deal` will read about **72 instead of 70**. That is not a
+defect and it does not affect reproducibility: the shard digest deliberately
+covers the *uncompressed* payload, so a shard written under either codec
+verifies against the same digest.
+
+### 0.3 The one command
+
+```bash
+PYTHONPATH=src python3 work/phase7_planning/calibrate.py
+```
+
+About six minutes. `--quick` shrinks the match-length sample and the pilot;
+`--workers N` overrides the worker count; `--json out.json` also writes machine-
+readable results. It writes nothing outside a temporary directory.
+
+It reports five things, in order:
+
+1. **the correctness gate** - trusted play must equal authoritative play on this
+   host, compared over ~8 000 checkpoints;
+2. **single-core throughput**, as a ratio against the development machine;
+3. the **per-action cost growth** within a match (the quadratic term);
+4. **match length** (a property of the rules, not the host - informational);
+5. **parallel generation throughput**, which is the number that actually predicts
+   T1, and a projected T1 wall time.
+
+**The gate is the only part that can fail.** If it prints
+
+```
+   *** GATE FAILED. Do not generate a corpus on this host. ***
+```
+
+then stop. The trusted engine path diverged from the authoritative one on this
+machine, generation here would produce silently wrong deals, and no other number
+in the report matters. That check is the condition `tuppi_engine.trusted` states
+for using it at all.
+
+Reference values, measured on the development machine (M3 Max, CPython 3.14.2,
+mean of two runs) **by this same script**:
+
+| Measurement | dev Mac | expected on the 6700K |
 | --- | ---: | --- |
-| authoritative engine | 278 actions/s | 100-140 actions/s |
-| trusted mode, `partner_aware_lead_v2` | 2 588 actions/s, 47.3 deals/s | 17-24 deals/s |
-| speedup | 11.1x | should hold - it is a work reduction, not a hardware effect |
-| deals per match | mean 33.1, median 22, p99 156 | identical; it is a property of the rules |
+| authoritative engine | 415 actions/s | ~150-200 |
+| trusted mode | 3 497 actions/s, 64.0 deals/s | ~1 200-1 750, ~22-32 deals/s |
+| trusted speedup | 8.4x | should hold - it is a work reduction, not a hardware effect |
+| parallel, per worker | 43.2 deals/s | ~15-22 |
 
-**The gate is `bench_fastpath_gate.py`**: it must print `identical play: True`.
-That is the differential check the trusted mode owes its callers, and a
-`False` on this host means stop and investigate rather than proceed.
+Do not compare against the standalone benchmark scripts in the same directory:
+they use different stream seeds, and because the elided validation cost is
+O(match history), the speedup is a function of how long the sampled matches
+happen to run. Those draw longer matches and report 11.1x; this script's fixed
+workload draws shorter ones and reports ~8.4x. Both are correct for their own
+workload, which is why the reference numbers must come from this script.
 
 Also record, because the charter's calendar depends on them:
 
@@ -53,14 +123,12 @@ Also record, because the charter's calendar depends on them:
 nproc; lscpu | grep -E 'Model name|Thread|Core'
 free -g | head -2
 df -h /var/lib
-python -c "import sys; print(sys.version)"
 ```
 
 **Hyper-threading.** The 6700K is a 4-core/8-thread part and the host reports 4
 threads, so HT appears to be off. This workload is memory-latency-bound and
-usually gains 15-30% from it. If it can be enabled in the firmware, measure 4
-workers against 8 (§2) before committing to a setting - it is free throughput if
-it holds up.
+usually gains 15-30% from it. If it can be enabled in the firmware, re-run with
+`--workers 8` and compare; it is free throughput if it holds up.
 
 ---
 
