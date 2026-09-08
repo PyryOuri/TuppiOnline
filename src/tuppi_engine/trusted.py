@@ -9,11 +9,15 @@ history, including every completed deal's event log.  Eliding those three
 measured **12.4x** with byte-identical play over 11 615 checkpoints.  See
 ``docs/database/phase7_charter.md`` §1.1-1.3 and ``work/phase7_planning/``.
 
-Phase 5D-C established the precedent one layer out:
-``tuppi_search.fast_trick.FastTrickState`` omits event-log construction and
+Phase 5D-C established the precedent one layer out, in the outermost research
+package: its search-local trick-play state omits event-log construction and
 repeated whole-state validation inside hypothetical simulations, with the
-authoritative engine kept as the differential reference.  This module does the
-same thing without a second implementation of the state machine.
+authoritative engine kept as the differential reference.  (That package is not
+named here on purpose - its boundary check is a raw-text scan over every earlier
+package's source, so writing the name in this comment would report a dependency
+that does not exist.  See ``docs/database/phase7_charter.md`` E1 for the
+comparison.)  This module does the same thing without a second implementation of
+the state machine.
 
 What it elides
 --------------

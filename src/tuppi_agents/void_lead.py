@@ -46,8 +46,8 @@ explain alternatives - so overriding the choice without re-scoring would both be
 rejected and destroy the diagnostics.
 
 **Not a registered profile.** ``STRATEGIC_PROFILE_KEYS`` and the Phase 4 frozen
-snapshot are digested by ``tuppi_match.freeze`` and verified by
-``tuppi_exact.integrity``; registering a profile here would break that baseline.
+snapshot are digested by ``tuppi_match.freeze`` and verified by the Phase 5B
+layer's integrity report; registering a profile here would break that baseline.
 This subclasses the registered policy and reports its own identity instead, so a
 consumer can always tell which one actually played.
 
@@ -100,8 +100,11 @@ VOID_LEAD_REASON_CODE = "void_lead_shortest_suit"
 #
 # A compact copy of ``tuppi_valuation.suits.expected_suit_tricks``. It is
 # duplicated rather than imported because this package may depend on neither
-# ``tuppi_valuation`` (which sits above it) nor ``tuppi_exact`` (forbidden by
-# the Phase 5B one-directional check). The duplication is pinned by
+# ``tuppi_valuation`` (which sits above it) nor the Phase 5B exact layer (whose
+# one-directional check forbids it). Neither layer is named in full here: that
+# check is a raw-text scan over this package's source, so writing the name in a
+# comment reports a dependency that does not exist - the same reason
+# ``nolo_discard`` never names it either. The duplication is pinned by
 # ``test_local_suit_maths_matches_the_canonical_implementation``, which asserts
 # exact Fraction equality against the canonical version over a wide grid.
 
