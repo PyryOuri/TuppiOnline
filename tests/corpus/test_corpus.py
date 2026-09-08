@@ -52,6 +52,7 @@ from tuppi_corpus.replay import replay_deal, verify_deal
 from tuppi_corpus.shards import read_shard, shard_name, write_shard
 from tuppi_corpus.strata import (
     DEFAULT_HELDOUT_POLICY_SETS,
+    PAIR_DEALS_PER_STREAM,
     DEFAULT_MIXTURE,
     DEFAULT_POLICY_SETS,
     DEFAULT_SCORE_SCHEDULE,
@@ -69,7 +70,7 @@ from tuppi_engine import EnginePhase, match_observation_for
 from tuppi_engine.serialization import action_to_data, observation_to_data
 from tuppi_agents.improved_registry import improved_agents_for_seats
 from tuppi_match.streams import MatchStream
-from tuppi_rules import MatchScore
+from tuppi_rules import Contract, MatchScore
 from tuppi_rules.cards import card_to_index
 
 
@@ -400,28 +401,67 @@ def test_the_realised_mixture_tracks_the_requested_one() -> None:
         assert abs(got - asked) < 0.03, f"{name}: asked {asked:.3f}, got {got:.3f}"
 
 
-def test_paired_strata_produce_two_arms_from_one_deal() -> None:
+def test_paired_strata_produce_many_pairs_of_single_deals() -> None:
+    """A pair is (stream, deal_number): one deal played twice from one state.
+
+    Each arm must contribute the same deals in the same order, because the two
+    arms only constitute a pair while they share a prior state - which is why a
+    paired stream plays independent single deals rather than a match.
+    """
+
     manifest = build_manifest()
-    found = 0
+    diverged = 0
+    checked_streams = 0
     for index in range(400):
         plan = plan_stream(manifest, index)
         if plan.stratum_name != "forced_contract_pair":
             continue
         units = generate_stream(manifest, index)
         assert len(units) == 2
-        assert all(len(unit.deals) == 1 for unit in units)
-        left, right = (unit.deals[0] for unit in units)
-        # Identical deal, identical prior context, divergent forced action.
-        assert left.hands == right.hands
-        assert left.score_before == right.score_before
-        assert left.dealer == right.dealer
-        assert {left.stratum_detail, right.stratum_detail} == {0, 1}
-        if left.flags & FLAG_FORCED_CONTRACT and right.flags & FLAG_FORCED_CONTRACT:
-            assert left.contract is not right.contract
-            found += 1
-        if found >= 2:
+        left_arm, right_arm = units
+        assert len(left_arm.deals) == len(right_arm.deals) == PAIR_DEALS_PER_STREAM
+        assert PAIR_DEALS_PER_STREAM > 1, (
+            "one pair per stream would make the mixture weights meaningless in "
+            "deals, which is the unit that matters"
+        )
+        for left, right in zip(left_arm.deals, right_arm.deals):
+            # Identical prior state, divergent forced action.
+            assert left.deal_number == right.deal_number
+            assert left.hands == right.hands
+            assert left.score_before == right.score_before == plan.initial_score
+            assert left.dealer == right.dealer
+            assert (left.stratum_detail, right.stratum_detail) == (0, 1)
+            if left.flags & FLAG_FORCED_CONTRACT and right.flags & FLAG_FORCED_CONTRACT:
+                # The forced action is the *declaration*, not the deal's
+                # resulting contract. A forced NOLO passes showing on, and a
+                # later seat may still declare RAMI - which is exactly the value
+                # of choosing NOLO now, and is why the counterfactual is priced
+                # on the outcome rather than on the contract label.
+                assert left.shows[0][1] is Contract.RAMI
+                assert right.shows[0][1] is Contract.NOLO
+                assert left.branch_ply == right.branch_ply == 0
+                diverged += 1
+        # Every deal of a paired stream starts from the same score, so no arm
+        # can drift: that is the property being protected.
+        assert len({deal.score_before for deal in left_arm.deals}) == 1
+        checked_streams += 1
+        if checked_streams >= 2:
             break
-    assert found >= 1, "no forced-contract pair diverged; the branch never fired"
+    assert checked_streams >= 1
+    assert diverged >= PAIR_DEALS_PER_STREAM, "the forced-contract branch rarely fired"
+
+
+def test_paired_deals_are_replayable_like_any_other() -> None:
+    manifest = build_manifest()
+    for index in range(400):
+        plan = plan_stream(manifest, index)
+        if plan.stratum_name != "forced_play_pair":
+            continue
+        for unit in generate_stream(manifest, index):
+            for deal in unit.deals[:3]:
+                verify_deal(deal)
+        return
+    pytest.fail("no forced-play stream was found in the sampled range")
 
 
 def test_the_softened_stratum_actually_moves_some_decisions() -> None:

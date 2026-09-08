@@ -94,6 +94,17 @@ DEFAULT_HELDOUT_POLICY_SETS = 2
 #: scores. A horizon at the safety cap would miss most streams entirely.
 EPSILON_DEAL_HORIZON = 12
 
+#: How many independent pairs one forced-branch stream contributes.
+#:
+#: A pair is a *single deal* played twice, because the two arms must share an
+#: identical prior state and they stop sharing one the moment a score diverges.
+#: One pair per stream would make the mixture weights meaningless in the unit
+#: that matters: the T0 pilot gave the forced strata 25% of *matches* but only
+#: 1.2% of *deals*, since every other stratum contributes ~22 deals per stream
+#: and a single-deal unit contributes one. Twelve pairs per stream brings their
+#: deal share into line with their requested stream share.
+PAIR_DEALS_PER_STREAM = 12
+
 #: Ordinary matches start level; the score-stratified stratum starts elsewhere,
 #: including the region where ``match_aware_v1`` measured *worse* than the rung
 #: below it and which play from 0-0 barely reaches.
@@ -224,10 +235,12 @@ def plan_stream(manifest, stream_index: int) -> StreamPlan:
         branch_deal = uniform_below(branch_seed, min(EPSILON_DEAL_HORIZON, deal_cap))
         branch_target = uniform_below(branch_seed, 52, stride=1)
     elif branch_kind in (BRANCH_FORCED_CONTRACT, BRANCH_FORCED_PLAY):
-        # One deal, two arms, identical prior state: the design the RAMI/NOLO
-        # threshold experiment and the valuation A/B work both used, and the
-        # unit their statistics are computed over.
-        deal_cap = 1
+        # Independent single deals, each played twice: two arms sharing an
+        # identical prior state, which is the design the RAMI/NOLO threshold
+        # experiment and the valuation A/B work both used and the unit their
+        # statistics are computed over. A pair is identified by
+        # (stream_index, deal_number); the arm is the deal's stratum_detail.
+        deal_cap = PAIR_DEALS_PER_STREAM
         arms = (0, 1)
         pair_id = stream_index
         if branch_kind == BRANCH_FORCED_PLAY:
@@ -316,6 +329,7 @@ __all__ = [
     "DEFAULT_SCORE_SCHEDULE",
     "DEFAULT_STRATIFIED_SCORE_SCHEDULE",
     "EPSILON_DEAL_HORIZON",
+    "PAIR_DEALS_PER_STREAM",
     "SPLIT_HELDOUT",
     "SPLIT_NAMES",
     "SPLIT_TRAIN",

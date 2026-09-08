@@ -152,6 +152,8 @@ def generate_stream(manifest, stream_index: int) -> tuple[GeneratedUnit, ...]:
 
 
 def _generate_arm(manifest, plan: StreamPlan, arm: int) -> GeneratedUnit:
+    if plan.is_paired:
+        return _generate_paired_arm(manifest, plan, arm)
     stream = MatchStream.build(
         root_seed=manifest.root_seed,
         stream_index=plan.stream_index,
@@ -315,6 +317,110 @@ def _generate_arm(manifest, plan: StreamPlan, arm: int) -> GeneratedUnit:
         deals_played=len(deals),
         winner_team=winner,
         termination=termination,
+        stratum=plan.stratum_index,
+        policy_set=plan.policy_set_index,
+        split=plan.split,
+        pair_id=None if plan.pair_id is None else plan.pair_id * 2 + arm,
+        first_deal_row=0,
+    )
+    return GeneratedUnit(match=match, deals=tuple(deals))
+
+
+def _generate_paired_arm(manifest, plan: StreamPlan, arm: int) -> GeneratedUnit:
+    """Independent single deals, each forced, so both arms share a prior state.
+
+    Not a match: a match's second deal would start from a score the first deal's
+    forced action had already moved, and the two arms would no longer be a pair.
+    Each deal therefore starts fresh from the scheduled score, and a pair is
+    ``(stream_index, deal_number)``.
+    """
+
+    stream = MatchStream.build(
+        root_seed=manifest.root_seed,
+        stream_index=plan.stream_index,
+        initial_dealer=plan.initial_dealer,
+    )
+    table = construct_table(manifest, plan.policy_set_index)
+    deals: list[DealRecord] = []
+
+    with trusted_transitions():
+        for ordinal in range(plan.deal_cap):
+            state = create_match(
+                initial_score=MatchScore(*plan.initial_score),
+                initial_dealer=plan.initial_dealer,
+                match_ref=match_ref_for(plan, arm),
+            )
+            dealt = stream.deal(ordinal).explicit_deal(state.dealer)
+            hands = canonical_hands(dealt.hands)
+            state = begin_explicit_deal(
+                state, ExplicitDeal(dealer=dealt.dealer, hands=hands)
+            )
+            shows: list[tuple] = []
+            plays: list = []
+            trick_ply = 0
+            flags = 0
+            branch_ply: int | None = None
+            branched = False
+
+            while state.phase in (EnginePhase.SHOWING, EnginePhase.TRICK_PLAY):
+                actor = state.current_actor
+                observation = match_observation_for(state, actor)
+                policy = table[actor]
+                showing = state.phase is EnginePhase.SHOWING
+                ply = len(shows) + trick_ply
+
+                action = None
+                if not branched and plan.branch_kind == BRANCH_FORCED_CONTRACT:
+                    if showing and not shows:
+                        wanted = Contract.RAMI if arm == 0 else Contract.NOLO
+                        action = _forced_contract_action(policy, observation, wanted)
+                        if action is not None:
+                            flags |= FLAG_FORCED_CONTRACT
+                            branch_ply, branched = ply, True
+                elif (
+                    not branched
+                    and plan.branch_kind == BRANCH_FORCED_PLAY
+                    and not showing
+                    and trick_ply == plan.branch_target
+                ):
+                    action = _forced_play_action(policy, observation, arm)
+                    if action is not None:
+                        flags |= FLAG_FORCED_PLAY
+                        branch_ply, branched = ply, True
+
+                if action is None:
+                    action = policy.choose_action(observation)
+                if showing:
+                    shows.append((action.shown_card, action.declared_contract))
+                else:
+                    plays.append(action.card)
+                    trick_ply += 1
+                state = apply_match_action(state, action)
+
+            if ordinal % manifest.revalidation_period == 0:
+                validate_match_state(state)
+                flags |= FLAG_REVALIDATED
+            record = _deal_record(
+                state.completed_deals[-1].public_result,
+                hands=hands,
+                shows=tuple(shows),
+                plays=tuple(plays),
+                flags=flags,
+                branch_ply=branch_ply,
+                arm=arm,
+            )
+            # Each deal is its own fresh match, so the engine numbers them all
+            # zero. The ordinal is what identifies the pair.
+            deals.append(replace(record, deal_number=ordinal))
+
+    match = MatchRecord(
+        stream_index=plan.stream_index,
+        initial_dealer=plan.initial_dealer,
+        initial_score=tuple(plan.initial_score),
+        final_score=tuple(plan.initial_score),
+        deals_played=len(deals),
+        winner_team=None,
+        termination=TERMINATION_FORCED_BRANCH,
         stratum=plan.stratum_index,
         policy_set=plan.policy_set_index,
         split=plan.split,
