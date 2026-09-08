@@ -33,6 +33,7 @@ tuppi-agents = "tuppi_agents.runner:entrypoint"
 tuppi-match = "tuppi_match.runner:entrypoint"
 tuppi-exact = "tuppi_exact.runner:entrypoint"
 tuppi-search = "tuppi_search.runner:entrypoint"
+tuppi-corpus = "tuppi_corpus.runner:entrypoint"
 tuppi-ui-fixtures = "tuppi_ui_fixtures.exporter:main"
 tuppi-server = "tuppi_server.app:main"
 
@@ -324,6 +325,7 @@ testpaths = [
   "tests/match",
   "tests/exact",
   "tests/search",
+  "tests/corpus",
   "tests/belief",
   "tests/learning",
   "tests/ui",
