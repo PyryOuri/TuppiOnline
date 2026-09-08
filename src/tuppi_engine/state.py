@@ -49,6 +49,7 @@ from .events import (
     TrickCompletedPayload,
     TrickStartedPayload,
 )
+from .trusted import is_trusted
 from .validation import (
     expected_deal_ref,
     is_sha256_identifier,
@@ -120,7 +121,11 @@ class DealState:
     events: tuple[PublicEvent, ...]
 
     def __post_init__(self) -> None:
-        _validate_deal_state(self)
+        # Implicit revalidation of a state this engine just produced. Elided
+        # inside ``trusted.trusted_transitions``; see that module for what
+        # stays validated and what the caller takes on in exchange.
+        if not is_trusted():
+            _validate_deal_state(self)
 
     @property
     def terminal(self) -> bool:

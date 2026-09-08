@@ -18,6 +18,10 @@ DOCS = ROOT / "docs" / "agents"
 REQUIRED_DOCS = (
     "architecture.md",
     "baseline_profiles.md",
+    # The two policies that play above the ladder without joining it. Listed
+    # here because the ladder's own documents must stay true, and that is only
+    # checkable if the exception is documented somewhere the check can see.
+    "improved_policies.md",
     "legacy_port.md",
     "phase4_evaluation.md",
     "public_inference.md",

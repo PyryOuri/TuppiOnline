@@ -29,6 +29,7 @@ from .events import PublicEvent
 from .observations import PlayerObservation, _observation_for_validated
 from .results import DealResult, MatchResult, ResearchDealResult
 from .state import DealState, EnginePhase, validate_deal_state
+from .trusted import is_trusted
 from .transitions import _apply_action_validated, research_deal_result_from_state
 from .validation import is_valid_match_ref
 
@@ -47,7 +48,10 @@ class MatchState:
     ruleset_id: RulesetId = field(default=RulesetId.PROJECT_TARGET_V1, init=False)
 
     def __post_init__(self) -> None:
-        _validate_match_state(self)
+        # Implicit revalidation of a state this engine just produced. Elided
+        # inside ``trusted.trusted_transitions``; see that module.
+        if not is_trusted():
+            _validate_match_state(self)
 
     @property
     def current_actor(self) -> int | None:
@@ -124,7 +128,14 @@ def begin_explicit_deal(state: MatchState, explicit_deal: ExplicitDeal) -> Match
 
 
 def apply_match_action(state: MatchState, action: Action) -> MatchState:
-    validate_match_state(state)
+    # The entry revalidation is implicit: the caller is handing back a state
+    # this engine produced. Elided in a trusted block, where the type check is
+    # kept so the error contract for a genuinely wrong argument survives.
+    if is_trusted():
+        if not isinstance(state, MatchState):
+            raise StateInvariantError("state must be a MatchState")
+    else:
+        validate_match_state(state)
     if state.terminal:
         raise TerminalStateError("completed match accepts no actions")
     if state.phase is EnginePhase.DEAL_COMPLETE:
@@ -164,7 +175,11 @@ def apply_match_action(state: MatchState, action: Action) -> MatchState:
 
 
 def match_observation_for(state: MatchState, observing_seat: int) -> PlayerObservation:
-    validate_match_state(state)
+    if is_trusted():
+        if not isinstance(state, MatchState):
+            raise StateInvariantError("state must be a MatchState")
+    else:
+        validate_match_state(state)
     if state.active_deal is None:
         raise WrongPhaseError("there is no active deal to observe")
     # The match validation above revalidated the active deal; the seat check is

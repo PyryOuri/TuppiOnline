@@ -101,7 +101,15 @@ def test_no_policy_module_touches_private_engine_state() -> None:
             if isinstance(node, ast.Attribute) and node.attr in forbidden_attributes:
                 raise AssertionError(f"{path.name} reads engine-private {node.attr!r}")
             if isinstance(node, ast.ImportFrom) and node.module:
-                assert node.module not in ("tuppi_engine.state", "tuppi_engine.match")
+                assert node.module not in (
+                    "tuppi_engine.state",
+                    "tuppi_engine.match",
+                    # A policy must never elide the engine's own invariants:
+                    # tuppi_engine.trusted is a generation device, and a policy
+                    # that entered it would silently disarm every state check
+                    # for whatever ran inside its decision.
+                    "tuppi_engine.trusted",
+                )
 
 
 def test_only_harness_modules_reach_into_the_evaluation_package() -> None:
