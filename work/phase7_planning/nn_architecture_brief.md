@@ -73,7 +73,11 @@ it is public, and it therefore leaks information about the whole 13-card hand
 **Consequence for the action space:** a show action is a (card, contract) pair,
 and because eligibility depends on colour *and* contract, the legal set is
 usually asymmetric between the two contracts. Measured legal show-action counts
-range 2–14 with a mode of 7.
+range 2–14 with a mode of 7, but **the rules bound is 26, not 14**: a hand
+holding no rank 3–9 falls to priority 3 and may show any of its thirteen cards
+under either declaration. Such hands exist — the deck holds 24 cards outside
+ranks 3–9 — and the engine does return 26 legal actions for one. Do not size a
+fixed showing head at 14.
 
 ## 1.3 First leader
 
@@ -381,10 +385,16 @@ predictably lowest; the project owner has confirmed this.
 
 - **Certain:** a discard proves a void (~30% of follower plays generate one);
   cards seen are cards gone.
-- **Robust under rationality, not policy:** a seat that took a trick it *could
-  have ducked* held nothing below the current high card. This fires often — 45%
-  of NOLO follower choices are in the branch where every held card would
-  currently win.
+- **Weaker than it looks, and NOT a hard deduction:** it was previously recorded
+  here that a seat which took a trick it *could have ducked* holds nothing below
+  the current high card, "robust under rationality". **Measured over 1 500 deals,
+  that is violated in 17.4% of the NOLO cases it was meant for** (and 42.8% in
+  RAMI, where taking tricks is the objective). NOLO scores *team* trick totals,
+  so which partner takes an already-conceded trick cannot change the score, and a
+  rational player has reasons to shed a high card into it while holding lower
+  ones. Usable as a soft feature or a training label; **never as a hard ownership
+  mask.** The related fact that does hold: 45% of NOLO follower choices are in
+  the branch where every held card would currently win.
 - **Policy noise, discard it:** which low card someone ducks with; which rank a
   leader chooses.
 
@@ -526,9 +536,15 @@ nice-to-have. Drawn per stream, with realised **deal** shares from the pilot:
 | **forced-play pairs** | 5% | 4.0% | same deal twice, policy's choice vs its runner-up at a sampled ply |
 | score-stratified | 5% | 4.2% | self-play from non-zero starting scores |
 
-Held-out streams draw from **reserved policy sets** not used in training, so
-held-out evaluation is cross-policy by construction. Splits are by stream, never
-by row.
+Held-out streams draw from **reserved policy sets** not used in training, and
+splits are by stream, never by row.
+
+**Be careful how much that buys.** Every member of the population is a
+rule-based policy from the same ladder, sharing the same scoring framework and
+tie-break, and in most cases the same following play. So the reservation gives
+**within-family variation, not genuine cross-policy transfer** — the softened
+stratum is a perturbation of the reference, not a different player. A real
+transfer test needs an opponent family the corpus does not currently contain.
 
 ## 5.4 Labels available per decision
 
