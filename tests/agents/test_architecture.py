@@ -49,6 +49,7 @@ HARNESS_MODULES = frozenset(
         "controls.py",
         "evaluation.py",
         "factory.py",
+        "improved_registry.py",
         "registry.py",
         "runner.py",
     }
