@@ -29,8 +29,31 @@ time and expensive to revisit.
 | **D5** | **10M deals, and the regeneration recipe is a first-class artifact.** T4 (100M) is dropped rather than deferred. | §7.2's T1-T3 stand; T4 is removed. The recipe - manifest, seeds, code identity, and a one-command rebuild - is specified as a deliverable in its own right (§4.2). |
 | **D6** | **Two hosts**: the Fedora box (Intel i7-6700K, 4 physical cores / 4 threads, 48 GB, GTX 1070, no wall-clock limit) is primary; an **M3 Max MacBook Pro (14 cores, 36 GB, no CUDA) is available as a backup**. | §7.1 now gives both. The Mac is a measured ~7x faster generator and the only CUDA device is on the slower box, so the natural split is **generate on the Mac, train on the 1070** - which also drops T1 from ~37 h to ~5 h and makes P5 an optimisation rather than a gate. |
 
+| **D7** | **The external review's argument is adopted.** The first programme is a tightly scoped **showing intervention** measured against an executable continuation - not a belief network, not a value network, and not a larger imitation corpus. **T1 is deferred.** | This supersedes the §8 ordering of P6 and P9-P12 and the §2 ordering of N1-N4. See `work/phase7_planning/nn_architecture_review.md` for the argument, `..._review_checks.md` for what was verified, and `docs/showing/` for the programme that replaces them. The corpus layer, the trusted mode and the identities all stand; what changes is that the corpus is now generated **to order for a specific experiment** rather than in bulk first. |
+
 Still open: reference-policy *content* boundaries where `discard_v3` overlaps
 `lead_v2` (§6.5 B1), and whether hyper-threading should be enabled (§7.1).
+
+## Superseded by D7
+
+§2's N1-N4 ordering and §8's P6/P9-P12 are **no longer the plan**. They are kept
+because the reasoning that produced them is still the reasoning the review had to
+argue against, and because the corpus tiers remain the right shape *if* the
+showing programme passes its gate. Three specific points the review carried:
+
+1. **Part 4's 3.3x figure is a perfect-foresight bound, not a learnable
+   ceiling.** An oracle that sees the hidden layout can pick profitable
+   overrides that no observation-only learner should ever pick. The
+   observation-compatible headroom could be far smaller, or zero, and §1.7 did
+   not distinguish them. Measuring that difference is now the first experiment.
+2. **A belief network does not repair strategy fusion**, and a value network
+   trained under reference continuation estimates *reference-continuation*
+   value - which is not what it would be asked to predict once both partners act
+   differently. Neither belongs first.
+3. **The primary endpoint is per-deal frozen-continuation match equity**, which
+   already exists as `src/tuppi_valuation/equity.py`. Signed deal points are a
+   surrogate: at 48-0 a larger winning margin is worth nothing, so pricing it is
+   explicitly wrong.
 
 ---
 
