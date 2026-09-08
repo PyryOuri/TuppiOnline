@@ -27,7 +27,7 @@ time and expensive to revisit.
 | **D3** | **E1a.** The fast path is a `trusted` transition mode inside the authoritative engine, gated by E1b's differential harness. | No second state machine. The engine gains a path that skips its own invariants, so the differential gate and the in-run revalidation sample are load-bearing, not optional. |
 | **D4** | **The reference policy is `partner_aware_lead_v2`**, and both it and `partner_aware_discard_v3` are committed and given content-addressed identities. | B1 unblocked. `discard_v3` is committed and registered but is *not* the reference: it enters the corpus through the population stratum, so the corpus can later settle whether it should be promoted. See §6.5 B1. |
 | **D5** | **10M deals, and the regeneration recipe is a first-class artifact.** T4 (100M) is dropped rather than deferred. | §7.2's T1-T3 stand; T4 is removed. The recipe - manifest, seeds, code identity, and a one-command rebuild - is specified as a deliverable in its own right (§4.2). |
-| **D6** | **Generation host is fixed**: Intel i7-6700K, 4 physical cores / 4 threads, 48 GB RAM, fast SSD, no wall-clock limit. | §7.1's throughput table is now computed for 4 cores rather than spanning 4-12. No time pressure means the exact-label and forced-branch strata are affordable without trading anything away. |
+| **D6** | **Two hosts**: the Fedora box (Intel i7-6700K, 4 physical cores / 4 threads, 48 GB, GTX 1070, no wall-clock limit) is primary; an **M3 Max MacBook Pro (14 cores, 36 GB, no CUDA) is available as a backup**. | §7.1 now gives both. The Mac is a measured ~7x faster generator and the only CUDA device is on the slower box, so the natural split is **generate on the Mac, train on the 1070** - which also drops T1 from ~37 h to ~5 h and makes P5 an optimisation rather than a gate. |
 
 Still open: reference-policy *content* boundaries where `discard_v3` overlaps
 `lead_v2` (§6.5 B1), and whether hyper-threading should be enabled (§7.1).
@@ -696,8 +696,29 @@ run because the generating policy is baked into every row:
 
 ### 7.1 Throughput and calendar
 
-The host is fixed (D6): **Intel i7-6700K, 4 physical cores / 4 threads, 48 GB
-RAM, fast SSD, no wall-clock limit.**
+Two hosts are available (D6), with opposite strengths:
+
+| | **Fedora box** (primary) | **MacBook Pro** (backup) |
+| --- | --- | --- |
+| CPU | Intel i7-6700K, Skylake 2015 | Apple M3 Max |
+| cores | 4 physical / 4 threads | **14 (10 performance + 4 efficiency)** |
+| memory | 48 GB | 36 GB unified |
+| GPU | **GTX 1070**, 8 GB, sm_61 | Metal / MPS only, **no CUDA** |
+| wall clock | unlimited | it is somebody's laptop |
+
+**Generation on the Mac is measured, not assumed: 556 deals/s on 12 workers**
+(46 per worker, near-linear to 12), so **10M deals is ~5 hours there** against
+~37 hours on the Fedora box. Since the only CUDA device is on the slower
+machine, the natural split for a supervised programme is **generate on the Mac,
+train on the 1070**, and P5's optimisation work stops being a gate on P6.
+
+That split is awkward only if a network ends up inside the generation loop - the
+14-core machine cannot run CUDA and the CUDA machine has 4 cores. Note also that
+Phase 6 recorded **MPS as built but unavailable** on the Mac, so treat Metal
+acceleration as unverified and the Mac as a fast CPU machine.
+
+The rest of this section sizes the **Fedora** box, which is the host that has no
+wall-clock limit and is therefore the one T1 should be planned against.
 
 Measured per-core trusted-mode rate with the **reference** policy is 47.3
 deals/s on an M3 Max (§1.3). A 6700K is a 2015 Skylake part, and this workload is

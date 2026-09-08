@@ -1,8 +1,17 @@
 # Running the corpus on the Fedora host
 
-The operational half of `docs/database/phase7_charter.md`, for the fixed
+The operational half of `docs/database/phase7_charter.md`, for the primary
 generation host of decision D6: **Intel i7-6700K, 4 physical cores / 4 threads,
-48 GB RAM, fast SSD, no wall-clock limit.**
+48 GB RAM, fast SSD, GTX 1070, no wall-clock limit.**
+
+**There is a second machine, and for generation it is the better one.** The M3
+Max MacBook Pro (14 cores, 36 GB, no CUDA) ran the T0 pilot at a measured **556
+deals/s on 12 workers**, so 10M deals takes **~5 hours** there against ~37 on
+this box. Every command below works unchanged on it - substitute the venv path
+and use `--workers 12`. Two reasons this document still targets Fedora: it has
+no wall-clock limit and does not belong to anybody's working day, and it holds
+the only CUDA device. The natural division of labour is **generate on the Mac,
+train on the 1070**; §6 is the only part that must run here.
 
 Everything below is a command you can run and a number you should compare
 against. Where a figure is an assumption rather than a measurement, it says so.
@@ -98,12 +107,12 @@ Measured on the Mac with 12 workers, for comparison:
 
 | | Mac, 12 workers |
 | --- | ---: |
-| deals | 125 762 |
-| wall time | 236.8 s |
-| throughput | 531 deals/s (44 per worker) |
-| on disk | 8.4 MB, **70 bytes per deal** |
-| deals per match | 22.0 |
-| RAMI share | 0.777 (the Phase 5F evaluation independently reported 0.784) |
+| deals | 141 601 (5 728 matches) |
+| wall time | 254.6 s |
+| throughput | **556 deals/s** (46 per worker) |
+| on disk | 9.2 MB, **68 bytes per deal** |
+| deals per match | 24.7 |
+| RAMI share | 0.781 (the Phase 5F evaluation independently reported 0.784) |
 
 **T0 passes only if all four hold:**
 
@@ -125,9 +134,10 @@ artifact.
 
 ## 3. P5 before P6, on this host especially
 
-On four cores the optimisation work is not a follow-up, it is the difference
-between a ~2-day run and plausibly under 12 hours. Measured shares of the
-*trusted* path on the Mac:
+On four cores the optimisation work is the difference between a ~37-hour run and
+plausibly under 12. **It stops being a gate if T1 runs on the Mac instead**,
+where the same corpus takes ~5 hours - so treat this section as required only if
+you generate here. Measured shares of the *trusted* path on the Mac:
 
 | Target | Share of trusted runtime | What it is |
 | --- | ---: | --- |
@@ -154,8 +164,11 @@ that is why the digest covers the uncompressed payload.
 
 ## 4. T1: the 10M-deal run (work package P6)
 
-Sizing from the pilot: 22 deals per match, ~25 deals per stream across the
-mixture. **10M deals needs roughly 400 000 streams.**
+Sizing from the pilot: 24.7 deals per match, ~28 deals per stream across the
+mixture. **10M deals needs roughly 355 000 streams**; the invocation below uses
+400 000, which overshoots to ~11.3M and is the safer direction to err in.
+
+On the Mac, use `--workers 12` and expect ~5 hours.
 
 ```bash
 CORPUS=/var/lib/tuppi-corpus

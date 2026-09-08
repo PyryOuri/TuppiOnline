@@ -603,9 +603,39 @@ example. At 10M deals the corpus yields roughly **418,000 contract pairs** and
 
 # Part 6. Compute budget
 
-**Generation and training host:** Fedora Linux, Intel i7-6700K (Skylake, 2015),
-**4 physical cores / 4 threads**, 48 GB RAM, fast SSD, NVIDIA **GTX 1070** (8 GB,
-Pascal / sm_61). No wall-clock limit.
+**Two machines are available.** They have opposite strengths, and which one you
+assume changes the answer to question 7 by roughly a factor of seven.
+
+| | **Fedora box** (primary) | **MacBook Pro** (backup) |
+|---|---|---|
+| CPU | Intel i7-6700K, Skylake 2015 | Apple M3 Max |
+| cores | **4 physical / 4 threads** | **14 (10 performance + 4 efficiency)** |
+| memory | 48 GB | 36 GB unified |
+| GPU | **NVIDIA GTX 1070**, 8 GB dedicated, Pascal / sm_61 | integrated, Metal / MPS only — **no CUDA** |
+| wall clock | unlimited | it is somebody's laptop |
+
+**Generation throughput is measured, not assumed, on the Mac**: the pilot ran at
+**556 deals/s on 12 worker processes** (46 per worker, so scaling is near-linear
+to 12). The Fedora figure is an assumption derived from it — see the † note in
+§5.1 — and works out to roughly 74 deals/s at 4 workers.
+
+| | Fedora (assumed) | Mac (measured) |
+|---|---:|---:|
+| deals/s | ~74 | **556** |
+| 10M deals | ~37 h | **~5 h** |
+
+So **the Mac is about 7× the better generation machine and the only CUDA device
+is on the slower one.** For a fully supervised programme that is a convenient
+split: generate on the Mac, train on the 1070. For anything with an environment
+in the training loop it is an awkward one, and worth your explicit attention.
+
+One documented caveat on the Mac, which is why "14 cores" is not the whole
+story: the earlier cloning run recorded that **MPS was built into PyTorch but
+unavailable**, so that training and inference ran on CPU. Whether that still
+holds has not been re-checked. Treat Metal acceleration as unverified rather
+than available, and the Mac as a fast **CPU** machine.
+
+No wall-clock limit on the Fedora box.
 
 Relevant constraints:
 
@@ -614,8 +644,9 @@ Relevant constraints:
   ~6.5 TFLOPS, 8 GB.
 - Recent PyTorch wheels have been dropping Pascal; `sm_61` support must be
   verified before planning around the card.
-- **Four cores is the real constraint.** Data generation is pure-Python and
-  CPU-bound; the GPU is idle during it.
+- **Cores are the real constraint, and they are on the wrong machine.** Data
+  generation is pure-Python and CPU-bound; the GPU is idle during it. The machine
+  with 14 cores has no CUDA, and the machine with CUDA has 4 cores.
 - Replay at 16,481 decisions/s/core (dev machine; assume ~6,000–8,000 on the
   target host) means a couple of loader processes saturate this GPU for any model
   in the 1–20M parameter range. **The input pipeline is not the bottleneck; the
@@ -623,11 +654,12 @@ Relevant constraints:
 - For reference on the model scale that was tried: 41,900 parameters trained on
   CPU in minutes. A 1–20M parameter model is comfortable on this card. Anything
   requiring large-scale self-play with neural inference in the loop is
-  constrained by the four cores plus the Python engine step, which costs
-  **~0.06 ms per decision on the dev machine and an assumed ~0.12–0.17 ms on the
-  target host** — before any network inference. Playing a full match end to end
-  costs ~1,350 such steps. That budget, not the GPU, decides whether any form of
-  self-play is affordable.
+  constrained by cores plus the Python engine step, which costs **~0.06 ms per
+  decision on the Mac and an assumed ~0.12–0.17 ms on the Fedora box** — before
+  any network inference. Playing a full match end to end costs ~1,350 such steps.
+  That budget, not the GPU, decides whether any form of self-play is affordable,
+  and it is ~7× larger on the machine that cannot run CUDA. If your answer to
+  question 7 is "yes, with batched inference", say where the network runs.
 
 ---
 
@@ -693,9 +725,11 @@ candidate paths we have sketched, for you to challenge, reorder or replace:
 6. **What is the smallest experiment that would falsify the whole approach**, and
    what should its preregistered kill criterion be? This project's convention is
    to write the gate before the measurement, and to stop when it fires.
-7. **Given four cores**, is any form of RL / self-play realistic here, or should
-   the programme stay fully supervised on a fixed corpus? If RL, what makes it
-   affordable at ~0.06 ms per engine decision on 4 cores?
+7. **Is any form of RL / self-play realistic on either machine**, or should the
+   programme stay fully supervised on a fixed corpus? The split in §6 is awkward:
+   14 CPU cores without CUDA, or 4 cores with an 8 GB Pascal card. If RL, say
+   which machine it runs on, where inference happens, and what batching makes it
+   affordable against a ~0.06–0.17 ms engine step and ~1,350 steps per match.
 
 Where your answer depends on a fact not in this document, please say which fact
 and we will measure it.
