@@ -51,6 +51,12 @@ from .schedules import (
     build_canonical_schedule,
     canonical_transformations,
 )
+from .qualification import (
+    ExpectedBlock,
+    admitted_blocks,
+    expected_blocks_for,
+    qualified_summary,
+)
 from .transformations import (
     Transformation,
     compose_transformations,
@@ -97,6 +103,8 @@ __all__ = (
     "TimeoutLimits",
     "Transformation",
     "DuplicateBlockRecord",
+    "ExpectedBlock",
+    "admitted_blocks",
     "baseline_registry",
     "build_canonical_schedule",
     "canonical_transformations",
@@ -105,11 +113,13 @@ __all__ = (
     "evaluation_config_to_data",
     "evaluation_result_from_data",
     "evaluation_result_to_data",
+    "expected_blocks_for",
     "generate_base_deal",
     "generate_deal_bank",
     "identity_transformation",
     "load_deal_bank",
     "promotion_decision_from_data",
+    "qualified_summary",
     "promotion_decision_to_data",
     "rotation_transformation",
     "save_deal_bank",

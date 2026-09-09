@@ -29,6 +29,10 @@ class RegistryError(EvaluationValidationError):
     """An agent registry or team specification is invalid."""
 
 
+class IncompleteEvidenceError(EvaluationValidationError):
+    """Results do not cover the planned manifest, so they cannot qualify."""
+
+
 class EvaluationSerializationError(EvaluationValidationError):
     """Evaluation JSON could not be serialized or parsed strictly."""
 
