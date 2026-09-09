@@ -12,6 +12,7 @@ import pytest
 
 from tuppi_eval.qualification import expected_blocks_for
 from tuppi_research.cycle import (
+    DEAL_POINTS_SCREENING_RULE,
     ENDPOINT,
     REFERENCE_PROFILE,
     analyse,
@@ -95,24 +96,28 @@ def test_the_null_control_cycle_closes_and_cancels_exactly(tmp_path):
 
 def test_the_recorded_finding_never_claims_promotion(tmp_path):
     report = run_null_control(
-        workspace=tmp_path, base_deals=1, reviewed_by="test-suite"
+        workspace=tmp_path, base_deals=2, reviewed_by="test-suite"
     )
     with Ledger(tmp_path / "research.sqlite3") as ledger:
         finding = ledger.finding(report.run_id)
     assert finding["promotion"] == "not_performed"
     assert finding["verdict"] == "no_effect"
     assert finding["endpoint"] == ENDPOINT
+    assert finding["decision_rule_id"] == DEAL_POINTS_SCREENING_RULE.rule_id
     assert "establishes nothing about strength" in finding["statement"]
     assert report.to_data()["promotion"] == "not_performed"
 
 
 def test_missing_capabilities_are_reported_blocked_not_implemented(tmp_path):
     report = run_null_control(
-        workspace=tmp_path, base_deals=1, reviewed_by="test-suite"
+        workspace=tmp_path, base_deals=2, reviewed_by="test-suite"
     )
     blocked = " ".join(report.blocked)
     assert "BLOCKED" in blocked
-    assert "threshold" in blocked
+    # the threshold and the construction gap are now resolved and say so
+    assert "RESOLVED" in blocked
+    assert "opponent population" in blocked
+    assert "endpoint validity" in blocked
     assert "promotion" in blocked
     assert "ten-second" in blocked
 
@@ -150,19 +155,39 @@ def test_analysis_before_execution_is_refused(tmp_path):
         analyse(build_inputs(base_deals=1), tmp_path / "nothing-here")
 
 
-def test_review_never_accepts_and_defers_a_real_candidate():
+def test_review_judges_a_real_candidate_under_the_declared_rule():
+    """Before a rule existed this returned INCONCLUSIVE for everything real."""
+    def analysis(low, high):
+        return {
+            "admitted_units": 4,
+            "block_utilities": [0.0, 0.0, 0.0, 0.0],
+            "statistics": {
+                "mean_paired_utility": (low + high) / 2,
+                "confidence_interval": [low, high],
+                "confidence_level": 0.95,
+            },
+        }
+
+    verdict, statement = review(analysis(0.0, 0.0), is_null_control=True)
+    assert verdict is Verdict.NO_EFFECT
+    assert "establishes nothing about strength" in statement
+    assert "No policy is promoted" in statement
+
+    assert review(analysis(-24.0, -16.0), is_null_control=False)[0] is Verdict.REJECTED
+    assert review(analysis(1.5, 3.0), is_null_control=False)[0] is Verdict.ACCEPTED
+    assert review(analysis(-0.4, 0.4), is_null_control=False)[0] is Verdict.NO_EFFECT
+    assert review(analysis(0.5, 3.0), is_null_control=False)[0] is Verdict.INCONCLUSIVE
+
+
+def test_a_null_control_judged_anything_but_equivalent_is_an_instrument_fault():
     analysis = {
         "admitted_units": 1,
-        "block_utilities": [0.0],
+        "block_utilities": [-20.0],
         "statistics": {
-            "mean_paired_utility": 0.0,
-            "confidence_interval": [0.0, 0.0],
+            "mean_paired_utility": -20.0,
+            "confidence_interval": [-24.0, -16.0],
             "confidence_level": 0.95,
         },
     }
-    verdict, statement = review(analysis, is_null_control=True)
-    assert verdict is Verdict.NO_EFFECT
-    assert "no policy is promoted" in statement
-    verdict, statement = review(analysis, is_null_control=False)
-    assert verdict is Verdict.INCONCLUSIVE
-    assert "threshold" in statement
+    with pytest.raises(CycleError, match="not a finding"):
+        review(analysis, is_null_control=True)

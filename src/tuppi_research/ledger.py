@@ -33,7 +33,7 @@ from typing import Any, Iterator
 
 from .errors import LedgerError
 
-LEDGER_SCHEMA_VERSION = "tuppi.research.ledger.v1"
+LEDGER_SCHEMA_VERSION = "tuppi.research.ledger.v2"
 
 
 class ExecutionState(StrEnum):
@@ -133,6 +133,7 @@ CREATE TABLE IF NOT EXISTS finding (
     verdict         TEXT NOT NULL,
     promotion       TEXT NOT NULL,
     endpoint        TEXT NOT NULL,
+    decision_rule_id TEXT NOT NULL,
     summary_sha256  TEXT NOT NULL,
     statement       TEXT NOT NULL,
     reviewed_by     TEXT NOT NULL,
@@ -415,11 +416,16 @@ class Ledger:
         run_id: str,
         verdict: Verdict,
         endpoint: str,
+        decision_rule_id: str,
         summary_sha256: str,
         statement: str,
         reviewed_by: str,
     ) -> str:
         """Record the scientific verdict, which promotion never follows from.
+
+        ``decision_rule_id`` is required: a verdict without the declared rule that
+        produced it cannot be audited, and changing a threshold must not silently
+        re-interpret findings already recorded under the old one.
 
         Refuses to record any verdict for a run that did not complete, and
         refuses ``ACCEPTED`` for an experiment declared a null control.
@@ -451,9 +457,12 @@ class Ledger:
                 "a finding requires every planned unit; incomplete evidence "
                 "cannot become a recorded result"
             )
+        if not decision_rule_id:
+            raise LedgerError("a finding must record the decision rule that judged it")
         finding_id = content_id(
             "finding",
             {
+                "decision_rule_id": decision_rule_id,
                 "endpoint": endpoint,
                 "experiment_id": experiment_id,
                 "run_id": run_id,
@@ -463,12 +472,13 @@ class Ledger:
         )
         self._connection.execute(
             "INSERT OR REPLACE INTO finding (finding_id, experiment_id, run_id,"
-            " verdict, promotion, endpoint, summary_sha256, statement, reviewed_by,"
-            " recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            " verdict, promotion, endpoint, decision_rule_id, summary_sha256,"
+            " statement, reviewed_by, recorded_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 finding_id, experiment_id, run_id, verdict.value,
-                PROMOTION_NOT_PERFORMED, endpoint, summary_sha256, statement,
-                reviewed_by, _now(),
+                PROMOTION_NOT_PERFORMED, endpoint, decision_rule_id, summary_sha256,
+                statement, reviewed_by, _now(),
             ),
         )
         return finding_id

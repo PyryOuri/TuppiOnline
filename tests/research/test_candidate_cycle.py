@@ -54,7 +54,7 @@ def test_a_passthrough_candidate_with_its_own_identity_still_cancels(tmp_path):
     assert all(check["passed"] for check in report.control_checks)
 
 
-def test_a_genuinely_different_candidate_is_detected_but_not_judged(tmp_path):
+def test_a_genuinely_worse_candidate_is_now_rejected_not_shrugged_at(tmp_path):
     report = run_candidate_cycle(
         "research_legal_shift_v1", workspace=tmp_path, base_deals=4,
         reviewed_by="test-suite",
@@ -63,22 +63,23 @@ def test_a_genuinely_different_candidate_is_detected_but_not_judged(tmp_path):
     # detected: the endpoint moves, and not by zero
     assert report.summary["mean_paired_utility"] != 0.0
     assert any(value != 0.0 for value in report.summary["block_utilities"])
-    # not judged: no threshold exists, so no effect claim is made
-    assert report.verdict is Verdict.INCONCLUSIVE
+    # judged: the declared rule places an interval wholly below zero as REJECTED
+    assert report.verdict is Verdict.REJECTED
     assert report.summary["is_null_control"] is False
     # and the exact-zero identity is correctly NOT asserted for it
     names = {check["name"] for check in report.control_checks}
     assert "null_control_exact_zero" not in names
     with Ledger(tmp_path / "research.sqlite3") as ledger:
         finding = ledger.finding(report.run_id)
-    assert finding["verdict"] == "inconclusive"
+    assert finding["verdict"] == "rejected"
     assert finding["promotion"] == "not_performed"
-    assert "threshold" in finding["statement"]
+    assert finding["decision_rule_id"].startswith("rule:sha256:")
+    assert "reliably not an improvement" in finding["statement"]
 
 
 def test_a_declared_control_can_never_be_accepted(tmp_path):
     report = run_candidate_cycle(
-        "research_noop_v1", workspace=tmp_path, base_deals=1,
+        "research_noop_v1", workspace=tmp_path, base_deals=2,
         reviewed_by="test-suite",
     )
     with Ledger(tmp_path / "research.sqlite3") as ledger:
@@ -86,6 +87,7 @@ def test_a_declared_control_can_never_be_accepted(tmp_path):
             ledger.record_finding(
                 experiment_id=report.experiment_id, run_id=report.run_id,
                 verdict=Verdict.ACCEPTED, endpoint="ep",
+                decision_rule_id="rule:sha256:" + "e" * 64,
                 summary_sha256="d" * 64, statement="s", reviewed_by="t",
             )
 

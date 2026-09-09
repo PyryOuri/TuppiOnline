@@ -133,7 +133,8 @@ def test_a_finding_needs_a_completed_run(ledger):
     with pytest.raises(LedgerError, match="requires a completed run"):
         ledger.record_finding(
             experiment_id=experiment_id, run_id=run_id, verdict=Verdict.NO_EFFECT,
-            endpoint="ep", summary_sha256="d" * 64, statement="s", reviewed_by="t",
+            endpoint="ep", decision_rule_id="rule:sha256:" + "e" * 64,
+                summary_sha256="d" * 64, statement="s", reviewed_by="t",
         )
 
 
@@ -145,7 +146,8 @@ def test_a_finding_needs_every_planned_unit(ledger):
     with pytest.raises(LedgerError, match="requires every planned unit"):
         ledger.record_finding(
             experiment_id=experiment_id, run_id=run_id, verdict=Verdict.NO_EFFECT,
-            endpoint="ep", summary_sha256="d" * 64, statement="s", reviewed_by="t",
+            endpoint="ep", decision_rule_id="rule:sha256:" + "e" * 64,
+                summary_sha256="d" * 64, statement="s", reviewed_by="t",
         )
 
 
@@ -166,11 +168,13 @@ def test_a_null_control_can_never_be_accepted(ledger):
     with pytest.raises(LedgerError, match="never be accepted"):
         ledger.record_finding(
             experiment_id=experiment_id, run_id=run_id, verdict=Verdict.ACCEPTED,
-            endpoint="ep", summary_sha256="d" * 64, statement="s", reviewed_by="t",
+            endpoint="ep", decision_rule_id="rule:sha256:" + "e" * 64,
+                summary_sha256="d" * 64, statement="s", reviewed_by="t",
         )
     finding_id = ledger.record_finding(
         experiment_id=experiment_id, run_id=run_id, verdict=Verdict.NO_EFFECT,
-        endpoint="ep", summary_sha256="d" * 64, statement="s", reviewed_by="t",
+        endpoint="ep", decision_rule_id="rule:sha256:" + "e" * 64,
+                summary_sha256="d" * 64, statement="s", reviewed_by="t",
     )
     assert ledger.finding(run_id)["verdict"] == "no_effect"
     assert ledger.finding(run_id)["promotion"] == "not_performed"

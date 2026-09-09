@@ -63,6 +63,7 @@ from tuppi_eval.schedules import (
 from tuppi_eval.statistics import paired_statistical_summary
 from tuppi_rules import FULL_DECK, MatchScore
 
+from .decisions import DEAL_POINTS_SCREENING_RULE, DecisionRule, decide
 from .errors import CycleError, LegalityError
 from .ledger import ExecutionState, Ledger, Verdict, digest_file
 
@@ -505,39 +506,44 @@ def analyse(inputs: CycleInputs, output_directory: Path) -> dict[str, Any]:
 
 
 # ------------------------------------------------------------------ review
-def review(analysis: dict[str, Any], *, is_null_control: bool) -> tuple[Verdict, str]:
-    """Turn analysis into a verdict. Separate from execution on purpose.
+def review(
+    analysis: dict[str, Any],
+    *,
+    is_null_control: bool,
+    rule: DecisionRule = DEAL_POINTS_SCREENING_RULE,
+) -> tuple[Verdict, str]:
+    """Turn analysis into a verdict under a declared rule. Separate from execution.
 
-    For a null control there is nothing to accept: candidate and incumbent are
-    the same policy, so the canonical design predicts an exact zero on every unit
-    (see :func:`null_control_zero_check`). The reviewer records NO_EFFECT and is
-    structurally unable to record ACCEPTED - the ledger refuses it.
+    The rule is what makes this a review rather than a shrug. Before one existed
+    every real candidate was recorded INCONCLUSIVE, including one that lost by
+    20.33 points per block - a label that described the project's own missing
+    threshold rather than the evidence.
+
+    A null control must come out practically equivalent. If it does not, that is an
+    instrument fault, not a finding, and it is raised rather than recorded.
     """
 
     statistics = analysis["statistics"]
-    interval = statistics.get("confidence_interval")
-    mean = statistics.get("mean_paired_utility")
-    if is_null_control:
-        return (
-            Verdict.NO_EFFECT,
-            (
-                "Null control: candidate and incumbent are the identical imported "
-                f"production incumbent. Every one of {analysis['admitted_units']} "
-                f"independent base deals cancelled to exactly zero, mean {mean} "
-                f"{ENDPOINT}, {statistics['confidence_level']:.2f} interval "
-                f"{interval}. That exact zero is the design's own algebraic "
-                "identity and is the expected outcome, so it confirms the "
-                "instrument and establishes nothing about strength. No effect is "
-                "claimed, no threshold is asserted, no policy is promoted."
-            ),
-        )
-    return (
-        Verdict.INCONCLUSIVE,
-        (
-            "Non-null candidates require an agreed useful-effect threshold and "
-            "sample-size design, which remain unfixed. Recorded as inconclusive."
-        ),
+    verdict, statement = decide(
+        rule,
+        endpoint=ENDPOINT,
+        confidence_interval=statistics["confidence_interval"],
+        confidence_level=statistics["confidence_level"],
     )
+    if is_null_control:
+        if verdict is not Verdict.NO_EFFECT:
+            raise CycleError(
+                f"null control was judged {verdict.value!r}; the candidate is not "
+                "identical or the instrument is wrong - this is not a finding"
+            )
+        statement = (
+            "Null control: candidate and incumbent are the identical imported "
+            f"production incumbent over {analysis['admitted_units']} independent "
+            f"base deals. {statement} The exact zero is the design's own algebraic "
+            "identity and is the expected outcome, so it confirms the instrument "
+            "and establishes nothing about strength. No policy is promoted."
+        )
+    return verdict, statement
 
 
 def record_cycle_finding(
@@ -549,8 +555,9 @@ def record_cycle_finding(
     output_directory: Path,
     reviewed_by: str,
     is_null_control: bool = True,
+    rule: DecisionRule = DEAL_POINTS_SCREENING_RULE,
 ) -> tuple[Verdict, str]:
-    verdict, statement = review(analysis, is_null_control=is_null_control)
+    verdict, statement = review(analysis, is_null_control=is_null_control, rule=rule)
     summary_path = Path(output_directory) / "summary.json"
     summary_sha256, _ = digest_file(summary_path)
     finding_id = ledger.record_finding(
@@ -558,6 +565,7 @@ def record_cycle_finding(
         run_id=run_id,
         verdict=verdict,
         endpoint=ENDPOINT,
+        decision_rule_id=rule.rule_id,
         summary_sha256=summary_sha256,
         statement=statement,
         reviewed_by=reviewed_by,
@@ -691,6 +699,7 @@ __all__ = [
     "ENDPOINT",
     "REFERENCE_PROFILE",
     "analyse",
+    "DEAL_POINTS_SCREENING_RULE",
     "ExperimentDeclaration",
     "build_candidate_inputs",
     "build_inputs",

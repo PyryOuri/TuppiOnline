@@ -184,8 +184,15 @@ def _blocked_capabilities() -> tuple[str, ...]:
         "ordinary arena route (tuppi_agents.research_candidates + factory "
         "dispatch). Candidates must be declared, and identity is checked "
         "byte-for-byte against the declared entry.",
-        "BLOCKED: no useful-effect threshold, sample-size design or opponent "
-        "population is fixed, so no non-null candidate can be judged.",
+        "RESOLVED: a useful-effect threshold is declared - 1.0 signed deal point "
+        "per eight-game block, anchored on three independent measurements in this "
+        "repository - so a candidate can now be accepted, rejected or called "
+        "equivalent instead of always inconclusive.",
+        "BLOCKED: no sample-size design or opponent population is fixed. Every "
+        "verdict so far is against a single homogeneous opponent.",
+        "BLOCKED: endpoint validity is unverified - the threshold is in signed "
+        "deal points, whose relation to match equity is the next task. A bar in "
+        "the wrong units is worse than none.",
         "BLOCKED: promotion requires fresh sealed confirmation and staged rules; "
         "this layer records promotion as not_performed and offers no path to it.",
         "NOT MEASURED: the ten-second production decision budget.",

@@ -118,6 +118,7 @@ def test_a_failed_unit_is_recorded_and_blocks_the_finding(tmp_path):
             ledger.record_finding(
                 experiment_id=experiment_id, run_id=run_id,
                 verdict=Verdict.NO_EFFECT, endpoint="ep",
+                decision_rule_id="rule:sha256:" + "e" * 64,
                 summary_sha256="d" * 64, statement="s", reviewed_by="t",
             )
         checks = {row["name"]: row for row in ledger.control_checks(run_id)}

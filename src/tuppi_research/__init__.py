@@ -10,6 +10,11 @@ run finish - and *scientific verdict* - did it establish anything. A completed
 cycle is not an accepted finding.
 """
 
+from .decisions import (
+    DEAL_POINTS_SCREENING_RULE,
+    DecisionRule,
+    decide,
+)
 from .errors import CycleError, LedgerError, LegalityError, ResearchError
 from .ledger import (
     LEDGER_SCHEMA_VERSION,
@@ -19,8 +24,11 @@ from .ledger import (
 )
 
 __all__ = [
+    "DEAL_POINTS_SCREENING_RULE",
+    "DecisionRule",
     "LEDGER_SCHEMA_VERSION",
     "CycleError",
+    "decide",
     "ExecutionState",
     "Ledger",
     "LedgerError",
