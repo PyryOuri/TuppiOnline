@@ -1,0 +1,30 @@
+"""Persistent experiment metadata and one bounded control cycle.
+
+This layer owns scheduling state, restart state and the recorded verdict. It owns
+no rules, no engine, no policy, no estimator and no result bytes: the evaluation
+artifacts stay exactly where :mod:`tuppi_eval` wrote them and are referenced here
+by path and digest.
+
+The distinction the ledger exists to keep is between *execution status* - did the
+run finish - and *scientific verdict* - did it establish anything. A completed
+cycle is not an accepted finding.
+"""
+
+from .errors import CycleError, LedgerError, LegalityError, ResearchError
+from .ledger import (
+    LEDGER_SCHEMA_VERSION,
+    Ledger,
+    ExecutionState,
+    Verdict,
+)
+
+__all__ = [
+    "LEDGER_SCHEMA_VERSION",
+    "CycleError",
+    "ExecutionState",
+    "Ledger",
+    "LedgerError",
+    "LegalityError",
+    "ResearchError",
+    "Verdict",
+]
