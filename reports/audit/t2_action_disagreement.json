@@ -1,0 +1,45 @@
+{
+  "schema_version": "tuppi.audit.t2_disagreement.v1",
+  "variants": {
+    "V1": {
+      "action_divergence_rate": 0.0,
+      "action_sequence_diverged": 0,
+      "assignments": 4000,
+      "identity": "variant:profile:sha256:753d673191b0e9f1344d1cfc6e3ce5d0ccd143450475ab70f0fff4c01f67495a",
+      "mean_first_divergence_ply": null,
+      "outcome_change_rate": 0.0,
+      "outcome_changed": 0,
+      "rule_id": "partner.nolo.prefer_leading_partner_void_suit.v1"
+    },
+    "V2": {
+      "action_divergence_rate": 0.052,
+      "action_sequence_diverged": 208,
+      "assignments": 4000,
+      "identity": "variant:profile:sha256:437fd54f8ce0ff027f93b268c5081b82dd79a23b175f584607733cae4cb5db3f",
+      "mean_first_divergence_ply": 19.83653846153846,
+      "outcome_change_rate": 0.03625,
+      "outcome_changed": 145,
+      "rule_id": "partner.rami.overtake_when_partner_beatable.v1"
+    },
+    "V3": {
+      "action_divergence_rate": 0.0,
+      "action_sequence_diverged": 0,
+      "assignments": 4000,
+      "identity": "variant:profile:sha256:7b8b384dacfa6f18ee98a4efeb94889015a8dcbfd48b668f2f2ab52ea6c95d64",
+      "mean_first_divergence_ply": null,
+      "outcome_change_rate": 0.0,
+      "outcome_changed": 0,
+      "rule_id": "partner.rami.prefer_leading_suit_partner_can_follow.v1"
+    },
+    "V4": {
+      "action_divergence_rate": 0.0,
+      "action_sequence_diverged": 0,
+      "assignments": 4000,
+      "identity": "variant:profile:sha256:db83c4a97a400d4d61b1d3fe10e25d1bc4eb35fabb0f74471f1ed177cda3a137",
+      "mean_first_divergence_ply": null,
+      "outcome_change_rate": 0.0,
+      "outcome_changed": 0,
+      "rule_id": "reactive.rami.avoid_overtaking_partner.v1"
+    }
+  }
+}

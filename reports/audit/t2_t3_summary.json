@@ -1,0 +1,86 @@
+{
+  "deal_executions": 22000,
+  "deals": 2000,
+  "delta": 0.001,
+  "endpoint": {
+    "dealer_win": 0.4951498354408453,
+    "deals_fitted": 46184,
+    "equity_at_zero_dealing": 0.5000755096293182,
+    "equity_range": [
+      0.24753752913988786,
+      0.7524624708601134
+    ],
+    "mean_points": 11.313355274553956,
+    "symmetric_control_at_zero": 0.5
+  },
+  "per_deal_artifact": "/Users/pyryouri/Developer/TuppiRuns/phase7/audit/t2_t3_per_deal.json",
+  "reference_agent_id": "agent:sha256:252fe227b01900e3c1d94822179adee07a64e3a3eb761a529a425f39b95d435d",
+  "root_seed": "tuppi-t0-audit-v1",
+  "schema_version": "tuppi.audit.t2_t3.v1",
+  "seconds": 44.263057000003755,
+  "t2": {
+    "V1": {
+      "assignment_trick_change_rate": 0.0,
+      "deals": 2000,
+      "identity": "variant:profile:sha256:753d673191b0e9f1344d1cfc6e3ce5d0ccd143450475ab70f0fff4c01f67495a",
+      "label": "partner.nolo.prefer_leading_partner_void_suit.v1",
+      "lower_95_one_sided": 0.0,
+      "mean_gain": 0.0,
+      "qualifies": false,
+      "upper_95_one_sided": 0.0
+    },
+    "V2": {
+      "assignment_trick_change_rate": 0.03625,
+      "deals": 2000,
+      "identity": "variant:profile:sha256:437fd54f8ce0ff027f93b268c5081b82dd79a23b175f584607733cae4cb5db3f",
+      "label": "partner.rami.overtake_when_partner_beatable.v1",
+      "lower_95_one_sided": -0.00040165604186420423,
+      "mean_gain": -0.00019767205307473317,
+      "qualifies": false,
+      "upper_95_one_sided": 4.160458670766545e-06
+    },
+    "V3": {
+      "assignment_trick_change_rate": 0.0,
+      "deals": 2000,
+      "identity": "variant:profile:sha256:7b8b384dacfa6f18ee98a4efeb94889015a8dcbfd48b668f2f2ab52ea6c95d64",
+      "label": "partner.rami.prefer_leading_suit_partner_can_follow.v1",
+      "lower_95_one_sided": 0.0,
+      "mean_gain": 0.0,
+      "qualifies": false,
+      "upper_95_one_sided": 0.0
+    },
+    "V4": {
+      "assignment_trick_change_rate": 0.0,
+      "deals": 2000,
+      "identity": "variant:profile:sha256:db83c4a97a400d4d61b1d3fe10e25d1bc4eb35fabb0f74471f1ed177cda3a137",
+      "label": "reactive.rami.avoid_overtaking_partner.v1",
+      "lower_95_one_sided": 0.0,
+      "mean_gain": 0.0,
+      "qualifies": false,
+      "upper_95_one_sided": 0.0
+    },
+    "V5": {
+      "assignment_trick_change_rate": 0.669,
+      "deals": 2000,
+      "identity": "agent:sha256:d8b426f1263c7ce32bdef82e4971dc2e494950f155e15db9b69fc6334a2ac929",
+      "label": "both lead_v2 lead layers -> partner_aware_v1",
+      "lower_95_one_sided": -0.006517298978118463,
+      "mean_gain": -0.0057429143462744215,
+      "qualifies": false,
+      "upper_95_one_sided": -0.004984461652985339
+    }
+  },
+  "t2_qualifying": [],
+  "t2_route_closed": true,
+  "t3": {
+    "assignments": 4000,
+    "assignments_with_gain": 139,
+    "forced_at_root": 570,
+    "lower_95_one_sided": 0.0006981622024304133,
+    "mean_gain": 0.0008464305991897706,
+    "note": "neither bound resolves at the fixed budget; do not enlarge the sample",
+    "root_reached": 4000,
+    "upper_95_one_sided": 0.0010042136560943513,
+    "verdict": "INCONCLUSIVE"
+  }
+}

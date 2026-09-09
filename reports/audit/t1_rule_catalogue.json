@@ -1,0 +1,588 @@
+{
+  "catalogue_size": 38,
+  "eligible_for_single_rule_ablation": 4,
+  "eligible_rule_ids": [
+    "partner.nolo.prefer_leading_partner_void_suit.v1",
+    "partner.rami.overtake_when_partner_beatable.v1",
+    "partner.rami.prefer_leading_suit_partner_can_follow.v1",
+    "reactive.rami.avoid_overtaking_partner.v1"
+  ],
+  "mechanical": 8,
+  "reference_agent_id": "agent:sha256:252fe227b01900e3c1d94822179adee07a64e3a3eb761a529a425f39b95d435d",
+  "reference_profile_key": "partner_aware_v1",
+  "rules": [
+    {
+      "ablation_variant_or_refusal": "ProfileError: rule 'common.play.differentiated_trick_reward.v1' cannot be disabled",
+      "action_preference": "Take the sign of a trick's value from the contract and keep RAMI and NOLO on separate rule branches. The deal-point scale is exposed as +4 per trick for a RAMI declaring team, +8 for a RAMI defending partnership above the sixth trick, and -4 in NOLO. No policy may use one undifferentiated trick reward.",
+      "condition": "A policy compares candidate cards by trick value.",
+      "contracts": [
+        "NOLO",
+        "RAMI"
+      ],
+      "decision_classes": [
+        "NOLO",
+        "RAMI",
+        "TRICK_PLAY"
+      ],
+      "independently_disableable_claim": false,
+      "is_strategic_heuristic": false,
+      "limitations": "Marginal values are exact only away from the 6/7 boundary, where the swing is larger than one increment.",
+      "phases": [
+        "TRICK_PLAY"
+      ],
+      "profile_accepts_ablation": false,
+      "provenance": "mechanical",
+      "rationale": "The scoring formulas award 4*(declarer tricks - 6), 8*(defender tricks - 6) and 4*(7 - fewer tricks); the sign and the scale genuinely differ.",
+      "rule_id": "common.play.differentiated_trick_reward.v1",
+      "validation_status": "mechanical consequence of the ruleset"
+    },
+    {
+      "ablation_variant_or_refusal": "ProfileError: rule 'common.play.legal_actions_only.v1' cannot be disabled",
+      "action_preference": "Consider only the actions present in PlayerObservation.legal_actions, in the engine's stable order.",
+      "condition": "A policy is asked for an action.",
+      "contracts": [
+        "NOLO",
+        "RAMI"
+      ],
+      "decision_classes": [
+        "NOLO",
+        "RAMI",
+        "SHOWING",
+        "TRICK_PLAY"
+      ],
+      "independently_disableable_claim": false,
+      "is_strategic_heuristic": false,
+      "limitations": "None; this is a restatement of the rules.",
+      "phases": [
+        "SHOWING",
+        "TRICK_PLAY"
+      ],
+      "profile_accepts_ablation": false,
+      "provenance": "mechanical",
+      "rationale": "The engine rejects illegal actions and never repairs them, so the legal set is the whole action space.",
+      "rule_id": "common.play.legal_actions_only.v1",
+      "validation_status": "mechanical consequence of the ruleset"
+    },
+    {
+      "ablation_variant_or_refusal": "ProfileError: rule 'common.select.deterministic_maximum.v1' cannot be disabled",
+      "action_preference": "Select the lexicographic maximum score vector; break ties by the lowest engine legal-action index.",
+      "condition": "More than one legal action remains after scoring.",
+      "contracts": [
+        "NOLO",
+        "RAMI"
+      ],
+      "decision_classes": [
+        "NOLO",
+        "RAMI",
+        "SHOWING",
+        "TRICK_PLAY"
+      ],
+      "independently_disableable_claim": false,
+      "is_strategic_heuristic": false,
+      "limitations": "The tie-break is arbitrary with respect to strength; it is chosen only for reproducibility.",
+      "phases": [
+        "SHOWING",
+        "TRICK_PLAY"
+      ],
+      "profile_accepts_ablation": false,
+      "provenance": "mechanical",
+      "rationale": "A single documented tie-break makes the policy reproducible without depending on set iteration or object identity.",
+      "rule_id": "common.select.deterministic_maximum.v1",
+      "validation_status": "mechanical consequence of the ruleset"
+    },
+    {
+      "ablation_variant_or_refusal": "ProfileError: rule 'common.show.authoritative_fallback.v1' cannot be disabled",
+      "action_preference": "Show only a card allowed by project_target_v1 valid_show_cards; accept the derived verbal_required flag.",
+      "condition": "A policy declares a contract during showing.",
+      "contracts": [
+        "NOLO",
+        "RAMI"
+      ],
+      "decision_classes": [
+        "NOLO",
+        "RAMI",
+        "SHOWING"
+      ],
+      "independently_disableable_claim": false,
+      "is_strategic_heuristic": false,
+      "limitations": "project_target_v1 has no cardless verbal declaration, so the legacy 'declare with no card' branch cannot be reproduced.",
+      "phases": [
+        "SHOWING"
+      ],
+      "profile_accepts_ablation": false,
+      "provenance": "mechanical",
+      "rationale": "project_target_v1 restricts show ranks to 3-9 and defines an explicit off-colour and no-eligible-rank fallback hierarchy.",
+      "rule_id": "common.show.authoritative_fallback.v1",
+      "validation_status": "mechanical consequence of the ruleset"
+    },
+    {
+      "ablation_variant_or_refusal": "ProfileError: rule 'counting.nolo.avoid_retaining_certain_winner.v1' cannot be disabled",
+      "action_preference": "Prefer to shed a card that is the highest unplayed card of its suit.",
+      "condition": "The policy may discard or safely lose in a NOLO deal.",
+      "contracts": [
+        "NOLO"
+      ],
+      "decision_classes": [
+        "NOLO",
+        "TRICK_PLAY"
+      ],
+      "independently_disableable_claim": false,
+      "is_strategic_heuristic": true,
+      "limitations": "Shedding a top card can also strip a suit and force later wins elsewhere.",
+      "phases": [
+        "TRICK_PLAY"
+      ],
+      "profile_accepts_ablation": false,
+      "provenance": "generic_trick_taking_hypothesis",
+      "rationale": "A card that no unplayed card can beat is a guaranteed future trick, which is exactly what a misere contract must avoid.",
+      "rule_id": "counting.nolo.avoid_retaining_certain_winner.v1",
+      "validation_status": "UNVALIDATED - no expert or simulation validation"
+    },
+    {
+      "ablation_variant_or_refusal": "ProfileError: rule 'counting.nolo.lead_suit_with_most_unaccounted_higher.v1' cannot be disabled",
+      "action_preference": "Among the lowest-rank candidates, prefer the card with the most unaccounted higher cards in its suit.",
+      "condition": "The policy is on lead in a NOLO deal.",
+      "contracts": [
+        "NOLO"
+      ],
+      "decision_classes": [
+        "NOLO",
+        "TRICK_PLAY"
+      ],
+      "independently_disableable_claim": false,
+      "is_strategic_heuristic": true,
+      "limitations": "A count is not a probability; the rule makes no claim about how those cards are distributed.",
+      "phases": [
+        "TRICK_PLAY"
+      ],
+      "profile_accepts_ablation": false,
+      "provenance": "generic_trick_taking_hypothesis",
+      "rationale": "The count of unaccounted higher cards is a hard public count, and a larger count means more cards that can take the trick instead of the leader.",
+      "rule_id": "counting.nolo.lead_suit_with_most_unaccounted_higher.v1",
+      "validation_status": "UNVALIDATED - no expert or simulation validation"
+    },
+    {
+      "ablation_variant_or_refusal": "ProfileError: rule 'counting.play.certain_winner_priority.v1' cannot be disabled",
+      "action_preference": "Prefer the cheapest such certain winner over a merely provisional winner.",
+      "condition": "The policy is following, an opponent holds the trick, and some legal card beats every led-suit card the remaining seats could still hold.",
+      "contracts": [
+        "RAMI"
+      ],
+      "decision_classes": [
+        "RAMI",
+        "TRICK_PLAY"
+      ],
+      "independently_disableable_claim": false,
+      "is_strategic_heuristic": false,
+      "limitations": "Only as strong as the public record: an unaccounted higher card blocks the deduction even when nobody actually holds it.",
+      "phases": [
+        "TRICK_PLAY"
+      ],
+      "profile_accepts_ablation": false,
+      "provenance": "mechanical",
+      "rationale": "Hard public inference proves that no remaining seat can hold a higher card of the led suit, so the trick cannot be taken back.",
+      "rule_id": "counting.play.certain_winner_priority.v1",
+      "validation_status": "mechanical consequence of the ruleset"
+    },
+    {
+      "ablation_variant_or_refusal": "ProfileError: rule 'counting.play.lead_certain_winner.v1' cannot be disabled",
+      "action_preference": "Prefer leading that card.",
+      "condition": "The policy is on lead and holds the highest unplayed card of some suit.",
+      "contracts": [
+        "RAMI"
+      ],
+      "decision_classes": [
+        "RAMI",
+        "TRICK_PLAY"
+      ],
+      "independently_disableable_claim": false,
+      "is_strategic_heuristic": false,
+      "limitations": "Certain for this trick only; it says nothing about who leads the next one or about the rest of the deal.",
+      "phases": [
+        "TRICK_PLAY"
+      ],
+      "profile_accepts_ablation": false,
+      "provenance": "mechanical",
+      "rationale": "project_target_v1 has no trump suit and only led-suit cards can win, so the highest unplayed card of a suit wins with certainty when it is led.",
+      "rule_id": "counting.play.lead_certain_winner.v1",
+      "validation_status": "mechanical consequence of the ruleset"
+    },
+    {
+      "ablation_variant_or_refusal": "ProfileError: rule 'partner.nolo.dump_liability_when_partner_certainly_wins.v1' cannot be disabled",
+      "action_preference": "Treat the trick as already conceded by the partnership and discard the highest-liability legal card.",
+      "condition": "A partner holds the trick in a NOLO deal and no seat still to play can beat the partner's card.",
+      "contracts": [
+        "NOLO"
+      ],
+      "decision_classes": [
+        "NOLO",
+        "TRICK_PLAY"
+      ],
+      "independently_disableable_claim": false,
+      "is_strategic_heuristic": false,
+      "limitations": "Ignores that taking the trick oneself would change who leads the next trick.",
+      "phases": [
+        "TRICK_PLAY"
+      ],
+      "profile_accepts_ablation": false,
+      "provenance": "mechanical",
+      "rationale": "NOLO scores team trick totals, so once the partnership is certain to take the trick the choice of card cannot change the team count. Individual trick counts are not scored.",
+      "rule_id": "partner.nolo.dump_liability_when_partner_certainly_wins.v1",
+      "validation_status": "mechanical consequence of the ruleset"
+    },
+    {
+      "ablation_variant_or_refusal": "profile:sha256:753d673191b0e9f1344d1cfc6e3ce5d0ccd143450475ab70f0fff4c01f67495a",
+      "action_preference": "Prefer leading a suit the partner is publicly void in.",
+      "condition": "The policy is on lead in a NOLO deal and the partner is publicly void in a candidate suit.",
+      "contracts": [
+        "NOLO"
+      ],
+      "decision_classes": [
+        "NOLO",
+        "TRICK_PLAY"
+      ],
+      "independently_disableable_claim": true,
+      "is_strategic_heuristic": true,
+      "limitations": "Only voids proven by a public failure to follow are used, so the rule is silent early in a deal.",
+      "phases": [
+        "TRICK_PLAY"
+      ],
+      "profile_accepts_ablation": true,
+      "provenance": "generic_trick_taking_hypothesis",
+      "rationale": "A void partner cannot be forced to win that trick and can discard a liability instead.",
+      "rule_id": "partner.nolo.prefer_leading_partner_void_suit.v1",
+      "validation_status": "UNVALIDATED - no expert or simulation validation"
+    },
+    {
+      "ablation_variant_or_refusal": "profile:sha256:437fd54f8ce0ff027f93b268c5081b82dd79a23b175f584607733cae4cb5db3f",
+      "action_preference": "Overtake with the cheapest certain winner.",
+      "condition": "A partner holds the trick, a seat still to play could beat it, and the policy holds a card that beats every such card.",
+      "contracts": [
+        "RAMI"
+      ],
+      "decision_classes": [
+        "RAMI",
+        "TRICK_PLAY"
+      ],
+      "independently_disableable_claim": true,
+      "is_strategic_heuristic": true,
+      "limitations": "Spends a high card on a trick the partner might have won anyway, and the deduction ignores how likely that is.",
+      "phases": [
+        "TRICK_PLAY"
+      ],
+      "profile_accepts_ablation": true,
+      "provenance": "generic_trick_taking_hypothesis",
+      "rationale": "Converting a beatable partner winner into an unbeatable one secures a trick the partnership would otherwise risk.",
+      "rule_id": "partner.rami.overtake_when_partner_beatable.v1",
+      "validation_status": "UNVALIDATED - no expert or simulation validation"
+    },
+    {
+      "ablation_variant_or_refusal": "profile:sha256:7b8b384dacfa6f18ee98a4efeb94889015a8dcbfd48b668f2f2ab52ea6c95d64",
+      "action_preference": "Avoid leading a suit the partner is publicly void in.",
+      "condition": "The policy is on lead in a RAMI deal and the partner is publicly void in some candidate suit.",
+      "contracts": [
+        "RAMI"
+      ],
+      "decision_classes": [
+        "RAMI",
+        "TRICK_PLAY"
+      ],
+      "independently_disableable_claim": true,
+      "is_strategic_heuristic": true,
+      "limitations": "A void partner can also discard usefully; the rule is a weak preference only.",
+      "phases": [
+        "TRICK_PLAY"
+      ],
+      "profile_accepts_ablation": true,
+      "provenance": "generic_trick_taking_hypothesis",
+      "rationale": "A void partner cannot support the suit, so the lead is worth less to the partnership.",
+      "rule_id": "partner.rami.prefer_leading_suit_partner_can_follow.v1",
+      "validation_status": "UNVALIDATED - no expert or simulation validation"
+    },
+    {
+      "ablation_variant_or_refusal": "ProfileError: rule 'partner.rami.protect_certain_partner_winner.v1' cannot be disabled",
+      "action_preference": "Never overtake; play the lowest legal card.",
+      "condition": "A partner holds the trick and no seat still to play can beat the partner's card.",
+      "contracts": [
+        "RAMI"
+      ],
+      "decision_classes": [
+        "RAMI",
+        "TRICK_PLAY"
+      ],
+      "independently_disableable_claim": false,
+      "is_strategic_heuristic": false,
+      "limitations": "Certainty depends on the public record; unaccounted higher cards defeat the deduction.",
+      "phases": [
+        "TRICK_PLAY"
+      ],
+      "profile_accepts_ablation": false,
+      "provenance": "mechanical",
+      "rationale": "The partnership is certain to take the trick, so any card spent on it is pure loss.",
+      "rule_id": "partner.rami.protect_certain_partner_winner.v1",
+      "validation_status": "mechanical consequence of the ruleset"
+    },
+    {
+      "ablation_variant_or_refusal": "ProfileError: rule 'reactive.nolo.discard_highest_liability.v1' cannot be disabled",
+      "action_preference": "Discard the highest-liability card by the ported liability table, preferring short suits on ties.",
+      "condition": "The policy cannot follow the led suit in a NOLO deal.",
+      "contracts": [
+        "NOLO"
+      ],
+      "decision_classes": [
+        "NOLO",
+        "TRICK_PLAY"
+      ],
+      "independently_disableable_claim": false,
+      "is_strategic_heuristic": true,
+      "limitations": "The liability weights are uncalibrated legacy constants.",
+      "phases": [
+        "TRICK_PLAY"
+      ],
+      "profile_accepts_ablation": false,
+      "provenance": "legacy_port",
+      "rationale": "Ported from the frozen discard routine: aces and kings are the cards most likely to be forced to win a later trick.",
+      "rule_id": "reactive.nolo.discard_highest_liability.v1",
+      "validation_status": "UNVALIDATED - no expert or simulation validation"
+    },
+    {
+      "ablation_variant_or_refusal": "ProfileError: rule 'reactive.nolo.forced_win_position_rule.v1' cannot be disabled",
+      "action_preference": "Play the highest such card when last to play, otherwise the lowest.",
+      "condition": "Every legal card would currently take the trick.",
+      "contracts": [
+        "NOLO"
+      ],
+      "decision_classes": [
+        "NOLO",
+        "TRICK_PLAY"
+      ],
+      "independently_disableable_claim": false,
+      "is_strategic_heuristic": true,
+      "limitations": "The earlier-seat branch relies on an opponent or the partner actually overtaking.",
+      "phases": [
+        "TRICK_PLAY"
+      ],
+      "profile_accepts_ablation": false,
+      "provenance": "legacy_port",
+      "rationale": "Ported from the frozen policy: the last seat cannot be overtaken, so it purges its largest liability; an earlier seat keeps the trick cheap so a later seat can still take it.",
+      "rule_id": "reactive.nolo.forced_win_position_rule.v1",
+      "validation_status": "UNVALIDATED - no expert or simulation validation"
+    },
+    {
+      "ablation_variant_or_refusal": "ProfileError: rule 'reactive.nolo.lead_lowest_from_shortest_suit.v1' cannot be disabled",
+      "action_preference": "Lead the lowest rank available; break rank ties toward the shortest own suit, then canonical suit order.",
+      "condition": "The policy is on lead in a NOLO deal.",
+      "contracts": [
+        "NOLO"
+      ],
+      "decision_classes": [
+        "NOLO",
+        "TRICK_PLAY"
+      ],
+      "independently_disableable_claim": false,
+      "is_strategic_heuristic": true,
+      "limitations": "Creating a void can also force the partnership to win later tricks in other suits.",
+      "phases": [
+        "TRICK_PLAY"
+      ],
+      "profile_accepts_ablation": false,
+      "provenance": "generic_trick_taking_hypothesis",
+      "rationale": "A low lead is unlikely to win the trick, and shortening a suit creates a void that lets the hand discard liabilities later.",
+      "rule_id": "reactive.nolo.lead_lowest_from_shortest_suit.v1",
+      "validation_status": "UNVALIDATED - no expert or simulation validation"
+    },
+    {
+      "ablation_variant_or_refusal": "ProfileError: rule 'reactive.nolo.prefer_safe_loss.v1' cannot be disabled",
+      "action_preference": "Prefer a card that cannot take the trick, and among those the highest, shedding the largest safe liability.",
+      "condition": "At least one legal card cannot take the current trick.",
+      "contracts": [
+        "NOLO"
+      ],
+      "decision_classes": [
+        "NOLO",
+        "TRICK_PLAY"
+      ],
+      "independently_disableable_claim": false,
+      "is_strategic_heuristic": true,
+      "limitations": "Safety is provisional for any seat that is not last to play.",
+      "phases": [
+        "TRICK_PLAY"
+      ],
+      "profile_accepts_ablation": false,
+      "provenance": "generic_trick_taking_hypothesis",
+      "rationale": "In a misere contract a trick is a penalty, and a card that is safe now may be a forced winner later.",
+      "rule_id": "reactive.nolo.prefer_safe_loss.v1",
+      "validation_status": "UNVALIDATED - no expert or simulation validation"
+    },
+    {
+      "ablation_variant_or_refusal": "profile:sha256:db83c4a97a400d4d61b1d3fe10e25d1bc4eb35fabb0f74471f1ed177cda3a137",
+      "action_preference": "Prefer a card that does not take the trick from the partner, and among those prefer the lowest.",
+      "condition": "A partner currently holds the trick in a RAMI deal.",
+      "contracts": [
+        "RAMI"
+      ],
+      "decision_classes": [
+        "RAMI",
+        "TRICK_PLAY"
+      ],
+      "independently_disableable_claim": true,
+      "is_strategic_heuristic": true,
+      "limitations": "Provisional: a later opponent may still overtake the partner, and this rule does not look at who is still to play.",
+      "phases": [
+        "TRICK_PLAY"
+      ],
+      "profile_accepts_ablation": true,
+      "provenance": "generic_trick_taking_hypothesis",
+      "rationale": "The partnership already holds the trick, so spending a higher card on it cannot add a trick.",
+      "rule_id": "reactive.rami.avoid_overtaking_partner.v1",
+      "validation_status": "UNVALIDATED - no expert or simulation validation"
+    },
+    {
+      "ablation_variant_or_refusal": "ProfileError: rule 'reactive.rami.cheapest_current_winner.v1' cannot be disabled",
+      "action_preference": "Play the cheapest legal card that currently takes it.",
+      "condition": "An opponent currently holds the trick in a RAMI deal.",
+      "contracts": [
+        "RAMI"
+      ],
+      "decision_classes": [
+        "RAMI",
+        "TRICK_PLAY"
+      ],
+      "independently_disableable_claim": false,
+      "is_strategic_heuristic": true,
+      "limitations": "Provisional for any seat that is not last to play; the trick can still be taken back.",
+      "phases": [
+        "TRICK_PLAY"
+      ],
+      "profile_accepts_ablation": false,
+      "provenance": "generic_trick_taking_hypothesis",
+      "rationale": "Winning with the cheapest sufficient card preserves strength.",
+      "rule_id": "reactive.rami.cheapest_current_winner.v1",
+      "validation_status": "UNVALIDATED - no expert or simulation validation"
+    },
+    {
+      "ablation_variant_or_refusal": "ProfileError: rule 'reactive.rami.lead_high_from_best_suit.v1' cannot be disabled",
+      "action_preference": "Score each own suit as its high-card weight plus the configured length bonus times its length, then lead the highest card of the best-scoring suit.",
+      "condition": "The policy is on lead in a RAMI deal.",
+      "contracts": [
+        "RAMI"
+      ],
+      "decision_classes": [
+        "RAMI",
+        "TRICK_PLAY"
+      ],
+      "independently_disableable_claim": false,
+      "is_strategic_heuristic": true,
+      "limitations": "Ignores entries, opponent distribution and the value of keeping a high card for a later round. The weight is uncalibrated.",
+      "phases": [
+        "TRICK_PLAY"
+      ],
+      "profile_accepts_ablation": false,
+      "provenance": "generic_trick_taking_hypothesis",
+      "rationale": "With no trump suit, top cards and length are the two ordinary sources of tricks; the length bonus makes their trade-off an explicit, ablatable profile weight.",
+      "rule_id": "reactive.rami.lead_high_from_best_suit.v1",
+      "validation_status": "UNVALIDATED - no expert or simulation validation"
+    },
+    {
+      "ablation_variant_or_refusal": "ProfileError: rule 'reactive.rami.preserve_strength_when_losing.v1' cannot be disabled",
+      "action_preference": "Play the lowest legal card.",
+      "condition": "No legal card currently takes the trick in a RAMI deal.",
+      "contracts": [
+        "RAMI"
+      ],
+      "decision_classes": [
+        "RAMI",
+        "TRICK_PLAY"
+      ],
+      "independently_disableable_claim": false,
+      "is_strategic_heuristic": true,
+      "limitations": "Ignores discard signalling and future suit control.",
+      "phases": [
+        "TRICK_PLAY"
+      ],
+      "profile_accepts_ablation": false,
+      "provenance": "generic_trick_taking_hypothesis",
+      "rationale": "A trick that cannot be won should cost as little as possible.",
+      "rule_id": "reactive.rami.preserve_strength_when_losing.v1",
+      "validation_status": "UNVALIDATED - no expert or simulation validation"
+    },
+    {
+      "ablation_variant_or_refusal": "ProfileError: rule 'show.simple.lowest_eligible_colour_card.v1' cannot be disabled",
+      "action_preference": "Show the lowest eligible rank of the contract colour; break rank ties by canonical project_target_v1 suit order.",
+      "condition": "The simple showing profile has chosen a contract.",
+      "contracts": [
+        "NOLO",
+        "RAMI"
+      ],
+      "decision_classes": [
+        "NOLO",
+        "RAMI",
+        "SHOWING"
+      ],
+      "independently_disableable_claim": false,
+      "is_strategic_heuristic": true,
+      "limitations": "Whether minimum-information showing is actually best in this ruleset is untested.",
+      "phases": [
+        "SHOWING"
+      ],
+      "profile_accepts_ablation": false,
+      "provenance": "project_hypothesis",
+      "rationale": "Revealing the lowest legal card gives an opponent the least usable information about the rest of the hand.",
+      "rule_id": "show.simple.lowest_eligible_colour_card.v1",
+      "validation_status": "UNVALIDATED - no expert or simulation validation"
+    },
+    {
+      "ablation_variant_or_refusal": "ProfileError: rule 'show.simple.nolo_suitability_veto.v1' cannot be disabled",
+      "action_preference": "Withhold the RAMI declaration when the NOLO suitability score exceeds the configured veto threshold.",
+      "condition": "The simple showing profile would otherwise declare RAMI.",
+      "contracts": [
+        "RAMI"
+      ],
+      "decision_classes": [
+        "RAMI",
+        "SHOWING"
+      ],
+      "independently_disableable_claim": false,
+      "is_strategic_heuristic": true,
+      "limitations": "Both thresholds are uncalibrated.",
+      "phases": [
+        "SHOWING"
+      ],
+      "profile_accepts_ablation": false,
+      "provenance": "project_hypothesis",
+      "rationale": "A hand can be strong in high cards and still be a much better NOLO hand; two explicit thresholds avoid comparing two differently scaled scores.",
+      "rule_id": "show.simple.nolo_suitability_veto.v1",
+      "validation_status": "UNVALIDATED - no expert or simulation validation"
+    },
+    {
+      "ablation_variant_or_refusal": "ProfileError: rule 'show.simple.rami_strength_threshold.v1' cannot be disabled",
+      "action_preference": "Declare RAMI only when high-card points plus ace, control and length bonuses reach the configured threshold.",
+      "condition": "A policy using the simple showing profile must declare.",
+      "contracts": [
+        "RAMI"
+      ],
+      "decision_classes": [
+        "RAMI",
+        "SHOWING"
+      ],
+      "independently_disableable_claim": false,
+      "is_strategic_heuristic": true,
+      "limitations": "The threshold is uncalibrated and is not claimed to be optimal or even good.",
+      "phases": [
+        "SHOWING"
+      ],
+      "profile_accepts_ablation": false,
+      "provenance": "project_hypothesis",
+      "rationale": "A small, readable set of hand descriptors is easier to ablate than a calibrated formula and gives an honest floor.",
+      "rule_id": "show.simple.rami_strength_threshold.v1",
+      "validation_status": "UNVALIDATED - no expert or simulation validation"
+    }
+  ],
+  "rules_in_reference_profile": 24,
+  "schema_version": "tuppi.audit.rule_catalogue.v1",
+  "strategic_unvalidated": 16,
+  "uncatalogued_reference_layers": [
+    "tuppi.agents.void_seeking_nolo_lead.v1",
+    "tuppi.agents.establishment_rami_lead.v1"
+  ]
+}

@@ -1,0 +1,483 @@
+{
+  "full_artifact": "/Users/pyryouri/Developer/TuppiRuns/phase7/audit/t1_trace_full.json",
+  "note": "first ten traced decisions of deal 0; the full trace is bulk",
+  "schema_version": "tuppi.audit.rule_trace.v1",
+  "traces": [
+    {
+      "component_names": [
+        "contract_preferred",
+        "rank_preference",
+        "suit_precedence"
+      ],
+      "contract": null,
+      "deal": 0,
+      "decided_by_tie_break": false,
+      "legal_actions": 6,
+      "phase": "SHOWING",
+      "ply": 0,
+      "profile_key": "partner_aware_v1",
+      "rules_cited_by_any_candidate": {
+        "common.play.legal_actions_only.v1": 6,
+        "common.select.deterministic_maximum.v1": 6,
+        "common.show.authoritative_fallback.v1": 6,
+        "show.simple.lowest_eligible_colour_card.v1": 6,
+        "show.simple.nolo_suitability_veto.v1": 6,
+        "show.simple.rami_strength_threshold.v1": 6
+      },
+      "runner_up_rule_ids": [
+        "common.play.legal_actions_only.v1",
+        "common.select.deterministic_maximum.v1",
+        "common.show.authoritative_fallback.v1",
+        "show.simple.lowest_eligible_colour_card.v1",
+        "show.simple.nolo_suitability_veto.v1",
+        "show.simple.rami_strength_threshold.v1"
+      ],
+      "seat": 1,
+      "selected_action": {
+        "declared_contract": "NOLO",
+        "seat": 1,
+        "shown_card": "4S",
+        "type": "show"
+      },
+      "selected_reason_codes": [
+        "nolo_declared",
+        "preferred_contract",
+        "direct_colour_show_card"
+      ],
+      "selected_rule_ids": [
+        "common.play.legal_actions_only.v1",
+        "common.select.deterministic_maximum.v1",
+        "common.show.authoritative_fallback.v1",
+        "show.simple.lowest_eligible_colour_card.v1",
+        "show.simple.nolo_suitability_veto.v1",
+        "show.simple.rami_strength_threshold.v1"
+      ]
+    },
+    {
+      "component_names": [
+        "contract_preferred",
+        "rank_preference",
+        "suit_precedence"
+      ],
+      "contract": null,
+      "deal": 0,
+      "decided_by_tie_break": false,
+      "legal_actions": 10,
+      "phase": "SHOWING",
+      "ply": 1,
+      "profile_key": "partner_aware_v1",
+      "rules_cited_by_any_candidate": {
+        "common.play.legal_actions_only.v1": 10,
+        "common.select.deterministic_maximum.v1": 10,
+        "common.show.authoritative_fallback.v1": 10,
+        "show.simple.lowest_eligible_colour_card.v1": 10,
+        "show.simple.nolo_suitability_veto.v1": 10,
+        "show.simple.rami_strength_threshold.v1": 10
+      },
+      "runner_up_rule_ids": [
+        "common.play.legal_actions_only.v1",
+        "common.select.deterministic_maximum.v1",
+        "common.show.authoritative_fallback.v1",
+        "show.simple.lowest_eligible_colour_card.v1",
+        "show.simple.nolo_suitability_veto.v1",
+        "show.simple.rami_strength_threshold.v1"
+      ],
+      "seat": 2,
+      "selected_action": {
+        "declared_contract": "NOLO",
+        "seat": 2,
+        "shown_card": "5S",
+        "type": "show"
+      },
+      "selected_reason_codes": [
+        "nolo_declared",
+        "preferred_contract",
+        "direct_colour_show_card"
+      ],
+      "selected_rule_ids": [
+        "common.play.legal_actions_only.v1",
+        "common.select.deterministic_maximum.v1",
+        "common.show.authoritative_fallback.v1",
+        "show.simple.lowest_eligible_colour_card.v1",
+        "show.simple.nolo_suitability_veto.v1",
+        "show.simple.rami_strength_threshold.v1"
+      ]
+    },
+    {
+      "component_names": [
+        "contract_preferred",
+        "rank_preference",
+        "suit_precedence"
+      ],
+      "contract": null,
+      "deal": 0,
+      "decided_by_tie_break": false,
+      "legal_actions": 6,
+      "phase": "SHOWING",
+      "ply": 2,
+      "profile_key": "partner_aware_v1",
+      "rules_cited_by_any_candidate": {
+        "common.play.legal_actions_only.v1": 6,
+        "common.select.deterministic_maximum.v1": 6,
+        "common.show.authoritative_fallback.v1": 6,
+        "show.simple.lowest_eligible_colour_card.v1": 6,
+        "show.simple.nolo_suitability_veto.v1": 6,
+        "show.simple.rami_strength_threshold.v1": 6
+      },
+      "runner_up_rule_ids": [
+        "common.play.legal_actions_only.v1",
+        "common.select.deterministic_maximum.v1",
+        "common.show.authoritative_fallback.v1",
+        "show.simple.lowest_eligible_colour_card.v1",
+        "show.simple.nolo_suitability_veto.v1",
+        "show.simple.rami_strength_threshold.v1"
+      ],
+      "seat": 3,
+      "selected_action": {
+        "declared_contract": "RAMI",
+        "seat": 3,
+        "shown_card": "3H",
+        "type": "show"
+      },
+      "selected_reason_codes": [
+        "rami_threshold_met",
+        "rami_declared",
+        "preferred_contract",
+        "direct_colour_show_card"
+      ],
+      "selected_rule_ids": [
+        "common.play.legal_actions_only.v1",
+        "common.select.deterministic_maximum.v1",
+        "common.show.authoritative_fallback.v1",
+        "show.simple.lowest_eligible_colour_card.v1",
+        "show.simple.nolo_suitability_veto.v1",
+        "show.simple.rami_strength_threshold.v1"
+      ]
+    },
+    {
+      "component_names": [
+        "establishment_preference",
+        "certain_trick",
+        "partner_can_follow",
+        "lead_suit_score",
+        "lead_rank_preference"
+      ],
+      "contract": "RAMI",
+      "deal": 0,
+      "decided_by_tie_break": false,
+      "legal_actions": 13,
+      "phase": "TRICK_PLAY",
+      "ply": 3,
+      "profile_key": "partner_aware_v1",
+      "rules_cited_by_any_candidate": {
+        "common.play.differentiated_trick_reward.v1": 13,
+        "common.play.legal_actions_only.v1": 13,
+        "common.select.deterministic_maximum.v1": 13,
+        "counting.play.lead_certain_winner.v1": 13,
+        "partner.rami.prefer_leading_suit_partner_can_follow.v1": 13,
+        "reactive.rami.lead_high_from_best_suit.v1": 13
+      },
+      "runner_up_rule_ids": [
+        "common.play.differentiated_trick_reward.v1",
+        "common.play.legal_actions_only.v1",
+        "common.select.deterministic_maximum.v1",
+        "counting.play.lead_certain_winner.v1",
+        "partner.rami.prefer_leading_suit_partner_can_follow.v1",
+        "reactive.rami.lead_high_from_best_suit.v1"
+      ],
+      "seat": 2,
+      "selected_action": {
+        "card": "QH",
+        "seat": 2,
+        "type": "play"
+      },
+      "selected_reason_codes": [
+        "establish_longest_paying_suit",
+        "rami_lead",
+        "rami_lead_best_suit",
+        "partner_can_follow"
+      ],
+      "selected_rule_ids": [
+        "common.play.differentiated_trick_reward.v1",
+        "common.play.legal_actions_only.v1",
+        "common.select.deterministic_maximum.v1",
+        "counting.play.lead_certain_winner.v1",
+        "partner.rami.prefer_leading_suit_partner_can_follow.v1",
+        "reactive.rami.lead_high_from_best_suit.v1"
+      ]
+    },
+    {
+      "component_names": [
+        "trick_preference",
+        "certainty",
+        "rank_cost"
+      ],
+      "contract": "RAMI",
+      "deal": 0,
+      "decided_by_tie_break": false,
+      "legal_actions": 3,
+      "phase": "TRICK_PLAY",
+      "ply": 4,
+      "profile_key": "partner_aware_v1",
+      "rules_cited_by_any_candidate": {
+        "common.play.differentiated_trick_reward.v1": 3,
+        "common.play.legal_actions_only.v1": 3,
+        "common.select.deterministic_maximum.v1": 3,
+        "counting.play.certain_winner_priority.v1": 3,
+        "reactive.rami.preserve_strength_when_losing.v1": 3
+      },
+      "runner_up_rule_ids": [
+        "common.play.differentiated_trick_reward.v1",
+        "common.play.legal_actions_only.v1",
+        "common.select.deterministic_maximum.v1",
+        "counting.play.certain_winner_priority.v1",
+        "reactive.rami.preserve_strength_when_losing.v1"
+      ],
+      "seat": 3,
+      "selected_action": {
+        "card": "2H",
+        "seat": 3,
+        "type": "play"
+      },
+      "selected_reason_codes": [
+        "rami_follow",
+        "rami_cannot_take_trick"
+      ],
+      "selected_rule_ids": [
+        "common.play.differentiated_trick_reward.v1",
+        "common.play.legal_actions_only.v1",
+        "common.select.deterministic_maximum.v1",
+        "counting.play.certain_winner_priority.v1",
+        "reactive.rami.preserve_strength_when_losing.v1"
+      ]
+    },
+    {
+      "component_names": [
+        "trick_preference",
+        "certainty",
+        "rank_cost"
+      ],
+      "contract": "RAMI",
+      "deal": 0,
+      "decided_by_tie_break": false,
+      "legal_actions": 4,
+      "phase": "TRICK_PLAY",
+      "ply": 5,
+      "profile_key": "partner_aware_v1",
+      "rules_cited_by_any_candidate": {
+        "common.play.differentiated_trick_reward.v1": 4,
+        "common.play.legal_actions_only.v1": 4,
+        "common.select.deterministic_maximum.v1": 4,
+        "partner.rami.protect_certain_partner_winner.v1": 4
+      },
+      "runner_up_rule_ids": [
+        "common.play.differentiated_trick_reward.v1",
+        "common.play.legal_actions_only.v1",
+        "common.select.deterministic_maximum.v1",
+        "partner.rami.protect_certain_partner_winner.v1"
+      ],
+      "seat": 0,
+      "selected_action": {
+        "card": "9H",
+        "seat": 0,
+        "type": "play"
+      },
+      "selected_reason_codes": [
+        "rami_follow",
+        "partner_certainly_wins",
+        "protects_partner_trick"
+      ],
+      "selected_rule_ids": [
+        "common.play.differentiated_trick_reward.v1",
+        "common.play.legal_actions_only.v1",
+        "common.select.deterministic_maximum.v1",
+        "partner.rami.protect_certain_partner_winner.v1"
+      ]
+    },
+    {
+      "component_names": [
+        "trick_preference",
+        "certainty",
+        "rank_cost"
+      ],
+      "contract": "RAMI",
+      "deal": 0,
+      "decided_by_tie_break": false,
+      "legal_actions": 2,
+      "phase": "TRICK_PLAY",
+      "ply": 6,
+      "profile_key": "partner_aware_v1",
+      "rules_cited_by_any_candidate": {
+        "common.play.differentiated_trick_reward.v1": 2,
+        "common.play.legal_actions_only.v1": 2,
+        "common.select.deterministic_maximum.v1": 2,
+        "counting.play.certain_winner_priority.v1": 2,
+        "reactive.rami.preserve_strength_when_losing.v1": 2
+      },
+      "runner_up_rule_ids": [
+        "common.play.differentiated_trick_reward.v1",
+        "common.play.legal_actions_only.v1",
+        "common.select.deterministic_maximum.v1",
+        "counting.play.certain_winner_priority.v1",
+        "reactive.rami.preserve_strength_when_losing.v1"
+      ],
+      "seat": 1,
+      "selected_action": {
+        "card": "5H",
+        "seat": 1,
+        "type": "play"
+      },
+      "selected_reason_codes": [
+        "rami_follow",
+        "rami_cannot_take_trick"
+      ],
+      "selected_rule_ids": [
+        "common.play.differentiated_trick_reward.v1",
+        "common.play.legal_actions_only.v1",
+        "common.select.deterministic_maximum.v1",
+        "counting.play.certain_winner_priority.v1",
+        "reactive.rami.preserve_strength_when_losing.v1"
+      ]
+    },
+    {
+      "component_names": [
+        "establishment_preference",
+        "certain_trick",
+        "partner_can_follow",
+        "lead_suit_score",
+        "lead_rank_preference"
+      ],
+      "contract": "RAMI",
+      "deal": 0,
+      "decided_by_tie_break": false,
+      "legal_actions": 12,
+      "phase": "TRICK_PLAY",
+      "ply": 7,
+      "profile_key": "partner_aware_v1",
+      "rules_cited_by_any_candidate": {
+        "common.play.differentiated_trick_reward.v1": 12,
+        "common.play.legal_actions_only.v1": 12,
+        "common.select.deterministic_maximum.v1": 12,
+        "counting.play.lead_certain_winner.v1": 12,
+        "partner.rami.prefer_leading_suit_partner_can_follow.v1": 12,
+        "reactive.rami.lead_high_from_best_suit.v1": 12
+      },
+      "runner_up_rule_ids": [
+        "common.play.differentiated_trick_reward.v1",
+        "common.play.legal_actions_only.v1",
+        "common.select.deterministic_maximum.v1",
+        "counting.play.lead_certain_winner.v1",
+        "partner.rami.prefer_leading_suit_partner_can_follow.v1",
+        "reactive.rami.lead_high_from_best_suit.v1"
+      ],
+      "seat": 2,
+      "selected_action": {
+        "card": "8H",
+        "seat": 2,
+        "type": "play"
+      },
+      "selected_reason_codes": [
+        "establish_longest_paying_suit",
+        "rami_lead",
+        "rami_lead_best_suit",
+        "partner_can_follow"
+      ],
+      "selected_rule_ids": [
+        "common.play.differentiated_trick_reward.v1",
+        "common.play.legal_actions_only.v1",
+        "common.select.deterministic_maximum.v1",
+        "counting.play.lead_certain_winner.v1",
+        "partner.rami.prefer_leading_suit_partner_can_follow.v1",
+        "reactive.rami.lead_high_from_best_suit.v1"
+      ]
+    },
+    {
+      "component_names": [
+        "trick_preference",
+        "certainty",
+        "rank_cost"
+      ],
+      "contract": "RAMI",
+      "deal": 0,
+      "decided_by_tie_break": false,
+      "legal_actions": 2,
+      "phase": "TRICK_PLAY",
+      "ply": 8,
+      "profile_key": "partner_aware_v1",
+      "rules_cited_by_any_candidate": {
+        "common.play.differentiated_trick_reward.v1": 2,
+        "common.play.legal_actions_only.v1": 2,
+        "common.select.deterministic_maximum.v1": 2,
+        "counting.play.certain_winner_priority.v1": 2,
+        "reactive.rami.preserve_strength_when_losing.v1": 2
+      },
+      "runner_up_rule_ids": [
+        "common.play.differentiated_trick_reward.v1",
+        "common.play.legal_actions_only.v1",
+        "common.select.deterministic_maximum.v1",
+        "counting.play.certain_winner_priority.v1",
+        "reactive.rami.preserve_strength_when_losing.v1"
+      ],
+      "seat": 3,
+      "selected_action": {
+        "card": "3H",
+        "seat": 3,
+        "type": "play"
+      },
+      "selected_reason_codes": [
+        "rami_follow",
+        "rami_cannot_take_trick"
+      ],
+      "selected_rule_ids": [
+        "common.play.differentiated_trick_reward.v1",
+        "common.play.legal_actions_only.v1",
+        "common.select.deterministic_maximum.v1",
+        "counting.play.certain_winner_priority.v1",
+        "reactive.rami.preserve_strength_when_losing.v1"
+      ]
+    },
+    {
+      "component_names": [
+        "trick_preference",
+        "certainty",
+        "rank_cost"
+      ],
+      "contract": "RAMI",
+      "deal": 0,
+      "decided_by_tie_break": false,
+      "legal_actions": 3,
+      "phase": "TRICK_PLAY",
+      "ply": 9,
+      "profile_key": "partner_aware_v1",
+      "rules_cited_by_any_candidate": {
+        "common.play.differentiated_trick_reward.v1": 3,
+        "common.play.legal_actions_only.v1": 3,
+        "common.select.deterministic_maximum.v1": 3,
+        "partner.rami.overtake_when_partner_beatable.v1": 3
+      },
+      "runner_up_rule_ids": [
+        "common.play.differentiated_trick_reward.v1",
+        "common.play.legal_actions_only.v1",
+        "common.select.deterministic_maximum.v1",
+        "partner.rami.overtake_when_partner_beatable.v1"
+      ],
+      "seat": 0,
+      "selected_action": {
+        "card": "JH",
+        "seat": 0,
+        "type": "play"
+      },
+      "selected_reason_codes": [
+        "rami_follow",
+        "partner_beatable",
+        "overtakes_with_certain_winner"
+      ],
+      "selected_rule_ids": [
+        "common.play.differentiated_trick_reward.v1",
+        "common.play.legal_actions_only.v1",
+        "common.select.deterministic_maximum.v1",
+        "partner.rami.overtake_when_partner_beatable.v1"
+      ]
+    }
+  ]
+}

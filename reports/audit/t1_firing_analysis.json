@@ -1,0 +1,156 @@
+{
+  "deals": 400,
+  "decided_by_tie_break": 573,
+  "decisions": 21899,
+  "decisions_by_phase": {
+    "SHOWING": 1099,
+    "TRICK_PLAY": 20800
+  },
+  "per_rule": {
+    "common.play.differentiated_trick_reward.v1": {
+      "any_rate": 0.949815060048404,
+      "cited_by_any_candidate": 20800,
+      "cited_by_selected_candidate": 20800,
+      "selected_rate": 0.949815060048404
+    },
+    "common.play.legal_actions_only.v1": {
+      "any_rate": 1.0,
+      "cited_by_any_candidate": 21899,
+      "cited_by_selected_candidate": 21899,
+      "selected_rate": 1.0
+    },
+    "common.select.deterministic_maximum.v1": {
+      "any_rate": 1.0,
+      "cited_by_any_candidate": 21899,
+      "cited_by_selected_candidate": 21899,
+      "selected_rate": 1.0
+    },
+    "common.show.authoritative_fallback.v1": {
+      "any_rate": 0.05018493995159597,
+      "cited_by_any_candidate": 1099,
+      "cited_by_selected_candidate": 1099,
+      "selected_rate": 0.05018493995159597
+    },
+    "counting.nolo.avoid_retaining_certain_winner.v1": {
+      "any_rate": 0.17452851728389424,
+      "cited_by_any_candidate": 3822,
+      "cited_by_selected_candidate": 3822,
+      "selected_rate": 0.17452851728389424
+    },
+    "counting.nolo.lead_suit_with_most_unaccounted_higher.v1": {
+      "any_rate": 0.058176172427964745,
+      "cited_by_any_candidate": 1274,
+      "cited_by_selected_candidate": 1274,
+      "selected_rate": 0.058176172427964745
+    },
+    "counting.play.certain_winner_priority.v1": {
+      "any_rate": 0.36969724644960955,
+      "cited_by_any_candidate": 8096,
+      "cited_by_selected_candidate": 8096,
+      "selected_rate": 0.36969724644960955
+    },
+    "counting.play.lead_certain_winner.v1": {
+      "any_rate": 0.17927759258413625,
+      "cited_by_any_candidate": 3926,
+      "cited_by_selected_candidate": 3926,
+      "selected_rate": 0.17927759258413625
+    },
+    "partner.nolo.dump_liability_when_partner_certainly_wins.v1": {
+      "any_rate": 0.01908762957212658,
+      "cited_by_any_candidate": 418,
+      "cited_by_selected_candidate": 418,
+      "selected_rate": 0.01908762957212658
+    },
+    "partner.nolo.prefer_leading_partner_void_suit.v1": {
+      "any_rate": 0.058176172427964745,
+      "cited_by_any_candidate": 1274,
+      "cited_by_selected_candidate": 1274,
+      "selected_rate": 0.058176172427964745
+    },
+    "partner.rami.overtake_when_partner_beatable.v1": {
+      "any_rate": 0.005114388784876022,
+      "cited_by_any_candidate": 112,
+      "cited_by_selected_candidate": 112,
+      "selected_rate": 0.005114388784876022
+    },
+    "partner.rami.prefer_leading_suit_partner_can_follow.v1": {
+      "any_rate": 0.17927759258413625,
+      "cited_by_any_candidate": 3926,
+      "cited_by_selected_candidate": 3926,
+      "selected_rate": 0.17927759258413625
+    },
+    "partner.rami.protect_certain_partner_winner.v1": {
+      "any_rate": 0.14621672222475912,
+      "cited_by_any_candidate": 3202,
+      "cited_by_selected_candidate": 3202,
+      "selected_rate": 0.14621672222475912
+    },
+    "reactive.nolo.discard_highest_liability.v1": {
+      "any_rate": 0.06972921137951504,
+      "cited_by_any_candidate": 1527,
+      "cited_by_selected_candidate": 1527,
+      "selected_rate": 0.06972921137951504
+    },
+    "reactive.nolo.forced_win_position_rule.v1": {
+      "any_rate": 0.036577012648979404,
+      "cited_by_any_candidate": 801,
+      "cited_by_selected_candidate": 801,
+      "selected_rate": 0.036577012648979404
+    },
+    "reactive.nolo.lead_lowest_from_shortest_suit.v1": {
+      "any_rate": 0.058176172427964745,
+      "cited_by_any_candidate": 1274,
+      "cited_by_selected_candidate": 1274,
+      "selected_rate": 0.058176172427964745
+    },
+    "reactive.nolo.prefer_safe_loss.v1": {
+      "any_rate": 0.06822229325539979,
+      "cited_by_any_candidate": 1494,
+      "cited_by_selected_candidate": 1494,
+      "selected_rate": 0.06822229325539979
+    },
+    "reactive.rami.avoid_overtaking_partner.v1": {
+      "any_rate": 0.01904196538654733,
+      "cited_by_any_candidate": 417,
+      "cited_by_selected_candidate": 368,
+      "selected_rate": 0.01680442029316407
+    },
+    "reactive.rami.cheapest_current_winner.v1": {
+      "any_rate": 0.07598520480387232,
+      "cited_by_any_candidate": 1664,
+      "cited_by_selected_candidate": 1664,
+      "selected_rate": 0.07598520480387232
+    },
+    "reactive.rami.lead_high_from_best_suit.v1": {
+      "any_rate": 0.17927759258413625,
+      "cited_by_any_candidate": 3926,
+      "cited_by_selected_candidate": 3926,
+      "selected_rate": 0.17927759258413625
+    },
+    "reactive.rami.preserve_strength_when_losing.v1": {
+      "any_rate": 0.3300150691812411,
+      "cited_by_any_candidate": 7227,
+      "cited_by_selected_candidate": 6432,
+      "selected_rate": 0.2937120416457372
+    },
+    "show.simple.lowest_eligible_colour_card.v1": {
+      "any_rate": 0.05018493995159597,
+      "cited_by_any_candidate": 1099,
+      "cited_by_selected_candidate": 1099,
+      "selected_rate": 0.05018493995159597
+    },
+    "show.simple.nolo_suitability_veto.v1": {
+      "any_rate": 0.05018493995159597,
+      "cited_by_any_candidate": 1099,
+      "cited_by_selected_candidate": 1099,
+      "selected_rate": 0.05018493995159597
+    },
+    "show.simple.rami_strength_threshold.v1": {
+      "any_rate": 0.05018493995159597,
+      "cited_by_any_candidate": 1099,
+      "cited_by_selected_candidate": 1099,
+      "selected_rate": 0.05018493995159597
+    }
+  },
+  "tie_break_rate": 0.026165578336910363
+}
