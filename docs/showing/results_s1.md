@@ -174,22 +174,63 @@ perfect selector would.
 - Anything about **later showing seats**, **non-zero scores**, or **transfer** to
   any policy family other than the reference.
 
-## 7. If anyone wants to reopen this
+## 7. If anyone wants to reopen this: the budget
 
-Two options, and they should be chosen before any further measurement:
+The cost is dominated by **which estimator gets declared**, not by the question.
+All rollout rates below are measured: 730 rollouts/s on the Mac (12 workers,
+from this run) and ~190 on the Fedora box (scaling by its measured 0.40
+per-worker ratio across 8 workers).
 
-1. **Re-preregister with a powered bound.** Declare the shrinkage estimator of
-   §5 in advance, or trade observations for completions — 128 observations ×
-   2 048 completions is the same 131 072 rollouts and gives `z·se ≈ 0.0025`,
-   still above δ but four times tighter. Resolving the bound honestly at δ =
-   0.001 needs roughly 100× the rollouts, which is ~4.5 hours on the Mac and
-   ~9 hours on the Fedora box — affordable, if the question is worth it.
-2. **Accept §5 as the expected answer and stop.** A perfect selector at this
-   decision looks worth ~0.0002 equity per deal. If δ = 0.001 is the right
-   funding threshold, this intervention is not worth amortising into a network,
-   and the review's Experiment 2 should not be funded on this scope.
+| Option | Rollouts | Mac | Fedora |
+| --- | ---: | ---: | ---: |
+| S1 as run | 131 072 | 3 min | 11 min |
+| **A: fresh 512×128 with the shrinkage estimator declared first** | **131 072** | **3 min** | **11 min** |
+| B: same budget, 128 obs × 2 048 completions | 131 072 | 3 min | 11 min |
+| C: brute-force the bound as originally written | **13 513 563** | **5.1 h** | **19.8 h** |
 
-The reviewer's own framing argues for the second: the point of putting the
-cheapest, most favourable, most diagnosable test first was to be able to stop.
-The test ran, it cost three minutes, and it did not find the headroom it was
-looking for.
+**Option A is the recommendation, and it costs nothing extra.** Bootstrapped on
+the existing data, the shrinkage estimator's one-sided 97.5% upper bound is
+**+0.000337**, three times below δ. Declared in advance, it would fire the
+scientific kill.
+
+But it must be declared and then run on **fresh observations**. The shrinkage
+estimate in §5 was computed after seeing the result, so declaring it now and
+firing a kill on the same 512 hands would be pre-registration in name only. Same
+design, new seeds, three minutes.
+
+**Option B does not help.** Trading observations for completions leaves
+`z·se ≈ 0.0025`, still 2.5× δ, so the original gate remains unreachable while
+the between-observation interval gets wider.
+
+**Option C is the whole deferred corpus over again.** 13.5M rollouts is 103× this
+run, 7.3× everything else in the programme put together, and **0.99× the wall
+time of generating T1's 10M deals** — the tier D7 deferred. Brute-forcing a badly
+specified statistic would cost exactly what the thing it was meant to justify
+skipping costs.
+
+For scale, the rest of the adopted programme against the same rates:
+
+| Workload | Rollouts | Mac | Fedora |
+| --- | ---: | ---: | ---: |
+| Experiment 0 diagnostics | 100 000 | 2 min | 9 min |
+| Experiment 2, showing model | 440 000 | 10 min | 39 min |
+| Experiment 4, card play | 300 000 | 7 min | 26 min |
+| Experiment 5, on-policy round | 1 000 000 | 23 min | 1.5 h |
+| **all five experiments including S1** | **1 971 072** | **45 min** | **2.9 h** |
+| T1 corpus, deferred | 10M deals | 5.2 h | 20.1 h |
+
+**The entire five-experiment programme is 14% of one T1 run.** That is the
+practical case for the review's ordering, and it survives this inconclusive
+result: the programme is cheap enough that a wasted experiment costs three
+minutes, which is what just happened.
+
+## 8. Recommendation
+
+Run option A — three minutes on fresh seeds with the estimator declared first —
+or accept §5 as the answer and stop. Do not run option C.
+
+If option A fires the kill, Experiment 2 is not funded on this scope, and the
+open question becomes whether a *freely chosen* alternative card (rather than the
+declared lowest-eligible-rank selector) or a **card-play** intervention has
+headroom the declaration does not. Those are different experiments with their own
+pre-registrations, and §6 records that this run says nothing about either.
