@@ -60,6 +60,55 @@ def profile_of(specification: AgentSpecification) -> HeuristicProfile:
     return profile
 
 
+def _construct_improved_if_declared(
+    specification: AgentSpecification, *, seat: int
+) -> Agent | None:
+    """Construct a declared improved policy, or return ``None`` if it is not one.
+
+    Improved policies (``partner_aware_lead_v2`` and its successors) are declared
+    in :mod:`improved_registry`, not in ``POLICY_IMPLEMENTATIONS``, and are
+    deliberately not Phase 4 profiles: their configuration is the layered improved
+    configuration, so :func:`profile_of` rejects them. They do carry a
+    ``tuppi_agents.*`` implementation reference, which is what routes an
+    evaluator-registry agent ID into :func:`construct_registered_agent`, so
+    without this delegation a declared improved policy cannot be evaluated through
+    the ordinary arena path at all.
+
+    Matching is by identity, not by name: the specification must equal the one the
+    improved registry itself resolves, so a caller cannot substitute a forged or
+    edited improved specification for the declared one. Only consulted after the
+    Phase 4 lookup has already missed, so Phase 4 construction is unaffected.
+    """
+
+    from .improved_registry import (
+        improved_agent_from_specification,
+        improved_specifications_by_profile_key,
+    )
+
+    agent_id = getattr(specification, "agent_id", None)
+    if not isinstance(agent_id, str):
+        return None
+    for profile_key, declared in improved_specifications_by_profile_key().items():
+        if declared.agent_id != agent_id:
+            continue
+        if declared != specification:
+            raise AgentConstructionError(
+                "improved specification disagrees with its declared registry entry"
+            )
+        if specification.determinism.value != "deterministic":
+            raise AgentConstructionError("an improved policy must be deterministic")
+        if specification.search_budget is not None:
+            raise AgentConstructionError(
+                "improved policies must declare no search budget"
+            )
+        if specification.model_checkpoint_id is not None:
+            raise AgentConstructionError("improved policies must declare no checkpoint")
+        return improved_agent_from_specification(
+            specification, profile_key=profile_key, seat=seat
+        )
+    return None
+
+
 def construct_registered_agent(
     specification: AgentSpecification, *, seat: int, seed: str | None = None
 ) -> Agent:
@@ -78,6 +127,9 @@ def construct_registered_agent(
         )
     policy_class = POLICY_IMPLEMENTATIONS.get(reference)
     if policy_class is None:
+        improved = _construct_improved_if_declared(specification, seat=seat)
+        if improved is not None:
+            return improved
         raise AgentConstructionError(f"unsupported Phase 4 reference {reference!r}")
     profile = profile_of(specification)
     if specification.determinism.value != "deterministic":
