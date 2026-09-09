@@ -60,7 +60,18 @@ from tuppi_rules import FULL_DECK, Contract, MatchScore, Team
 from tuppi_valuation.equity import DealModel, EquityTable, equity_bounds
 
 REFERENCE = "partner_aware_lead_v2"
-ROOT_SEED = "tuppi-s1-headroom-v1"
+
+#: The two declared variants. S1 ran the first; S1b re-runs the identical design
+#: on fresh hands and completions with the powered estimator of §1 of
+#: ``docs/showing/hypotheses_s1b.md``. A root seed is not a free parameter - each
+#: is named in a pre-registration - so this is a two-value choice, not a knob.
+VARIANT_SEEDS = {
+    "s1": "tuppi-s1-headroom-v1",
+    "s1b": "tuppi-s1b-headroom-v1",
+}
+#: Pre-registered guard: below this signal share the shrinkage weights collapse
+#: and the estimator has no discriminating power, so no kill may be claimed.
+MINIMUM_SIGNAL_SHARE = 0.25
 
 #: Fixed by the pre-registration. Not tunable from the command line.
 OBSERVATIONS = 512
@@ -242,10 +253,17 @@ class Observation:
     deltas: tuple[float, ...]
 
 
-def measure_observation(index: int, corpus: str) -> dict[str, object]:
+def measure_observation(index: int, corpus: str, root_seed: str) -> dict[str, object]:
+    """One observation's 128 paired completions.
+
+    ``root_seed`` is a parameter rather than a module global because workers are
+    separate processes: a global rebound in the parent keeps its import-time
+    value in the child, which would silently re-run the previous variant's seeds.
+    """
+
     table, _ = _cached_table(corpus)
     stream = MatchStream.build(
-        root_seed=ROOT_SEED, stream_index=index, initial_dealer=DEALER
+        root_seed=root_seed, stream_index=index, initial_dealer=DEALER
     )
     hand = canonical_hands(stream.deal(0).explicit_deal(DEALER).hands)[FOREHAND]
 
@@ -265,7 +283,7 @@ def measure_observation(index: int, corpus: str) -> dict[str, object]:
             hands = _complete(
                 hand,
                 derive_seed(
-                    ROOT_SEED, domain="completion", observation=index, draw=completion
+                    root_seed, domain="completion", observation=index, draw=completion
                 ),
             )
             state = begin_explicit_deal(
@@ -350,6 +368,53 @@ def optimistic(deltas: list[float]) -> float:
     return max(0.0, mean + Z * standard_error)
 
 
+def signal_variance(pairs: list[tuple[float, float]]) -> tuple[float, float]:
+    """Between-hand signal variance, and its share of the observed spread.
+
+    The observed spread of per-observation means is signal plus Monte Carlo
+    noise. Subtracting the mean squared standard error leaves the signal, which
+    is what makes the shrinkage estimator powered at a budget where a per-
+    observation confidence envelope is not.
+    """
+
+    means = [mean for mean, _ in pairs]
+    observed = statistics.pvariance(means)
+    noise = statistics.fmean([error * error for _, error in pairs])
+    signal = max(0.0, observed - noise)
+    return (signal, signal / observed if observed > 0 else 0.0)
+
+
+def legal_eb(pairs: list[tuple[float, float]]) -> float:
+    """`G_legal_eb`: what a selector knowing E[delta|o] exactly would gain.
+
+    James-Stein shrinkage of each noisy mean toward the grand mean by its own
+    noise share, per ``hypotheses_s1b.md`` §1. Re-fitted from whatever sample is
+    passed, so a bootstrap replicate re-estimates the weights as the
+    pre-registration requires.
+    """
+
+    signal, _share = signal_variance(pairs)
+    grand = statistics.fmean([mean for mean, _ in pairs])
+    total = 0.0
+    for mean, error in pairs:
+        weight = signal / (signal + error * error) if signal > 0 else 0.0
+        total += max(0.0, grand + weight * (mean - grand))
+    return SEAT_SHARE * total / len(pairs)
+
+
+def bootstrap_statistic(pairs, statistic, seed: str, replicates: int = 5000):
+    """Cluster bootstrap of a statistic that must be re-fitted per replicate."""
+
+    count = len(pairs)
+    draws = []
+    for replicate in range(replicates):
+        base = derive_seed(seed, domain="bootstrap", replicate=replicate)
+        sample = [pairs[uniform_below(base, count, stride=index)] for index in range(count)]
+        draws.append(statistic(sample))
+    draws.sort()
+    return (draws[int(0.025 * replicates)], draws[int(0.975 * replicates)])
+
+
 def bootstrap(values: list[float], seed: str, replicates: int = 5000) -> tuple[float, float]:
     """Cluster bootstrap over observations, which are the unit of resampling."""
 
@@ -365,7 +430,7 @@ def bootstrap(values: list[float], seed: str, replicates: int = 5000) -> tuple[f
     return (draws[int(0.025 * replicates)], draws[int(0.975 * replicates)])
 
 
-def check_baseline_arm_is_the_reference(table: EquityTable, corpus: str) -> int:
+def check_baseline_arm_is_the_reference(table: EquityTable, corpus: str, root_seed: str) -> int:
     """Pre-registration §8: the baseline arm must *be* the reference.
 
     ``_play(hands, None, ...)`` takes the same code path as the forced arm and
@@ -387,14 +452,14 @@ def check_baseline_arm_is_the_reference(table: EquityTable, corpus: str) -> int:
     with trusted_transitions():
         for index in range(4):
             stream = MatchStream.build(
-                root_seed=ROOT_SEED, stream_index=index, initial_dealer=DEALER
+                root_seed=root_seed, stream_index=index, initial_dealer=DEALER
             )
             hand = canonical_hands(stream.deal(0).explicit_deal(DEALER).hands)[FOREHAND]
             for draw in range(8):
                 hands = _complete(
                     hand,
                     derive_seed(
-                        ROOT_SEED, domain="completion", observation=index, draw=draw
+                        root_seed, domain="completion", observation=index, draw=draw
                     ),
                 )
                 through_arm = _play(hands, None, table, agents)
@@ -439,14 +504,18 @@ def main() -> int:
     )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--workers", type=int, default=None)
+    parser.add_argument("--variant", choices=sorted(VARIANT_SEEDS), default="s1")
     args = parser.parse_args()
+
+    root_seed = VARIANT_SEEDS[args.variant]
+    print(f"variant {args.variant}, root seed {root_seed}")
 
     table, endpoint = build_equity_table(Path(args.corpus))
     print("endpoint (per-deal frozen-continuation match equity)")
     for key, value in endpoint.items():
         print(f"  {key:28s} {value}")
     print("  -> §8 endpoint checks passed")
-    checked = check_baseline_arm_is_the_reference(table, args.corpus)
+    checked = check_baseline_arm_is_the_reference(table, args.corpus, root_seed)
     print(f"  -> baseline arm reproduces the reference on {checked}/{checked} deals")
     print()
 
@@ -459,7 +528,7 @@ def main() -> int:
     results: list[dict[str, object]] = []
     with ProcessPoolExecutor(max_workers=workers) as pool:
         futures = {
-            pool.submit(measure_observation, index, args.corpus): index
+            pool.submit(measure_observation, index, args.corpus, root_seed): index
             for index in range(OBSERVATIONS)
         }
         for done, future in enumerate(as_completed(futures), start=1):
@@ -483,15 +552,30 @@ def main() -> int:
     g_deploy = statistics.fmean(deploy_terms)
     g_upper = statistics.fmean(upper_terms)
     g_foresight = statistics.fmean(foresight_terms)
-    deploy_ci = bootstrap(deploy_terms, ROOT_SEED + "-deploy")
-    upper_ci = bootstrap(upper_terms, ROOT_SEED + "-upper")
+    deploy_ci = bootstrap(deploy_terms, root_seed + "-deploy")
+    upper_ci = bootstrap(upper_terms, root_seed + "-upper")
+
+    # The S1b statistic, declared in hypotheses_s1b.md §1 before this code was
+    # written. Re-fitted inside every bootstrap replicate, as required there.
+    pairs = [
+        (
+            statistics.fmean(row["deltas"]),
+            statistics.stdev(row["deltas"]) / math.sqrt(len(row["deltas"])),
+        )
+        for row in results
+    ]
+    g_eb = legal_eb(pairs)
+    eb_ci = bootstrap_statistic(pairs, legal_eb, root_seed + "-eb")
+    _signal, signal_share = signal_variance(pairs)
 
     all_deltas = [d for row in results for d in row["deltas"]]
     print("results (equity per evaluated deal, deployment-normalised)")
     print(f"  G_deploy       {g_deploy:+.6f}   95% CI [{deploy_ci[0]:+.6f}, {deploy_ci[1]:+.6f}]")
     print(f"  G_legal_upper  {g_upper:+.6f}   95% CI [{upper_ci[0]:+.6f}, {upper_ci[1]:+.6f}]")
+    print(f"  G_legal_eb     {g_eb:+.6f}   95% CI [{eb_ci[0]:+.6f}, {eb_ci[1]:+.6f}]")
     print(f"  G_foresight    {g_foresight:+.6f}")
     print(f"  delta          {DELTA:+.6f}")
+    print(f"  signal share   {signal_share:.3f}   (degenerate below {MINIMUM_SIGNAL_SHARE})")
     print()
     print("descriptive")
     print(f"  observations where the alternative's mean beat the baseline: "
@@ -505,10 +589,20 @@ def main() -> int:
     print(f"  reference baseline declaration: {contracts}")
     print()
 
+    # S1's gates and S1b's, evaluated in the order each pre-registration fixes.
     if deploy_ci[0] > DELTA:
         verdict = "PASS"
         note = "the cross-fitted selector's lower bound exceeds delta"
-    elif upper_ci[1] < DELTA:
+    elif args.variant == "s1b" and signal_share < MINIMUM_SIGNAL_SHARE:
+        verdict = "DEGENERATE"
+        note = (
+            f"signal share {signal_share:.3f} is below {MINIMUM_SIGNAL_SHARE}; the "
+            "shrinkage weights collapse and no kill may be claimed from them"
+        )
+    elif args.variant == "s1b" and eb_ci[1] < DELTA:
+        verdict = "SCIENTIFIC KILL"
+        note = "G_legal_eb's upper bound falls below delta"
+    elif args.variant == "s1" and upper_ci[1] < DELTA:
         verdict = "SCIENTIFIC KILL"
         note = "the optimistic upper bound on legal headroom falls below delta"
     else:
@@ -522,7 +616,8 @@ def main() -> int:
     args.output.mkdir(parents=True, exist_ok=True)
     payload = {
         "schema_version": "tuppi.showing.s1_headroom.v1",
-        "root_seed": ROOT_SEED,
+        "variant": args.variant,
+        "root_seed": root_seed,
         "reference_agent_id": corpus_reference_specification().agent_id,
         "observations": OBSERVATIONS,
         "completions": COMPLETIONS,
@@ -534,6 +629,9 @@ def main() -> int:
         "g_deploy_ci": list(deploy_ci),
         "g_legal_upper": g_upper,
         "g_legal_upper_ci": list(upper_ci),
+        "g_legal_eb": g_eb,
+        "g_legal_eb_ci": list(eb_ci),
+        "signal_share": signal_share,
         "g_foresight": g_foresight,
         "override_rate": statistics.fmean(override_flags),
         "mean_delta": statistics.fmean(all_deltas),

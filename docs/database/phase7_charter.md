@@ -31,8 +31,11 @@ time and expensive to revisit.
 
 | **D7** | **The external review's argument is adopted.** The first programme is a tightly scoped **showing intervention** measured against an executable continuation - not a belief network, not a value network, and not a larger imitation corpus. **T1 is deferred.** | This supersedes the §8 ordering of P6 and P9-P12 and the §2 ordering of N1-N4. See `work/phase7_planning/nn_architecture_review.md` for the argument, `..._review_checks.md` for what was verified, and `docs/showing/` for the programme that replaces them. The corpus layer, the trusted mode and the identities all stand; what changes is that the corpus is now generated **to order for a specific experiment** rather than in bulk first. |
 
+| **D8** | **The showing intervention is killed at its tested scope.** `docs/showing/results_s1b.md` fired a pre-registered scientific kill: a perfect observation-compatible selector at the forehand's first show is worth **+0.00023 equity per deal**, a quarter of the funding threshold, and captures **3.9%** of what an oracle seeing the hidden layout gets. | The review's Experiment 2 is not funded on this scope. T1 stays deferred. Three live questions remain, each needing its own pre-registration: a *freely chosen* showing action (up to 26 legal, not two), card play, and the reference against competent humans. Total cost of reaching this: **6.2 minutes**. |
+
 Still open: reference-policy *content* boundaries where `discard_v3` overlaps
-`lead_v2` (§6.5 B1), and whether hyper-threading should be enabled (§7.1).
+`lead_v2` (§6.5 B1), and whether hyper-threading should be enabled (§7.1 - now
+measured at +3%, so probably not worth the contention).
 
 ## Superseded by D7
 
@@ -223,12 +226,22 @@ the gain. The document's own conclusion: "Whether declaring RAMI is right is
 mostly determined by things a point count cannot see - how the suits actually
 lie."
 
-That is the strongest argument in this repository for a learned function, and it
-is quantitative: a 3.3x headroom, with the entire hand-descriptor family
-measured to cap out at roughly a third of it. `handoff.md` §1 makes the
-methodological version of the same point - "the A/B template has a ceiling ... it
-can only find the best member of a family someone thought of in advance", with
-two of three refinements measuring zero or negative.
+That was read as the strongest argument in this repository for a learned
+function, and as a quantitative one: a 3.3x headroom, with the entire
+hand-descriptor family measured to cap out at roughly a third of it.
+`handoff.md` §1 makes the methodological version of the same point - "the A/B
+template has a ceiling ... it can only find the best member of a family someone
+thought of in advance", with two of three refinements measuring zero or negative.
+
+> **Superseded by measurement (D8).** That reading was wrong, and the error is
+> the one the external review identified: a perfect-foresight column is not a
+> learnable bound. `docs/showing/results_s1b.md` measured the
+> observation-compatible headroom on this decision directly, and a perfect legal
+> selector captures **3.9%** of the oracle's gain - +0.00023 equity per deal
+> against the oracle's +0.0059. The descriptor-unexplained variance is therefore
+> overwhelmingly **irreducible hidden-layout variance**, not observable structure
+> that a better function class could reach. Everything measured in this section
+> stands; only the inference drawn from it was mistaken.
 
 ### 1.8 What the T0 pilot established, including four defects
 
