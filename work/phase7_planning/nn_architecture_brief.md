@@ -234,6 +234,38 @@ Legal-action-count distribution over all decisions:
 So the decision space is small and heavily skewed toward very few options. A
 fifth of all decisions carry no information at all.
 
+**And half of the rest are inert.** Measured by playing *every* legal action out
+under the frozen reference on the same hidden deal, over 396 trick-play
+decisions that had a genuine choice:
+
+| | |
+|---|---:|
+| mean legal actions | 5.27 |
+| mean **distinct outcomes** | **1.79** |
+| decisions where every legal action gives the identical result | **50.3%** |
+
+Distribution of distinct outcomes: 1 → 50.3%, 2 → 29.8%, 3 → 12.4%, 4 → 6.3%,
+5+ → 1.3%.
+
+Combining the two: **about 61% of all decisions cannot change the deal's
+outcome** (21.2% forced, plus 50.3% of the remaining 78.8%). Roughly 21 of the
+54.6 decisions in a deal have any leverage at all.
+
+Three structural causes, all consequences of §1.4 and §1.5: with no trumps a card
+can only win a trick led in its own suit, so most cards are interchangeable in
+most positions; two cards of one suit in one hand are strictly equivalent when
+the ranks between them are also the actor's own; and all 13 tricks are always
+played, so many late decisions are already determined. In NOLO, team-total
+scoring adds a fourth — which partner takes an already-conceded trick cannot
+change the score.
+
+**This is the single most important fact for objective design.** An
+action-agreement metric counts a disagreement on an inert decision exactly as
+heavily as one on a decision worth 28 points. It also means the clone's 85.27%
+agreement is compatible with anything from near-perfect play to catastrophe: if
+all of its 15% disagreements fell on decisions with leverage, it was wrong on
+**38%** of the decisions that mattered.
+
 ## 2.3 Scale of an episode
 
 | | |
