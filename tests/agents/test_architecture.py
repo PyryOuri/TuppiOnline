@@ -51,6 +51,10 @@ HARNESS_MODULES = frozenset(
         "factory.py",
         "improved_registry.py",
         "registry.py",
+        # Declares research candidates and their identities; never participates
+        # in a decision. Their runtime behaviour is in research_overrides.py,
+        # which stays in the policy layer.
+        "research_candidates.py",
         "runner.py",
     }
 )

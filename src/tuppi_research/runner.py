@@ -15,7 +15,9 @@ from .cycle import (
     DEFAULT_BASE_DEALS,
     CycleReport,
     analyse,
+    build_candidate_inputs,
     build_inputs,
+    candidate_declaration,
     determinism_check,
     execute_cycle,
     noop_parity_check,
@@ -106,14 +108,82 @@ def run_null_control(
         return report
 
 
+def run_candidate_cycle(
+    candidate_key: str,
+    *,
+    workspace: Path,
+    base_deals: int = DEFAULT_BASE_DEALS,
+    max_new_games: int | None = None,
+    reviewed_by: str = "unreviewed",
+) -> CycleReport:
+    """The same loop for a declared research candidate against the incumbent.
+
+    The only behavioural difference from the null control is which checks apply:
+    the exact-zero identity is asserted for a pass-through candidate and not for
+    one that genuinely differs. The verdict is still not the runner's to choose -
+    ``review`` returns INCONCLUSIVE for any real candidate until a useful-effect
+    threshold exists, and the ledger refuses ACCEPTED for a declared control.
+    """
+
+    workspace = Path(workspace)
+    output = workspace / "evaluation"
+    inputs = build_candidate_inputs(candidate_key, base_deals=base_deals)
+    declaration = candidate_declaration(candidate_key)
+    with Ledger(workspace / "research.sqlite3") as ledger:
+        experiment_id, run_id, state = execute_cycle(
+            ledger, inputs, output_directory=output,
+            max_new_games=max_new_games, experiment=declaration,
+        )
+        report = CycleReport(
+            run_id=run_id, experiment_id=experiment_id, execution_state=state
+        )
+        if state is not ExecutionState.COMPLETE:
+            report.control_checks = list(ledger.control_checks(run_id))
+            report.blocked.append(
+                f"run did not complete ({state.value}); resume before reviewing"
+            )
+            return report
+        analysis = analyse(inputs, output)
+        if declaration.is_null_control:
+            zero = null_control_zero_check(analysis)
+            ledger.record_control_check(
+                run_id=run_id, name="null_control_exact_zero", passed=True,
+                detail=json.dumps(zero, sort_keys=True),
+            )
+        verdict, finding_id = record_cycle_finding(
+            ledger, experiment_id=experiment_id, run_id=run_id, analysis=analysis,
+            output_directory=output, reviewed_by=reviewed_by,
+            is_null_control=declaration.is_null_control,
+        )
+        report.verdict = verdict
+        report.finding_id = finding_id
+        report.units = analysis["admitted_units"]
+        report.summary = {
+            "candidate": candidate_key,
+            "candidate_id": declaration.candidate_id,
+            "incumbent_id": declaration.incumbent_id,
+            "is_null_control": declaration.is_null_control,
+            "block_utilities": analysis["block_utilities"],
+            "mean_paired_utility": analysis["statistics"]["mean_paired_utility"],
+            "confidence_interval": analysis["statistics"]["confidence_interval"],
+            "independent_base_deals": analysis["statistics"]["independent_base_deals"],
+            "paired_permutation_p_value": analysis["statistics"][
+                "paired_permutation_p_value"
+            ],
+        }
+        report.control_checks = list(ledger.control_checks(run_id))
+        report.blocked = list(_blocked_capabilities())
+        return report
+
+
 def _blocked_capabilities() -> tuple[str, ...]:
     """Capabilities this cycle does NOT have. Recorded, not silently implied."""
 
     return (
-        "BLOCKED: a behaviourally different candidate cannot be routed through "
-        "the arena unless it is a declared improved policy - tuppi_eval.agents."
-        "construct_agent dispatches only known implementation references, so a "
-        "research-only candidate has no construction path yet.",
+        "RESOLVED: a declared research candidate now constructs through the "
+        "ordinary arena route (tuppi_agents.research_candidates + factory "
+        "dispatch). Candidates must be declared, and identity is checked "
+        "byte-for-byte against the declared entry.",
         "BLOCKED: no useful-effect threshold, sample-size design or opponent "
         "population is fixed, so no non-null candidate can be judged.",
         "BLOCKED: promotion requires fresh sealed confirmation and staged rules; "
@@ -160,6 +230,15 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--reviewed-by", default="unreviewed")
     run.add_argument("--determinism-check", action="store_true")
 
+    candidate = sub.add_parser(
+        "candidate", help="run a declared research candidate against the incumbent"
+    )
+    candidate.add_argument("--workspace", required=True)
+    candidate.add_argument("--candidate", required=True)
+    candidate.add_argument("--base-deals", type=int, default=DEFAULT_BASE_DEALS)
+    candidate.add_argument("--max-new-games", type=int, default=None)
+    candidate.add_argument("--reviewed-by", default="unreviewed")
+
     report = sub.add_parser("report", help="print one run's ledger rows")
     report.add_argument("--workspace", required=True)
     report.add_argument("--run-id", required=True)
@@ -171,6 +250,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "report":
         return _report(args)
     try:
+        if args.command == "candidate":
+            report = run_candidate_cycle(
+                args.candidate,
+                workspace=Path(args.workspace),
+                base_deals=args.base_deals,
+                max_new_games=args.max_new_games,
+                reviewed_by=args.reviewed_by,
+            )
+            print(json.dumps(report.to_data(), indent=2, default=str))
+            return 0 if report.execution_state is ExecutionState.COMPLETE else 1
         report = run_null_control(
             workspace=Path(args.workspace),
             base_deals=args.base_deals,

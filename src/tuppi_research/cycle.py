@@ -23,6 +23,10 @@ from pathlib import Path
 from typing import Any
 
 from tuppi_agents.improved_registry import improved_specifications_by_profile_key
+from tuppi_agents.research_candidates import (
+    candidate_specifications_by_key,
+    research_candidates,
+)
 from tuppi_engine import (
     EnginePhase,
     ExplicitDeal,
@@ -96,6 +100,69 @@ def reference_team(description: str) -> TeamSpecification:
     )
 
 
+def candidate_specification(candidate_key: str) -> AgentSpecification:
+    specifications = candidate_specifications_by_key()
+    if candidate_key not in specifications:
+        raise CycleError(f"undeclared research candidate {candidate_key!r}")
+    return specifications[candidate_key]
+
+
+def candidate_team(candidate_key: str) -> TeamSpecification:
+    specification = candidate_specification(candidate_key)
+    return TeamSpecification.build(
+        component_agent_ids=(specification.agent_id, specification.agent_id),
+        partner_convention_id=None,
+        shared_instances=False,
+        description=f"Research candidate {candidate_key}, both partner seats.",
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class ExperimentDeclaration:
+    """What is being compared, and whether it is a control that cannot win."""
+
+    hypothesis: str
+    candidate_id: str
+    incumbent_id: str
+    is_null_control: bool
+
+
+def null_control_declaration() -> ExperimentDeclaration:
+    specification = reference_specification()
+    return ExperimentDeclaration(
+        hypothesis=(
+            "A candidate identical to the production incumbent produces no "
+            "measurable difference on the paired development endpoint."
+        ),
+        candidate_id=specification.agent_id,
+        incumbent_id=specification.agent_id,
+        is_null_control=True,
+    )
+
+
+def candidate_declaration(candidate_key: str) -> ExperimentDeclaration:
+    """A declared candidate against the incumbent.
+
+    ``is_null_control`` stays True only when the candidate is behaviourally a
+    pass-through, which the registry marks explicitly. Everything else is a real
+    comparison, and :func:`review` will return INCONCLUSIVE for it until a
+    useful-effect threshold exists.
+    """
+
+    declared = research_candidates()[candidate_key]
+    return ExperimentDeclaration(
+        hypothesis=(
+            f"Research candidate {candidate_key} (base "
+            f"{declared.base_profile_key}, override "
+            f"{declared.override.override_id}) differs from the production "
+            "incumbent on the paired development endpoint."
+        ),
+        candidate_id=candidate_specification(candidate_key).agent_id,
+        incumbent_id=reference_specification().agent_id,
+        is_null_control=declared.override.override_id == "tuppi.research.noop.v1",
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class CycleInputs:
     registry: AgentRegistry
@@ -153,6 +220,31 @@ def build_inputs(
         analysis_seed=analysis_seed,
         per_action_seconds=per_action_seconds,
         description="Null control: the production incumbent against itself.",
+    )
+
+
+def build_candidate_inputs(
+    candidate_key: str,
+    *,
+    base_deals: int = DEFAULT_BASE_DEALS,
+    root_seed: str | None = None,
+    analysis_seed: str | None = None,
+) -> CycleInputs:
+    """Candidate (team A) against the imported production incumbent (team B)."""
+
+    candidate = candidate_specification(candidate_key)
+    incumbent = reference_specification()
+    registry = AgentRegistry.build(
+        baseline_agent_specifications() + (incumbent, candidate)
+    )
+    return build_inputs_for_teams(
+        registry=registry,
+        team_a=candidate_team(candidate_key),
+        team_b=reference_team("Imported production incumbent, both partner seats."),
+        base_deals=base_deals,
+        root_seed=root_seed or f"tuppi-research-{candidate_key}-v1",
+        analysis_seed=analysis_seed or f"tuppi-research-{candidate_key}-analysis-v1",
+        description=f"Research candidate {candidate_key} versus the incumbent.",
     )
 
 
@@ -294,19 +386,21 @@ def execute_cycle(
     output_directory: Path,
     max_new_games: int | None = None,
     notes: str = "",
+    experiment: "ExperimentDeclaration | None" = None,
 ) -> tuple[str, str, ExecutionState]:
-    """Register, then run or resume. Returns (experiment_id, run_id, state)."""
+    """Register, then run or resume. Returns (experiment_id, run_id, state).
 
-    specification = reference_specification()
+    ``experiment`` defaults to the null control so the R2 entry point is
+    unchanged; a declared candidate supplies its own.
+    """
+
+    declaration = experiment or null_control_declaration()
     experiment_id = ledger.record_experiment(
-        hypothesis=(
-            "A candidate identical to the production incumbent produces no "
-            "measurable difference on the paired development endpoint."
-        ),
+        hypothesis=declaration.hypothesis,
         endpoint=ENDPOINT,
-        incumbent_id=specification.agent_id,
-        candidate_id=specification.agent_id,
-        is_null_control=True,
+        incumbent_id=declaration.incumbent_id,
+        candidate_id=declaration.candidate_id,
+        is_null_control=declaration.is_null_control,
         notes=notes,
     )
     output = Path(output_directory)
@@ -597,12 +691,18 @@ __all__ = [
     "ENDPOINT",
     "REFERENCE_PROFILE",
     "analyse",
+    "ExperimentDeclaration",
+    "build_candidate_inputs",
     "build_inputs",
     "build_inputs_for_teams",
+    "candidate_declaration",
+    "candidate_specification",
+    "candidate_team",
     "execute_cycle",
     "preflight_legality",
     "determinism_check",
     "noop_parity_check",
+    "null_control_declaration",
     "null_control_zero_check",
     "record_cycle_finding",
     "reference_registry",

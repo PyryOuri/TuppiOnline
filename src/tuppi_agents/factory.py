@@ -109,6 +109,27 @@ def _construct_improved_if_declared(
     return None
 
 
+def _construct_candidate_if_declared(
+    specification: AgentSpecification, *, seat: int
+) -> Agent | None:
+    """Construct a declared research candidate, or ``None`` if it is not one.
+
+    Identity is checked inside :func:`research_candidates.construct_candidate_agent`,
+    which refuses a specification that is not byte-for-byte the declared entry.
+    """
+
+    from .research_candidates import (
+        construct_candidate_agent,
+        is_research_candidate_reference,
+    )
+
+    if not is_research_candidate_reference(
+        getattr(specification, "implementation_reference", None)
+    ):
+        return None
+    return construct_candidate_agent(specification, seat=seat)
+
+
 def construct_registered_agent(
     specification: AgentSpecification, *, seat: int, seed: str | None = None
 ) -> Agent:
@@ -130,6 +151,15 @@ def construct_registered_agent(
         improved = _construct_improved_if_declared(specification, seat=seat)
         if improved is not None:
             return improved
+        # Research candidates are policies under test, declared in their own
+        # registry and kept out of the production lineage on purpose. They are
+        # routed here for the same reason the improved policies are: the
+        # evaluator dispatches on a `tuppi_agents.*` reference and should stay
+        # ignorant of what is being tried. Also a fall-through, so neither Phase 4
+        # nor improved construction is affected.
+        candidate = _construct_candidate_if_declared(specification, seat=seat)
+        if candidate is not None:
+            return candidate
         raise AgentConstructionError(f"unsupported Phase 4 reference {reference!r}")
     profile = profile_of(specification)
     if specification.determinism.value != "deterministic":
