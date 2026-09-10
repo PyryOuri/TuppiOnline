@@ -119,12 +119,32 @@ def test_a_rule_must_declare_why_its_bar_is_where_it_is():
         )
 
 
-def test_the_shipped_rule_records_its_three_anchors():
+def test_the_shipped_rule_records_its_surviving_anchors_and_the_struck_one():
+    """One of the three original anchors was struck; the rationale must say so.
+
+    Anchor A was 10% of E1's hindsight headroom. E6 subsequently priced a rule
+    drawn from a 3x hindsight-loss association and found the counterfactual
+    reversed its sign, so hindsight headroom does not bound achievable
+    improvement and must not silently remain in a threshold's justification.
+    """
     assert RULE.useful_effect == 1.0
     assert RULE.confidence_level == 0.95
-    for anchor in ("9.38", "11.21", "0.5"):
+    for anchor in ("11.21", "0.5"):
         assert anchor in RULE.rationale
+    assert "STRUCK" in RULE.rationale
+    assert "0.001" in RULE.rationale          # equity governs headroom
     assert "promotion is governed separately" in RULE.rationale
+
+
+def test_striking_an_anchor_did_not_move_the_rule_identity():
+    """Recorded findings must stay correctly attributed after a rationale fix."""
+    from tuppi_research.decisions import _rule_id
+    assert RULE.rule_id == _rule_id(
+        endpoint=RULE.endpoint, useful_effect=1.0, confidence_level=0.95
+    )
+    assert RULE.rule_id == (
+        "rule:sha256:b3ad4daee9af5374e7b7446823bba1302aa03785164bd79571612f732b43d974"
+    )
 
 
 def test_the_shipped_rule_cannot_promote():

@@ -92,31 +92,55 @@ def _rule_id(*, endpoint: str, useful_effect: float, confidence_level: float) ->
     return f"rule:sha256:{hashlib.sha256(text.encode('utf-8')).hexdigest()}"
 
 
-#: The development screening rule for the signed-deal-points endpoint.
+#: The candidate-screening rule for the signed-deal-points endpoint.
 #:
-#: The bar is 1.0 signed deal point per eight-game block, chosen where three
-#: independent anchors measured in this repository converge:
+#: SCOPE. This rule screens *candidate policies* on the development surrogate. It
+#: does NOT govern headroom questions - "is there anything to be gained at this
+#: decision" is measured in frozen-continuation equity against delta = 0.001, the
+#: endpoint S1/S1b established with a symmetric-model control. A bar in the wrong
+#: units is worse than no bar, so :func:`decide` refuses a foreign endpoint rather
+#: than converting.
 #:
-#:   A. 10% of E1's additivity-safe hindsight headroom (9.38 pts/deal) -> 0.94
+#: The bar is 1.0 signed deal point per eight-game block, where two independently
+#: measured anchors converge:
+#:
 #:   B. ~9% of a typical deal's swing (mean |deal points| 11.21, median 8) -> 0.78-1.0
 #:   C. twice the effect the instrument already detects in ~20 min (0.5) -> 1.00
 #:
+#: A third anchor was originally declared and has been STRUCK: 10% of E1's
+#: hindsight headroom (9.38 points per deal) gave 0.94. Hindsight headroom is not a
+#: bound on achievable improvement. S1b measured a perfect observation-compatible
+#: selector capturing only 3.9% of the oracle gap at showing, and E6 then priced a
+#: rule drawn from a 3x hindsight-loss association and found the counterfactual
+#: reversed its sign, netting -4.08 points per deal. Anchors B and C are measured
+#: on realised play and stand; anchor A was measured on a quantity that does not
+#: transfer, and it should never have been one of the three.
+#:
+#: Striking it does not move `rule_id`, which is a content address over endpoint,
+#: bar and confidence only - so every finding already recorded under this rule
+#: remains correctly attributed.
+#:
 #: It is testable: 193-313 base deals, 3-5 minutes, at the SD range P8 measured.
-#: It is a DEVELOPMENT SCREENING bar for deciding what to pursue, and explicitly
-#: not a promotion criterion.
+#: It is a SCREENING bar for deciding what to pursue, and explicitly not a
+#: promotion criterion.
 DEAL_POINTS_SCREENING_RULE = DecisionRule(
     endpoint="mean_signed_deal_points_per_eight_game_block",
     useful_effect=1.0,
     confidence_level=0.95,
     rationale=(
-        "1.0 signed deal point per eight-game block. Three independent anchors "
-        "measured in this repository converge there: 10% of E1's additivity-safe "
-        "hindsight headroom of 9.38 points per deal (0.94); roughly 9% of a "
-        "typical deal's swing, mean |deal points| 11.21 and median 8 (0.78-1.0); "
-        "and twice the 0.5-point effect P8 showed the instrument already resolves "
-        "in about twenty minutes (1.00). Detectable in 193-313 base deals, three "
-        "to five minutes. Development screening only; promotion is governed "
-        "separately and this rule cannot reach it."
+        "1.0 signed deal point per eight-game block, for screening CANDIDATE "
+        "POLICIES on the development surrogate. Two measured anchors converge "
+        "there: roughly 9% of a typical deal's swing, mean |deal points| 11.21 "
+        "and median 8 (0.78-1.0); and twice the 0.5-point effect P8 showed the "
+        "instrument already resolves in about twenty minutes (1.00). A third "
+        "anchor, 10% of E1's hindsight headroom (0.94), has been STRUCK: "
+        "hindsight headroom does not bound achievable improvement - S1b measured "
+        "3.9% observation-compatible capture of the oracle gap at showing, and E6 "
+        "found a rule built on a 3x hindsight association netted -4.08 points per "
+        "deal once its counterfactual was priced. Headroom questions are governed "
+        "instead by frozen-continuation equity against 0.001. Detectable in "
+        "193-313 base deals, three to five minutes. Screening only; promotion is "
+        "governed separately and this rule cannot reach it."
     ),
 )
 
