@@ -1,0 +1,35 @@
+{
+  "schema": "tuppi.research.proposal.v1",
+  "proposal": {
+    "proposal_id": "pimc-opening-lead-w64",
+    "date": "2026-09-10",
+    "mechanism": "Apply the existing uniform-feasible PIMC selector at the opening card play only, with 64 sampled worlds, and defer to the incumbent at every other decision.",
+    "structural_family": "compute_spending_selector_hybrid",
+    "executable_sketch": "decide(observation):\n    # opening lead = first trick-play decision of the deal\n    on_lead   = not observation.current_trick\n    first_ply = len(observation.completed_tricks) == 0\n    if observation.phase is TRICK_PLAY and on_lead and first_ply:\n        cfg = PimcConfiguration.build(\n            world_count=64,\n            showing_search_enabled=False,\n            rollout_policy_key=<incumbent, once supported>,\n        )\n        return pimc.decide(observation, configuration=cfg,\n                           decision_seed=derived(observation)).selected_action\n    return incumbent.choose_action(observation)   # every other decision",
+    "observable_inputs": [
+      "the acting seat's PlayerObservation only",
+      "worlds from UniformFeasibleSampler.for_observation(observation), which consumes nothing else",
+      "no hidden hands, no scoring-only information, no partner memory"
+    ],
+    "revisits": ["pimc-small-rejected"],
+    "escape_clause": {
+      "applied_under": "uniform_feasible_pimc_small_v1: world_count=4, showing search ENABLED, search at EVERY trick-play decision, rollout policy partner_aware_v1, match_transition utility, judged over 32 complementary complete-match pairs from 0-0 against partner_aware_v1. Result 0 wins / 10 ties / 22 losses, p_win 0.156. Its own registry statement says one configuration was measured, not a family.",
+      "changed_by": "Four simultaneous changes, each with its own measured reason. (1) world_count 4 -> 64, because c3-world-count measures W=4 at -0.000148 and only W=64 clears delta at +0.001470. (2) Search restricted to the opening lead, because c4-opening-lead-specific measures depths 9/6/3 at +0.000398/+0.000634/+0.000591, all below delta, so the rejected configuration paid search cost at ~25 decisions with no measured benefit. (3) Showing search disabled, because s1b-showing-kill puts a perfect observation-only selector there at about a quarter of delta. (4) Comparator is the incumbent partner_aware_lead_v2 rather than partner_aware_v1.",
+      "distinguishing_observation": "Largely already made: C3's world-count curve and C4's depth curve jointly separate 'PIMC does not work' from 'PIMC at 4 worlds applied everywhere does not work'. The cheapest REMAINING observation is a timed single-decision request latency at W=64 on a fast_trick-backported rollout path, because phase5dc-search-fast-path was never applied to rollout.py and the measured cost today is 56.7 s against a 10 s bound."
+    },
+    "negates_assumptions": [],
+    "plausibility": "moderate",
+    "plausibility_rationale": "Recorded, not consulted. Three pre-registered predictions by this operator in this programme were all wrong (C1 direction, C3 threshold, C4 generalisation), so this rating carries no weight in admission and is logged only so the process can later be scored on whether protected exploration was needed.",
+    "predicted_sign": "positive on the equity endpoint at 0-0, in the region of +0.0014 per deal deployment-normalised, on the strength of three consistent measurements of the same quantity (C1 +0.001441, C3 +0.001470, C4 +0.001387).",
+    "falsifier": "A whole-deal paired candidate-versus-incumbent evaluation whose interval upper bound falls below delta = 0.001 falsifies the benefit. Separately, a measured single-decision request latency above 10 s on the backported path falsifies deployability regardless of benefit.",
+    "resources": {
+      "rollouts_per_decision": 832,
+      "invocations_per_deal": 1,
+      "measured_today_seconds": 56.7,
+      "projected_seconds_after_backport": "5.4 to 8.3, single process",
+      "projection_basis": "phase5dc-search-fast-path aggregate 10.47x, and an independent profile attributing 85% of pimc.decide to _validate_deal_state. NOT a measured request latency.",
+      "blocking_engineering": "fast_trick is not used by rollout.py; back-porting it needs Phase 5D-C's differential gate. partner_aware_lead_v2 is not a supported rollout policy."
+    },
+    "notes": "First card written under the proposal discipline. Its purpose is as much to test whether the escape clause cleanly admits the best-evidenced revisit in the record as it is to propose the candidate."
+  }
+}

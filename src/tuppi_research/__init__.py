@@ -17,11 +17,11 @@ from .decisions import (
 )
 from .errors import CycleError, LedgerError, LegalityError, ResearchError
 
-# `findings` is deliberately NOT imported here. It is meant to be run as
-# `python -m tuppi_research.findings <term>`, and an eager package-level import
-# puts it in sys.modules before runpy executes it, which makes every invocation
-# print a RuntimeWarning. Import it directly: `from tuppi_research.findings
-# import search`.
+# `findings`, `assumptions` and `proposals` are deliberately NOT imported here.
+# Each is meant to be run as `python -m tuppi_research.<module>`, and an eager
+# package-level import puts it in sys.modules before runpy executes it, which
+# makes every invocation print a RuntimeWarning. Import them directly:
+# `from tuppi_research.assumptions import register`.
 from .ledger import (
     LEDGER_SCHEMA_VERSION,
     Ledger,
