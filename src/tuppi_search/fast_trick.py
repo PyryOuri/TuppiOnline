@@ -2,9 +2,15 @@
 
 The authoritative engine remains the reference implementation.  This module
 only represents the already-resolved trick-play suffix of one hypothetical
-deal: public fields come from a formal observation and current hands come from
-one Phase 5B assignment.  It omits engine event logs and repeated whole-state
-validation, which are not consumed by the frozen rollout policies.
+deal.  It omits engine event logs and repeated whole-state validation, which
+are not consumed by the frozen rollout policies.
+
+There are two ways in, and they lose different amounts.
+:meth:`FastTrickState.from_observation_assignment` builds from a formal
+observation plus one Phase 5B assignment, so it must undo the sampler's hand
+canonicalization for the observing seat.  :meth:`FastTrickState.from_deal_state`
+builds from an authoritative state the caller already holds — the rollout's
+sampled world — and is an exact projection for all four seats.
 
 The representation is immutable and owns no mutable card containers.  Its
 transition and observation functions are differential-tested against
@@ -104,6 +110,48 @@ class FastTrickState:
             current_trick=observation.current_trick,
             completed_tricks=observation.completed_tricks,
             team_tricks=observation.team_tricks,
+        )
+
+    @classmethod
+    def from_deal_state(cls, state) -> "FastTrickState":
+        """Project an authoritative trick-play state onto the search-local one.
+
+        The rollout already holds a full :class:`~tuppi_engine.DealState` — the
+        sampled world with the candidate action forced — so it needs no
+        observation and no assignment to hand over. Every field below is copied
+        or derived, never inferred: ``publicly_shown_cards`` is the same
+        derivation ``observation_for`` performs, and the four hands keep the
+        engine's own order, which the legal-action tie-break is sensitive to.
+
+        Unlike :meth:`from_observation_assignment` this loses nothing. There is
+        no hidden-hand sampling step here and so no canonicalization to undo:
+        the projection is exact for all four seats, not just the observer's.
+        """
+
+        if state.phase is not EnginePhase.TRICK_PLAY:
+            raise FastTrickError(
+                f"fast state requires a trick-play deal state, not {state.phase.value}"
+            )
+        if state.contract is None or state.first_leader is None:
+            raise FastTrickError("trick-play state lacks resolved contract fields")
+        return cls(
+            match_ref=state.match_ref,
+            deal_ref=state.deal_ref,
+            dealer=state.dealer,
+            forehand=state.forehand,
+            starting_score=state.starting_score,
+            hands=tuple(tuple(hand) for hand in state.hands),
+            current_actor=state.current_actor,
+            show_actions=tuple(state.show_actions),
+            publicly_shown_cards=tuple(
+                (action.seat, action.shown_card) for action in state.show_actions
+            ),
+            contract=state.contract,
+            declarer=state.declarer,
+            first_leader=state.first_leader,
+            current_trick=tuple(state.current_trick),
+            completed_tricks=tuple(state.completed_tricks),
+            team_tricks=state.team_tricks,
         )
 
     @property

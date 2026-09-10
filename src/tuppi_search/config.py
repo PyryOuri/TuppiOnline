@@ -31,6 +31,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from tuppi_eval.identities import DeterminismClass
 from tuppi_eval.serialization import content_digest
 from tuppi_exact import DEFAULT_NODE_BUDGET, SOLVER_ALGORITHM_ID
 from tuppi_exact.sampling import SAMPLER_ALGORITHM_ID
@@ -50,13 +51,58 @@ SAMPLE_INDEX_PROTOCOL = "contiguous_prefix_from_zero_v1"
 ACTION_ORDERING_ID = "tuppi.engine.legal_action_order.v1"
 TIE_BREAK_ID = "highest_mean_utility_then_lowest_legal_action_index_v1"
 
-#: Rollout policies Phase 5C may use. All are frozen Phase 4 profiles, all are
-#: deterministic, and all are observation-only.
+#: Rollout policies Phase 5C may use. All are deterministic, seedless and
+#: observation-only, which is what this whitelist is for.
+#:
+#: The first three are frozen Phase 4 profiles. ``partner_aware_lead_v2`` is not:
+#: it is the production incumbent, declared in ``improved_registry`` and
+#: deliberately *not* registered as a Phase 4 profile, because registering it
+#: would move the frozen baseline every Phase 4-6 result is quoted against. It is
+#: admitted here so that the continuation a rollout simulates can be the policy
+#: that will actually play the deal, which is otherwise a standing mismatch
+#: between search and play.
+#:
+#: Admitting it does not select it. ``DEVELOPMENT_REFERENCE_POLICY`` below is
+#: unchanged, so every registered agent and every recorded result keeps the
+#: continuation it already had; closing the mismatch is now a configuration
+#: choice whose value is an open empirical question, not a silent default.
+#:
+#: ``partner_aware_discard_v3`` is declared in the same registry and would work
+#: through the same lookup, and is left out because nothing has asked for it. It
+#: is a one-line addition if that changes.
 SUPPORTED_ROLLOUT_POLICIES: tuple[str, ...] = (
     "reactive_contract_v1",
     "public_counting_v1",
     "partner_aware_v1",
+    "partner_aware_lead_v2",
 )
+
+
+def rollout_specifications() -> dict:
+    """Every specification a ``rollout_policy_key`` may name.
+
+    Phase 4 profiles and the improved policies live in separate registries on
+    purpose: registering an improved policy as a Phase 4 profile would move the
+    frozen baseline every Phase 4-6 result is quoted against. Merging them here,
+    at the point of use, lets a rollout *name* the production incumbent without
+    registering it anywhere.
+
+    Phase 4 keys win on collision, so no existing key can be shadowed by a later
+    improved policy. ``construct_agent`` then matches an improved specification
+    by identity rather than by name, so this cannot be used to substitute a
+    forged specification for the declared one.
+    """
+
+    from tuppi_agents import phase4_specifications_by_profile_key
+    from tuppi_agents.improved_registry import (
+        improved_specifications_by_profile_key,
+    )
+
+    merged = dict(phase4_specifications_by_profile_key())
+    for key, specification in improved_specifications_by_profile_key().items():
+        merged.setdefault(key, specification)
+    return merged
+
 
 #: Phase 5A designated ``partner_aware_v1`` as ``development_reference_v1``: the
 #: strongest rung the complete-match data supports. It is the natural default
@@ -210,13 +256,25 @@ class PimcConfiguration:
 
     @property
     def all_policies_deterministic(self) -> bool:
-        """True while every configured rollout policy is a frozen Phase 4 agent.
+        """True while every configured rollout policy records determinism.
 
-        Phase 4 agents are deterministic by construction and their specifications
-        record it, so this is a fact about the configuration rather than a hope.
+        Read off the specifications rather than assumed. It used to return a bare
+        ``True`` justified by "every configured policy is a frozen Phase 4
+        agent", which stopped being the justification when the improved
+        incumbent was admitted above — the conclusion still held, but for a
+        reason the code was no longer checking. Both registries record a
+        ``determinism`` on the specification, so checking costs nothing and stays
+        correct if a stochastic policy is ever admitted.
         """
 
-        return True
+        specifications = rollout_specifications()
+        keys = {self.rollout_policy_key}
+        if self.root_rollout_policy_key is not None:
+            keys.add(self.root_rollout_policy_key)
+        return all(
+            specifications[key].determinism is DeterminismClass.DETERMINISTIC
+            for key in keys
+        )
 
     @property
     def rollout_policy_for_seat_keys(self) -> tuple[str, str, str, str]:

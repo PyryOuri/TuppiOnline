@@ -237,6 +237,7 @@ def decide(
     world_set_mode: WorldSetMode = WorldSetMode.UNIFORM_SAMPLING,
     use_single_action_shortcut: bool = True,
     reuse_world_set: SampledWorldSet | None = None,
+    _fast_path: bool = True,
 ) -> PimcDecision:
     """Run one complete PIMC decision from one observation.
 
@@ -244,6 +245,10 @@ def decide(
     nested prefixes of one world set. It is never used by a deployed agent, and it
     cannot smuggle information in: a reused set is checked to belong to the same
     information state.
+
+    ``_fast_path`` is forwarded to :func:`tuppi_search.rollout.complete_deal` and
+    exists so the differential gate can run the authoritative rollout and require
+    the same decision. No configuration exposes it.
     """
 
     if not isinstance(observation, PlayerObservation):
@@ -321,6 +326,7 @@ def decide(
                 policies=policies,
                 tail=tail,
                 root_seat=root_seat,
+                fast_path=_fast_path,
             )
         )
     candidates = tuple(summaries)
@@ -382,6 +388,7 @@ def _evaluate_candidate(
     policies: SeatPolicies,
     tail: ExactTail | None,
     root_seat: int,
+    fast_path: bool = True,
 ) -> CandidateSummary:
     """Evaluate one candidate on every world of the common set."""
 
@@ -403,6 +410,7 @@ def _evaluate_candidate(
                     root_seat=root_seat,
                     exact_tail=tail,
                     actions_already_simulated=1,
+                    _fast_path=fast_path,
                 )
             except (RolloutError, SearchError) as exc:
                 raise PimcDecisionError(

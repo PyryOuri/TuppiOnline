@@ -69,6 +69,7 @@ from tuppi_rules import (
 )
 
 from .errors import UtilityError
+from .fast_trick import FastTrickState
 
 
 UTILITY_SCHEMA_VERSION = "tuppi.search.utility.v1"
@@ -187,6 +188,38 @@ def summary_from_completed_deal(
 
     if not isinstance(state, DealState):
         raise UtilityError("summary_from_completed_deal requires a DealState")
+    if not state.complete:
+        raise UtilityError("the deal is not complete")
+    if state.contract is None or state.deal_score is None:
+        raise UtilityError("a completed deal must carry a contract and a score")
+    if type(root_seat) is not int or root_seat not in range(4):
+        raise UtilityError("root_seat must be an integer in 0..3")
+    return DealOutcomeSummary(
+        contract=state.contract,
+        declarer=state.declarer,
+        team0_tricks=state.team_tricks[0],
+        starting_score=state.starting_score,
+        root_team=team_for_seat(root_seat),
+        source=source,
+        tricks_simulated=tricks_simulated,
+    )
+
+
+def summary_from_fast_completion(
+    state, *, root_seat: int, source: OutcomeSource, tricks_simulated: int
+) -> DealOutcomeSummary:
+    """Build a summary from a search-local completion.
+
+    The five fields a summary needs are exactly the five a
+    :class:`~tuppi_search.fast_trick.FastTrickState` carries, so a fast
+    completion and an authoritative one reduce to the same value type and are
+    scored by the same adapters. That is the invariant this module exists to
+    hold: the two paths cannot disagree about utility semantics, because there
+    is only one scoring function and only one input type.
+    """
+
+    if not isinstance(state, FastTrickState):
+        raise UtilityError("summary_from_fast_completion requires a FastTrickState")
     if not state.complete:
         raise UtilityError("the deal is not complete")
     if state.contract is None or state.deal_score is None:

@@ -38,6 +38,7 @@ from .utilities import (
     OutcomeSource,
     UtilityId,
     is_registerable,
+    summary_from_fast_completion,
     utility_value,
 )
 from .worlds import world_identity
@@ -556,12 +557,12 @@ def _choose_rollout(agent: object, observation: PlayerObservation, actor: int) -
 
 
 def _summary(state: FastTrickState, root_seat: int) -> DealOutcomeSummary:
-    return DealOutcomeSummary(
-        contract=state.contract,
-        declarer=state.declarer,
-        team0_tricks=state.team_tricks[0],
-        starting_score=state.starting_score,
-        root_team=team_for_seat(root_seat),
+    # Delegates rather than rebuilding the summary inline: the PIMC rollout now
+    # scores fast completions too, and `utilities` is where the one scoring
+    # function for both lives.
+    return summary_from_fast_completion(
+        state,
+        root_seat=root_seat,
         source=OutcomeSource.ROLLOUT,
         tricks_simulated=TRICKS_PER_DEAL,
     )
