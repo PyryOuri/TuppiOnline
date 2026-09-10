@@ -62,15 +62,56 @@ from .pimc import PimcDecision
 
 PHASE_GATE_SCHEMA_VERSION = "tuppi.search.phase_gated_configuration.v1"
 
-
 class SearchedPhase(StrEnum):
-    """Which decision phase the search owns. The other is delegated."""
+    """Which decisions the search owns. Everything else is delegated."""
 
     #: PIMC chooses cards; the frozen policy chooses the show.
     TRICK_PLAY_ONLY = "trick_play_only"
 
     #: PIMC chooses the show; the frozen policy chooses every card.
     SHOWING_ONLY = "showing_only"
+
+    #: PIMC chooses the opening lead and nothing else: the frozen policy chooses
+    #: the show and every card after the first. This is the only scope that is
+    #: not a whole phase, which is why the gate's predicate is over decisions
+    #: rather than phases - see :meth:`PhaseGatedConfiguration.searches_decision`.
+    OPENING_LEAD_ONLY = "opening_lead_only"
+
+
+#: What each scope hands to the frozen delegate. Reporting only, but *not*
+#: cosmetic: ``phase5d_a_specification`` records this string in its configuration
+#: payload, so it is digested into those agents' identities. The two phase-scoped
+#: entries are therefore built from ``EnginePhase`` exactly as before, and a test
+#: pins the committed identities against any drift here.
+_DELEGATED_DESCRIPTION: dict[SearchedPhase, str] = {
+    SearchedPhase.TRICK_PLAY_ONLY: EnginePhase.SHOWING.value,
+    SearchedPhase.SHOWING_ONLY: EnginePhase.TRICK_PLAY.value,
+    # Neither phase is wholly delegated, so neither phase value would be true.
+    SearchedPhase.OPENING_LEAD_ONLY: (
+        f"{EnginePhase.SHOWING.value} and {EnginePhase.TRICK_PLAY.value} "
+        "after the opening lead"
+    ),
+}
+
+
+def is_opening_lead(observation: PlayerObservation) -> bool:
+    """Whether this observation is the first card decision of the deal.
+
+    Defined on the public observation alone: trick play, no completed trick, and
+    no card yet played into the current one. Exactly one decision per deal
+    satisfies it, and only ``first_leader`` ever faces it — a seat that is not
+    the opening leader never searches under an opening-lead gate. That is what
+    "opening lead" means, and it is deliberately narrower than "each seat's first
+    card", which would be four decisions with three different information states.
+    """
+
+    if not isinstance(observation, PlayerObservation):
+        raise SearchConfigurationError("is_opening_lead requires a PlayerObservation")
+    return (
+        observation.phase is EnginePhase.TRICK_PLAY
+        and not observation.completed_tricks
+        and not observation.current_trick
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,11 +166,7 @@ class PhaseGatedConfiguration:
         payload = dict(self.identity_data())
         payload["gate_id"] = self.gate_id
         payload["pimc_configuration_id"] = self.pimc.configuration_id
-        payload["delegated_phase"] = (
-            EnginePhase.SHOWING.value
-            if self.searched_phase is SearchedPhase.TRICK_PLAY_ONLY
-            else EnginePhase.TRICK_PLAY.value
-        )
+        payload["delegated_phase"] = _DELEGATED_DESCRIPTION[self.searched_phase]
         return payload
 
     @classmethod
@@ -165,12 +202,50 @@ class PhaseGatedConfiguration:
         )
 
     def searches(self, phase: EnginePhase) -> bool:
-        """Whether this configuration searches at ``phase``."""
+        """Whether this configuration searches at every decision in ``phase``.
 
+        Defined only for the two phase-scoped values. An opening-lead gate has no
+        yes/no answer for trick play — it searches one decision there and
+        delegates the rest — so it raises rather than returning a misleading
+        ``True``. Use :meth:`searches_decision`, which answers for every scope.
+        """
+
+        if self.searched_phase is SearchedPhase.OPENING_LEAD_ONLY:
+            raise SearchConfigurationError(
+                "an opening-lead gate is not phase-scoped, so whether it searches "
+                "in a phase is not a well-formed question; ask searches_decision "
+                "about a specific observation instead"
+            )
         if phase is EnginePhase.SHOWING:
             return self.searched_phase is SearchedPhase.SHOWING_ONLY
         if phase is EnginePhase.TRICK_PLAY:
             return self.searched_phase is SearchedPhase.TRICK_PLAY_ONLY
+        raise SearchConfigurationError(
+            f"a decision cannot occur in phase {phase.value}"
+        )
+
+    def searches_decision(self, observation: PlayerObservation) -> bool:
+        """Whether this configuration searches at *this* decision.
+
+        The authoritative predicate. It reads only the public observation, so a
+        gate cannot scope itself on anything a seat is not entitled to know —
+        which is what keeps "search only the opening lead" from becoming a
+        channel for private information.
+        """
+
+        if not isinstance(observation, PlayerObservation):
+            raise SearchConfigurationError(
+                "searches_decision requires a PlayerObservation"
+            )
+        phase = observation.phase
+        if phase is EnginePhase.SHOWING:
+            return self.searched_phase is SearchedPhase.SHOWING_ONLY
+        if phase is EnginePhase.TRICK_PLAY:
+            if self.searched_phase is SearchedPhase.TRICK_PLAY_ONLY:
+                return True
+            if self.searched_phase is SearchedPhase.OPENING_LEAD_ONLY:
+                return is_opening_lead(observation)
+            return False
         raise SearchConfigurationError(
             f"a decision cannot occur in phase {phase.value}"
         )
@@ -234,7 +309,7 @@ class PhaseGatedPimcAgent:
         return self._delegate.identity
 
     def searches(self, observation: PlayerObservation) -> bool:
-        return self._gate.searches(observation.phase)
+        return self._gate.searches_decision(observation)
 
     def choose_action(self, observation: PlayerObservation) -> Action:
         """Search this phase, or forward the observation to the frozen policy."""
@@ -246,22 +321,23 @@ class PhaseGatedPimcAgent:
                 f"agent for seat {self._seat} received an observation for seat "
                 f"{observation.observing_seat}"
             )
-        if self._gate.searches(observation.phase):
+        if self._gate.searches_decision(observation):
             return self._pimc.choose_action(observation)
         return self._delegate.choose_action(observation)
 
     def decide(self, observation: PlayerObservation) -> PimcDecision | None:
         """Return the PIMC decision, or ``None`` when this phase is delegated."""
 
-        if not self._gate.searches(observation.phase):
+        if not self._gate.searches_decision(observation):
             return None
         return self._pimc.decide(observation)
 
     def explain(self, observation: PlayerObservation):
-        if not self._gate.searches(observation.phase):
+        if not self._gate.searches_decision(observation):
             raise PimcDecisionError(
-                f"this configuration delegates {observation.phase.value} to "
-                f"{self._gate.delegate_policy_key}; there is no search to explain"
+                f"this configuration delegates this {observation.phase.value} "
+                f"decision to {self._gate.delegate_policy_key}; there is no "
+                "search to explain"
             )
         return self._pimc.explain(observation)
 

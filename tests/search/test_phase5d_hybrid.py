@@ -14,6 +14,7 @@ from tuppi_search.hybrid import (
     PhaseGatedPimcAgent,
     SearchedPhase,
     construct_gated_agent,
+    is_opening_lead,
 )
 from tuppi_search.registry import (
     NEGATIVE_BASELINE_DESIGNATION,
@@ -23,6 +24,8 @@ from tuppi_search.registry import (
     configuration_for,
     gate_for,
     negative_baseline_designation,
+    opening_lead_gate,
+    opening_lead_specification,
     phase5c_specifications,
     phase5d_a_specification,
     phase5d_a_specifications,
@@ -378,3 +381,212 @@ def test_the_designation_quotes_the_measured_result():
     statement = negative_baseline_designation()["statement"]
     for fragment in ("0.156", "32 complementary", "0 wins / 10 ties / 22 losses"):
         assert fragment in statement, fragment
+
+
+# ------------------------------------------------- opening-lead-only scoping
+
+
+#: The two committed Phase 5D-A identities, recorded before `gated_specification`
+#: was extracted from `phase5d_a_specification` and verified byte-for-byte
+#: against the tree at that commit. The extraction was a pure refactor and these
+#: pin that: the payload an existing gated agent digests must not have moved.
+FROZEN_PHASE5D_A_IDENTITIES = {
+    "uniform_feasible_pimc_play_only_v1":
+        "agent:sha256:1df1e448371948b052c2527b9f8ec11970dc633f633b4c55569a325090b787bd",
+    "uniform_feasible_pimc_show_only_v1":
+        "agent:sha256:fe755342305b56ac3d095ea206fe77a45e1b22ceb08e8f60720e9e94978222f5",
+}
+
+
+def _opening_lead_pimc():
+    """The cheapest configuration that exercises the scope. W is not the point here."""
+
+    return PimcConfiguration.build(world_count=2, showing_search_enabled=False)
+
+
+def test_extracting_the_shared_builder_moved_no_committed_identity():
+    specifications = phase5d_a_specifications()
+    assert set(specifications) == set(FROZEN_PHASE5D_A_IDENTITIES)
+    for key, expected in sorted(FROZEN_PHASE5D_A_IDENTITIES.items()):
+        assert specifications[key].agent_id == expected, key
+
+
+def test_the_opening_lead_is_defined_on_the_public_observation_alone():
+    """No completed trick and no card yet played. Exactly one such decision."""
+
+    matches = [
+        position.observation
+        for position in walk_deal(stream_index=0)
+        if is_opening_lead(position.observation)
+    ]
+    assert len(matches) == 1
+    observation = matches[0]
+    assert observation.phase is EnginePhase.TRICK_PLAY
+    assert observation.completed_tricks == ()
+    assert observation.current_trick == ()
+
+
+def test_only_the_first_leader_ever_faces_the_opening_lead():
+    """Deliberately narrower than "each seat's first card", which is four
+    decisions in three different information states."""
+
+    for position in walk_deal(stream_index=0):
+        if is_opening_lead(position.observation):
+            assert position.observation.observing_seat == (
+                position.deal_state.first_leader
+            )
+
+
+def test_is_opening_lead_refuses_a_non_observation():
+    with pytest.raises(SearchConfigurationError, match="PlayerObservation"):
+        is_opening_lead(EnginePhase.TRICK_PLAY)  # type: ignore[arg-type]
+
+
+def test_the_gate_searches_exactly_one_decision_per_deal():
+    """The whole affordability argument: one PIMC decision, not fifty."""
+
+    gate = opening_lead_gate(pimc=_opening_lead_pimc())
+    searched = [
+        position.observation
+        for position in walk_deal(stream_index=0)
+        if gate.searches_decision(position.observation)
+    ]
+    total = sum(1 for _ in walk_deal(stream_index=0))
+    assert len(searched) == 1
+    assert total > 40, "a deal should have many more decisions than that"
+
+
+def test_the_gate_delegates_the_showing_phase_entirely():
+    gate = opening_lead_gate(pimc=_opening_lead_pimc())
+    showing = [
+        position.observation
+        for position in walk_deal(stream_index=0)
+        if position.observation.phase is EnginePhase.SHOWING
+    ]
+    assert showing
+    for observation in showing:
+        assert gate.searches_decision(observation) is False
+
+
+def test_the_phase_level_predicate_refuses_to_answer_for_this_scope():
+    """An opening-lead gate searches one trick-play decision and delegates the
+    rest, so "does it search in trick play" has no honest yes or no."""
+
+    gate = opening_lead_gate(pimc=_opening_lead_pimc())
+    with pytest.raises(SearchConfigurationError, match="not phase-scoped"):
+        gate.searches(EnginePhase.TRICK_PLAY)
+    with pytest.raises(SearchConfigurationError, match="not phase-scoped"):
+        gate.searches(EnginePhase.SHOWING)
+
+
+def test_the_phase_level_predicate_still_answers_for_phase_scoped_gates():
+    assert gate_for(PLAY_ONLY).searches(EnginePhase.TRICK_PLAY) is True
+    assert gate_for(SHOW_ONLY).searches(EnginePhase.SHOWING) is True
+
+
+def test_the_gate_reports_what_it_delegates_without_claiming_a_whole_phase():
+    gate = opening_lead_gate(pimc=_opening_lead_pimc())
+    delegated = gate.to_data()["delegated_phase"]
+    assert delegated == "SHOWING and TRICK_PLAY after the opening lead"
+    # The committed two keep their exact strings, which their identities digest.
+    assert gate_for(PLAY_ONLY).to_data()["delegated_phase"] == "SHOWING"
+    assert gate_for(SHOW_ONLY).to_data()["delegated_phase"] == "TRICK_PLAY"
+
+
+def test_the_scoped_agent_delegates_every_decision_but_the_opening_lead():
+    """Delegated actions must equal the frozen reference agent's own, exactly."""
+
+    pimc = _opening_lead_pimc()
+    gate = opening_lead_gate(pimc=pimc)
+    specification = opening_lead_specification(pimc=pimc)
+    searched = 0
+    delegated = 0
+    for position in walk_deal(stream_index=0):
+        observation = position.observation
+        seat = observation.observing_seat
+        agent = construct_gated_agent(specification, seat=seat, gate=gate)
+        if agent.searches(observation):
+            searched += 1
+            assert observation.phase is EnginePhase.TRICK_PLAY
+            assert isinstance(agent.choose_action(observation), PlayCardAction)
+            continue
+        delegated += 1
+        assert agent.choose_action(observation) == _reference_agent(
+            seat
+        ).choose_action(observation)
+    assert searched == 1
+    assert delegated > 40
+
+
+def test_the_scoped_agent_has_nothing_to_explain_where_it_delegates():
+    pimc = _opening_lead_pimc()
+    gate = opening_lead_gate(pimc=pimc)
+    specification = opening_lead_specification(pimc=pimc)
+    for position in walk_deal(stream_index=0):
+        observation = position.observation
+        if is_opening_lead(observation):
+            continue
+        agent = construct_gated_agent(
+            specification, seat=observation.observing_seat, gate=gate
+        )
+        assert agent.decide(observation) is None
+        with pytest.raises(PimcDecisionError, match="no search to explain"):
+            agent.explain(observation)
+        break
+
+
+def test_the_scope_is_content_addressed_over_its_configuration():
+    """Two callers naming the same budget get one identity; a different budget is
+    a different agent, because a rollout budget is part of what an agent is."""
+
+    small = opening_lead_specification(
+        pimc=PimcConfiguration.build(world_count=2, showing_search_enabled=False)
+    )
+    same = opening_lead_specification(
+        pimc=PimcConfiguration.build(world_count=2, showing_search_enabled=False)
+    )
+    larger = opening_lead_specification(
+        pimc=PimcConfiguration.build(world_count=4, showing_search_enabled=False)
+    )
+    assert small.agent_id == same.agent_id
+    assert small.agent_id != larger.agent_id
+
+
+def test_the_continuation_is_part_of_the_scoped_identity():
+    """Naming the incumbent as the rollout continuation makes a different agent."""
+
+    frozen = opening_lead_specification(
+        pimc=PimcConfiguration.build(world_count=2, showing_search_enabled=False)
+    )
+    incumbent = opening_lead_specification(
+        pimc=PimcConfiguration.build(
+            world_count=2,
+            showing_search_enabled=False,
+            rollout_policy_key="partner_aware_lead_v2",
+        )
+    )
+    assert frozen.agent_id != incumbent.agent_id
+
+
+def test_the_scoped_selector_is_not_a_registered_profile():
+    """The world count and continuation are arguments, not claims. Registering a
+    profile would assert particular answers nobody has measured."""
+
+    specification = opening_lead_specification(pimc=_opening_lead_pimc())
+    assert specification.agent_id not in {
+        item.agent_id for item in phase5c_specifications().values()
+    }
+    assert specification.agent_id not in {
+        item.agent_id for item in phase5d_a_specifications().values()
+    }
+    assert "opening_lead" not in " ".join(PHASE5D_A_GATES)
+
+
+def test_the_scoped_selector_is_still_one_ply_and_observation_only():
+    specification = opening_lead_specification(pimc=_opening_lead_pimc())
+    payload = specification.configuration
+    assert payload["observation_only"] is True
+    assert payload["recursive_search"] is None
+    assert payload["information_set_search"] is None
+    assert payload["learning"] is None
+    assert payload["searched_phase"] == "opening_lead_only"

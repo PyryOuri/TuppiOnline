@@ -156,11 +156,75 @@ the same lookup, and is deliberately left out because nothing has asked for it.
 
 ### What this still does not do
 
-It does not express opening-lead-only application; no `PimcConfiguration` field
-scopes a selector to one decision. And it does not change what any registered
-agent plays — closing the mismatch in a deployed configuration remains a
-separate decision, because a rollout continuation is part of an agent's
-identity and changing it makes a new agent.
+It does not change what any registered agent plays. Closing the mismatch in a
+deployed configuration remains a separate decision, because a rollout
+continuation is part of an agent's identity and changing it makes a new agent.
+
+## Opening-lead-only scoping
+
+The third prerequisite. Its original statement — "no `PimcConfiguration` field
+does this" — is right, and the reason is that no field *should*: `hybrid.py`
+records that adding a phase-gate field to `PimcConfiguration` would change every
+Phase 5C `configuration_id` and therefore every Phase 5C `agent_id`. Scope is
+expressed by composition instead, in a separate object carrying its own content
+address, and the existing `SearchedPhase` gate is that object.
+
+`SearchedPhase.OPENING_LEAD_ONLY` is a third value. Adding an enum *value* moves
+no identity, because the committed gates digest their own `searched_phase.value`
+strings and those are untouched — the same reason admitting a rollout policy to a
+whitelist was safe.
+
+### The opening lead, defined on the observation alone
+
+`hybrid.is_opening_lead` is true when the phase is trick play, no trick is
+completed, and no card has been played into the current one. Consequences worth
+stating:
+
+- **Exactly one decision per deal satisfies it**, and only `first_leader` ever
+  faces it. A seat that is not the opening leader never searches.
+- It is deliberately narrower than "each seat's first card", which would be four
+  decisions in three different information states and not what C4 measured.
+- It reads only the public observation, so a gate cannot scope itself on
+  anything a seat is not entitled to know. Scoping is not a side channel.
+
+Measured on one deal: **1 searched decision out of 54.** That is the entire
+affordability argument. At W=64 and 7.87 s per decision, opening-lead scoping
+costs about 7.9 s per deal where trick-play-only scoping would cost roughly
+seven minutes.
+
+### The predicate moved from phases to decisions
+
+`PhaseGatedConfiguration.searches(phase)` could answer for the two phase-scoped
+values. An opening-lead gate searches one trick-play decision and delegates the
+rest, so that question has no honest yes or no; the method raises for this scope
+and points at `searches_decision(observation)`, which answers for all three. The
+gated agent's own `searches(observation)` signature is unchanged, so nothing
+downstream had to move.
+
+`to_data()["delegated_phase"]` is recorded in the specification payload and is
+therefore digested into gated agent identities. The two committed values keep
+their exact strings, `SHOWING` and `TRICK_PLAY`, and the new scope reports
+`SHOWING and TRICK_PLAY after the opening lead` rather than falsely claiming a
+whole phase.
+
+### Not a registered profile, on purpose
+
+`registry.opening_lead_gate` and `registry.opening_lead_specification` construct
+the scope from an explicit `PimcConfiguration`, and it is content-addressed over
+that configuration: the same world count and continuation give the same identity,
+a different budget or a different continuation gives another. It is **not** in
+any registry dict.
+
+Registering a profile would mint an identity asserting *which* world count and
+*which* continuation to deploy, and nobody has measured that. C3 puts the
+deal-points effect clearing delta only at W=64; the review's recommendation was
+to qualify the parallel configuration rather than the single-process one, which
+at 7.87 s has 2.1 s of margin. So the world count and the continuation are
+arguments an experiment supplies, not claims the repository makes.
+
+`gated_specification` was extracted from `phase5d_a_specification` so both share
+one payload builder. That was a pure refactor, and both committed Phase 5D-A
+agent identities are pinned in `tests/search/test_phase5d_hybrid.py` to prove it.
 
 ## Deliberately rejected or deferred optimizations
 

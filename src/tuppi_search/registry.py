@@ -364,12 +364,19 @@ _PHASE5D_A_DESCRIPTIONS: dict[str, str] = {
 }
 
 
-def phase5d_a_specification(profile_key: str) -> AgentSpecification:
-    """Build the immutable specification of one phase-gated diagnostic agent."""
+def gated_specification(
+    *, profile_key: str, gate: "PhaseGatedConfiguration", description: str
+) -> AgentSpecification:
+    """Build the immutable specification of any phase-gated agent.
 
-    if profile_key not in PHASE5D_A_GATES:
-        raise SearchConfigurationError(f"unknown Phase 5D-A profile {profile_key!r}")
-    gate = PHASE5D_A_GATES[profile_key]
+    Extracted from :func:`phase5d_a_specification` so that a gate which is *not*
+    a Phase 5D-A diagnostic — an opening-lead selector, say — can be given a
+    specification and run through the ordinary arena path, without being added to
+    a registry whose digest is committed. The payload is byte-identical to what
+    Phase 5D-A produced, which the pinned identities in
+    ``tests/search/test_phase5d_hybrid.py`` verify.
+    """
+
     gate.pimc.require_registerable_utility()
     payload = dict(gate.pimc.identity_data())
     payload.update(
@@ -404,6 +411,18 @@ def phase5d_a_specification(profile_key: str) -> AgentSpecification:
         model_checkpoint_id=None,
         search_budget=gate.pimc.total_rollouts_per_candidate,
         partner_convention_id=None,
+        description=description,
+    )
+
+
+def phase5d_a_specification(profile_key: str) -> AgentSpecification:
+    """Build the immutable specification of one phase-gated diagnostic agent."""
+
+    if profile_key not in PHASE5D_A_GATES:
+        raise SearchConfigurationError(f"unknown Phase 5D-A profile {profile_key!r}")
+    return gated_specification(
+        profile_key=profile_key,
+        gate=PHASE5D_A_GATES[profile_key],
         description=(
             f"{_PHASE5D_A_DESCRIPTIONS[profile_key]} A Phase 5D-A diagnostic "
             "identity; one-ply PIMC with no recursion, and not a promoted agent."
@@ -426,6 +445,68 @@ def phase5d_a_specifications() -> dict[str, AgentSpecification]:
                 f"{key} collides with a Phase 5C agent identity"
             )
     return mapping
+
+
+#: The opening-lead selector is deliberately **not** in a registry dict.
+#:
+#: C4 measured the cardplay signal as opening-lead-specific and C3 put the
+#: deal-points effect clearing delta only at 64 sampled worlds, where one decision
+#: costs about 7.9 s single-process after the Phase 5D-C back-port. Scoping the
+#: search to the opening lead is what makes that affordable: one PIMC decision
+#: per deal rather than roughly fifty.
+#:
+#: But *which* world count and *which* rollout continuation to deploy is a
+#: measured decision nobody has made. Registering a profile would mint an agent
+#: identity asserting particular answers, and the architecture review's own
+#: recommendation was to qualify the parallel configuration rather than the
+#: single-process one. So the gate is constructed on demand from an explicit
+#: configuration, and an experiment that wants to run it says what it is running.
+
+
+def opening_lead_gate(
+    *,
+    pimc: PimcConfiguration,
+    delegate_policy_key: str = DEVELOPMENT_REFERENCE_POLICY,
+) -> "PhaseGatedConfiguration":
+    """PIMC for the opening lead; the frozen delegate for every other decision."""
+
+    from .hybrid import PhaseGatedConfiguration, SearchedPhase
+
+    return PhaseGatedConfiguration.build(
+        searched_phase=SearchedPhase.OPENING_LEAD_ONLY,
+        pimc=pimc,
+        delegate_policy_key=delegate_policy_key,
+    )
+
+
+def opening_lead_specification(
+    *,
+    pimc: PimcConfiguration,
+    delegate_policy_key: str = DEVELOPMENT_REFERENCE_POLICY,
+    profile_key: str = "uniform_feasible_pimc_opening_lead_only_v1",
+) -> AgentSpecification:
+    """The specification of one opening-lead-scoped selector.
+
+    Content-addressed over the composed PIMC configuration like any other gated
+    agent, so two callers naming the same world count and continuation get the
+    same identity and a different one otherwise. Not registered: see the note
+    above.
+    """
+
+    gate = opening_lead_gate(pimc=pimc, delegate_policy_key=delegate_policy_key)
+    return gated_specification(
+        profile_key=profile_key,
+        gate=gate,
+        description=(
+            "One-ply PIMC at the opening lead only; the frozen "
+            f"{delegate_policy_key} policy chooses the show and every card after "
+            "the first. Scoped this way because the cardplay signal C4 measured "
+            "is opening-lead-specific and the world count C3 needs is affordable "
+            "once per deal but not once per trick. Not a promoted agent and not a "
+            "registered profile: the world count and continuation are arguments, "
+            "not claims."
+        ),
+    )
 
 
 def gate_for(profile_key: str) -> "PhaseGatedConfiguration":
