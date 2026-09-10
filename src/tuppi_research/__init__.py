@@ -16,6 +16,12 @@ from .decisions import (
     decide,
 )
 from .errors import CycleError, LedgerError, LegalityError, ResearchError
+from .findings import (
+    FINDINGS_SCHEMA_VERSION,
+    Finding,
+    Verdict,
+    search as search_findings,
+)
 from .ledger import (
     LEDGER_SCHEMA_VERSION,
     Ledger,
@@ -25,6 +31,8 @@ from .ledger import (
 
 __all__ = [
     "DEAL_POINTS_SCREENING_RULE",
+    "FINDINGS_SCHEMA_VERSION",
+    "Finding",
     "DecisionRule",
     "LEDGER_SCHEMA_VERSION",
     "CycleError",
@@ -34,5 +42,6 @@ __all__ = [
     "LedgerError",
     "LegalityError",
     "ResearchError",
+    "search_findings",
     "Verdict",
 ]
