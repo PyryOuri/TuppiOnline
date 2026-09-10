@@ -16,12 +16,12 @@ from .decisions import (
     decide,
 )
 from .errors import CycleError, LedgerError, LegalityError, ResearchError
-from .findings import (
-    FINDINGS_SCHEMA_VERSION,
-    Finding,
-    Verdict,
-    search as search_findings,
-)
+
+# `findings` is deliberately NOT imported here. It is meant to be run as
+# `python -m tuppi_research.findings <term>`, and an eager package-level import
+# puts it in sys.modules before runpy executes it, which makes every invocation
+# print a RuntimeWarning. Import it directly: `from tuppi_research.findings
+# import search`.
 from .ledger import (
     LEDGER_SCHEMA_VERSION,
     Ledger,
@@ -31,8 +31,6 @@ from .ledger import (
 
 __all__ = [
     "DEAL_POINTS_SCREENING_RULE",
-    "FINDINGS_SCHEMA_VERSION",
-    "Finding",
     "DecisionRule",
     "LEDGER_SCHEMA_VERSION",
     "CycleError",
@@ -42,6 +40,5 @@ __all__ = [
     "LedgerError",
     "LegalityError",
     "ResearchError",
-    "search_findings",
     "Verdict",
 ]
