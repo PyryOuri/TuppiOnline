@@ -238,6 +238,7 @@ def decide(
     use_single_action_shortcut: bool = True,
     reuse_world_set: SampledWorldSet | None = None,
     _fast_path: bool = True,
+    workers: int = 1,
 ) -> PimcDecision:
     """Run one complete PIMC decision from one observation.
 
@@ -249,10 +250,28 @@ def decide(
     ``_fast_path`` is forwarded to :func:`tuppi_search.rollout.complete_deal` and
     exists so the differential gate can run the authoritative rollout and require
     the same decision. No configuration exposes it.
+
+    ``workers`` evaluates the candidates concurrently. It is a *runtime* argument
+    and deliberately not a configuration field: ``config``'s own docstring puts
+    worker count on the list of things that "cannot change what the agent plays",
+    beside output paths and whether diagnostics were requested. Two runs at
+    different worker counts return the same decision and the same
+    ``configuration_id``, which :mod:`tests.search.test_pimc_parallel` requires.
+
+    Every candidate is evaluated against the same world set, and
+    :func:`_evaluate_candidate` is a pure function of its arguments, so the
+    results do not depend on the order they complete in. They are reassembled by
+    ``action_order_index`` before the tie-break ever sees them.
+
+    Use it for one interactive decision under a latency bound. Do **not** raise it
+    inside an already-parallel arena: :mod:`tuppi_search.evaluation` parallelises
+    across matches, and nesting the two oversubscribes the machine.
     """
 
     if not isinstance(observation, PlayerObservation):
         raise PimcDecisionError("PIMC requires a PlayerObservation")
+    if type(workers) is not int or workers < 1:
+        raise PimcDecisionError("workers must be an integer of at least 1")
     if not isinstance(configuration, PimcConfiguration):
         raise PimcDecisionError("PIMC requires a PimcConfiguration")
     if not isinstance(decision_seed, str) or not decision_seed:
@@ -314,22 +333,34 @@ def decide(
     tail = ExactTail.from_configuration(configuration)
     policies = SeatPolicies(configuration=configuration, root_seat=root_seat)
 
-    summaries: list[CandidateSummary] = []
-    for order_index, action in enumerate(legal):
-        summaries.append(
-            _evaluate_candidate(
-                observation=observation,
-                action=action,
-                action_order_index=order_index,
-                world_set=world_set,
-                configuration=configuration,
-                policies=policies,
-                tail=tail,
-                root_seat=root_seat,
-                fast_path=_fast_path,
-            )
+    if workers > 1 and len(legal) > 1 and reuse_world_set is None:
+        candidates = _evaluate_in_parallel(
+            observation=observation,
+            legal=legal,
+            configuration=configuration,
+            decision_seed=decision_seed,
+            world_set_mode=world_set_mode,
+            root_seat=root_seat,
+            fast_path=_fast_path,
+            workers=workers,
         )
-    candidates = tuple(summaries)
+    else:
+        summaries: list[CandidateSummary] = []
+        for order_index, action in enumerate(legal):
+            summaries.append(
+                _evaluate_candidate(
+                    observation=observation,
+                    action=action,
+                    action_order_index=order_index,
+                    world_set=world_set,
+                    configuration=configuration,
+                    policies=policies,
+                    tail=tail,
+                    root_seat=root_seat,
+                    fast_path=_fast_path,
+                )
+            )
+        candidates = tuple(summaries)
     selected_index = _best_index(candidates)
     return PimcDecision(
         selected_action=candidates[selected_index].action,
@@ -376,6 +407,111 @@ def _forced_summary(action: Action) -> CandidateSummary:
         actions_simulated=0,
         failures=0,
     )
+
+
+def _candidate_chunk(payload: tuple) -> list[tuple[int, "CandidateSummary"]]:
+    """Evaluate one worker's share of the candidates, in a fresh process.
+
+    Rebuilds the world set from the seeds rather than receiving it. That is not
+    a saving of bytes but of correctness and time: a ``SampledWorldSet`` holds
+    full ``DealState`` objects, and every one of them revalidates itself on
+    construction, so shipping the set would pay the engine's whole-state check
+    once per world per worker — the exact cost the Phase 5D-C back-port removed.
+    Rebuilding costs 39 ms at W=64 and is deterministic from the seeds, so every
+    worker reconstructs the identical set.
+    """
+
+    (
+        observation,
+        configuration,
+        decision_seed,
+        world_set_mode,
+        root_seat,
+        indices,
+        fast_path,
+    ) = payload
+    seeds = SearchSeedHierarchy(
+        pimc_protocol=configuration.pimc_protocol_version,
+        information_state=information_state_digest(observation),
+        decision_seed=decision_seed,
+    )
+    world_set = build_world_set(
+        observation,
+        configuration=configuration,
+        seeds=seeds,
+        mode=world_set_mode,
+    )
+    policies = SeatPolicies(configuration=configuration, root_seat=root_seat)
+    tail = ExactTail.from_configuration(configuration)
+    legal = observation.legal_actions
+    return [
+        (
+            index,
+            _evaluate_candidate(
+                observation=observation,
+                action=legal[index],
+                action_order_index=index,
+                world_set=world_set,
+                configuration=configuration,
+                policies=policies,
+                tail=tail,
+                root_seat=root_seat,
+                fast_path=fast_path,
+            ),
+        )
+        for index in indices
+    ]
+
+
+def _evaluate_in_parallel(
+    *,
+    observation: PlayerObservation,
+    legal: tuple,
+    configuration: PimcConfiguration,
+    decision_seed: str,
+    world_set_mode: WorldSetMode,
+    root_seat: int,
+    fast_path: bool,
+    workers: int,
+) -> tuple["CandidateSummary", ...]:
+    """Evaluate the candidates concurrently and reassemble them in canonical order.
+
+    Candidates are dealt out round-robin rather than in contiguous blocks. They
+    do not all cost the same — a candidate that brings the position into the
+    exact tail's range early is cheaper than one that does not — so contiguous
+    blocks would leave one worker holding the slow end of the list while the
+    others idle.
+    """
+
+    from concurrent.futures import ProcessPoolExecutor
+
+    count = min(workers, len(legal))
+    chunks: list[list[int]] = [[] for _ in range(count)]
+    for index in range(len(legal)):
+        chunks[index % count].append(index)
+    payloads = [
+        (
+            observation,
+            configuration,
+            decision_seed,
+            world_set_mode,
+            root_seat,
+            tuple(indices),
+            fast_path,
+        )
+        for indices in chunks
+        if indices
+    ]
+    collected: dict[int, CandidateSummary] = {}
+    with ProcessPoolExecutor(max_workers=len(payloads)) as pool:
+        for produced in pool.map(_candidate_chunk, payloads):
+            for index, summary in produced:
+                collected[index] = summary
+    if set(collected) != set(range(len(legal))):
+        raise PimcDecisionError(
+            "parallel candidate evaluation did not return every candidate"
+        )
+    return tuple(collected[index] for index in range(len(legal)))
 
 
 def _evaluate_candidate(

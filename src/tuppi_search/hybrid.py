@@ -268,6 +268,7 @@ class PhaseGatedPimcAgent:
         gate: PhaseGatedConfiguration,
         seat: int,
         policy_seed: str = DEFAULT_POLICY_SEED,
+        workers: int = 1,
     ) -> None:
         if not isinstance(agent_id, str) or not agent_id.startswith("agent:"):
             raise PimcDecisionError("a gated agent requires a canonical agent id")
@@ -286,6 +287,7 @@ class PhaseGatedPimcAgent:
             configuration=gate.pimc,
             seat=seat,
             policy_seed=policy_seed,
+            workers=workers,
         )
         specification = phase4_specifications_by_profile_key()[
             gate.delegate_policy_key
@@ -307,6 +309,17 @@ class PhaseGatedPimcAgent:
     @property
     def delegate_identity(self) -> str:
         return self._delegate.identity
+
+    @property
+    def workers(self) -> int:
+        """Processes one searched decision may use. Not part of the identity.
+
+        An opening-lead gate searches once per deal, so this buys latency on
+        exactly the decision under the bound and costs nothing on the ~53 it
+        delegates.
+        """
+
+        return self._pimc.workers
 
     def searches(self, observation: PlayerObservation) -> bool:
         return self._gate.searches_decision(observation)
@@ -348,6 +361,7 @@ def construct_gated_agent(
     seat: int,
     gate: PhaseGatedConfiguration,
     policy_seed: str = DEFAULT_POLICY_SEED,
+    workers: int = 1,
 ) -> PhaseGatedPimcAgent:
     """Construct a gated agent from its immutable specification."""
 
@@ -364,4 +378,5 @@ def construct_gated_agent(
         gate=gate,
         seat=seat,
         policy_seed=policy_seed,
+        workers=workers,
     )

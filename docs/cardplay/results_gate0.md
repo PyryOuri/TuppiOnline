@@ -1,6 +1,6 @@
-# Gate zero: the opening-lead selector fits the bound, but not at the budget the science needs
+# Gate zero: serial, the gates did not overlap; parallel, they overlap with room
 
-**Status: COMPLETE. Outcome: GATES_DO_NOT_OVERLAP.**
+**Status: COMPLETE. Outcome: ADMISSIBLE_IN_PARALLEL at W=64 and W=128.**
 
 Run 2026-09-11 with `work/cardplay/gate0_latency.py`, 12 cold deals per
 configuration, single process, artifacts under
@@ -57,10 +57,10 @@ smallest budget that clears the science gate. W=32 is close — its interval
 lower bound misses δ by 0.000046 — but the pre-registered rule is the rule, and
 a result that needs the bar moved to pass is not a result.
 
-**This is the binding constraint on the branch, and it is engineering, not
-science.** Nothing here says the opening-lead selector plays badly; it says the
-configuration where the effect was measured cannot currently be run inside the
-bound.
+**Serially, this was the binding constraint on the branch, and it was
+engineering rather than science.** Nothing here says the opening-lead selector
+plays badly; it said the configuration where the effect was measured could not
+be run inside the bound. Section 5 removes that constraint.
 
 ## 4. A 3x cost that was self-inflicted
 
@@ -84,28 +84,64 @@ Effect: the incumbent fell from 3.0x the reference to 1.5x, and roughly halved a
 every budget. It did not change the verdict, because the reference was never the
 thing holding W=64 back.
 
-## 5. What would change the answer
+## 5. Parallelism resolves it
 
-**Within-decision parallelism.** The 13 candidates at an opening lead are
-independent and each is deterministic given the shared world set, so evaluating
-them concurrently and aggregating in canonical order would give a byte-identical
-decision. Eight workers would put W=64 near 1-2 s under either continuation and
-open the branch outright. It does not exist: `docs/search/phase5d_c_optimization.md`
-records "simulations remain serial within one decision; parallelism remains at
-the independent match/pair level", so building it is a deliberate change to a
-recorded design property and an owner decision, not a detail.
+`pimc.decide(workers=N)` evaluates a decision's candidates concurrently. Cold
+maximum over 12 deals at 8 workers on a 14-core host:
 
-The alternatives are worse. Running at W=32 accepts a budget where C3's own
-instrument does not clear δ. Relaxing the 8 s margin is moving the bar after
-seeing the number. Extending the world-count curve past 64 — the outstanding C2
-item — raises the cost it would have to fit, not lowers it.
+| W | `partner_aware_v1` | `partner_aware_lead_v2` |
+| ---: | ---: | ---: |
+| 64 | **1.62** (from 8.08) | **2.24** (from 11.92) |
+| 128 | **3.08** | **4.29** |
+
+**W=64 clears the 8 s margin by 3.6-4.9x under either continuation, and W=128
+clears it too.** The largest admissible budget moved from 32 to at least 128, so
+it now sits above rather than below the smallest budget where C3 clears δ. The
+branch is open on latency.
+
+Two consequences beyond this gate. The incumbent continuation is affordable at
+the budget the science needs, so closing the search/play mismatch no longer
+costs anything measurable. And **C2 is now cheap**: extending the world-count
+curve to W=128 to read the plateau costs 3.08 s per decision rather than tens of
+seconds.
+
+A note on precision. These are maxima, which is the conservative statistic, and
+the host's load average reached 18 during the run — the measurement's own 8
+workers account for most of that on 14 cores, but not obviously all of it. The
+figures are internally consistent (W=128 is almost exactly twice W=64; the
+incumbent is about 1.38x the reference throughout), and the conclusion has a
+3.6x margin, so it is robust to contention of this size. It should not be quoted
+to two decimal places as a property of other hosts.
+
+### What parallelism is *not*
+
+`docs/search/phase5d_c_optimization.md` rejected "asynchronous shared-tree
+parallelism", and that is still rejected: it would change results. Candidate
+parallelism cannot. The candidates are independent, each worker rebuilds the
+same world set deterministically from the same seeds, and the summaries are
+reassembled by `action_order_index` before the tie-break sees them, so
+completion order cannot reach the selection.
+`tests/search/test_pimc_parallel.py` requires the decision, the
+`configuration_id` and the `agent_id` to be identical at every worker count.
+
+Worker count is a runtime argument and part of no identity — where `config.py`'s
+docstring already put it, beside output paths and whether diagnostics were
+requested. Workers rebuild the world set rather than receive it: a
+`SampledWorldSet` holds full `DealState` objects and each revalidates itself on
+construction, so shipping one would pay the engine's whole-state check per world
+per worker, reintroducing the cost the back-port removed. Rebuilding is 39 ms at
+W=64.
+
+Do not raise it inside an already-parallel arena. `tuppi_search.evaluation`
+parallelises across matches; nesting the two oversubscribes the machine.
 
 ## 6. What this does not establish
 
 * Nothing about strength. No deal was played by a scoped selector against
   anything.
-* Nothing about a parallel configuration's real latency, which is projected from
-  candidate independence and has not been measured.
+* Nothing about throughput. A parallel decision uses 8 cores, so a campaign that
+  also parallelises across matches cannot have both; the arena's worker count and
+  a decision's worker count draw on the same machine.
 * Nothing about hosts other than this one. The measurement is single-host,
   single-process, and the machine was quiet (load average 3.6); an earlier
   attempt during a load spike of 34 produced figures that were discarded.

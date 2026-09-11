@@ -269,10 +269,21 @@ def test_the_gated_agent_satisfies_the_observation_only_protocol(mid_position):
 
 
 def test_the_gated_agent_has_no_parameter_for_a_full_state():
+    """See the note in `tests/search/test_rollout_security.py`: an exact
+    allowlist, and `workers` is an integer process count that cannot carry
+    state."""
+
     import inspect
 
     parameters = set(inspect.signature(PhaseGatedPimcAgent.__init__).parameters)
-    assert parameters == {"self", "agent_id", "gate", "seat", "policy_seed"}
+    assert parameters == {
+        "self",
+        "agent_id",
+        "gate",
+        "seat",
+        "policy_seed",
+        "workers",
+    }
     assert set(inspect.signature(PhaseGatedPimcAgent.choose_action).parameters) == {
         "self",
         "observation",

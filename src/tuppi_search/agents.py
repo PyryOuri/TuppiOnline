@@ -39,7 +39,13 @@ DEFAULT_POLICY_SEED = "tuppi-phase5c-policy-seed-v1"
 class UniformFeasiblePimcAgent:
     """One seat's deployable uniform-feasible PIMC agent."""
 
-    __slots__ = ("_agent_id", "_configuration", "_seat", "_policy_seed")
+    __slots__ = (
+        "_agent_id",
+        "_configuration",
+        "_seat",
+        "_policy_seed",
+        "_workers",
+    )
 
     def __init__(
         self,
@@ -48,6 +54,7 @@ class UniformFeasiblePimcAgent:
         configuration: PimcConfiguration,
         seat: int,
         policy_seed: str = DEFAULT_POLICY_SEED,
+        workers: int = 1,
     ) -> None:
         if not isinstance(agent_id, str) or not agent_id.startswith("agent:"):
             raise PimcDecisionError("a PIMC agent requires a canonical agent id")
@@ -57,14 +64,28 @@ class UniformFeasiblePimcAgent:
             raise PimcDecisionError("seat must be an integer in 0..3")
         if not isinstance(policy_seed, str) or not policy_seed:
             raise PimcDecisionError("policy_seed must be a nonempty string")
+        if type(workers) is not int or workers < 1:
+            raise PimcDecisionError("workers must be an integer of at least 1")
         self._agent_id = agent_id
         self._configuration = configuration
         self._seat = seat
         self._policy_seed = policy_seed
+        # Runtime only. It is absent from `agent_id` and from `configuration_id`
+        # by design: `config`'s docstring lists worker count among the things
+        # that cannot change what the agent plays, and the parallel decision is
+        # required to be identical, so two agents differing only here are the
+        # same agent.
+        self._workers = workers
 
     @property
     def identity(self) -> str:
         return self._agent_id
+
+    @property
+    def workers(self) -> int:
+        """How many processes one decision may use. Not part of the identity."""
+
+        return self._workers
 
     @property
     def configuration(self) -> PimcConfiguration:
@@ -107,6 +128,7 @@ class UniformFeasiblePimcAgent:
             observation,
             configuration=self._configuration,
             decision_seed=self.decision_seed(observation),
+            workers=self._workers,
         )
 
     def explain(self, observation: PlayerObservation) -> PimcDecisionDiagnostics:

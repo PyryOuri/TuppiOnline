@@ -243,7 +243,14 @@ def test_every_rollout_conserves_cards_and_plays_thirteen_tricks(smoke_config):
 
 
 def test_the_search_agent_has_no_parameter_for_a_full_state():
-    """The boundary is structural: there is nowhere to pass a state."""
+    """The boundary is structural: there is nowhere to pass a state.
+
+    An exact allowlist, so that *any* widening of the constructor surface has to
+    be argued for rather than noticed later. `workers` was added deliberately:
+    it is an integer process count, validated as such, and an `int` cannot carry
+    a `DealState`, a hand, or a deal identity. Every other parameter here is
+    either an identity string or the immutable configuration.
+    """
 
     import inspect
 
@@ -252,7 +259,14 @@ def test_the_search_agent_has_no_parameter_for_a_full_state():
     parameters = set(
         inspect.signature(UniformFeasiblePimcAgent.__init__).parameters
     )
-    assert parameters == {"self", "agent_id", "configuration", "seat", "policy_seed"}
+    assert parameters == {
+        "self",
+        "agent_id",
+        "configuration",
+        "seat",
+        "policy_seed",
+        "workers",
+    }
     choose = set(
         inspect.signature(UniformFeasiblePimcAgent.choose_action).parameters
     )

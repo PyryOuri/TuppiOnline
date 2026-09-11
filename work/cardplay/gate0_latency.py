@@ -10,9 +10,10 @@ What it measures, and why this shape:
 
 * **One decision, not a throughput rate.** A deployed selector faces the bound
   on a single opening lead while a human waits. C3's 10x figure was aggregate
-  throughput across *independent* observations, and `pimc.decide` is serial over
-  candidates and worlds, so cross-decision parallelism does not shorten one
-  decision. The honest number for this gate is single-process.
+  throughput across *independent* observations, so it does not shorten one
+  decision. `--workers` measures the parallelism that does: `pimc.decide`
+  evaluates the candidates of a single decision concurrently, and the decision
+  is required to be identical to the serial one.
 * **Cold.** A fresh gate, specification and agent per deal, and a fresh deal, so
   nothing is amortised across measurements the way a repeated call on one fixed
   observation amortises.
@@ -95,7 +96,7 @@ def _opening_lead_observation(hands, agents):
     return observation
 
 
-def measure(*, worlds: int, continuation: str, deals: int) -> dict:
+def measure(*, worlds: int, continuation: str, deals: int, workers: int) -> dict:
     agents = _reference_agents()
     rng = random.Random(f"{ROOT_SEED}:{worlds}:{continuation}")
     pimc = PimcConfiguration.build(
@@ -114,7 +115,10 @@ def measure(*, worlds: int, continuation: str, deals: int) -> dict:
         # Cold: a fresh gate and a fresh agent for every measured decision.
         gate = opening_lead_gate(pimc=pimc)
         agent = construct_gated_agent(
-            specification, seat=observation.observing_seat, gate=gate
+            specification,
+            seat=observation.observing_seat,
+            gate=gate,
+            workers=workers,
         )
         started = time.perf_counter()
         action = agent.choose_action(observation)
@@ -139,6 +143,7 @@ def measure(*, worlds: int, continuation: str, deals: int) -> dict:
         "p90_seconds": round(ordered[math.ceil(0.9 * len(ordered)) - 1], 3),
         "passes_admission_margin": bool(worst < ADMISSION_MARGIN_SECONDS),
         "under_failure_bound": bool(worst < FAILURE_BOUND_SECONDS),
+        "workers": workers,
         "world_count": worlds,
     }
 
@@ -150,6 +155,13 @@ def main() -> int:
         "--continuations", nargs="+", default=[REFERENCE, INCUMBENT]
     )
     parser.add_argument("--deals", type=int, default=12)
+    parser.add_argument(
+        "--workers",
+        type=int,
+        nargs="+",
+        default=[1],
+        help="processes per decision; 1 is the serial path",
+    )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
@@ -158,19 +170,28 @@ def main() -> int:
     started = time.perf_counter()
     for continuation in args.continuations:
         for worlds in args.worlds:
-            print(f"\nW={worlds} continuation={continuation}", flush=True)
-            rows.append(measure(
-                worlds=worlds, continuation=continuation, deals=args.deals
-            ))
+            for workers in args.workers:
+                print(
+                    f"\nW={worlds} continuation={continuation} "
+                    f"workers={workers}",
+                    flush=True,
+                )
+                rows.append(measure(
+                    worlds=worlds,
+                    continuation=continuation,
+                    deals=args.deals,
+                    workers=workers,
+                ))
     elapsed = time.perf_counter() - started
 
     payload = {
         "admission_margin_seconds": ADMISSION_MARGIN_SECONDS,
         "failure_bound_seconds": FAILURE_BOUND_SECONDS,
         "note": (
-            "Single-process, one decision. pimc.decide is serial over candidates "
-            "and worlds, so cross-decision parallelism does not shorten one "
-            "decision; C3's 10x was aggregate throughput, not latency."
+            "One decision, cold. `workers` is within-decision parallelism over "
+            "candidates and is required to return an identical decision; it is "
+            "not part of any identity. C3's 10x was aggregate throughput across "
+            "independent observations, which does not shorten one decision."
         ),
         "root_seed": ROOT_SEED,
         "rows": rows,
@@ -179,10 +200,11 @@ def main() -> int:
     }
     (args.output / "gate0_latency.json").write_text(json.dumps(payload, indent=2))
 
-    print(f"\n{'W':>4} {'continuation':<22}{'min':>7}{'med':>7}{'p90':>7}"
-          f"{'max':>7}  {'<8s':>5} {'<10s':>5}")
+    print(f"\n{'W':>4} {'continuation':<22}{'proc':>5}{'min':>7}{'med':>7}"
+          f"{'p90':>7}{'max':>7}  {'<8s':>5} {'<10s':>5}")
     for row in rows:
         print(f"{row['world_count']:>4} {row['continuation']:<22}"
+              f"{row['workers']:>5}"
               f"{row['min_seconds']:>7.2f}{row['median_seconds']:>7.2f}"
               f"{row['p90_seconds']:>7.2f}{row['max_seconds']:>7.2f}"
               f"{'yes' if row['passes_admission_margin'] else 'NO':>6}"
@@ -192,17 +214,21 @@ def main() -> int:
     # and the choice between them is not a latency question.
     print()
     for continuation in args.continuations:
-        admissible = [
-            r for r in rows
-            if r["continuation"] == continuation and r["passes_admission_margin"]
-        ]
-        if admissible:
-            best = max(admissible, key=lambda r: r["world_count"])
-            print(f"GATE ZERO  {continuation:<22} largest admissible W="
-                  f"{best['world_count']} (cold max {best['max_seconds']}s)")
-        else:
-            print(f"GATE ZERO  {continuation:<22} no measured budget clears "
-                  f"the {ADMISSION_MARGIN_SECONDS:g} s margin")
+        for workers in args.workers:
+            admissible = [
+                r for r in rows
+                if r["continuation"] == continuation
+                and r["workers"] == workers
+                and r["passes_admission_margin"]
+            ]
+            label = f"{continuation} x{workers}"
+            if admissible:
+                best = max(admissible, key=lambda r: r["world_count"])
+                print(f"GATE ZERO  {label:<28} largest admissible W="
+                      f"{best['world_count']} (cold max {best['max_seconds']}s)")
+            else:
+                print(f"GATE ZERO  {label:<28} no measured budget clears "
+                      f"the {ADMISSION_MARGIN_SECONDS:g} s margin")
     return 0
 
 

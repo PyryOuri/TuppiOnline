@@ -245,3 +245,16 @@ back-port above changes the rollout's *representation* and the sections above
 record the differential evidence that its *semantics* are unchanged; the rollout
 policy admitted alongside it changes what a configuration may name, not what any
 registered agent plays.
+
+**"Simulations remain serial within one decision" is no longer true, and the
+change is deliberate.** `pimc.decide(workers=N)` evaluates a decision's
+candidates concurrently, because gate zero found the latency bound and C3's
+world-count requirement did not overlap without it — see
+`docs/cardplay/results_gate0.md`. What that paragraph rejected is still
+rejected: *asynchronous shared-tree* parallelism would change results, which is
+why it was refused. Candidate parallelism cannot, because the candidates are
+independent, share one deterministically rebuilt world set, and are reassembled
+in canonical order before the tie-break; `tests/search/test_pimc_parallel.py`
+requires the decision, the `configuration_id` and the `agent_id` to be identical
+at every worker count. Worker count stays outside every identity, which is where
+`config.py`'s docstring already put it.
