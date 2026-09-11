@@ -55,6 +55,9 @@ from .rule_catalogue import RULE_CATALOGUE_SCHEMA_VERSION
 
 IMPROVED_REGISTRY_SCHEMA_VERSION = "tuppi.agents.improved_policy_registry.v1"
 
+#: Set on first resolution; see `improved_specifications_by_profile_key`.
+_RESOLVED_CACHE: tuple[tuple[str, "AgentSpecification"], ...] | None = None
+
 #: Distinct from ``registry.PHASE4_AGENT_VERSION``.  These policies are not
 #: Phase 4 agents and must not be able to collide with a Phase 4 identity.
 IMPROVED_AGENT_VERSION = "2.0.0"
@@ -324,8 +327,28 @@ def improved_specifications_by_profile_key() -> dict[str, AgentSpecification]:
     Chained policies carry the identity of the improved policy they extend, so
     ``partner_aware_discard_v3``'s address changes if ``partner_aware_lead_v2``'s
     behaviour changes underneath it.
+
+    Memoised, and the reason is measured rather than defensive. Resolving these
+    means content-addressing each specification, and ``factory`` consults this
+    mapping once per *agent construction* to match an improved specification by
+    identity. A PIMC decision constructs four agents per rollout, so at W=8 that
+    was 416 calls and 2.74 s of a 5.66 s decision — more than the rollouts
+    themselves. The declarations are a module-level constant and nothing mutates
+    them, so there is nothing to invalidate; a fresh dict is returned each call
+    so no caller can reach the cached mapping.
     """
 
+    return dict(_resolved_improved_specifications())
+
+
+def _resolved_improved_specifications() -> tuple[tuple[str, AgentSpecification], ...]:
+    global _RESOLVED_CACHE
+    if _RESOLVED_CACHE is None:
+        _RESOLVED_CACHE = _resolve_improved_specifications()
+    return _RESOLVED_CACHE
+
+
+def _resolve_improved_specifications() -> tuple[tuple[str, AgentSpecification], ...]:
     declared = improved_policies()
     resolved: dict[str, AgentSpecification] = {}
     for key in IMPROVED_PROFILE_KEYS:
@@ -354,7 +377,7 @@ def improved_specifications_by_profile_key() -> dict[str, AgentSpecification]:
         raise AgentsValidationError(
             "an improved policy collided with a frozen Phase 4 identity"
         )
-    return resolved
+    return tuple(resolved.items())
 
 
 def _phase4_specifications() -> Mapping[str, AgentSpecification]:

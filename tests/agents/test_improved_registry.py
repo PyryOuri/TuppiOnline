@@ -256,3 +256,33 @@ def test_every_improved_layer_declares_what_it_supersedes_or_adds() -> None:
             assert layer.catalogued is False
             assert layer.introduces
             assert layer.layer_id.startswith("tuppi.agents.")
+
+
+def test_resolving_the_specifications_is_memoised_but_not_shared() -> None:
+    """Measured, not defensive: `factory` consults this mapping once per agent
+    construction, and a PIMC decision builds four agents per rollout. At W=8
+    that was 416 re-resolutions and 2.74 s of a 5.66 s decision."""
+
+    first = improved_specifications_by_profile_key()
+    second = improved_specifications_by_profile_key()
+    assert first == second
+    # A fresh dict each call, so no caller can reach the cached mapping.
+    assert first is not second
+    first["injected"] = None
+    assert "injected" not in improved_specifications_by_profile_key()
+
+
+def test_memoising_did_not_change_a_single_improved_identity() -> None:
+    """Recorded before the memoisation and verified byte-for-byte against the
+    tree at that commit. These addresses are cited by generated artifacts."""
+
+    frozen = {
+        "partner_aware_discard_v3":
+            "agent:sha256:4b52fd908698de131ab1c9c4562b37da8da4733b8005b0e935fbd15339a17634",
+        "partner_aware_lead_v2":
+            "agent:sha256:252fe227b01900e3c1d94822179adee07a64e3a3eb761a529a425f39b95d435d",
+    }
+    specifications = improved_specifications_by_profile_key()
+    assert set(specifications) == set(frozen)
+    for key, expected in sorted(frozen.items()):
+        assert specifications[key].agent_id == expected, key
