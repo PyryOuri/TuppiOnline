@@ -57,11 +57,15 @@ from tuppi_eval.serialization import content_digest
 from .agents import DEFAULT_POLICY_SEED, UniformFeasiblePimcAgent
 from .config import (
     DEVELOPMENT_REFERENCE_POLICY,
+    ExactTailFailurePolicy,
+    FailurePolicy,
     PimcConfiguration,
+    RootContinuation,
     policy_specifications,
 )
 from .errors import PimcDecisionError, SearchConfigurationError
 from .pimc import PimcDecision
+from .utilities import UtilityId
 
 
 PHASE_GATE_SCHEMA_VERSION = "tuppi.search.phase_gated_configuration.v1"
@@ -358,6 +362,105 @@ class PhaseGatedPimcAgent:
                 "search to explain"
             )
         return self._pimc.explain(observation)
+
+
+#: Behavioural fields of a `PimcConfiguration`, with the enum each restores to.
+#: The remaining entries in `identity_data` are protocol constants that `build`
+#: fixes rather than accepts, so restoring them is neither needed nor possible.
+_REBUILT_ENUMS = {
+    "root_continuation": RootContinuation,
+    "utility_id": UtilityId,
+    "exact_tail_failure_policy": ExactTailFailurePolicy,
+    "failure_policy": FailurePolicy,
+}
+_REBUILT_PLAIN = (
+    "world_count",
+    "rollout_replicas",
+    "rollout_policy_key",
+    "root_rollout_policy_key",
+    "exact_tail_enabled",
+    "exact_tail_max_tricks_remaining",
+    "exact_tail_node_budget",
+    "showing_search_enabled",
+)
+
+
+def gate_from_specification(
+    specification: AgentSpecification,
+) -> PhaseGatedConfiguration:
+    """Rebuild the gate a gated specification describes.
+
+    A gated agent needs a `PhaseGatedConfiguration`, which is a separate object
+    from the specification precisely so that Phase 5C's content addresses stay
+    untouched. The consequence was that any path holding only a specification —
+    the arena, a campaign harness, anything reading a recorded artifact — could
+    not construct the agent at all, and only registered gates had a construction
+    route. An opening-lead selector is deliberately not registered, so it had
+    none.
+
+    This closes that. The specification payload carries every behavioural field
+    of the composed `PimcConfiguration` plus the searched phase and the delegate,
+    so the gate is fully recoverable from it. Nothing is trusted on the way: the
+    rebuilt configuration must reproduce the recorded `pimc_configuration_id` and
+    the rebuilt gate must reproduce the recorded `phase_gate_id`. A wrong mapping
+    or an edited payload changes a digest and raises here rather than quietly
+    constructing a different agent.
+    """
+
+    if not isinstance(specification, AgentSpecification):
+        raise PimcDecisionError(
+            "gate_from_specification requires an AgentSpecification"
+        )
+    payload = specification.configuration
+    recorded_gate = payload.get("phase_gate_id")
+    recorded_pimc = payload.get("pimc_configuration_id")
+    if not isinstance(recorded_gate, str) or not isinstance(recorded_pimc, str):
+        raise PimcDecisionError(
+            "this specification records no phase gate; it is not a gated agent"
+        )
+    kwargs: dict = {name: payload[name] for name in _REBUILT_PLAIN}
+    for name, enum in _REBUILT_ENUMS.items():
+        kwargs[name] = enum(payload[name])
+    pimc = PimcConfiguration.build(**kwargs)
+    if pimc.configuration_id != recorded_pimc:
+        raise PimcDecisionError(
+            f"rebuilt PIMC configuration {pimc.configuration_id!r} disagrees with "
+            f"the recorded {recorded_pimc!r}"
+        )
+    gate = PhaseGatedConfiguration.build(
+        searched_phase=SearchedPhase(payload["searched_phase"]),
+        pimc=pimc,
+        delegate_policy_key=payload["frozen_delegate_policy_key"],
+    )
+    if gate.gate_id != recorded_gate:
+        raise PimcDecisionError(
+            f"rebuilt gate {gate.gate_id!r} disagrees with the recorded "
+            f"{recorded_gate!r}"
+        )
+    return gate
+
+
+def construct_gated_agent_from_specification(
+    specification: AgentSpecification,
+    *,
+    seat: int,
+    policy_seed: str = DEFAULT_POLICY_SEED,
+    workers: int = 1,
+) -> PhaseGatedPimcAgent:
+    """Construct a gated agent from its specification alone.
+
+    The entry point a harness wants: it needs no prior handle on the gate, and
+    the gate it rebuilds is verified against the specification's own content
+    addresses before anything is constructed.
+    """
+
+    return construct_gated_agent(
+        specification,
+        seat=seat,
+        gate=gate_from_specification(specification),
+        policy_seed=policy_seed,
+        workers=workers,
+    )
 
 
 def construct_gated_agent(
