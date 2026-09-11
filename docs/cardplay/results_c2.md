@@ -98,11 +98,39 @@ than I expected, which is worth more than any single one of them.
 ## 6. What this changes
 
 **The largest affordable budget is the one to deploy, not W=64.** The curve is
-still rising at 256 and W=64 is no longer the interesting point. Gate zero
-measured W=128 at a 3.08 s cold maximum with eight workers; W=256 should be near
-6 s, which is inside the 8 s anchor. That figure is scaled from the measured
-W=128 result and **has not been measured** — it should be before anything is
-deployed at 256.
+still rising at 256 and W=64 is no longer the interesting point.
+
+W=256 has now been measured rather than scaled (2026-09-11, twelve cold deals,
+eight workers, `gate0_latency_w256.json`). The scaled guess of "near 6 s" was
+right for the frozen reference, but the continuation matters more than that
+framing suggested:
+
+| W | continuation | cold max | C2's measured gain |
+| ---: | --- | ---: | ---: |
+| 128 | `partner_aware_lead_v2` | 4.35 s | +0.001538 |
+| 256 | `partner_aware_lead_v2` | 8.58 s | +0.001860 |
+| 256 | `partner_aware_v1` | 6.13 s | — (not what C2 measured) |
+| 512 | either | 11.9-17.0 s | — (not measured by C2) |
+
+**The continuation that matches this experiment is the incumbent, not the frozen
+reference.** `c1_headroom._resources` builds `partner_aware_lead_v2` for all four
+seats, so every arm in C1, C2 and C3 was priced with the incumbent playing
+everything after the lead. The 6.13 s row is a cheaper selector whose gain this
+experiment does not measure.
+
+So the admissible configurations aligned with what was measured are **W=128 at
+4.35 s**, comfortably inside the anchor, or **W=256 at 8.58 s**, which exceeds the
+8 s admission margin while staying under the 10 s failure bound. The extra
++0.000322 of measured gain is the price of that 2.45 s. Which to take is an owner
+decision about an approximate anchor, not something this experiment settles.
+
+W=512 is out of reach at eight workers under either continuation, and C2 measures
+no gain there anyway.
+
+One consequence worth recording: until this run, `PhaseGatedConfiguration`
+validated its delegate against the frozen Phase 4 registry only, so **the
+configuration C2 measured could not be constructed at all**. The delegate now
+resolves through the same merged registry as the rollout policy.
 
 **C1's kill is now doubly superseded.** Its `G_legal_eb` gate was void, and the
 quantity it was trying to bound is at least 0.0017, not the 0.00057 that

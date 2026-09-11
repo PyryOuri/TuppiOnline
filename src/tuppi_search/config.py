@@ -78,8 +78,8 @@ SUPPORTED_ROLLOUT_POLICIES: tuple[str, ...] = (
 )
 
 
-def rollout_specifications() -> dict:
-    """Every specification a ``rollout_policy_key`` may name.
+def policy_specifications() -> dict:
+    """Every specification a policy key may name — a rollout policy or a delegate.
 
     Phase 4 profiles and the improved policies live in separate registries on
     purpose: registering an improved policy as a Phase 4 profile would move the
@@ -91,6 +91,12 @@ def rollout_specifications() -> dict:
     improved policy. ``construct_agent`` then matches an improved specification
     by identity rather than by name, so this cannot be used to substitute a
     forged specification for the declared one.
+
+    Both roles need the same universe. C1, C2 and C3 all price their arms with
+    ``partner_aware_lead_v2`` playing every other seat, so the selector whose
+    headroom they measured delegates to the incumbent *and* continues rollouts
+    with it. A delegate restricted to frozen Phase 4 profiles cannot express
+    that, which would leave the measured configuration unbuildable.
     """
 
     from tuppi_agents import phase4_specifications_by_profile_key
@@ -267,7 +273,7 @@ class PimcConfiguration:
         correct if a stochastic policy is ever admitted.
         """
 
-        specifications = rollout_specifications()
+        specifications = policy_specifications()
         keys = {self.rollout_policy_key}
         if self.root_rollout_policy_key is not None:
             keys.add(self.root_rollout_policy_key)

@@ -127,7 +127,7 @@ reference was necessarily a frozen Phase 4 profile, while deployed play uses
 That mismatch was unstated rather than decided.
 
 `SUPPORTED_ROLLOUT_POLICIES` now admits `partner_aware_lead_v2`. The resolution
-is `config.rollout_specifications()`, which merges the Phase 4 registry with
+is `config.policy_specifications()`, which merges the Phase 4 registry with
 `improved_registry` at the point of use, so the incumbent can be *named* without
 being *registered* — registering it as a Phase 4 profile would move the frozen
 baseline every Phase 4-6 result is quoted against, which

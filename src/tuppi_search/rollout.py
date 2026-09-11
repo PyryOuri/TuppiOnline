@@ -64,7 +64,7 @@ from tuppi_engine import (
 from tuppi_engine.errors import EngineError
 from tuppi_rules import TRICKS_PER_DEAL
 
-from .config import PimcConfiguration, RootContinuation, rollout_specifications
+from .config import PimcConfiguration, RootContinuation, policy_specifications
 from .errors import IllegalRolloutActionError, RolloutError
 from .fast_trick import FastTrickError, FastTrickState
 from .utilities import (
@@ -118,7 +118,7 @@ class SeatPolicies:
             raise RolloutError("SeatPolicies requires a PimcConfiguration")
         if type(root_seat) is not int or root_seat not in range(4):
             raise RolloutError("root_seat must be an integer in 0..3")
-        specifications = rollout_specifications()
+        specifications = policy_specifications()
         try:
             self._specifications = specifications[configuration.rollout_policy_key]
         except KeyError as exc:  # pragma: no cover - config validates the key

@@ -601,3 +601,57 @@ def test_the_scoped_selector_is_still_one_ply_and_observation_only():
     assert payload["information_set_search"] is None
     assert payload["learning"] is None
     assert payload["searched_phase"] == "opening_lead_only"
+
+
+# ------------------------------------- the configuration C2 actually measured
+
+
+def test_the_delegate_may_be_the_production_incumbent():
+    """C1, C2 and C3 all price their arms with `partner_aware_lead_v2` playing
+    every other seat. A delegate restricted to frozen Phase 4 profiles cannot
+    express the selector whose headroom they measured."""
+
+    pimc = PimcConfiguration.build(
+        world_count=2,
+        showing_search_enabled=False,
+        rollout_policy_key="partner_aware_lead_v2",
+    )
+    gate = opening_lead_gate(pimc=pimc, delegate_policy_key="partner_aware_lead_v2")
+    assert gate.delegate_policy_key == "partner_aware_lead_v2"
+    specification = opening_lead_specification(
+        pimc=pimc, delegate_policy_key="partner_aware_lead_v2"
+    )
+    agent = construct_gated_agent(specification, seat=0, gate=gate)
+    # A real content-addressed identity over the improved behaviour, not the
+    # base profile's id.
+    assert agent.delegate_identity == (
+        "agent:sha256:252fe227b01900e3c1d94822179adee07a64e3a3eb761a529a425f39b95d435d"
+    )
+
+
+def test_the_delegate_still_refuses_an_unknown_policy():
+    pimc = PimcConfiguration.build(world_count=2)
+    with pytest.raises(SearchConfigurationError, match="unknown delegate policy"):
+        opening_lead_gate(pimc=pimc, delegate_policy_key="no_such_policy_v9")
+
+
+def test_the_delegate_choice_is_part_of_the_identity():
+    """Two selectors that continue differently are different agents."""
+
+    pimc = PimcConfiguration.build(
+        world_count=2,
+        showing_search_enabled=False,
+        rollout_policy_key="partner_aware_lead_v2",
+    )
+    frozen = opening_lead_specification(pimc=pimc)
+    incumbent = opening_lead_specification(
+        pimc=pimc, delegate_policy_key="partner_aware_lead_v2"
+    )
+    assert frozen.agent_id != incumbent.agent_id
+
+
+def test_widening_the_delegate_moved_no_committed_gate_identity():
+    for key, expected in sorted(FROZEN_PHASE5D_A_IDENTITIES.items()):
+        assert phase5d_a_specification(key).agent_id == expected, key
+    assert gate_for(PLAY_ONLY).delegate_policy_key == "partner_aware_v1"
+    assert gate_for(SHOW_ONLY).delegate_policy_key == "partner_aware_v1"

@@ -49,13 +49,17 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from tuppi_agents import construct_agent, phase4_specifications_by_profile_key
+from tuppi_agents import construct_agent
 from tuppi_engine import Action, EnginePhase, PlayerObservation
 from tuppi_eval.identities import AgentSpecification
 from tuppi_eval.serialization import content_digest
 
 from .agents import DEFAULT_POLICY_SEED, UniformFeasiblePimcAgent
-from .config import DEVELOPMENT_REFERENCE_POLICY, PimcConfiguration
+from .config import (
+    DEVELOPMENT_REFERENCE_POLICY,
+    PimcConfiguration,
+    policy_specifications,
+)
 from .errors import PimcDecisionError, SearchConfigurationError
 from .pimc import PimcDecision
 
@@ -137,7 +141,7 @@ class PhaseGatedConfiguration:
             raise SearchConfigurationError(
                 "a phase gate composes a PimcConfiguration"
             )
-        if self.delegate_policy_key not in phase4_specifications_by_profile_key():
+        if self.delegate_policy_key not in policy_specifications():
             raise SearchConfigurationError(
                 f"unknown delegate policy {self.delegate_policy_key!r}"
             )
@@ -289,9 +293,10 @@ class PhaseGatedPimcAgent:
             policy_seed=policy_seed,
             workers=workers,
         )
-        specification = phase4_specifications_by_profile_key()[
-            gate.delegate_policy_key
-        ]
+        # Resolved through the merged registry so the delegate may be the
+        # production incumbent, not only a frozen Phase 4 profile.
+        # `construct_agent` matches an improved specification by identity.
+        specification = policy_specifications()[gate.delegate_policy_key]
         self._delegate = construct_agent(specification, seat=seat)
 
     @property

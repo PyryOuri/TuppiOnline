@@ -398,9 +398,9 @@ def test_the_incumbent_identity_is_not_the_base_profile_identity():
 
     from tuppi_agents import phase4_specifications_by_profile_key
 
-    from tuppi_search.config import rollout_specifications
+    from tuppi_search.config import policy_specifications
 
-    specifications = rollout_specifications()
+    specifications = policy_specifications()
     base = phase4_specifications_by_profile_key()["partner_aware_v1"]
     assert specifications["partner_aware_lead_v2"].agent_id != base.agent_id
 
@@ -449,8 +449,8 @@ def test_an_unknown_rollout_policy_is_still_refused():
 def test_phase4_keys_cannot_be_shadowed_by_an_improved_policy():
     from tuppi_agents import phase4_specifications_by_profile_key
 
-    from tuppi_search.config import rollout_specifications
+    from tuppi_search.config import policy_specifications
 
-    merged = rollout_specifications()
+    merged = policy_specifications()
     for key, specification in phase4_specifications_by_profile_key().items():
         assert merged[key] == specification
