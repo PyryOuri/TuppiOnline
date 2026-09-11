@@ -40,17 +40,43 @@ from .reactive import (
 from .showing import score_showing
 
 
-def counting_layout(mode: PlayMode) -> tuple[str, ...]:
+#: The two counting rules that add a NOLO component above the reactive base.
+#: Both are independently disableable, and the fallback is structural rather
+#: than invented: the component is simply not inserted, so the mode falls back
+#: to the layout of the rung below, which is a real profile that is measured and
+#: shipped. This mirrors `partner_aware.partner_layout` exactly.
+NOLO_UNACCOUNTED_RULE = "counting.nolo.lead_suit_with_most_unaccounted_higher.v1"
+NOLO_SHED_WINNER_RULE = "counting.nolo.avoid_retaining_certain_winner.v1"
+
+
+def counting_layout(
+    mode: PlayMode, profile: HeuristicProfile | None = None
+) -> tuple[str, ...]:
+    """The counting layout for *mode*, honouring any disabled counting rules.
+
+    ``profile`` is optional so that existing callers that only ask "what does
+    this layer look like" keep working unchanged; when it is omitted every rule
+    is treated as enabled, which is what every registered profile does anyway.
+    """
+
     base = layout_for(_reactive_mode(mode))
+    unaccounted = profile is None or profile.rule_enabled(NOLO_UNACCOUNTED_RULE)
+    shed = profile is None or profile.rule_enabled(NOLO_SHED_WINNER_RULE)
     if mode is PlayMode.RAMI_LEAD:
         return component_layout(("certain_trick",) + base)
     if mode is PlayMode.RAMI_FOLLOW:
         return component_layout((base[0], "certainty") + base[1:])
     if mode is PlayMode.NOLO_LEAD:
+        if not unaccounted:
+            return base
         return component_layout((base[0], "unaccounted_higher_count") + base[1:])
     if mode is PlayMode.NOLO_FOLLOW:
+        if not shed:
+            return base
         return component_layout((base[0], "shed_certain_winner") + base[1:])
     if mode in (PlayMode.NOLO_DISCARD, PlayMode.NOLO_CONCEDED):
+        if not shed:
+            return base
         return component_layout(("shed_certain_winner",) + base)
     raise PolicyError(f"mode {mode.value!r} has no counting layout")
 
@@ -78,24 +104,30 @@ def counting_components(
             reasons + (("certain_trick_winner",) if certain else ()),
         )
     if mode is PlayMode.NOLO_LEAD:
+        if not context.profile.rule_enabled(NOLO_UNACCOUNTED_RULE):
+            return (base_values, rules, reasons)
         higher = float(len(inference.unaccounted_higher_in_suit(card)))
         return (
             (base_values[0], higher) + base_values[1:],
-            rules + ("counting.nolo.lead_suit_with_most_unaccounted_higher.v1",),
+            rules + (NOLO_UNACCOUNTED_RULE,),
             reasons + ("counted_unaccounted_higher",),
         )
     if mode is PlayMode.NOLO_FOLLOW:
+        if not context.profile.rule_enabled(NOLO_SHED_WINNER_RULE):
+            return (base_values, rules, reasons)
         shed = inference.is_highest_unplayed_in_suit(card)
         return (
             (base_values[0], 1.0 if shed else 0.0) + base_values[1:],
-            rules + ("counting.nolo.avoid_retaining_certain_winner.v1",),
+            rules + (NOLO_SHED_WINNER_RULE,),
             reasons + (("sheds_certain_future_winner",) if shed else ()),
         )
     if mode in (PlayMode.NOLO_DISCARD, PlayMode.NOLO_CONCEDED):
+        if not context.profile.rule_enabled(NOLO_SHED_WINNER_RULE):
+            return (base_values, rules, reasons)
         shed = inference.is_highest_unplayed_in_suit(card)
         return (
             (1.0 if shed else 0.0,) + base_values,
-            rules + ("counting.nolo.avoid_retaining_certain_winner.v1",),
+            rules + (NOLO_SHED_WINNER_RULE,),
             reasons + (("sheds_certain_future_winner",) if shed else ()),
         )
     raise PolicyError(f"mode {mode.value!r} is not a counting mode")
@@ -136,7 +168,7 @@ def score_counting_play(
 ) -> ScoredActions:
     mode = base_play_mode(features)
     context = build_play_context(features, profile, mode=mode)
-    layout = counting_layout(mode)
+    layout = counting_layout(mode, profile)
 
     def scorer(action: Action, index: int) -> CandidateEvaluation:
         card = card_of(action)

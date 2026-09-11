@@ -205,3 +205,88 @@ def test_every_module_carries_a_docstring_explaining_its_boundary() -> None:
         docstring = ast.get_docstring(tree)
         assert docstring, path
         assert len(docstring) > 40, path
+
+
+def test_the_counting_nolo_rules_are_ablatable_and_fall_back_to_the_rung_below() -> None:
+    """T0-T3 found 12 of 16 unvalidated strategic rules could not be ablated at
+    all — no documented legal fallback, so `HeuristicProfile` refused them. That
+    was the binding constraint on the whole discovery route, and it was blocked
+    on a design decision rather than on compute.
+
+    These two are unblocked because their fallback is structural rather than
+    invented: each adds one named component above the reactive base, so disabling
+    it simply does not insert the component and the mode falls back to the layout
+    of `reactive_contract_v1` — a real profile that is measured and shipped.
+    """
+
+    from tuppi_agents.counting import (
+        NOLO_SHED_WINNER_RULE,
+        NOLO_UNACCOUNTED_RULE,
+        counting_layout,
+    )
+    from tuppi_agents.profiles import HeuristicProfile
+    from tuppi_agents.reactive import PlayMode, layout_for
+
+    key = "public_counting_v1"
+    assert set(disableable_rule_ids(key)) >= {
+        NOLO_UNACCOUNTED_RULE,
+        NOLO_SHED_WINNER_RULE,
+    }
+    control = registered_profiles()[key]
+    for rule, modes in (
+        (NOLO_UNACCOUNTED_RULE, (PlayMode.NOLO_LEAD,)),
+        (
+            NOLO_SHED_WINNER_RULE,
+            (PlayMode.NOLO_FOLLOW, PlayMode.NOLO_DISCARD, PlayMode.NOLO_CONCEDED),
+        ),
+    ):
+        variant = HeuristicProfile.build(
+            profile_key=key,
+            family=control.family,
+            showing_policy=control.showing_policy,
+            parameters=dict(control.parameters),
+            disabled_rule_ids=(rule,),
+            description="ablation",
+        )
+        assert variant.profile_id != control.profile_id
+        for mode in modes:
+            reactive = layout_for(
+                PlayMode.NOLO_DISCARD if mode is PlayMode.NOLO_CONCEDED else mode
+            )
+            # Disabled: exactly the rung below. Enabled: one component more.
+            assert counting_layout(mode, variant) == reactive
+            assert len(counting_layout(mode, control)) == len(reactive) + 1
+
+
+def test_ablating_a_counting_rule_leaves_a_policy_that_still_plays_legally() -> None:
+    """A fallback that is not exercised is not a fallback. The score vector must
+    also stay the same length as the layout, which is what makes this more than a
+    flag flip."""
+
+    from tuppi_agents.counting import NOLO_SHED_WINNER_RULE, PublicCountingPolicy
+    from tuppi_agents.profiles import HeuristicProfile
+    from tuppi_engine import EnginePhase
+
+    from tests.search.conftest import walk_deal
+
+    control = registered_profiles()["public_counting_v1"]
+    variant = HeuristicProfile.build(
+        profile_key="public_counting_v1",
+        family=control.family,
+        showing_policy=control.showing_policy,
+        parameters=dict(control.parameters),
+        disabled_rule_ids=(NOLO_SHED_WINNER_RULE,),
+        description="ablation",
+    )
+    policy = PublicCountingPolicy(agent_id="ablation", profile=variant)
+    checked = 0
+    for stream in range(6):
+        for position in walk_deal(stream_index=stream):
+            observation = position.observation
+            if observation.phase is not EnginePhase.TRICK_PLAY:
+                continue
+            if observation.contract is None or observation.contract.value != "NOLO":
+                continue
+            assert policy.choose_action(observation) in observation.legal_actions
+            checked += 1
+    assert checked >= 20, "no NOLO trick-play decision was exercised"

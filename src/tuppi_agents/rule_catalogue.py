@@ -706,6 +706,7 @@ RULE_CATALOGUE: tuple[StrategyRule, ...] = tuple(
                     "wins elsewhere."
                 ),
                 profiles=_COUNTING_PROFILES,
+                disableable=True,
             ),
             _rule(
                 "counting.nolo.lead_suit_with_most_unaccounted_higher.v1",
@@ -727,6 +728,7 @@ RULE_CATALOGUE: tuple[StrategyRule, ...] = tuple(
                     "how those cards are distributed."
                 ),
                 profiles=_COUNTING_PROFILES,
+                disableable=True,
             ),
             # -------------------------------------------------- partner aware
             _rule(

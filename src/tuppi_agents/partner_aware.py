@@ -75,7 +75,7 @@ def partner_play_mode(
 
 
 def partner_layout(mode: PlayMode, profile: HeuristicProfile) -> tuple[str, ...]:
-    base = counting_layout(mode)
+    base = counting_layout(mode, profile)
     if mode is PlayMode.RAMI_LEAD and profile.rule_enabled(RAMI_FOLLOWABLE_LEAD_RULE):
         return component_layout((base[0], "partner_can_follow") + base[1:])
     if mode is PlayMode.NOLO_LEAD and profile.rule_enabled(NOLO_VOID_LEAD_RULE):
