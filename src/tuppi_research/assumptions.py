@@ -14,13 +14,16 @@ data to drift.
 Two things it records that the catalogue alone does not make obvious:
 
 * **Which assumptions can actually be negated.** ``docs/audit/results_t0_t3.md``
-  found only 4 of the incumbent's 16 unvalidated strategic rules are ablatable;
-  the other 12 carry ``independently_disableable = False`` because no documented
-  downstream legal fallback exists, and ``HeuristicProfile`` refuses them. T0-T3
-  called this "the binding constraint on the whole discovery route" and noted the
-  limit was the switch surface, not compute. An assumption-negation operator will
-  therefore emit ``UNDEFINED_EXECUTION`` for three quarters of this register
-  until fallbacks are defined, which is a governance question, not a grammar one.
+  found only 4 of the incumbent's 16 unvalidated strategic rules were ablatable;
+  the other 12 carried ``independently_disableable = False`` because no
+  documented downstream legal fallback existed, and ``HeuristicProfile`` refuses
+  them. T0-T3 called this "the binding constraint on the whole discovery route"
+  and noted the limit was the switch surface, not compute.
+  ``docs/audit/ablation_fallbacks.md`` settled the fallback semantics and
+  unblocked the two ``counting.nolo`` rules, so it is now 6 ablatable and 10
+  blocked. An assumption-negation operator still emits ``UNDEFINED_EXECUTION``
+  for most of this register, and the remainder is still a governance question
+  rather than a grammar one — but it is a classified one now, not a wall.
 * **What has already been tested jointly.** ``partner_aware_lead_v2``'s two lead
   layers were removed together as T2's V5 positive control, costing -0.00574
   equity per deal, so they are established as beneficial *as a pair* while
