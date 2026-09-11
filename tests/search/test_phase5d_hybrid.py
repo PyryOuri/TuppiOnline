@@ -14,6 +14,8 @@ from tuppi_search.hybrid import (
     PhaseGatedPimcAgent,
     SearchedPhase,
     construct_gated_agent,
+    construct_gated_agent_from_specification,
+    gate_from_specification,
     is_opening_lead,
 )
 from tuppi_search.registry import (
@@ -655,3 +657,86 @@ def test_widening_the_delegate_moved_no_committed_gate_identity():
         assert phase5d_a_specification(key).agent_id == expected, key
     assert gate_for(PLAY_ONLY).delegate_policy_key == "partner_aware_v1"
     assert gate_for(SHOW_ONLY).delegate_policy_key == "partner_aware_v1"
+
+
+# ------------------------------- rebuilding a gate from its specification alone
+
+
+def test_a_gate_rebuilds_from_its_specification_exactly():
+    """Only registered gates had a construction route, and an opening-lead
+    selector is deliberately not registered, so no harness could build one."""
+
+    pimc = PimcConfiguration.build(
+        world_count=128,
+        showing_search_enabled=False,
+        rollout_policy_key="partner_aware_lead_v2",
+    )
+    original = opening_lead_gate(pimc=pimc, delegate_policy_key="partner_aware_lead_v2")
+    specification = opening_lead_specification(
+        pimc=pimc, delegate_policy_key="partner_aware_lead_v2"
+    )
+    rebuilt = gate_from_specification(specification)
+    assert rebuilt == original
+    assert rebuilt.gate_id == original.gate_id
+    assert rebuilt.pimc.configuration_id == pimc.configuration_id
+
+
+@pytest.mark.parametrize("profile_key", [PLAY_ONLY, SHOW_ONLY])
+def test_the_committed_gates_also_rebuild_from_their_specifications(profile_key):
+    rebuilt = gate_from_specification(phase5d_a_specification(profile_key))
+    assert rebuilt == gate_for(profile_key)
+
+
+def test_rebuilding_verifies_against_the_recorded_content_addresses():
+    """An edited payload must raise, not construct a different agent quietly."""
+
+    from tuppi_eval.identities import AgentSpecification
+
+    pimc = PimcConfiguration.build(world_count=2, showing_search_enabled=False)
+    specification = opening_lead_specification(pimc=pimc)
+    tampered = dict(specification.configuration)
+    tampered["world_count"] = 4
+    # Rebuilt rather than `dataclasses.replace`d: replace would leave the old
+    # agent_id attached to new content, which is the identity bug this
+    # repository has been bitten by before. This forges a *consistent*
+    # specification whose payload simply disagrees with the ids recorded inside
+    # it, which is the case the check has to catch.
+    forged = AgentSpecification.build(
+        agent_family=specification.agent_family,
+        configuration_version=specification.configuration_version,
+        implementation_reference=specification.implementation_reference,
+        ruleset_compatibility=specification.ruleset_compatibility,
+        observation_schema_compatibility=(
+            specification.observation_schema_compatibility
+        ),
+        determinism=specification.determinism,
+        seed_policy=specification.seed_policy,
+        configuration=tampered,
+        model_checkpoint_id=specification.model_checkpoint_id,
+        search_budget=specification.search_budget,
+        partner_convention_id=specification.partner_convention_id,
+        description=specification.description,
+    )
+    with pytest.raises(PimcDecisionError, match="disagrees with the recorded"):
+        gate_from_specification(forged)
+
+
+def test_rebuilding_refuses_a_specification_that_is_not_gated():
+    with pytest.raises(PimcDecisionError, match="records no phase gate"):
+        gate_from_specification(specification_for(PRIMARY_PROFILE_KEY))
+
+
+def test_an_agent_builds_from_a_specification_with_no_gate_in_hand():
+    pimc = PimcConfiguration.build(
+        world_count=2,
+        showing_search_enabled=False,
+        rollout_policy_key="partner_aware_lead_v2",
+    )
+    specification = opening_lead_specification(
+        pimc=pimc, delegate_policy_key="partner_aware_lead_v2"
+    )
+    agent = construct_gated_agent_from_specification(
+        specification, seat=0, workers=4
+    )
+    assert agent.identity == specification.agent_id
+    assert agent.workers == 4
