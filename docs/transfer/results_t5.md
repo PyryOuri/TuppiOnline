@@ -74,6 +74,16 @@ opponent keeps that space open. **This is a hypothesis generated after seeing th
 data and is recorded as such.** It is not tested here and must not be quoted as
 though it were.
 
+> **Refuted, 2026-09-12, by [T6](results_t6.md).** A sweep from `first_legal` to
+> uniform random holds the margin flat at 35-46% of control, Spearman +0.200. And
+> `seeded_random_legal`'s interval here, [+0.002614, +0.007198], overlaps T6's
+> uniform-random endpoint [+0.000758, +0.004292] — so the 87.7% exception that
+> motivated this reading is consistent with ~42% and was a noisy point, exactly
+> as T6's pre-registration warned before it ran. **The compression is general
+> across foreign opponents; the rigidity explanation is withdrawn and the
+> mechanism remains unknown.** Section 2's headline is unaffected and in fact
+> simplified: there is no exception left to explain.
+
 ## 4. Predicted outcome versus what happened
 
 | | Prediction | Actual | |
