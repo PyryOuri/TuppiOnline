@@ -4,7 +4,7 @@
 
 Check this before proposing a hypothesis. Every negative row carries its scope limits, because every mistake this index exists to prevent was a correctly scoped negative result read too broadly.
 
-Query: `python -m tuppi_research.findings <term>` — 27 findings.
+Query: `python -m tuppi_research.findings <term>` — 28 findings.
 
 | date | id | verdict | question |
 |---|---|---|---|
@@ -35,6 +35,7 @@ Query: `python -m tuppi_research.findings <term>` — 27 findings.
 | 2026-09-12 | `crossplay-descriptive-only` | **constraint** | Does the existing cross-play record say anything about whether the incumbent's advantage transfers? |
 | 2026-09-12 | `phase4-ladder-is-not-diverse` | **constraint** | How differently do the Phase 4 profiles actually play? |
 | 2026-09-12 | `t4-improvement-transfers` | **measured** | Does the incumbent's advantage over its predecessor survive an opponent it was not developed against? |
+| 2026-09-12 | `t5-margin-collapses-against-rigid-opponents` | **measured** | Does the incumbent's improvement survive an opponent seven times more foreign than the Phase 4 ladder allows? |
 
 ## `pimc-small-rejected` — rejected
 
@@ -491,9 +492,28 @@ Query: `python -m tuppi_research.findings <term>` — 27 findings.
 **Numbers.** control_margin = +0.006364 [+0.005228, +0.007486]; legacy_heuristic_port_v1 = +0.005952 (93.5% of control); reactive_contract_legacy_show_v1 = +0.005385 (84.6%); reactive_contract_v1 = +0.005661 (89.0%); exposure_vs_control = 105-112%, higher not lower; t2_v5_anchor_reproduced = yes, +0.00574 inside the control interval
 
 **Does not establish.**
+- Transfer beyond 8.7% opponent divergence. T5 extended the range to 61.5% and found the margin retains only 29-43% of its home value against three rigid opponents; see t5-margin-collapses-against-rigid-opponents.
 - Transfer to opponents outside the Phase 4 family. T4's opponent set was drawn from that family, whose maximum divergence from the predecessor (8.7%) is below the improvement's own (10.1%). The Phase 3 controls diverge 45-62% and were NOT tested; an earlier version of this entry wrongly said no such opponent existed.
 - Anything about human opponents.
 - Anything at non-zero score states; every deal started at 0-0.
 - Absence of mild degradation: all three foreign margins sit below the control, three of three in the same direction, one-sided sign test p=0.125.
 
 **Evidence.** `work/transfer/t4_transfer.py`, `docs/transfer/results_t4.md`, `docs/transfer/hypotheses_t4.md`
+
+## `t5-margin-collapses-against-rigid-opponents` — measured
+
+*2026-09-12* · tags: `transfer`, `self-play-overfitting`, `crossplay`, `qualifies-t4`
+
+**Question.** Does the incumbent's improvement survive an opponent seven times more foreign than the Phase 4 ladder allows?
+
+**Scope.** Difference in differences, per-deal frozen-continuation equity, duplicate design, 1024 base deals per opponent, 8 opponents spanning 3.7%-61.5% divergence, all deals at 0-0.
+
+**Numbers.** control_margin = +0.005634 [+0.004530, +0.006765]; three_peers = 100.2%, 119.7%, 106.6% of control, all overlapping; lowest_legal_card = +0.002404 (42.7%, disjoint); first_legal = +0.002065 (36.7%, disjoint); highest_legal_card = +0.001617 (28.7%, disjoint); seeded_random_legal = +0.004943 (87.7%, overlaps); deterministic_controls_mean = 36.0% of control; stochastic_control = 87.7% of control; spearman_margin_vs_strength = +0.200
+
+**Does not establish.**
+- The mechanism. The rule's two pre-named explanations both fail: not saturation, because the weakest opponent has the highest foreign margin; not foreignness, because the most divergent opponent overlaps the control. The rigidity reading in results section 3 was generated after seeing the data and is untested.
+- Anything about human opponents. A control that always plays the highest legal card is rigid in a way no person is, and the rigidity reading would if anything predict the opposite for a variable human.
+- That the improvement is harmful anywhere: all eight margins are positive with intervals excluding zero.
+- Anything at non-zero score states.
+
+**Evidence.** `work/transfer/t5_range.py`, `docs/transfer/results_t5.md`, `docs/transfer/hypotheses_t5.md`
