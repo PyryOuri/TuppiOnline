@@ -17,7 +17,8 @@ from .decisions import (
 )
 from .errors import CycleError, LedgerError, LegalityError, ResearchError
 
-# `findings`, `assumptions` and `proposals` are deliberately NOT imported here.
+# `findings`, `assumptions`, `proposals` and `coverage` are deliberately NOT
+# imported here.
 # Each is meant to be run as `python -m tuppi_research.<module>`, and an eager
 # package-level import puts it in sys.modules before runpy executes it, which
 # makes every invocation print a RuntimeWarning. Import them directly:

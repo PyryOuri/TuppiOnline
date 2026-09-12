@@ -1,0 +1,27 @@
+{
+  "schema": "tuppi.research.proposal.v1",
+  "proposal": {
+    "proposal_id": "match-state-never-exercised",
+    "date": "2026-09-12",
+    "mechanism": "An entire declared capability of the agent family — the match-state features of `match_aware_v1` — has never been exercised by any experiment in this record, because every experiment ran at score 0-0, where those features are provably inert. Measure whether match-state play differs from, and beats, the incumbent once the score is not level.",
+    "structural_family": "unexercised_declared_capability",
+    "executable_sketch": "for each base deal:\n    score = draw from the match-visit distribution (C5 built this sampler)\n    if score == (0, 0): resample      # 0-0 is what the record already covers\n    play the duplicate block twice:\n        arm A: match_aware_v1      in both candidate seats\n        arm B: partner_aware_v1    in both candidate seats\n    margin = E[equity(A)] - E[equity(B)]\n    # exposure, to separate 'no effect' from 'never fired':\n    at every candidate decision also ask partner_aware_v1 from the SAME\n    observation and count disagreements; at 0-0 this rate is 0.0% by\n    measurement, so a non-zero rate is the capability switching on",
+    "observable_inputs": [
+      "the acting seat's PlayerObservation, which already carries match_score",
+      "the initial score state, drawn from the visit distribution measured in C5",
+      "no hidden hands, no opponent internals, no cross-deal memory"
+    ],
+    "predicted_sign": "unknown",
+    "falsifier": "Action divergence between match_aware_v1 and partner_aware_v1 stays at or near 0.0% across the sampled non-zero score states, which would mean the match-state features are inert everywhere and not merely at 0-0 — retiring the capability rather than testing it.",
+    "revisits": [
+      "phase4-ladder-is-not-diverse"
+    ],
+    "escape_clause": {
+      "applied_under": "Divergence was measured over 435 decisions at score 0-0 only, where match_aware_v1 agreed with partner_aware_v1 on 100.0% of decisions.",
+      "changed_by": "The score state. A match-aware policy has nothing to be aware of at a level score; the finding itself records this as the reason, and the rising score resets by the trailing side so a real match visits non-zero states on roughly 64% of deals (measured in C5's visit distribution).",
+      "distinguishing_observation": "The action-divergence rate between match_aware_v1 and partner_aware_v1 at non-zero score states. It is 0.0% at 0-0 by measurement; any materially non-zero rate off 0-0 shows the capability exists and was simply never switched on. This costs one pass over a few hundred deals and needs no equity table at all."
+    },
+    "plausibility": "moderate",
+    "plausibility_rationale": "Recorded, not consulted. Two considerations point opposite ways and neither is decisive: the capability was built and registered by the same process that produced everything else here, which argues it does something; but T2 found three of four ablatable rules entirely inert, so a declared capability doing nothing has precedent in this codebase."
+  }
+}
