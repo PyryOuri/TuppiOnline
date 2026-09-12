@@ -38,15 +38,18 @@ Differencing is what makes the result interpretable. A harder opponent lowers
 
 ## 3. The opponent set
 
-| `X` | Why it is in the set |
-| --- | --- |
-| `partner_aware_v1` | **The development opponent.** The control: `margin` here is the improvement as originally measured. |
-| `partner_aware_legacy_convention_v1` | Same capability class, **different partnership convention**. The sharpest test: a genuine style difference rather than a weaker rung. |
-| `legacy_heuristic_port_v1` | A different lineage entirely — the ported legacy emulator. |
-| `match_aware_v1` | Plays on information the others ignore (match state), so it reaches different positions. |
+| `X` | Divergence from `partner_aware_v1` at 0-0 | Why it is in the set |
+| --- | ---: | --- |
+| `partner_aware_v1` | — | **The development opponent.** The control: `margin` here is the improvement as originally measured. |
+| `legacy_heuristic_port_v1` | **8.7%** | A different lineage entirely — the ported legacy emulator, and the most divergent policy available. |
+| `reactive_contract_legacy_show_v1` | **5.3%** | A different showing policy, which is live at every score. |
+| `reactive_contract_v1` | **3.7%** | The base rung: different play, no public inference. |
 
-Chosen for stylistic difference, not weakness. A ladder of weaker versions of
-the same policy would test strength, not transfer.
+Chosen on **measured** divergence rather than on what the profile names suggest.
+See section 9 — the original set was amended because two of its members do not
+play differently at all. A ladder of weaker versions of the same policy would
+test strength rather than transfer, but a set of *identical* policies tests
+nothing whatsoever, and that is what the names concealed.
 
 ## 4. Design
 
@@ -132,8 +135,11 @@ record is the point.
   programme conducted entirely in self-play.
 * **P4** — where a margin falls, the verdict is **composition** rather than
   transfer failure, because the mechanism is structural.
-* **P5** — the sharpest drop is against `partner_aware_legacy_convention_v1`,
-  the different-convention opponent, rather than against the weakest one.
+* **P5** — *void.* It named `partner_aware_legacy_convention_v1`, which the
+  section 9 amendment removed from the set. It is struck rather than rewritten:
+  a prediction whose subject no longer exists cannot be scored, and replacing it
+  with a fresh one after seeing the divergence table would be writing a
+  prediction with the answer already in hand.
 
 ## 8. What this will not establish
 
@@ -150,3 +156,46 @@ Nothing about cardplay search — no PIMC runs here. Nothing about the showing
 phase in isolation. And nothing that licenses a change to the incumbent: a
 transfer result is a statement about the confidence owed to existing numbers,
 not a candidate.
+
+
+## 9. Amendment, made before any science was collected
+
+The opponent set was chosen from what the profile names imply. Measured against
+what the profiles actually *do*, two of the three foreign opponents were not
+opponents at all. Divergence from `partner_aware_v1` over 435 decisions at score
+0-0:
+
+| policy | divergence |
+| --- | ---: |
+| `partner_aware_lead_v2` *(the incumbent itself)* | 10.1% |
+| `legacy_heuristic_port_v1` | 8.7% |
+| `reactive_contract_legacy_show_v1` | 5.3% |
+| `reactive_contract_v1` | 3.7% |
+| `partner_aware_legacy_convention_v1` | **0.9%** |
+| `public_counting_v1` | **0.2%** |
+| `match_aware_v1` | **0.0%** |
+| `match_aware_no_match_features_v1` | **0.0%** |
+
+`match_aware_v1` agrees with `partner_aware_v1` on **100.0%** of decisions here,
+because its match-state features are inert at 0-0 — a match-aware policy has
+nothing to be aware of when the score is level. It is the same policy under this
+design. `partner_aware_legacy_convention_v1`, the "different convention" that
+section 3 called the sharpest test, differs on 0.9% of decisions.
+
+Gate I5 was written for exactly this and it fired on the smoke test, before any
+science run: the margin and exposure against `match_aware_v1` matched the
+control to six decimal places. The set is amended to the three policies that
+measurably play differently.
+
+**This bounds the experiment, and the bound is worth stating plainly.** The most
+divergent opponent available differs from the predecessor on 8.7% of decisions,
+while the incumbent differs from it on 10.1%. So no opponent in this repository
+is *more* different from the development opponent than the improvement under
+test is. Whatever T4 finds, it is a weak test of transfer — the strongest
+available inside this family, and no substitute for an opponent from outside it.
+
+An alternative fix was available and rejected: varying the score state would make
+`match_aware_v1` genuinely distinct. It is rejected because gate I3 replicates
+T2's +0.00574, which was measured at 0-0, and changing the score distribution
+would put the run's only anchor to a known number at risk. Score variation is a
+separate experiment, not a repair to this one.
