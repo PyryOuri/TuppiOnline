@@ -4,7 +4,7 @@
 
 Check this before proposing a hypothesis. Every negative row carries its scope limits, because every mistake this index exists to prevent was a correctly scoped negative result read too broadly.
 
-Query: `python -m tuppi_research.findings <term>` — 25 findings.
+Query: `python -m tuppi_research.findings <term>` — 27 findings.
 
 | date | id | verdict | question |
 |---|---|---|---|
@@ -33,6 +33,8 @@ Query: `python -m tuppi_research.findings <term>` — 25 findings.
 | 2026-09-11 | `c5-deployment-inconclusive` | **inconclusive** | Does the measured opening-lead headroom appear when the selector actually plays? |
 | 2026-09-11 | `gate0-latency` | **measured** | Can an opening-lead PIMC selector run inside the decision bound? |
 | 2026-09-12 | `crossplay-descriptive-only` | **constraint** | Does the existing cross-play record say anything about whether the incumbent's advantage transfers? |
+| 2026-09-12 | `phase4-ladder-is-not-diverse` | **constraint** | How differently do the Phase 4 profiles actually play? |
+| 2026-09-12 | `t4-improvement-transfers` | **measured** | Does the incumbent's advantage over its predecessor survive an opponent it was not developed against? |
 
 ## `pimc-small-rejected` — rejected
 
@@ -461,3 +463,37 @@ Query: `python -m tuppi_research.findings <term>` — 25 findings.
 - Anything about partner_aware_lead_v2, which post-dates this matrix and is absent from it.
 
 **Evidence.** `reports/phase4/baseline_report.json`, `manifests/phase4/crossplay_request.json`, `src/tuppi_eval/crossplay.py`
+
+## `phase4-ladder-is-not-diverse` — constraint
+
+*2026-09-12* · tags: `ladder`, `diversity`, `crossplay`, `instrument-limit`, `retrieval`
+
+**Question.** How differently do the Phase 4 profiles actually play?
+
+**Scope.** Action divergence from partner_aware_v1 over 435 decisions at score 0-0.
+
+**Numbers.** partner_aware_lead_v2 = 10.1%; legacy_heuristic_port_v1 = 8.7%; reactive_contract_legacy_show_v1 = 5.3%; reactive_contract_v1 = 3.7%; partner_aware_legacy_convention_v1 = 0.9%; public_counting_v1 = 0.2%; match_aware_v1 = 0.0%; match_aware_no_match_features_v1 = 0.0%
+
+**Does not establish.**
+- That the profiles are identical in general. match_aware_v1 is inert at 0-0 specifically, because a match-aware policy has nothing to be aware of at a level score; it may differ where the score is not level.
+- Anything about relative strength; this is divergence of chosen actions, not quality.
+
+**Evidence.** `docs/transfer/hypotheses_t4.md`, `docs/transfer/results_t4.md`
+
+## `t4-improvement-transfers` — measured
+
+*2026-09-12* · tags: `transfer`, `crossplay`, `incumbent`, `self-play-overfitting`
+
+**Question.** Does the incumbent's advantage over its predecessor survive an opponent it was not developed against?
+
+**Scope.** Difference in differences, per-deal frozen-continuation equity, duplicate design, 1024 base deals per opponent, all deals at score 0-0.
+
+**Numbers.** control_margin = +0.006364 [+0.005228, +0.007486]; legacy_heuristic_port_v1 = +0.005952 (93.5% of control); reactive_contract_legacy_show_v1 = +0.005385 (84.6%); reactive_contract_v1 = +0.005661 (89.0%); exposure_vs_control = 105-112%, higher not lower; t2_v5_anchor_reproduced = yes, +0.00574 inside the control interval
+
+**Does not establish.**
+- Transfer to anything outside this repository. No opponent here is more foreign to the predecessor (8.7% max divergence) than the improvement under test is (10.1%), so this is the strongest available test inside the family and a weak test in absolute terms.
+- Anything about human opponents.
+- Anything at non-zero score states; every deal started at 0-0.
+- Absence of mild degradation: all three foreign margins sit below the control, three of three in the same direction, one-sided sign test p=0.125.
+
+**Evidence.** `work/transfer/t4_transfer.py`, `docs/transfer/results_t4.md`, `docs/transfer/hypotheses_t4.md`

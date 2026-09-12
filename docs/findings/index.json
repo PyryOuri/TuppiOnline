@@ -744,6 +744,70 @@
         "retrieval",
         "machinery-exists"
       ]
+    },
+    {
+      "finding_id": "phase4-ladder-is-not-diverse",
+      "date": "2026-09-12",
+      "question": "How differently do the Phase 4 profiles actually play?",
+      "verdict": "constraint",
+      "scope": "Action divergence from partner_aware_v1 over 435 decisions at score 0-0.",
+      "numbers": {
+        "partner_aware_lead_v2": "10.1%",
+        "legacy_heuristic_port_v1": "8.7%",
+        "reactive_contract_legacy_show_v1": "5.3%",
+        "reactive_contract_v1": "3.7%",
+        "partner_aware_legacy_convention_v1": "0.9%",
+        "public_counting_v1": "0.2%",
+        "match_aware_v1": "0.0%",
+        "match_aware_no_match_features_v1": "0.0%"
+      },
+      "does_not_establish": [
+        "That the profiles are identical in general. match_aware_v1 is inert at 0-0 specifically, because a match-aware policy has nothing to be aware of at a level score; it may differ where the score is not level.",
+        "Anything about relative strength; this is divergence of chosen actions, not quality."
+      ],
+      "evidence": [
+        "docs/transfer/hypotheses_t4.md",
+        "docs/transfer/results_t4.md"
+      ],
+      "tags": [
+        "ladder",
+        "diversity",
+        "crossplay",
+        "instrument-limit",
+        "retrieval"
+      ]
+    },
+    {
+      "finding_id": "t4-improvement-transfers",
+      "date": "2026-09-12",
+      "question": "Does the incumbent's advantage over its predecessor survive an opponent it was not developed against?",
+      "verdict": "measured",
+      "scope": "Difference in differences, per-deal frozen-continuation equity, duplicate design, 1024 base deals per opponent, all deals at score 0-0.",
+      "numbers": {
+        "control_margin": "+0.006364 [+0.005228, +0.007486]",
+        "legacy_heuristic_port_v1": "+0.005952 (93.5% of control)",
+        "reactive_contract_legacy_show_v1": "+0.005385 (84.6%)",
+        "reactive_contract_v1": "+0.005661 (89.0%)",
+        "exposure_vs_control": "105-112%, higher not lower",
+        "t2_v5_anchor_reproduced": "yes, +0.00574 inside the control interval"
+      },
+      "does_not_establish": [
+        "Transfer to anything outside this repository. No opponent here is more foreign to the predecessor (8.7% max divergence) than the improvement under test is (10.1%), so this is the strongest available test inside the family and a weak test in absolute terms.",
+        "Anything about human opponents.",
+        "Anything at non-zero score states; every deal started at 0-0.",
+        "Absence of mild degradation: all three foreign margins sit below the control, three of three in the same direction, one-sided sign test p=0.125."
+      ],
+      "evidence": [
+        "work/transfer/t4_transfer.py",
+        "docs/transfer/results_t4.md",
+        "docs/transfer/hypotheses_t4.md"
+      ],
+      "tags": [
+        "transfer",
+        "crossplay",
+        "incumbent",
+        "self-play-overfitting"
+      ]
     }
   ],
   "evidence_note": "Entries beginning docs/ src/ work/ reports/ tests/ manifests/ are repository paths and are existence-checked by tuppi_research.findings.stale_evidence. Absolute paths are external run artifacts outside the repository and are NOT checked; they may go missing without this index noticing."
