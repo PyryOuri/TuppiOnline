@@ -829,7 +829,7 @@
         "spearman_margin_vs_strength": "+0.200"
       },
       "does_not_establish": [
-        "The mechanism. The rule's two pre-named explanations both fail: not saturation, because the weakest opponent has the highest foreign margin; not foreignness, because the most divergent opponent overlaps the control. The rigidity reading in results section 3 was generated after seeing the data and is untested.",
+        "The mechanism. Saturation was rejected here and the rigidity reading offered in results section 3 was REFUTED by T6: the margin is flat at 35-46% across a rigid-to-random sweep, and T5's seeded_random_legal exception was a noisy point whose interval overlaps T6's uniform-random endpoint. The compression is general across foreign opponents; its cause is unknown.",
         "Anything about human opponents. A control that always plays the highest legal card is rigid in a way no person is, and the rigidity reading would if anything predict the opposite for a variable human.",
         "That the improvement is harmful anywhere: all eight margins are positive with intervals excluding zero.",
         "Anything at non-zero score states."
@@ -844,6 +844,36 @@
         "self-play-overfitting",
         "crossplay",
         "qualifies-t4"
+      ]
+    },
+    {
+      "finding_id": "t6-rigidity-refuted",
+      "date": "2026-09-12",
+      "question": "Does opponent rigidity explain why the improvement's margin collapses against foreign opponents?",
+      "verdict": "refuted",
+      "scope": "Opponent family interpolating first_legal to uniform random by mixing probability, 1024 base deals per point, 0-0 only.",
+      "numbers": {
+        "margin_flat_across_sweep": "35.2%-45.7% of control",
+        "spearman_margin_vs_epsilon": "+0.200",
+        "epsilon_0_pure_first_legal": "+0.002337 (38.8%)",
+        "epsilon_1_uniform_random": "+0.002525 (41.9%)",
+        "t5_seeded_random_reinterpreted": "T5's 87.7% interval overlaps T6's 41.9%; the exception was noise"
+      },
+      "does_not_establish": [
+        "Why the margin compresses against foreign opponents. Saturation was rejected in T5 and rigidity here; the mechanism is unknown.",
+        "Anything about human opponents.",
+        "That cross-deal determinism is irrelevant: the void first run of this instrument accidentally produced a rigid-but-action-diverse opponent scoring 6.2%, which is suggestive and is not evidence, coming from a defective run."
+      ],
+      "evidence": [
+        "work/transfer/t6_rigidity.py",
+        "docs/transfer/results_t6.md",
+        "docs/transfer/hypotheses_t6.md"
+      ],
+      "tags": [
+        "transfer",
+        "post-hoc-hypothesis",
+        "refuted",
+        "qualifies-t5"
       ]
     }
   ],

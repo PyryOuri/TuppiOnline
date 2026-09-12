@@ -4,7 +4,7 @@
 
 Check this before proposing a hypothesis. Every negative row carries its scope limits, because every mistake this index exists to prevent was a correctly scoped negative result read too broadly.
 
-Query: `python -m tuppi_research.findings <term>` — 28 findings.
+Query: `python -m tuppi_research.findings <term>` — 29 findings.
 
 | date | id | verdict | question |
 |---|---|---|---|
@@ -36,6 +36,7 @@ Query: `python -m tuppi_research.findings <term>` — 28 findings.
 | 2026-09-12 | `phase4-ladder-is-not-diverse` | **constraint** | How differently do the Phase 4 profiles actually play? |
 | 2026-09-12 | `t4-improvement-transfers` | **measured** | Does the incumbent's advantage over its predecessor survive an opponent it was not developed against? |
 | 2026-09-12 | `t5-margin-collapses-against-rigid-opponents` | **measured** | Does the incumbent's improvement survive an opponent seven times more foreign than the Phase 4 ladder allows? |
+| 2026-09-12 | `t6-rigidity-refuted` | **refuted** | Does opponent rigidity explain why the improvement's margin collapses against foreign opponents? |
 
 ## `pimc-small-rejected` — rejected
 
@@ -511,9 +512,26 @@ Query: `python -m tuppi_research.findings <term>` — 28 findings.
 **Numbers.** control_margin = +0.005634 [+0.004530, +0.006765]; three_peers = 100.2%, 119.7%, 106.6% of control, all overlapping; lowest_legal_card = +0.002404 (42.7%, disjoint); first_legal = +0.002065 (36.7%, disjoint); highest_legal_card = +0.001617 (28.7%, disjoint); seeded_random_legal = +0.004943 (87.7%, overlaps); deterministic_controls_mean = 36.0% of control; stochastic_control = 87.7% of control; spearman_margin_vs_strength = +0.200
 
 **Does not establish.**
-- The mechanism. The rule's two pre-named explanations both fail: not saturation, because the weakest opponent has the highest foreign margin; not foreignness, because the most divergent opponent overlaps the control. The rigidity reading in results section 3 was generated after seeing the data and is untested.
+- The mechanism. Saturation was rejected here and the rigidity reading offered in results section 3 was REFUTED by T6: the margin is flat at 35-46% across a rigid-to-random sweep, and T5's seeded_random_legal exception was a noisy point whose interval overlaps T6's uniform-random endpoint. The compression is general across foreign opponents; its cause is unknown.
 - Anything about human opponents. A control that always plays the highest legal card is rigid in a way no person is, and the rigidity reading would if anything predict the opposite for a variable human.
 - That the improvement is harmful anywhere: all eight margins are positive with intervals excluding zero.
 - Anything at non-zero score states.
 
 **Evidence.** `work/transfer/t5_range.py`, `docs/transfer/results_t5.md`, `docs/transfer/hypotheses_t5.md`
+
+## `t6-rigidity-refuted` — refuted
+
+*2026-09-12* · tags: `transfer`, `post-hoc-hypothesis`, `refuted`, `qualifies-t5`
+
+**Question.** Does opponent rigidity explain why the improvement's margin collapses against foreign opponents?
+
+**Scope.** Opponent family interpolating first_legal to uniform random by mixing probability, 1024 base deals per point, 0-0 only.
+
+**Numbers.** margin_flat_across_sweep = 35.2%-45.7% of control; spearman_margin_vs_epsilon = +0.200; epsilon_0_pure_first_legal = +0.002337 (38.8%); epsilon_1_uniform_random = +0.002525 (41.9%); t5_seeded_random_reinterpreted = T5's 87.7% interval overlaps T6's 41.9%; the exception was noise
+
+**Does not establish.**
+- Why the margin compresses against foreign opponents. Saturation was rejected in T5 and rigidity here; the mechanism is unknown.
+- Anything about human opponents.
+- That cross-deal determinism is irrelevant: the void first run of this instrument accidentally produced a rigid-but-action-diverse opponent scoring 6.2%, which is suggestive and is not evidence, coming from a defective run.
+
+**Evidence.** `work/transfer/t6_rigidity.py`, `docs/transfer/results_t6.md`, `docs/transfer/hypotheses_t6.md`
