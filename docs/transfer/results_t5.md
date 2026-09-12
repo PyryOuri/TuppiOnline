@@ -1,7 +1,13 @@
-# T5 results: the margin collapses against rigid opponents — but not against the most foreign one
+# T5 results: the margin collapses against foreign opponents
 
-**Status: COMPLETE. Outcome: TRANSFER_DEGRADES by the pre-registered rule, with a
-pattern neither branch of that rule anticipated.**
+**Status: COMPLETE. Outcome: TRANSFER_DEGRADES by the pre-registered rule.**
+
+> **Title amended 2026-09-12.** It originally read "…against rigid opponents —
+> but not against the most foreign one", asserting as fact a reading that
+> [T6](results_t6.md) then refuted. Section 3's reasoning is kept intact with the
+> refutation attached, because the reasoning is part of the record; the title is
+> not, and a heading that states a withdrawn claim is what a reader meets first.
+> The measured result in section 2 is unchanged.
 
 Pre-registration: [hypotheses_t5.md](hypotheses_t5.md), committed as `5b77e42`
 before `work/transfer/t5_range.py` existed. Run 2026-09-12, 1,024 base deals per
@@ -43,7 +49,7 @@ same quantity.
 > **It never inverts.** All eight margins are positive with intervals excluding
 > zero. The improvement is worth less against alien play, not harmful.
 
-## 3. The pattern is not the one the rule was built to find
+## 3. The pattern is not the one the rule was built to find — and the reading offered here was wrong
 
 The pre-registered rule returns **TRANSFER_DEGRADES**: the foreign mean
 (+0.002757) is below the control, and margin is not ordered by strength among
