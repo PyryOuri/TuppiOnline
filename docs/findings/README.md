@@ -472,7 +472,7 @@ Query: `python -m tuppi_research.findings <term>` — 27 findings.
 
 **Scope.** Action divergence from partner_aware_v1 over 435 decisions at score 0-0.
 
-**Numbers.** partner_aware_lead_v2 = 10.1%; legacy_heuristic_port_v1 = 8.7%; reactive_contract_legacy_show_v1 = 5.3%; reactive_contract_v1 = 3.7%; partner_aware_legacy_convention_v1 = 0.9%; public_counting_v1 = 0.2%; match_aware_v1 = 0.0%; match_aware_no_match_features_v1 = 0.0%
+**Numbers.** partner_aware_lead_v2 = 10.1%; legacy_heuristic_port_v1 = 8.7%; reactive_contract_legacy_show_v1 = 5.3%; reactive_contract_v1 = 3.7%; partner_aware_legacy_convention_v1 = 0.9%; public_counting_v1 = 0.2%; match_aware_v1 = 0.0%; match_aware_no_match_features_v1 = 0.0%; phase3_controls_for_contrast = 45.2%-61.5%
 
 **Does not establish.**
 - That the profiles are identical in general. match_aware_v1 is inert at 0-0 specifically, because a match-aware policy has nothing to be aware of at a level score; it may differ where the score is not level.
@@ -491,7 +491,7 @@ Query: `python -m tuppi_research.findings <term>` — 27 findings.
 **Numbers.** control_margin = +0.006364 [+0.005228, +0.007486]; legacy_heuristic_port_v1 = +0.005952 (93.5% of control); reactive_contract_legacy_show_v1 = +0.005385 (84.6%); reactive_contract_v1 = +0.005661 (89.0%); exposure_vs_control = 105-112%, higher not lower; t2_v5_anchor_reproduced = yes, +0.00574 inside the control interval
 
 **Does not establish.**
-- Transfer to anything outside this repository. No opponent here is more foreign to the predecessor (8.7% max divergence) than the improvement under test is (10.1%), so this is the strongest available test inside the family and a weak test in absolute terms.
+- Transfer to opponents outside the Phase 4 family. T4's opponent set was drawn from that family, whose maximum divergence from the predecessor (8.7%) is below the improvement's own (10.1%). The Phase 3 controls diverge 45-62% and were NOT tested; an earlier version of this entry wrongly said no such opponent existed.
 - Anything about human opponents.
 - Anything at non-zero score states; every deal started at 0-0.
 - Absence of mild degradation: all three foreign margins sit below the control, three of three in the same direction, one-sided sign test p=0.125.

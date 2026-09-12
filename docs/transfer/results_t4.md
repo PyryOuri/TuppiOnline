@@ -82,8 +82,28 @@ Phase 4 profiles differ on under 1%, and two are byte-identical in play at 0-0.
 The ladder's names imply far more variety than the ladder contains.
 
 So T4 says: the improvement is not an artefact of one specific opponent's quirks.
-It does **not** say the improvement survives an opponent drawn from outside this
-family, because no such opponent exists here to test against.
+It does **not** say the improvement survives an opponent drawn from outside the
+Phase 4 family.
+
+> **Correction, 2026-09-12.** This section originally closed with "because no
+> such opponent exists here to test against". That is false. The Phase 3
+> controls are registered, constructible and far more foreign than anything in
+> the Phase 4 ladder — divergence from `partner_aware_v1` of 45.2% to 61.5%
+> against the ladder's maximum of 8.7%:
+>
+> | control | divergence |
+> | --- | ---: |
+> | `seeded_random_legal` | 61.5% |
+> | `highest_legal_card` | 59.3% |
+> | `first_legal` | 55.7% |
+> | `lowest_legal_card` | 45.2% |
+> | `show_selection_nolo_low` | 45.2% |
+>
+> T4 did not test against them, which is a limitation of T4's opponent set and
+> not of the repository. Using them introduces a confound T4 did not have —
+> they are very weak, so equity may saturate and compress the margin for reasons
+> unrelated to transfer — and that is a reason to design the follow-up carefully,
+> not a reason to claim the opponents are unavailable.
 
 ## 5. What this does not establish
 
