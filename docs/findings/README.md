@@ -4,7 +4,7 @@
 
 Check this before proposing a hypothesis. Every negative row carries its scope limits, because every mistake this index exists to prevent was a correctly scoped negative result read too broadly.
 
-Query: `python -m tuppi_research.findings <term>` — 20 findings.
+Query: `python -m tuppi_research.findings <term>` — 25 findings.
 
 | date | id | verdict | question |
 |---|---|---|---|
@@ -28,6 +28,11 @@ Query: `python -m tuppi_research.findings <term>` — 20 findings.
 | 2026-09-10 | `e6-capture-timing` | **refuted** | Should the incumbent hold a certain winner to promote its lower cards in that suit? |
 | 2026-09-10 | `q3-blinded-review` | **inconclusive** | Can one expert, blinded, beat the incumbent on hindsight-flagged decisions, and does their reasoning name rules the catalogue lacks? |
 | 2026-09-10 | `trusted-transitions-policy-prohibition` | **constraint** | May a policy use the engine's revalidation-elision device to meet the latency budget? |
+| 2026-09-11 | `ablation-fallback-decision` | **measured** | What does a policy do when a strategic rule is disabled, and how much of the incumbent is testable? |
+| 2026-09-11 | `c2-reachable-headroom` | **measured** | How much of the opening lead's perfect-information gain is reachable from the observation alone? |
+| 2026-09-11 | `c5-deployment-inconclusive` | **inconclusive** | Does the measured opening-lead headroom appear when the selector actually plays? |
+| 2026-09-11 | `gate0-latency` | **measured** | Can an opening-lead PIMC selector run inside the decision bound? |
+| 2026-09-12 | `crossplay-descriptive-only` | **constraint** | Does the existing cross-play record say anything about whether the incumbent's advantage transfers? |
 
 ## `pimc-small-rejected` — rejected
 
@@ -371,3 +376,88 @@ Query: `python -m tuppi_research.findings <term>` — 20 findings.
 - The sanctioned route for a search policy is a validated search-local state, differential-tested; see phase5dc-search-fast-path.
 
 **Evidence.** `src/tuppi_engine/trusted.py`, `tests/agents/test_architecture.py`
+
+## `ablation-fallback-decision` — measured
+
+*2026-09-11* · tags: `assumptions`, `ablation`, `governance`, `supersedes-t0`
+
+**Question.** What does a policy do when a strategic rule is disabled, and how much of the incumbent is testable?
+
+**Scope.** The incumbent's 24 catalogued rules; T0-T3's 16 unvalidated strategic ones.
+
+**Numbers.** ablatable_before = 4 of 16; ablatable_after = 6 of 16; counting_nolo_action_divergence = 3.8% and 1.0%; flag_is_identity_safe = 29 rules flipped in memory, zero agent ids moved
+
+**Does not establish.**
+- That the seven Class B rules are testable yet; they share score components under disjoint conditions and need per-rule condition-scoped neutralisation.
+- That the three Class C showing thresholds are ablatable at all; removing a threshold has no neutral meaning and they are better varied than removed.
+- That any unblocked rule is harmful. Ablation can only find harmful rules, and T2 found none qualified.
+
+**Evidence.** `docs/audit/ablation_fallbacks.md`, `src/tuppi_agents/counting.py`, `tests/agents/test_architecture.py`
+
+## `c2-reachable-headroom` — measured
+
+*2026-09-11* · tags: `cardplay`, `opening-lead`, `headroom`, `supersedes-c1`
+
+**Question.** How much of the opening lead's perfect-information gain is reachable from the observation alone?
+
+**Scope.** Opening lead, HARD conditioning, incumbent continuing every other seat, all deals at score 0-0.
+
+**Numbers.** G_legal_lower_bound_95 = +0.001702; reachable_fraction_of_foresight = >=10.6%; G_deploy_256 = +0.001860; G_foresight = +0.016015
+
+**Does not establish.**
+- A ceiling. The increment series is not decaying and the curve had not converged at W=256; the extrapolated plateau adds 63% of the measured value and is unusable.
+- Irreducibility. G_foresight minus G_legal is the value of hidden information, not an error floor of any policy.
+- Anything about the incumbent's distance from G_legal; this measures the far end of that interval.
+- Anything at non-zero score states, which were never varied.
+
+**Evidence.** `work/cardplay/c2_headroom.py`, `docs/cardplay/results_c2.md`, `docs/cardplay/hypotheses_c2.md`
+
+## `c5-deployment-inconclusive` — inconclusive
+
+*2026-09-11* · tags: `cardplay`, `opening-lead`, `deployment`, `underpowered`, `variance-pilot`
+
+**Question.** Does the measured opening-lead headroom appear when the selector actually plays?
+
+**Scope.** Deployed W=128 opening-lead selector, incumbent delegate and continuation, duplicate design, score states drawn from the match-visit distribution.
+
+**Numbers.** mean_equity_difference = -0.000225; ci95 = [-0.002053, +0.001525]; realised_per_base_deal_sd = 0.0146; base_deals_needed_to_clear_delta = 1994
+
+**Does not establish.**
+- That the effect is absent. The campaign was underpowered by a knowable factor and could not have detected C2's effect.
+- That the effect is present.
+- Score-state dependence: the instrument discarded the per-block scores, so its own prediction P3 could not be evaluated.
+
+**Evidence.** `work/cardplay/c5_deployed.py`, `docs/cardplay/results_c5.md`, `docs/cardplay/hypotheses_c5.md`
+
+## `gate0-latency` — measured
+
+*2026-09-11* · tags: `instrument-gate`, `latency`, `parallelism`, `opening-lead`
+
+**Question.** Can an opening-lead PIMC selector run inside the decision bound?
+
+**Scope.** Cold maximum over 12 fresh deals, single host, 13 legal actions.
+
+**Numbers.** W64_serial_incumbent = 11.92 s; W64_parallel_8_incumbent = 2.24 s; W128_parallel_8_incumbent = 4.35 s; W256_parallel_8_incumbent = 8.58 s; largest_admissible_serial = W=32
+
+**Does not establish.**
+- The ten-second production requirement, which includes showing, encoding, transfers and synchronisation under a watchdog.
+- Anything about other hosts.
+- Any claim about strength.
+
+**Evidence.** `work/cardplay/gate0_latency.py`, `docs/cardplay/results_gate0.md`, `docs/search/phase5d_c_optimization.md`
+
+## `crossplay-descriptive-only` — constraint
+
+*2026-09-12* · tags: `transfer`, `crossplay`, `retrieval`, `machinery-exists`
+
+**Question.** Does the existing cross-play record say anything about whether the incumbent's advantage transfers?
+
+**Scope.** reports/phase4/baseline_report.json, 11 teams, 66 cells.
+
+**Numbers.** independent_base_deals_per_cell = 8; cells = 66; incumbent_present = no
+
+**Does not establish.**
+- Anything about transfer. The report states cross-play uses a deliberately small shared bank and is descriptive only.
+- Anything about partner_aware_lead_v2, which post-dates this matrix and is absent from it.
+
+**Evidence.** `reports/phase4/baseline_report.json`, `manifests/phase4/crossplay_request.json`, `src/tuppi_eval/crossplay.py`
