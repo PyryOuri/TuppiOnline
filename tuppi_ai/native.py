@@ -60,6 +60,10 @@ lib.tc_legal_obs.argtypes = [_P(TcObs), _P(C.c_int)]
 lib.tc_legal_obs.restype = C.c_int
 lib.tc_feature_dim.restype = C.c_int
 lib.tc_encode.argtypes = [_P(TcObs), _P(C.c_uint8)]
+lib.tc_encode_v.argtypes = [_P(TcObs), _P(C.c_uint8), C.c_int]
+lib.tc_feature_dim_v.argtypes = [C.c_int]
+lib.tc_feature_dim_v.restype = C.c_int
+lib.tc_env_set_encoder.argtypes = [C.c_void_p, C.c_int]
 lib.tc_valid_show_cards.argtypes = [C.c_uint64, C.c_int]
 lib.tc_valid_show_cards.restype = C.c_uint64
 lib.tc_verbal_required.argtypes = [C.c_int, C.c_int]
@@ -89,6 +93,10 @@ lib.tc_sample_world.restype = C.c_int
 FEATURE_DIM = lib.tc_feature_dim()
 
 
+def feature_dim(encoder: int = 1) -> int:
+    return lib.tc_feature_dim_v(encoder)
+
+
 def dd_team0_tricks(deal: TcDeal) -> int:
     """Final team-0 tricks under perfect-information optimal play (late positions)."""
     return lib.tc_dd_team0_tricks(C.byref(deal))
@@ -113,10 +121,10 @@ def legal_obs(obs: TcObs) -> list[int]:
     return list(buf[:k])
 
 
-def encode(obs: TcObs, out: np.ndarray | None = None) -> np.ndarray:
+def encode(obs: TcObs, out: np.ndarray | None = None, encoder: int = 1) -> np.ndarray:
     if out is None:
-        out = np.zeros(FEATURE_DIM, dtype=np.uint8)
-    lib.tc_encode(C.byref(obs), out.ctypes.data_as(_P(C.c_uint8)))
+        out = np.zeros(feature_dim(encoder), dtype=np.uint8)
+    lib.tc_encode_v(C.byref(obs), out.ctypes.data_as(_P(C.c_uint8)), encoder)
     return out
 
 
@@ -137,13 +145,15 @@ class Env:
     """N parallel matches in native code, observed and stepped as numpy arrays."""
 
     def __init__(self, n: int, seed: int, equity: np.ndarray | None = None,
-                 p_random_start: float = 0.0, single_deal: bool = False):
+                 p_random_start: float = 0.0, single_deal: bool = False, encoder: int = 1):
         self.n = n
+        self.encoder = encoder
         self._h = lib.tc_env_new(n, seed)
+        lib.tc_env_set_encoder(self._h, encoder)
         if equity is not None:
             self.set_equity(equity)
         lib.tc_env_set_options(self._h, float(p_random_start), int(single_deal))
-        self.feat = np.zeros((n, FEATURE_DIM), dtype=np.uint8)
+        self.feat = np.zeros((n, feature_dim(encoder)), dtype=np.uint8)
         self.mask = np.zeros((n, NUM_ACTIONS), dtype=np.uint8)
         self.seat = np.zeros(n, dtype=np.int32)
         self.phase = np.zeros(n, dtype=np.int32)

@@ -31,7 +31,8 @@ class Searcher:
         self.net = net
         self.worlds = worlds
         self.dd_left = dd_left
-        self.env = native.Env(worlds * max_actions, seed, equity_table, single_deal=True)
+        self.env = native.Env(worlds * max_actions, seed, equity_table, single_deal=True,
+                              encoder=net.encoder)
         self.rng = C.c_uint64(seed * 2654435761 + 1)
 
     def action_values(self, obs: native.TcObs, actions: list[int]) -> np.ndarray:
@@ -87,7 +88,7 @@ class SearchAgent:
         self.net = net
         self.search_showing = search_showing
         self.searcher = Searcher(net, equity_table, worlds=worlds, dd_left=dd_left, seed=seed + seat)
-        self._feat = np.zeros((1, native.FEATURE_DIM), dtype=np.uint8)
+        self._feat = np.zeros((1, native.feature_dim(net.encoder)), dtype=np.uint8)
 
     def choose_action(self, observation):
         legal = observation.legal_actions
@@ -96,7 +97,7 @@ class SearchAgent:
         obs = obs_from_player_observation(observation)
         ids = [action_id(a) for a in legal]
         if obs.phase == native.PH_SHOW and not self.search_showing:
-            native.encode(obs, self._feat[0])
+            native.encode(obs, self._feat[0], self.net.encoder)
             with torch.no_grad():
                 q = self.net(torch.from_numpy(self._feat))[0].numpy()
             return legal[int(np.argmax([q[i] for i in ids]))]

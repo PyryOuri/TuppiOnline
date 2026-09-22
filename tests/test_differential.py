@@ -54,7 +54,11 @@ def _play_lockstep(hands, dealer, score, chooser, rng, check_all_seats=False):
         for s in seats:
             obs_py = obs_from_player_observation(match_observation_for(state, s))
             obs_nat = native.observe(deal, s)
-            assert np.array_equal(native.encode(obs_py), native.encode(obs_nat)), (steps, s)
+            for version in (1, 2):
+                a, b = native.encode(obs_py, encoder=version), native.encode(obs_nat, encoder=version)
+                assert np.array_equal(a, b), (steps, s, version)
+            assert np.array_equal(native.encode(obs_nat, encoder=2)[:native.FEATURE_DIM],
+                                  native.encode(obs_nat, encoder=1))
             if s == seat:
                 assert sorted(native.legal_obs(obs_py)) == py_legal
         action = chooser(observation, rng)

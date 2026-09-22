@@ -20,15 +20,15 @@ import torch
 
 from . import model as qmodel
 from .equity import Equity
-from .native import FEATURE_DIM, NUM_ACTIONS, Env
+from .native import Env, feature_dim
 
 ROOT = Path(__file__).resolve().parents[1]
 WINDOW = 64  # a deal is at most 56 decisions
 
 
 class Replay:
-    def __init__(self, capacity: int):
-        self.feat = np.zeros((capacity, FEATURE_DIM), dtype=np.uint8)
+    def __init__(self, capacity: int, dim: int):
+        self.feat = np.zeros((capacity, dim), dtype=np.uint8)
         self.act = np.zeros(capacity, dtype=np.int64)
         self.ret = np.zeros(capacity, dtype=np.float32)
         self.capacity, self.ptr, self.size = capacity, 0, 0
@@ -57,6 +57,7 @@ def main() -> None:
     p.add_argument("--games", type=int, default=4096)
     p.add_argument("--width", type=int, default=768)
     p.add_argument("--blocks", type=int, default=4)
+    p.add_argument("--encoder", type=int, default=2)
     p.add_argument("--lr", type=float, default=3e-4)
     p.add_argument("--batch", type=int, default=4096)
     p.add_argument("--updates", type=int, default=1, help="SGD steps per environment step")
@@ -77,20 +78,21 @@ def main() -> None:
     torch.manual_seed(args.seed)
 
     equity = Equity.load(args.equity)
-    env = Env(args.games, args.seed, equity.table, p_random_start=args.p_random_start)
-    net = qmodel.QNet(args.width, args.blocks)
+    net = qmodel.QNet(args.width, args.blocks, args.encoder)
     counters = {"deals": 0, "decisions": 0, "updates": 0}
     if args.resume:
         blob = torch.load(args.resume, map_location="cpu", weights_only=False)
         net = qmodel.QNet(**blob["config"])
         net.load_state_dict(blob["state"])
         counters.update(blob.get("counters", {}))
+    env = Env(args.games, args.seed, equity.table, p_random_start=args.p_random_start, encoder=net.encoder)
+    dim = feature_dim(net.encoder)
     net.to(device)
     opt = torch.optim.Adam(net.parameters(), lr=args.lr)
-    replay = Replay(args.replay)
+    replay = Replay(args.replay, dim)
 
     n = args.games
-    ring_feat = np.zeros((WINDOW, n, FEATURE_DIM), dtype=np.uint8)
+    ring_feat = np.zeros((WINDOW, n, dim), dtype=np.uint8)
     ring_act = np.zeros((WINDOW, n), dtype=np.int64)
     ring_team = np.zeros((WINDOW, n), dtype=np.int8)
     deal_start = np.zeros(n, dtype=np.int64)

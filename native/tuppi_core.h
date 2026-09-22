@@ -70,8 +70,10 @@ int tc_dd_team0_tricks(const TcDeal *d);
 void tc_observe(const TcDeal *d, int seat, TcObs *o);
 int tc_legal_obs(const TcObs *o, int *actions);
 int tc_feature_dim(void);
-// Every feature is 0 or 1.
+// Every feature is 0 or 1. Version 1 is tc_encode; version 2 appends play order.
 void tc_encode(const TcObs *o, uint8_t *out);
+int tc_feature_dim_v(int version);
+void tc_encode_v(const TcObs *o, uint8_t *out, int version);
 
 // Derived public facts, exposed for tests.
 uint64_t tc_valid_show_cards(uint64_t hand, int contract);

@@ -302,3 +302,25 @@ void tc_encode(const TcObs *o, uint8_t *out) {
   if (o->phase == TC_PH_SHOW) out[F_SHOW_POS + (o->n_shows & 3)] = 1;
 #undef REL
 }
+
+// ------------------------------------------------------------- encoder v2
+// v1 plus the complete play order: for every played card, the index of the
+// trick it was played in (with the seat already in v1 this recovers the whole
+// sequence), and which card won each completed trick.
+enum { F2_TRICK_OF = F_DIM, F2_WON = F2_TRICK_OF + 52 * 13, F2_DIM = F2_WON + 52 };
+
+int tc_feature_dim_v(int version) { return version == 2 ? F2_DIM : F_DIM; }
+
+void tc_encode_v(const TcObs *o, uint8_t *out, int version) {
+  tc_encode(o, out);
+  if (version != 2) return;
+  memset(out + F_DIM, 0, F2_DIM - F_DIM);
+  int n = o->n_played;
+  for (int i = 0; i < n; i++) out[F2_TRICK_OF + 13 * o->play_card[i] + (i >> 2)] = 1;
+  for (int t = 0; t + 4 <= n; t += 4) {
+    int led = suit_of(o->play_card[t]), best = t;
+    for (int i = t + 1; i < t + 4; i++)
+      if (suit_of(o->play_card[i]) == led && rank_of(o->play_card[i]) > rank_of(o->play_card[best])) best = i;
+    out[F2_WON + o->play_card[best]] = 1;
+  }
+}

@@ -21,6 +21,7 @@ typedef struct {
   double eq[25][2];      // team-0 match equity; [state][team 0 deals this deal]
   double p_random_start; // probability a new match starts from a random score
   int single_deal;       // if set, a finished deal is left finished
+  int encoder;           // feature encoder version (1 or 2)
 } TcEnv;
 
 static inline u64 splitmix(u64 *x) {
@@ -72,6 +73,7 @@ static double equity0(const TcEnv *e, int s0, int s1, int dealer) {
 TcEnv *tc_env_new(int n, uint64_t seed) {
   TcEnv *e = calloc(1, sizeof *e);
   e->n = n;
+  e->encoder = 1;
   e->g = calloc((size_t)n, sizeof(TcGame));
   for (int s = 0; s < 25; s++) e->eq[s][0] = e->eq[s][1] = 0.5;
   for (int i = 0; i < n; i++) {
@@ -89,6 +91,7 @@ void tc_env_set_options(TcEnv *e, double p_random_start, int single_deal) {
   e->p_random_start = p_random_start;
   e->single_deal = single_deal;
 }
+void tc_env_set_encoder(TcEnv *e, int version) { e->encoder = version; }
 void tc_env_reset_all(TcEnv *e) { for (int i = 0; i < e->n; i++) new_match(e, &e->g[i]); }
 
 // Explicit deal for duplicate evaluation (single-deal mode).
@@ -101,7 +104,7 @@ TcDeal *tc_env_deal(TcEnv *e, int i) { return &e->g[i].d; }
 
 // Features and legal-action masks for every game's current actor.
 void tc_env_observe(TcEnv *e, uint8_t *feat, uint8_t *mask, int32_t *seat, int32_t *phase) {
-  int dim = tc_feature_dim();
+  int dim = tc_feature_dim_v(e->encoder);
   int acts[TC_NUM_ACTIONS];
   TcObs o;
   memset(mask, 0, (size_t)e->n * TC_NUM_ACTIONS);
@@ -115,7 +118,7 @@ void tc_env_observe(TcEnv *e, uint8_t *feat, uint8_t *mask, int32_t *seat, int32
     }
     int s = g->d.cur;
     tc_observe(&g->d, s, &o);
-    tc_encode(&o, feat + (size_t)i * dim);
+    tc_encode_v(&o, feat + (size_t)i * dim, e->encoder);
     int k = tc_legal(&g->d, acts);
     for (int j = 0; j < k; j++) mask[(size_t)i * TC_NUM_ACTIONS + acts[j]] = 1;
     seat[i] = s;

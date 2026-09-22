@@ -10,7 +10,7 @@ from __future__ import annotations
 import torch
 from torch import nn
 
-from .native import FEATURE_DIM, NUM_ACTIONS
+from .native import NUM_ACTIONS, feature_dim
 
 RETURN_SCALE = 10.0
 
@@ -27,10 +27,11 @@ class ResBlock(nn.Module):
 
 
 class QNet(nn.Module):
-    def __init__(self, width: int = 768, blocks: int = 4):
+    def __init__(self, width: int = 768, blocks: int = 4, encoder: int = 1):
         super().__init__()
-        self.config = {"width": width, "blocks": blocks}
-        self.inp = nn.Linear(FEATURE_DIM, width)
+        self.config = {"width": width, "blocks": blocks, "encoder": encoder}
+        self.encoder = encoder
+        self.inp = nn.Linear(feature_dim(encoder), width)
         self.blocks = nn.Sequential(*[ResBlock(width) for _ in range(blocks)])
         self.norm = nn.LayerNorm(width)
         self.out = nn.Linear(width, NUM_ACTIONS)
