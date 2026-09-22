@@ -39,9 +39,19 @@ def _init(candidate: str, opponent: str, equity_path: str) -> None:
 
 
 def _make_candidate(spec: str) -> dict:
+    """`profile:<key>`, a checkpoint path, or `search:<ckpt>[:w=32][:dd=6][:show=1]`."""
     if spec.startswith("profile:"):
         from .incumbent import incumbent_agents
         return incumbent_agents(spec.split(":", 1)[1])
+    if spec.startswith("search:"):
+        from . import model as qmodel
+        from .search import SearchAgent
+        parts = spec.split(":")[1:]
+        opts = dict(p.split("=") for p in parts[1:])
+        net = qmodel.load(parts[0], "cpu")
+        table = _W["equity"].table
+        return {s: SearchAgent(net, table, s, worlds=int(opts.get("w", 32)), dd_left=int(opts.get("dd", 0)),
+                               search_showing=opts.get("show", "0") == "1") for s in range(4)}
     from .agent import LearnedAgent
     from . import model as qmodel
     net = qmodel.load(spec, "cpu")

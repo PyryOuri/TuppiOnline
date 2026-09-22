@@ -154,3 +154,31 @@ int tc_env_step(TcEnv *e, const int32_t *actions, int32_t *done, float *delta0, 
   }
   return illegal;
 }
+
+// Loads an arbitrary full deal state into game i (used by search rollouts).
+void tc_env_set_state(TcEnv *e, int i, const TcDeal *d) {
+  e->g[i].d = *d;
+  e->g[i].live = 1;
+}
+
+// Solver tail: every live game in trick play with at most `dd_left` tricks
+// remaining is finished with its perfect-information result. Same outputs as
+// tc_env_step for the games it finishes. Returns how many it finished.
+int tc_env_dd_finish(TcEnv *e, int dd_left, int32_t *done, float *delta0) {
+  int finished = 0;
+  for (int i = 0; i < e->n; i++) {
+    TcGame *g = &e->g[i];
+    done[i] = 0;
+    delta0[i] = 0.f;
+    TcDeal *d = &g->d;
+    if (!g->live || d->phase != TC_PH_PLAY) continue;
+    if (13 - (d->n_played >> 2) > dd_left) continue;
+    tc_finish_with_tricks(d, tc_dd_team0_tricks(d));
+    uint8_t after[2];
+    tc_next_score(d->score, d->winner_team, d->points, after);
+    done[i] = 1;
+    delta0[i] = (float)(equity0(e, after[0], after[1], d->dealer + 1) - equity0(e, d->score[0], d->score[1], d->dealer));
+    finished++;
+  }
+  return finished;
+}

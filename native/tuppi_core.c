@@ -114,6 +114,12 @@ static void finish(TcDeal *d) {
   }
 }
 
+void tc_finish_with_tricks(TcDeal *d, int team0_tricks) {
+  d->team_tricks[0] = (uint8_t)team0_tricks;
+  d->team_tricks[1] = (uint8_t)(13 - team0_tricks);
+  finish(d);
+}
+
 int tc_apply(TcDeal *d, int action) {
   int seat = d->cur;
   if (d->phase == TC_PH_SHOW) {

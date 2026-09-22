@@ -63,6 +63,10 @@ int tc_apply(TcDeal *d, int action);
 // Rising-score transition. Returns 1 if the match is over.
 int tc_next_score(const uint8_t score[2], int winner_team, int points, uint8_t out[2]);
 
+// Ends a deal with the given final team-0 trick count (for solver tails).
+void tc_finish_with_tricks(TcDeal *d, int team0_tricks);
+int tc_dd_team0_tricks(const TcDeal *d);
+
 void tc_observe(const TcDeal *d, int seat, TcObs *o);
 int tc_legal_obs(const TcObs *o, int *actions);
 int tc_feature_dim(void);

@@ -78,7 +78,27 @@ lib.tc_env_observe.argtypes = [C.c_void_p, C.c_void_p, C.c_void_p, C.c_void_p, C
 lib.tc_env_step.argtypes = [C.c_void_p, C.c_void_p, C.c_void_p, C.c_void_p, C.c_void_p]
 lib.tc_env_step.restype = C.c_int
 
+lib.tc_env_set_state.argtypes = [C.c_void_p, C.c_int, _P(TcDeal)]
+lib.tc_dd_team0_tricks.argtypes = [_P(TcDeal)]
+lib.tc_dd_team0_tricks.restype = C.c_int
+lib.tc_env_dd_finish.argtypes = [C.c_void_p, C.c_int, C.c_void_p, C.c_void_p]
+lib.tc_env_dd_finish.restype = C.c_int
+lib.tc_sample_world.argtypes = [_P(TcObs), _P(C.c_uint64), _P(TcDeal)]
+lib.tc_sample_world.restype = C.c_int
+
 FEATURE_DIM = lib.tc_feature_dim()
+
+
+def dd_team0_tricks(deal: TcDeal) -> int:
+    """Final team-0 tricks under perfect-information optimal play (late positions)."""
+    return lib.tc_dd_team0_tricks(C.byref(deal))
+
+
+def sample_world(obs: TcObs, rng_state: C.c_uint64) -> TcDeal | None:
+    world = TcDeal()
+    if lib.tc_sample_world(C.byref(obs), C.byref(rng_state), C.byref(world)) != 0:
+        return None
+    return world
 
 
 def legal(deal: TcDeal) -> list[int]:
@@ -148,6 +168,12 @@ class Env:
     def set_deal(self, i: int, hands_masks, dealer: int, score0: int, score1: int) -> None:
         arr = (C.c_uint64 * 4)(*hands_masks)
         lib.tc_env_set_deal(self._h, i, arr, dealer, score0, score1)
+
+    def dd_finish(self, dd_left: int) -> int:
+        return lib.tc_env_dd_finish(self._h, dd_left, self.done.ctypes.data, self.delta0.ctypes.data)
+
+    def set_state(self, i: int, deal: TcDeal) -> None:
+        lib.tc_env_set_state(self._h, i, C.byref(deal))
 
     def deal(self, i: int) -> TcDeal:
         return lib.tc_env_deal(self._h, i).contents
