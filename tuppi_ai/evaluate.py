@@ -39,7 +39,8 @@ def _init(candidate: str, opponent: str, equity_path: str) -> None:
 
 
 def _make_candidate(spec: str) -> dict:
-    """`profile:<key>`, a checkpoint path, or `search:<ckpt>[:w=32][:dd=6][:show=1]`."""
+    """`profile:<key>`, a policy spec (see policies.py), or
+    `search:<ckpt>[:w=32][:dd=6][:show=1][:belief=4][:bt=1.0][:be=0.1]`."""
     if spec.startswith("profile:"):
         from .incumbent import incumbent_agents
         return incumbent_agents(spec.split(":", 1)[1])
@@ -50,8 +51,10 @@ def _make_candidate(spec: str) -> dict:
         opts = dict(p.split("=") for p in parts[1:])
         net = qmodel.load(parts[0], "cpu")
         table = _W["equity"].table
+        belief = {"belief": int(opts.get("belief", 0)), "belief_t": float(opts.get("bt", 1.0)),
+                  "belief_eps": float(opts.get("be", 0.1)), "belief_seats": opts.get("bs", "all")}
         return {s: SearchAgent(net, table, s, worlds=int(opts.get("w", 32)), dd_left=int(opts.get("dd", 0)),
-                               search_showing=opts.get("show", "0") == "1") for s in range(4)}
+                               search_showing=opts.get("show", "0") == "1", **belief) for s in range(4)}
     from .policies import PolicyAgent, from_spec
     policy = from_spec(spec, "cpu")
     return {s: PolicyAgent(policy, s) for s in range(4)}
@@ -139,7 +142,8 @@ def evaluate(candidate: str, deals: int, seed: str = "tuppi-ai-eval-v1", scores:
         rows = list(pool.map(measure, range(deals), [seed] * deals, [scores] * deals, chunksize=8))
     summary = summarise(rows)
     summary.update({"candidate": candidate, "opponent": opponent, "seed": seed, "scores": scores,
-                    "seconds": round(time.time() - t0, 1)})
+                    "seconds": round(time.time() - t0, 1),
+                    "values": [r["value"] for r in rows]})
     return summary
 
 
@@ -154,7 +158,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path)
     args = parser.parse_args()
     summary = evaluate(args.checkpoint, args.deals, args.seed, args.scores, args.opponent, args.workers)
-    print(json.dumps(summary, indent=1))
+    print(json.dumps({k: v for k, v in summary.items() if k != "values"}, indent=1))
     if args.out:
         args.out.write_text(json.dumps(summary, indent=1))
 

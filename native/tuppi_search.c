@@ -180,3 +180,41 @@ int tc_sample_world(const TcObs *o, uint64_t *rng, TcDeal *out) {
   for (int s = 0; s < 4; s++) out->hand[s] = hands[s];
   return 0;
 }
+
+// Replays a full world from the start of its deal and emits, for every past
+// decision made by a seat in `seat_mask` (bit s = seat s), that seat's encoded
+// observation at the time, its legal-action mask and the action it took.
+// `world` is a full state at the current decision (hands = current holdings);
+// initial hands are recovered by adding back each seat's played cards.
+// Forced decisions (one legal action) carry no information and are skipped.
+// Returns the number of rows written (at most max_rows).
+int tc_history_rows(const TcDeal *world, int seat_mask, int encoder, int max_rows,
+                    uint8_t *feat, uint8_t *mask, int32_t *action) {
+  uint64_t init[4];
+  for (int s = 0; s < 4; s++) init[s] = world->hand[s];
+  for (int i = 0; i < world->n_played; i++) init[world->play_seat[i]] |= 1ULL << world->play_card[i];
+  TcDeal d;
+  tc_deal_init(&d, init, world->dealer, world->score[0], world->score[1]);
+  int dim = tc_feature_dim_v(encoder), rows = 0, acts[TC_NUM_ACTIONS];
+  int n_actions = world->n_shows + world->n_played;
+  TcObs o;
+  for (int t = 0; t < n_actions && rows < max_rows; t++) {
+    int a = t < world->n_shows
+      ? 52 + 52 * world->show_contract[t] + world->show_card[t]
+      : world->play_card[t - world->n_shows];
+    int seat = d.cur;
+    if (seat_mask >> seat & 1) {
+      int k = tc_legal(&d, acts);
+      if (k > 1) {
+        tc_observe(&d, seat, &o);
+        tc_encode_v(&o, feat + (size_t)rows * dim, encoder);
+        uint8_t *mk = mask + (size_t)rows * TC_NUM_ACTIONS;
+        memset(mk, 0, TC_NUM_ACTIONS);
+        for (int j = 0; j < k; j++) mk[acts[j]] = 1;
+        action[rows++] = a;
+      }
+    }
+    if (tc_apply(&d, a) != 0) return -1;  // world inconsistent with history
+  }
+  return rows;
+}

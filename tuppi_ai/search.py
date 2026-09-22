@@ -26,11 +26,24 @@ from .bridge import action_id, obs_from_player_observation
 
 
 class Searcher:
+    """`belief` > 1 enables policy-based inference: that many times `worlds`
+    candidate worlds are drawn, each weighted by the blueprint's likelihood of
+    the other three seats' past unforced choices (softmax at `belief_t`, mixed
+    with uniform at `belief_eps`), and `worlds` of them are resampled by weight.
+    """
+
     def __init__(self, net: qmodel.QNet, equity_table: np.ndarray, worlds: int = 32,
-                 dd_left: int = 0, seed: int = 0, max_actions: int = 26):
+                 dd_left: int = 0, seed: int = 0, max_actions: int = 26, belief: int = 0,
+                 belief_t: float = 1.0, belief_eps: float = 0.1, belief_seats: str = "all"):
         self.net = net
         self.worlds = worlds
         self.dd_left = dd_left
+        self.belief, self.belief_t, self.belief_eps = belief, belief_t, belief_eps
+        self.belief_seats = belief_seats
+        self.np_rng = np.random.default_rng(seed)
+        self._hf = np.zeros((64, native.feature_dim(net.encoder)), dtype=np.uint8)
+        self._hm = np.zeros((64, native.NUM_ACTIONS), dtype=np.uint8)
+        self._ha = np.zeros(64, dtype=np.int32)
         self.env = native.Env(worlds * max_actions, seed, equity_table, single_deal=True,
                               encoder=net.encoder)
         self.rng = C.c_uint64(seed * 2654435761 + 1)
@@ -38,12 +51,7 @@ class Searcher:
     def action_values(self, obs: native.TcObs, actions: list[int]) -> np.ndarray:
         k, w = len(actions), self.worlds
         env = self.env
-        worlds = []
-        while len(worlds) < w:
-            world = native.sample_world(obs, self.rng)
-            if world is None:
-                raise RuntimeError("no world consistent with the observation")
-            worlds.append(world)
+        worlds = self.sample_worlds(obs, w)
         n = w * k
         for wi, world in enumerate(worlds):
             for ai in range(k):
@@ -73,6 +81,43 @@ class Searcher:
         values = total.reshape(w, k).mean(axis=0)
         return values if me_team == 0 else -values
 
+    def sample_worlds(self, obs: native.TcObs, w: int) -> list:
+        n = w * self.belief if self.belief > 1 else w
+        cands = []
+        while len(cands) < n:
+            world = native.sample_world(obs, self.rng)
+            if world is None:
+                raise RuntimeError("no world consistent with the observation")
+            cands.append(world)
+        if self.belief <= 1:
+            return cands
+        others = 0b1111 & ~(1 << obs.seat)
+        if self.belief_seats == "opp":
+            others &= ~(1 << ((obs.seat + 2) & 3))
+        feats, masks, acts, owner = [], [], [], []
+        for i, world in enumerate(cands):
+            r = native.history_rows(world, others, self.net.encoder, self._hf, self._hm, self._ha)
+            if r > 0:
+                feats.append(self._hf[:r].copy()); masks.append(self._hm[:r].copy())
+                acts.append(self._ha[:r].copy()); owner.append(np.full(r, i))
+        if not feats:
+            return cands[:w]
+        f, m, a, o = (np.concatenate(x) for x in (feats, masks, acts, owner))
+        with torch.no_grad():
+            logits = self.net(torch.from_numpy(f)).numpy() / self.belief_t
+        logits = np.where(m == 1, logits, -np.inf)
+        logits -= logits.max(1, keepdims=True)
+        p = np.exp(logits)
+        p /= p.sum(1, keepdims=True)
+        k = m.sum(1)
+        taken = (1 - self.belief_eps) * p[np.arange(len(a)), a] + self.belief_eps / k
+        logw = np.zeros(n)
+        np.add.at(logw, o, np.log(taken))
+        wts = np.exp(logw - logw.max())
+        wts /= wts.sum()
+        pick = self.np_rng.choice(n, size=w, replace=True, p=wts)
+        return [cands[i] for i in pick]
+
     def _collect(self, total, live, n):
         done = self.env.done[:n].astype(bool)
         total[done] += self.env.delta0[:n][done]
@@ -83,11 +128,11 @@ class SearchAgent:
     """Engine-interface agent: blueprint for showing, search for trick play."""
 
     def __init__(self, net, equity_table, seat: int, worlds: int = 32, dd_left: int = 0,
-                 search_showing: bool = False, seed: int = 0):
+                 search_showing: bool = False, seed: int = 0, **belief):
         self.seat = seat
         self.net = net
         self.search_showing = search_showing
-        self.searcher = Searcher(net, equity_table, worlds=worlds, dd_left=dd_left, seed=seed + seat)
+        self.searcher = Searcher(net, equity_table, worlds=worlds, dd_left=dd_left, seed=seed + seat, **belief)
         self._feat = np.zeros((1, native.feature_dim(net.encoder)), dtype=np.uint8)
 
     def choose_action(self, observation):

@@ -92,6 +92,8 @@ lib.tc_env_observe_live.restype = C.c_int
 lib.tc_env_step_live.argtypes = [C.c_void_p, C.c_void_p, C.c_void_p, C.c_int, C.c_void_p, C.c_void_p]
 lib.tc_env_set_state_repeat.argtypes = [C.c_void_p, C.c_int, _P(TcDeal), C.c_int]
 lib.tc_env_park_all.argtypes = [C.c_void_p]
+lib.tc_history_rows.argtypes = [_P(TcDeal), C.c_int, C.c_int, C.c_int, C.c_void_p, C.c_void_p, C.c_void_p]
+lib.tc_history_rows.restype = C.c_int
 lib.tc_sample_world.argtypes = [_P(TcObs), _P(C.c_uint64), _P(TcDeal)]
 lib.tc_sample_world.restype = C.c_int
 
@@ -105,6 +107,13 @@ def feature_dim(encoder: int = 1) -> int:
 def dd_team0_tricks(deal: TcDeal) -> int:
     """Final team-0 tricks under perfect-information optimal play (late positions)."""
     return lib.tc_dd_team0_tricks(C.byref(deal))
+
+
+def history_rows(world: TcDeal, seat_mask: int, encoder: int, feat: np.ndarray,
+                 mask: np.ndarray, action: np.ndarray) -> int:
+    """Past unforced decisions of seats in seat_mask, replayed inside `world`."""
+    return lib.tc_history_rows(C.byref(world), seat_mask, encoder, len(action), feat.ctypes.data,
+                               mask.ctypes.data, action.ctypes.data)
 
 
 def sample_world(obs: TcObs, rng_state: C.c_uint64) -> TcDeal | None:
