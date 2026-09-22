@@ -54,7 +54,7 @@ def _make_candidate(spec: str) -> dict:
         belief = {"belief": int(opts.get("belief", 0)), "belief_t": float(opts.get("bt", 1.0)),
                   "belief_eps": float(opts.get("be", 0.1)), "belief_seats": opts.get("bs", "all")}
         return {s: SearchAgent(net, table, s, worlds=int(opts.get("w", 32)), dd_left=int(opts.get("dd", 0)),
-                               search_showing=opts.get("show", "0") == "1", **belief) for s in range(4)}
+                               search_showing=int(opts.get("show", "0")), **belief) for s in range(4)}
     from .policies import PolicyAgent, from_spec
     policy = from_spec(spec, "cpu")
     return {s: PolicyAgent(policy, s) for s in range(4)}

@@ -138,11 +138,13 @@ def main() -> None:
                        seed=args.seed, device=device)
     buf, shard, t0, total_rows = [], 0, time.time(), 0
     agree = 0
-    while time.time() - t0 < args.hours * 3600:
-        rows = bs.step(args.eps)
-        buf.extend(rows)
-        agree += sum(r[3] == r[4] for r in rows)
-        if len(buf) >= args.shard_rows:
+    while True:
+        running = time.time() - t0 < args.hours * 3600
+        if running:
+            rows = bs.step(args.eps)
+            buf.extend(rows)
+            agree += sum(r[3] == r[4] for r in rows)
+        if buf and (len(buf) >= args.shard_rows or not running):
             f = np.packbits(np.array([r[0] for r in buf]), axis=1)
             m = np.packbits(np.array([r[1] for r in buf]).astype(bool), axis=1)
             np.savez(args.out / f"shard_{args.seed:03d}_{shard:04d}.npz", feat=f, mask=m,
@@ -153,6 +155,8 @@ def main() -> None:
                               "rows_per_s": round(total_rows / (time.time() - t0), 1),
                               "search_agrees_with_blueprint": round(agree / total_rows, 4)}), flush=True)
             buf, shard = [], shard + 1
+        if not running:
+            break
 
 
 if __name__ == "__main__":

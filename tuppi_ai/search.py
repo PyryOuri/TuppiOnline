@@ -128,7 +128,10 @@ class SearchAgent:
     """Engine-interface agent: blueprint for showing, search for trick play."""
 
     def __init__(self, net, equity_table, seat: int, worlds: int = 32, dd_left: int = 0,
-                 search_showing: bool = False, seed: int = 0, **belief):
+                 search_showing=False, seed: int = 0, **belief):
+        """search_showing: False (blueprint shows), True/1 (search every legal show), or 2
+        (search only the blueprint's preferred card for each contract, then keep
+        the blueprint's card within the chosen contract)."""
         self.seat = seat
         self.net = net
         self.search_showing = search_showing
@@ -141,10 +144,21 @@ class SearchAgent:
             return legal[0]
         obs = obs_from_player_observation(observation)
         ids = [action_id(a) for a in legal]
-        if obs.phase == native.PH_SHOW and not self.search_showing:
+        if obs.phase == native.PH_SHOW and self.search_showing != 1 and self.search_showing is not True:
             native.encode(obs, self._feat[0], self.net.encoder)
             with torch.no_grad():
                 q = self.net(torch.from_numpy(self._feat))[0].numpy()
-            return legal[int(np.argmax([q[i] for i in ids]))]
+            if not self.search_showing:
+                return legal[int(np.argmax([q[i] for i in ids]))]
+            # Two-stage: one representative card per contract, chosen by the blueprint.
+            reps = []
+            for contract in (0, 1):
+                cands = [i for i in ids if (i - 52) // 52 == contract]
+                if cands:
+                    reps.append(max(cands, key=lambda i: q[i]))
+            if len(reps) == 1:
+                return legal[ids.index(reps[0])]
+            values = self.searcher.action_values(obs, reps)
+            return legal[ids.index(reps[int(np.argmax(values))])]
         values = self.searcher.action_values(obs, ids)
         return legal[int(np.argmax(values))]

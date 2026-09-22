@@ -102,7 +102,10 @@ def main() -> None:
             s_, b_ = held_out()
             print(f"step {step}/{steps} loss {loss.item():.4f} held-out agreement: search {s_:.4f} "
                   f"blueprint {b_:.4f} ({time.time() - t0:.0f}s)", flush=True)
-    qmodel.save(net, args.out, distill={"data": [str(d) for d in args.data], "init": str(args.init)})
+    s_, b_ = held_out()
+    print(f"final held-out agreement: search {s_:.4f} blueprint {b_:.4f}", flush=True)
+    qmodel.save(net, args.out, distill={"data": [str(d) for d in args.data], "init": str(args.init),
+                                        "agreement_search": s_, "agreement_blueprint": b_})
     print("saved", args.out, flush=True)
 
 

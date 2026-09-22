@@ -7,6 +7,30 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## 2026-09-23 (night) — world count, expert iteration round 1
+
+Paired comparisons on the same 128 base deals (seed v3). Search changes both
+showing and play (show=1), solver tail 6, small clone as rollout policy unless
+stated.
+
+| Variant | Equity/deal | Paired vs reference | Deal win |
+| --- | --- | --- | ---: |
+| play-only search, W=16 | +0.0057 | reference for belief/showing rows | 55.5% |
+| + showing search (show=1), W=16 | +0.0086 | +0.0029 +- 0.0028 vs play-only | 59.9% |
+| two-stage showing (show=2), W=16 | +0.0076 | -0.0010 +- 0.0030 vs show=1 | 59.2% |
+| show=1, **W=32** | +0.0120 | +0.0034 +- 0.0029 vs W=16 | 63.0% |
+| show=1, **W=64** | **+0.0142** | **+0.0056 +- 0.0027 vs W=16** | **64.8%** |
+| show=1, W=16, rollouts by round-1 net `xi1_small` | +0.0079 | -0.0007 +- 0.0030 vs clone rollouts | 59.8% |
+
+Expert iteration round 1: 1.35M decisions searched (W=16, show=1) over the
+small clone, distilled by cross-entropy on the searched action (20% imitation
+data mixed in). The distilled networks, **without search**, beat the incumbent:
+
+| Network | Base deals | Equity/deal | Deal win |
+| --- | ---: | --- | ---: |
+| `xi1` (768x4) | 1024 | +0.0027 [+0.0018, +0.0036] | 53.1% |
+| `xi1_small` (256x2) | 1024 | +0.0025 [+0.0016, +0.0034] | 53.3% |
+
 ## 2026-09-23 — search beats the incumbent
 
 | Candidate | Base deals | Equity/deal | Deal win | Notes |
