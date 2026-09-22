@@ -52,10 +52,9 @@ def _make_candidate(spec: str) -> dict:
         table = _W["equity"].table
         return {s: SearchAgent(net, table, s, worlds=int(opts.get("w", 32)), dd_left=int(opts.get("dd", 0)),
                                search_showing=opts.get("show", "0") == "1") for s in range(4)}
-    from .agent import LearnedAgent
-    from . import model as qmodel
-    net = qmodel.load(spec, "cpu")
-    return {s: LearnedAgent(net, s) for s in range(4)}
+    from .policies import PolicyAgent, from_spec
+    policy = from_spec(spec, "cpu")
+    return {s: PolicyAgent(policy, s) for s in range(4)}
 
 
 def _score_for(index: int, mode: str, seed: str) -> tuple[int, int]:

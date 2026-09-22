@@ -1,6 +1,7 @@
 // Batched self-play environment: N independent matches stepped in lockstep.
 // Every live game always has exactly one actor waiting, so one call observes N
 // decisions and one call applies N actions.
+#include <dispatch/dispatch.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -168,20 +169,81 @@ void tc_env_set_state(TcEnv *e, int i, const TcDeal *d) {
 // remaining is finished with its perfect-information result. Same outputs as
 // tc_env_step for the games it finishes. Returns how many it finished.
 int tc_env_dd_finish(TcEnv *e, int dd_left, int32_t *done, float *delta0) {
-  int finished = 0;
+  int *todo = malloc(sizeof(int) * (size_t)e->n), k = 0;
   for (int i = 0; i < e->n; i++) {
-    TcGame *g = &e->g[i];
     done[i] = 0;
     delta0[i] = 0.f;
+    TcGame *g = &e->g[i];
+    if (!g->live || g->d.phase != TC_PH_PLAY) continue;
+    if (13 - (g->d.n_played >> 2) > dd_left) continue;
+    todo[k++] = i;
+  }
+  if (k) {
+    // Solves are independent and each game is touched by one worker only.
+    const size_t chunk = 64, chunks = ((size_t)k + chunk - 1) / chunk;
+    dispatch_apply(chunks, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t c) {
+      size_t lo = c * chunk, hi = lo + chunk < (size_t)k ? lo + chunk : (size_t)k;
+      for (size_t j = lo; j < hi; j++) {
+        int i = todo[j];
+        TcDeal *d = &e->g[i].d;
+        tc_finish_with_tricks(d, tc_dd_team0_tricks(d));
+        uint8_t after[2];
+        tc_next_score(d->score, d->winner_team, d->points, after);
+        done[i] = 1;
+        delta0[i] = (float)(equity0(e, after[0], after[1], d->dealer + 1) - equity0(e, d->score[0], d->score[1], d->dealer));
+      }
+    });
+  }
+  free(todo);
+  return k;
+}
+
+// Compact observation of live games only: writes rows for games still in play
+// into feat/mask consecutively and their indices into idx. Returns the count.
+int tc_env_observe_live(TcEnv *e, uint8_t *feat, uint8_t *mask, int32_t *idx) {
+  int dim = tc_feature_dim_v(e->encoder), k = 0;
+  int acts[TC_NUM_ACTIONS];
+  TcObs o;
+  for (int i = 0; i < e->n; i++) {
+    TcGame *g = &e->g[i];
+    if (!g->live || g->d.phase == TC_PH_DONE) continue;
+    tc_observe(&g->d, g->d.cur, &o);
+    tc_encode_v(&o, feat + (size_t)k * dim, e->encoder);
+    uint8_t *mk = mask + (size_t)k * TC_NUM_ACTIONS;
+    memset(mk, 0, TC_NUM_ACTIONS);
+    int n = tc_legal(&g->d, acts);
+    for (int j = 0; j < n; j++) mk[acts[j]] = 1;
+    idx[k++] = i;
+  }
+  return k;
+}
+
+// Applies actions only to the listed games (idx[0..k)).
+void tc_env_step_live(TcEnv *e, const int32_t *idx, const int32_t *actions, int k, int32_t *done, float *delta0) {
+  for (int j = 0; j < k; j++) {
+    int i = idx[j];
+    TcGame *g = &e->g[i];
+    done[i] = 0;
+    if (!g->live || g->d.phase == TC_PH_DONE) continue;
+    if (tc_apply(&g->d, actions[j]) != 0) continue;
+    if (g->d.phase != TC_PH_DONE) continue;
     TcDeal *d = &g->d;
-    if (!g->live || d->phase != TC_PH_PLAY) continue;
-    if (13 - (d->n_played >> 2) > dd_left) continue;
-    tc_finish_with_tricks(d, tc_dd_team0_tricks(d));
     uint8_t after[2];
     tc_next_score(d->score, d->winner_team, d->points, after);
     done[i] = 1;
     delta0[i] = (float)(equity0(e, after[0], after[1], d->dealer + 1) - equity0(e, d->score[0], d->score[1], d->dealer));
-    finished++;
   }
-  return finished;
 }
+
+// Clones one game's state from another environment into slot j.
+void tc_env_clone_from(TcEnv *dst, int j, const TcEnv *src, int i) {
+  dst->g[j].d = src->g[i].d;
+  dst->g[j].live = 1;
+}
+
+// Loads a sampled world `count` times into consecutive slots starting at j.
+void tc_env_set_state_repeat(TcEnv *e, int j, const TcDeal *d, int count) {
+  for (int k = 0; k < count; k++) { e->g[j + k].d = *d; e->g[j + k].live = 1; }
+}
+
+void tc_env_park_all(TcEnv *e) { for (int i = 0; i < e->n; i++) e->g[i].d.phase = TC_PH_DONE; }

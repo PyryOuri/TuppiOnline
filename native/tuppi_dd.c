@@ -19,9 +19,10 @@ typedef uint64_t u64;
 
 typedef struct { u64 h[4]; uint32_t gen; uint8_t leader; int8_t lo, hi; } TTE;
 #define TTBITS 18
-static TTE *tt = NULL;
-static uint32_t gen = 0;
-static int nolo;
+// Per-thread state, so solves can run in parallel (tc_env_dd_finish).
+static __thread TTE *tt = NULL;
+static __thread uint32_t gen = 0;
+static __thread int nolo;
 
 typedef struct { u64 h[4]; int leader, n, card[4]; } Pos;
 

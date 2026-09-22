@@ -44,6 +44,12 @@ def _features(env: native.Env, encoder: int) -> np.ndarray:
 
 def duplicate(net_a, net_b, deals: int, seed: int = 0, scores: str = "zero",
               device: str = "cpu", batch_deals: int = 512, equity: Equity | None = None) -> dict:
+    """net_a / net_b: batched policies (policies.Greedy/Conservative) or bare networks."""
+    from .policies import Greedy
+    if not hasattr(net_a, "act"):
+        net_a = Greedy(net_a, device)
+    if not hasattr(net_b, "act"):
+        net_b = Greedy(net_b, device)
     equity = equity or Equity.load(ROOT / "runs" / "equity_incumbent.json")
     rng = np.random.default_rng(seed)
     values = []
@@ -70,13 +76,10 @@ def duplicate(net_a, net_b, deals: int, seed: int = 0, scores: str = "zero",
         total = np.zeros(nb * 8)
         live = np.ones(nb * 8, dtype=bool)
         while live.any():
-            feat, mask, seat, _ = env.observe()
-            x = torch.from_numpy(feat).to(device)
-            m = torch.from_numpy(mask).to(device)
-            xb = torch.from_numpy(_features(env, net_b.encoder)).to(device) if mixed else x
-            with torch.no_grad():
-                acts_a = qmodel.masked_argmax(net_a(x), m).cpu().numpy()
-                acts_b = qmodel.masked_argmax(net_b(xb), m).cpu().numpy()
+            feat, mask, seat, phase = env.observe()
+            fb = _features(env, net_b.encoder) if mixed else feat
+            acts_a = net_a.act(feat, mask, phase)
+            acts_b = net_b.act(fb, mask, phase)
             use_a = (seat & 1) == cand_team
             acts = np.where(use_a, acts_a, acts_b).astype(np.int32)
             acts[mask.sum(axis=1) == 0] = 0
@@ -101,8 +104,9 @@ def main() -> None:
     p.add_argument("--scores", choices=("zero", "uniform"), default="zero")
     p.add_argument("--device", default="mps" if torch.backends.mps.is_available() else "cpu")
     args = p.parse_args()
-    a = qmodel.load(args.a, args.device)
-    b = qmodel.load(args.b, args.device)
+    from .policies import from_spec
+    a = from_spec(args.a, args.device)
+    b = from_spec(args.b, args.device)
     print(json.dumps(duplicate(a, b, args.deals, args.seed, args.scores, args.device), indent=1))
 
 

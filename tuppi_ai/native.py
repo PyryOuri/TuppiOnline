@@ -87,6 +87,11 @@ lib.tc_dd_team0_tricks.argtypes = [_P(TcDeal)]
 lib.tc_dd_team0_tricks.restype = C.c_int
 lib.tc_env_dd_finish.argtypes = [C.c_void_p, C.c_int, C.c_void_p, C.c_void_p]
 lib.tc_env_dd_finish.restype = C.c_int
+lib.tc_env_observe_live.argtypes = [C.c_void_p, C.c_void_p, C.c_void_p, C.c_void_p]
+lib.tc_env_observe_live.restype = C.c_int
+lib.tc_env_step_live.argtypes = [C.c_void_p, C.c_void_p, C.c_void_p, C.c_int, C.c_void_p, C.c_void_p]
+lib.tc_env_set_state_repeat.argtypes = [C.c_void_p, C.c_int, _P(TcDeal), C.c_int]
+lib.tc_env_park_all.argtypes = [C.c_void_p]
 lib.tc_sample_world.argtypes = [_P(TcObs), _P(C.c_uint64), _P(TcDeal)]
 lib.tc_sample_world.restype = C.c_int
 
@@ -181,6 +186,26 @@ class Env:
 
     def dd_finish(self, dd_left: int) -> int:
         return lib.tc_env_dd_finish(self._h, dd_left, self.done.ctypes.data, self.delta0.ctypes.data)
+
+    def observe_live(self):
+        """(features, masks, game indices) for live games only, compact."""
+        if not hasattr(self, "_idx"):
+            self._idx = np.zeros(self.n, dtype=np.int32)
+        k = lib.tc_env_observe_live(self._h, self.feat.ctypes.data, self.mask.ctypes.data, self._idx.ctypes.data)
+        return self.feat[:k], self.mask[:k], self._idx[:k]
+
+    def step_live(self, idx: np.ndarray, actions: np.ndarray) -> None:
+        idx = np.ascontiguousarray(idx, dtype=np.int32)
+        a = np.ascontiguousarray(actions, dtype=np.int32)
+        self.done[:] = 0
+        lib.tc_env_step_live(self._h, idx.ctypes.data, a.ctypes.data, len(idx),
+                             self.done.ctypes.data, self.delta0.ctypes.data)
+
+    def set_state_repeat(self, j: int, deal: TcDeal, count: int) -> None:
+        lib.tc_env_set_state_repeat(self._h, j, C.byref(deal), count)
+
+    def park_all(self) -> None:
+        lib.tc_env_park_all(self._h)
 
     def set_state(self, i: int, deal: TcDeal) -> None:
         lib.tc_env_set_state(self._h, i, C.byref(deal))
