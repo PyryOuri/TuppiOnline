@@ -129,13 +129,14 @@ def main() -> None:
     p.add_argument("--eps", type=float, default=0.02)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--shard-rows", type=int, default=50000)
+    p.add_argument("--capacity", type=int, default=40000, help="rollout slots (need ~worlds x legal x games)")
     args = p.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     device = "mps" if torch.backends.mps.is_available() else "cpu"
     bp = qmodel.load(args.blueprint, device)
     eq = Equity.load(ROOT / "runs" / "equity_incumbent.json")
     bs = BatchedSearch(bp, eq.table, games=args.games, worlds=args.worlds, dd_left=args.dd,
-                       seed=args.seed, device=device)
+                       seed=args.seed, device=device, capacity=args.capacity)
     buf, shard, t0, total_rows = [], 0, time.time(), 0
     agree = 0
     while True:

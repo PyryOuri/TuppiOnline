@@ -21,6 +21,22 @@ showing median 0.57 s (max 0.65 s), card play median 0.10 s (max 0.57 s).
 For comparison, every earlier principled method in TuppiProject lost to the
 incumbent's predecessor at p_win 0.0-0.16.
 
+### Transfer: is the edge general or a model of this opponent?
+
+The search's rollouts play every other seat with the incumbent clone, so against
+the incumbent it has an accurate opponent model. Against opponents it does not
+model, the search's improvement over the incumbent (same deals, both measured
+against the same opponent, 128 base deals, seed transfer-v1):
+
+| Opponent | Search vs it | Incumbent vs it | Improvement | Share of home margin |
+| --- | --- | --- | --- | ---: |
+| `partner_aware_v1` | +0.0203 | +0.0054 | +0.0149 +- 0.0037 | 104% |
+| `reactive_contract_v1` | +0.0208 | +0.0093 | +0.0115 +- 0.0033 | 80% |
+| `legacy_heuristic_port_v1` | +0.0281 | +0.0189 | +0.0092 +- 0.0036 | 64% |
+
+Mostly general, with compression against the most foreign opponent (the same
+pattern TuppiProject's T5 found for the incumbent's own improvement).
+
 ## 2026-09-23 (night) — world count, expert iteration round 1
 
 Paired comparisons on the same 128 base deals (seed v3). Search changes both
