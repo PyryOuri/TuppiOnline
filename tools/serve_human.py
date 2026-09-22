@@ -25,12 +25,15 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-os.environ.setdefault("TUPPI_SERVER_DATA_DIR", str(ROOT / "runs" / "human_server"))
+os.environ.setdefault("TUPPI_AI_SEATS", "1:incumbent,2:search,3:incumbent")
+# One data directory per seat plan, so the report knows who sat where.
+_SLUG = "_".join(p.replace(":", "-") for p in sorted(os.environ["TUPPI_AI_SEATS"].split(",")))
+os.environ.setdefault("TUPPI_SERVER_DATA_DIR", str(ROOT / "runs" / "human_server" / _SLUG))
 os.environ.setdefault("TUPPI_SERVER_PORT", "8766")
 
 
 def _plan() -> dict[int, str]:
-    raw = os.environ.get("TUPPI_AI_SEATS", "1:incumbent,2:search,3:incumbent")
+    raw = os.environ["TUPPI_AI_SEATS"]
     plan = {}
     for item in filter(None, (p.strip() for p in raw.split(","))):
         seat, kind = item.split(":")
