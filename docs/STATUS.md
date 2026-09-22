@@ -7,6 +7,20 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## 2026-09-23 — headline: W=64 search against the incumbent
+
+| Endpoint | Sample | Result |
+| --- | --- | --- |
+| per-deal equity, fresh seed v4 | 384 base deals (3072 games) | **+0.0143 [+0.0125, +0.0161]**; 65.8% deals won; +4.2 points and 7.00 tricks per deal |
+| **complete matches to 52**, fresh streams | 128 complementary pairs (256 matches) | **p_win 0.953 [0.928, 0.978]**; pairs 116 won / 12 tied / 0 lost; 0 censored; 20.1 deals per leg |
+
+Agent: `search:runs/bc_small.pt:w=64:dd=6:show=1` - uniform hard-feasible
+worlds, every legal action (showing included) rolled out by the incumbent
+clone, last 6 tricks solved exactly. Decision latency with the machine busy:
+showing median 0.57 s (max 0.65 s), card play median 0.10 s (max 0.57 s).
+For comparison, every earlier principled method in TuppiProject lost to the
+incumbent's predecessor at p_win 0.0-0.16.
+
 ## 2026-09-23 (night) — world count, expert iteration round 1
 
 Paired comparisons on the same 128 base deals (seed v3). Search changes both
