@@ -78,6 +78,9 @@ def main() -> None:
     p.add_argument("--p-random-start", type=float, default=0.25)
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--resume", type=Path)
+    p.add_argument("--init", type=Path, help="initialise the learner's weights from a checkpoint")
+    p.add_argument("--blueprint", type=Path,
+                   help="fixed policy that plays main games and branch continuations (policy iteration)")
     p.add_argument("--ckpt-every", type=float, default=20.0, help="minutes")
     p.add_argument("--equity", type=Path, default=ROOT / "runs" / "equity_incumbent.json")
     args = p.parse_args()
@@ -97,7 +100,16 @@ def main() -> None:
         net = qmodel.QNet(**blob["config"])
         net.load_state_dict(blob["state"])
         counters.update(blob.get("counters", {}))
+    if args.init:
+        blob = torch.load(args.init, map_location="cpu", weights_only=False)
+        net = qmodel.QNet(**blob["config"])
+        net.load_state_dict(blob["state"])
     net.to(device)
+    actor = net
+    if args.blueprint:
+        actor = qmodel.load(args.blueprint, device)
+        if actor.encoder != net.encoder:
+            raise SystemExit("blueprint and learner must share an encoder")
     enc = net.encoder
     dim = feature_dim(enc)
     opt = torch.optim.Adam(net.parameters(), lr=args.lr, fused=device.type == "mps")
@@ -133,7 +145,7 @@ def main() -> None:
         x = np.concatenate([feat, bfeat[blive]]) if len(blive) else feat
         m = np.concatenate([mask, bmask[blive]]) if len(blive) else mask
         with torch.no_grad():
-            q = net(torch.from_numpy(x).to(device)).cpu().numpy()
+            q = actor(torch.from_numpy(x).to(device)).cpu().numpy()
         acts_all = np.where(m == 1, q, -np.inf).argmax(axis=1)
         acts = acts_all[:n].copy()
         explore = rng.random(n) < args.eps
