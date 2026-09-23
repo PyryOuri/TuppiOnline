@@ -19,9 +19,12 @@ typedef uint64_t u64;
 
 typedef struct { u64 h[4]; uint32_t gen; uint8_t leader; int8_t lo, hi; } TTE;
 #define TTBITS 18
-// Per-thread state, so solves can run in parallel (tc_env_dd_finish).
+// Per-thread state, so solves can run in parallel (tc_env_dd_finish). Entries
+// hold exact bounds on a pure function of (canonical position, leader,
+// polarity), so they stay valid across solves and are never cleared; the
+// polarity is part of the key (the high bit of `leader`).
 static __thread TTE *tt = NULL;
-static __thread uint32_t gen = 0;
+static __thread uint32_t gen = 1;
 static __thread int nolo;
 
 typedef struct { u64 h[4]; int leader, n, card[4]; } Pos;
@@ -97,8 +100,9 @@ static int search(Pos *p, int alpha, int beta) {
     if (alpha >= remaining) return remaining;
     if (beta <= 0) return 0;
     canon(p, ck);
-    e = &tt[mix(ck[0] * 3 + mix(ck[1] + 7) + mix(ck[2] * 11 + 1) + (u64)p->leader * 0x9E3779B97F4A7C15ULL) & ((1ULL << TTBITS) - 1)];
-    if (e->gen == gen && e->leader == p->leader && !memcmp(e->h, ck, sizeof ck)) {
+    const uint8_t lk = (uint8_t)(p->leader | (nolo << 7));
+    e = &tt[mix(ck[0] * 3 + mix(ck[1] + 7) + mix(ck[2] * 11 + 1) + (u64)lk * 0x9E3779B97F4A7C15ULL) & ((1ULL << TTBITS) - 1)];
+    if (e->gen == gen && e->leader == lk && !memcmp(e->h, ck, sizeof ck)) {
       if (e->lo >= beta) return e->lo;
       if (e->hi <= alpha) return e->hi;
       if (e->lo == e->hi) return e->lo;
@@ -125,8 +129,9 @@ static int search(Pos *p, int alpha, int beta) {
     if (alpha >= beta) break;
   }
   if (e) {
-    if (!(e->gen == gen && e->leader == p->leader && !memcmp(e->h, ck, sizeof ck))) {
-      memcpy(e->h, ck, sizeof ck); e->leader = (uint8_t)p->leader; e->gen = gen; e->lo = 0; e->hi = 13;
+    const uint8_t lk = (uint8_t)(p->leader | (nolo << 7));
+    if (!(e->gen == gen && e->leader == lk && !memcmp(e->h, ck, sizeof ck))) {
+      memcpy(e->h, ck, sizeof ck); e->leader = lk; e->gen = gen; e->lo = 0; e->hi = 13;
     }
     if (best <= a0) { if (best < e->hi) e->hi = (int8_t)best; }
     else if (best >= b0) { if (best > e->lo) e->lo = (int8_t)best; }
@@ -151,7 +156,6 @@ static void to_pos(const TcDeal *d, Pos *p) {
 // from this trick-play position.
 int tc_dd_team0_tricks(const TcDeal *d) {
   if (!tt) tt = calloc(1ULL << TTBITS, sizeof(TTE));
-  if (++gen == 0) { memset(tt, 0, (1ULL << TTBITS) * sizeof(TTE)); gen = 1; }
   nolo = d->contract == TC_NOLO;
   Pos p;
   to_pos(d, &p);

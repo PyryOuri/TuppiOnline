@@ -14,7 +14,10 @@ behaviour clone of `partner_aware_lead_v2`, the last 6 tricks are solved
 exactly, and the action with the best mean match-equity change is chosen.
 Against the incumbent: +0.0143 [+0.0125, +0.0161] equity per deal over 384
 fresh base deals, and 95.3% [92.8, 97.8] of complete matches (128 duplicate
-pairs, 116 won / 12 tied / 0 lost). Decisions take ~0.1-0.7 s. See
+pairs, 116 won / 12 tied / 0 lost; 228/28/0 over 256 pairs on two seeds).
+The search runs in C (`native/tuppi_env.c: tc_search_values`, network forward
+in `native/tuppi_mlp.c`); a decision takes ~8 ms (card play, median) to ~24 ms
+(showing) using all cores. See
 `docs/STATUS.md` for every result, including what failed.
 
 ## Layout
@@ -25,6 +28,7 @@ pairs, 116 won / 12 tied / 0 lost). Decisions take ~0.1-0.7 s. See
 | `native/tuppi_env.c` | Batched self-play environment (N matches in lockstep, per-deal match-equity reward) |
 | `native/tuppi_search.c` | Exactly uniform sampler of hidden hands under hard public constraints |
 | `native/tuppi_dd.c` | Perfect-information solver for late positions (RAMI and NOLO polarity) |
+| `native/tuppi_mlp.c` | Native forward pass of the rollout network (Accelerate) |
 | `tuppi_ai/bridge.py` | `PlayerObservation` -> native observation; action ids <-> engine actions |
 | `tuppi_ai/equity.py` | Rising-score match equity (same model as `tuppi_valuation.equity`) |
 | `tuppi_ai/train.py` | Deep Monte Carlo self-play (DouZero-style), one shared Q-network |

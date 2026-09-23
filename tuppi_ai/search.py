@@ -36,7 +36,7 @@ class Searcher:
                  dd_left: int = 0, seed: int = 0, max_actions: int = 26, belief: int = 0,
                  belief_t: float = 1.0, belief_eps: float = 0.1, belief_seats: str = "all",
                  belief_net=None, belief_n: int = 1024, belief_alpha: float = 0.5, team_net=None,
-                 opp_temp: float = 0.0):
+                 opp_temp: float = 0.0, native_loop: bool = True):
         self.net = net
         self.worlds = worlds
         self.dd_left = dd_left
@@ -51,6 +51,12 @@ class Searcher:
         # If > 0, opponents' rollout moves are sampled from softmax(logits / opp_temp)
         # instead of taken greedily: less reliance on predicting them exactly.
         self.opp_temp = opp_temp
+        # The whole search in C (same steps and rounding; the network's float
+        # arithmetic differs from PyTorch only in the last digits). Used when no
+        # Python-only option is active.
+        self.native_loop = (native_loop and belief <= 1 and belief_net is None and team_net is None
+                            and not opp_temp)
+        self.mlp = native.Mlp(net) if self.native_loop else None
         self.np_rng = np.random.default_rng(seed)
         self._hf = np.zeros((64, native.feature_dim(net.encoder)), dtype=np.uint8)
         self._hm = np.zeros((64, native.NUM_ACTIONS), dtype=np.uint8)
@@ -60,6 +66,8 @@ class Searcher:
         self.rng = C.c_uint64(seed * 2654435761 + 1)
 
     def action_values(self, obs: native.TcObs, actions: list[int]) -> np.ndarray:
+        if self.mlp is not None:
+            return native.search_values(self.env, self.mlp, obs, actions, self.worlds, self.dd_left, self.rng)
         k, w = len(actions), self.worlds
         env = self.env
         worlds = self.sample_worlds(obs, w)

@@ -7,6 +7,30 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## 2026-09-24 — exact speed-ups (same moves)
+
+The per-decision search now runs entirely in C (`tc_search_values`): world
+sampling, play-outs with a native forward pass of the rollout network
+(`tuppi_mlp.c`: sparse first layer over the 0/1 features, Accelerate sgemm for
+the rest), spread over all cores, and the solver tail. The solver's
+transposition table now persists across solves (entries are exact bounds on a
+pure function of the canonical position; contract polarity is in the key).
+
+Checks: network logits within 3.6e-5 of PyTorch, argmax identical on 20,480
+decisions; action values bit-identical to the Python search on 773 decisions;
+**518 of 518 searched decisions identical** over 12 full deals through the
+authoritative engine; solver answers independent of solve order; all tests pass.
+
+| | Before | After |
+| --- | ---: | ---: |
+| per searched decision, one thread-equivalent | 34.9 ms | 9.5 ms (3.7x) |
+| showing decision, whole machine (median / max) | ~570 / 650 ms | 24 / 30 ms |
+| card play, whole machine (median / max) | ~100 / 570 ms | 8 / 49 ms |
+| 128-deal evaluation on 13 workers | 319 s | 116 s (2.75x) |
+
+The GPU is not used for play: a play-out step now costs ~0.5 ms on the CPU,
+about one GPU round trip.
+
 ## 2026-09-23 (day) — where the gain comes from, and what does not add to it
 
 **Breakdown** (256 base deals, seed v5, search W=64 vs the incumbent pair on

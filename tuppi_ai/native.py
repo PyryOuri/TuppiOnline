@@ -97,6 +97,13 @@ lib.tc_history_rows.restype = C.c_int
 lib.tc_env_hands.argtypes = [C.c_void_p, C.c_void_p, C.c_void_p]
 lib.tc_sample_world_weighted.argtypes = [_P(TcObs), C.c_void_p, _P(C.c_uint64), _P(TcDeal)]
 lib.tc_sample_world_weighted.restype = C.c_int
+lib.tc_mlp_new.argtypes = [C.c_int, C.c_int, C.c_int, C.c_int, C.c_int, C.c_void_p]
+lib.tc_mlp_new.restype = C.c_void_p
+lib.tc_mlp_free.argtypes = [C.c_void_p]
+lib.tc_mlp_forward.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_void_p]
+lib.tc_search_values.argtypes = [C.c_void_p, C.c_void_p, _P(TcObs), C.c_void_p, C.c_int, C.c_int, C.c_int,
+                                 _P(C.c_uint64), C.c_void_p]
+lib.tc_search_values.restype = C.c_int
 lib.tc_sample_world.argtypes = [_P(TcObs), _P(C.c_uint64), _P(TcDeal)]
 lib.tc_sample_world.restype = C.c_int
 
@@ -249,3 +256,46 @@ class Env:
         if h:
             lib.tc_env_free(h)
             self._h = None
+
+
+class Mlp:
+    """A QNet's weights in native memory, for rollouts without Python."""
+
+    def __init__(self, net):
+        sd = {k: v.detach().cpu().float().numpy() for k, v in net.state_dict().items()}
+        cfg = net.config
+        parts = [sd["inp.weight"], sd["inp.bias"]]
+        for b in range(cfg["blocks"]):
+            for name in ("norm.weight", "norm.bias", "fc1.weight", "fc1.bias", "fc2.weight", "fc2.bias"):
+                parts.append(sd[f"blocks.{b}.{name}"])
+        parts += [sd["norm.weight"], sd["norm.bias"], sd["out.weight"], sd["out.bias"]]
+        flat = np.ascontiguousarray(np.concatenate([p.ravel() for p in parts]), dtype=np.float32)
+        self.encoder = cfg.get("encoder", 1)
+        self.width = cfg["width"]
+        self._h = lib.tc_mlp_new(feature_dim(self.encoder), cfg["width"], cfg["blocks"], NUM_ACTIONS,
+                                 self.encoder, flat.ctypes.data)
+        if not self._h:
+            raise ValueError("unsupported network shape")
+
+    def forward(self, feat: np.ndarray) -> np.ndarray:
+        x = np.ascontiguousarray(feat, dtype=np.uint8)
+        out = np.zeros((len(x), NUM_ACTIONS), dtype=np.float32)
+        lib.tc_mlp_forward(self._h, x.ctypes.data, len(x), out.ctypes.data)
+        return out
+
+    def __del__(self):
+        h = getattr(self, "_h", None)
+        if h:
+            lib.tc_mlp_free(h)
+            self._h = None
+
+
+def search_values(env: "Env", mlp: Mlp, obs: TcObs, actions, worlds: int, dd_left: int,
+                  rng_state: C.c_uint64) -> np.ndarray:
+    a = np.ascontiguousarray(actions, dtype=np.int32)
+    out = np.zeros(len(a), dtype=np.float64)
+    rc = lib.tc_search_values(env._h, mlp._h, C.byref(obs), a.ctypes.data, len(a), worlds, dd_left,
+                              C.byref(rng_state), out.ctypes.data)
+    if rc != 0:
+        raise RuntimeError(f"native search failed ({rc})")
+    return out

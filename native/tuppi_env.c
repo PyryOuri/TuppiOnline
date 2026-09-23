@@ -256,3 +256,99 @@ void tc_env_hands(const TcEnv *e, uint64_t *hands, int32_t *actor) {
     actor[i] = e->g[i].d.cur;
   }
 }
+
+// ------------------------------------------------------------ native search
+#include "tuppi_mlp.h"
+int tc_sample_world(const TcObs *o, uint64_t *rng, TcDeal *out);
+
+static void record_if_done(TcEnv *e, int i, double *total) {
+  TcDeal *d = &e->g[i].d;
+  if (d->phase != TC_PH_DONE) return;
+  uint8_t after[2];
+  tc_next_score(d->score, d->winner_team, d->points, after);
+  float delta = (float)(equity0(e, after[0], after[1], d->dealer + 1) - equity0(e, d->score[0], d->score[1], d->dealer));
+  total[i] += (double)delta;
+}
+
+// Values of `k` candidate actions for the observer of `o`: `w` uniform
+// hard-feasible worlds, every candidate played out in each world greedily by
+// the network for all four seats (each from its own observation), the last
+// `dd_left` tricks solved exactly if dd_left > 0; team-0 equity changes are
+// averaged over worlds and signed for the observer's team. The same steps, in
+// the same order and with the same rounding, as tuppi_ai.search.Searcher.
+// Returns 0, -1 if no world exists, -2 if the environment is too small.
+int tc_search_values(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *actions, int k, int w,
+                     int dd_left, uint64_t *rng, double *values) {
+  const int n = w * k;
+  if (n > e->n) return -2;
+  TcDeal world;
+  for (int wi = 0; wi < w; wi++) {
+    if (tc_sample_world(o, rng, &world) != 0) return -1;
+    for (int ai = 0; ai < k; ai++) { e->g[wi * k + ai].d = world; e->g[wi * k + ai].live = 1; }
+  }
+  double *total = calloc((size_t)n, sizeof(double));
+  int *idx = malloc(sizeof(int) * (size_t)n);
+  for (int i = 0; i < n; i++) {
+    if (tc_apply(&e->g[i].d, actions[i % k]) != 0) { free(total); free(idx); return -3; }
+    record_if_done(e, i, total);
+  }
+  const int enc = tc_mlp_encoder(m), dim = tc_feature_dim_v(enc);
+  for (;;) {
+    if (dd_left > 0) {
+      int todo = 0;
+      for (int i = 0; i < n; i++) {
+        TcDeal *d = &e->g[i].d;
+        if (d->phase == TC_PH_PLAY && 13 - (d->n_played >> 2) <= dd_left) idx[todo++] = i;
+      }
+      if (todo) {
+        dispatch_apply((size_t)(todo + 31) / 32, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t c) {
+          int lo = (int)c * 32, hi = lo + 32 < todo ? lo + 32 : todo;
+          for (int j = lo; j < hi; j++) {
+            TcDeal *d = &e->g[idx[j]].d;
+            tc_finish_with_tricks(d, tc_dd_team0_tricks(d));
+            record_if_done(e, idx[j], total);
+          }
+        });
+      }
+    }
+    int live = 0;
+    for (int i = 0; i < n; i++) if (e->g[i].d.phase != TC_PH_DONE) idx[live++] = i;
+    if (!live) break;
+    const int chunk = 32;
+    dispatch_apply((size_t)(live + chunk - 1) / chunk, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t c) {
+      int lo = (int)c * chunk, hi = lo + chunk < live ? lo + chunk : live, rows = hi - lo;
+      uint8_t *feat = malloc((size_t)rows * dim);
+      float *q = malloc(sizeof(float) * (size_t)rows * TC_NUM_ACTIONS);
+      int legal[TC_NUM_ACTIONS];
+      TcObs ob;
+      for (int r = 0; r < rows; r++) {
+        TcDeal *d = &e->g[idx[lo + r]].d;
+        tc_observe(d, d->cur, &ob);
+        tc_encode_v(&ob, feat + (size_t)r * dim, enc);
+      }
+      tc_mlp_forward(m, feat, rows, q);
+      for (int r = 0; r < rows; r++) {
+        int i = idx[lo + r];
+        TcDeal *d = &e->g[i].d;
+        // tc_legal lists actions in increasing id order, so scanning it keeps
+        // numpy's "first maximum" tie-break over the masked row.
+        int nl = tc_legal(d, legal), best = legal[0];
+        const float *qr = q + (size_t)r * TC_NUM_ACTIONS;
+        for (int t = 1; t < nl; t++) if (qr[legal[t]] > qr[best]) best = legal[t];
+        tc_apply(d, best);
+        record_if_done(e, i, total);
+      }
+      free(feat);
+      free(q);
+    });
+  }
+  const double sign = (o->seat & 1) == 0 ? 1.0 : -1.0;
+  for (int a = 0; a < k; a++) {
+    double s = 0.0;
+    for (int wi = 0; wi < w; wi++) s += total[wi * k + a];
+    values[a] = sign * (s / w);
+  }
+  free(total);
+  free(idx);
+  return 0;
+}
