@@ -100,6 +100,24 @@ def _configured_ai_delay() -> float:
 AI_ACTION_DELAY_SECONDS = _configured_ai_delay()
 
 
+def _configured_reveal_pause() -> float:
+    raw = os.environ.get("TUPPI_SERVER_REVEAL_PAUSE_SECONDS", "3.0")
+    try:
+        pause = float(raw)
+    except ValueError as exc:
+        raise ValueError("TUPPI_SERVER_REVEAL_PAUSE_SECONDS must be numeric") from exc
+    if not 0.0 <= pause <= 30.0:
+        raise ValueError("TUPPI_SERVER_REVEAL_PAUSE_SECONDS must be in 0..30")
+    return pause
+
+
+#: project_target_v3: after the locked bids are revealed, the first AI move
+#: waits this long, so the clients can show all revealed bids together and let
+#: them fade out before anyone plays (the client shows them for 2.4 s and fades
+#: them in 0.4 s).
+REVEAL_PAUSE_SECONDS = _configured_reveal_pause()
+
+
 def _for_ruleset(agents: dict[int, object], ruleset_id: RulesetId) -> dict[int, object]:
     """Give agents without their own sooli behaviour the simple fallback.
 
@@ -982,6 +1000,7 @@ class LiveMatchRunner:
         delay = AI_ACTION_DELAY_SECONDS if delay_seconds is None else delay_seconds
         if not isinstance(delay, (int, float)) or isinstance(delay, bool) or not 0 <= delay <= 60:
             raise ValueError("AI action delay must be numeric and in 0..60")
+        revealed = False
         while not self.terminal:
             self._ensure_deal_started()
             if self.collecting_bids():
@@ -991,11 +1010,15 @@ class LiveMatchRunner:
                     return
                 if on_state_change is not None:
                     await on_state_change()
+                revealed = True
                 continue
             actor = self.current_actor
             if actor is None or actor not in self.ai_seats:
                 return
-            await asyncio.sleep(delay)
+            # The first move after a reveal waits until the revealed bids have
+            # been shown and have faded out.
+            await asyncio.sleep(max(delay, REVEAL_PAUSE_SECONDS) if revealed else delay)
+            revealed = False
             action, evaluation = await asyncio.to_thread(self._choose_ai_action, actor)
             self._apply_ai_action(actor, action=action, contract_evaluation=evaluation)
             if on_state_change is not None:

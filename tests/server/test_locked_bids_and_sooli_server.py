@@ -289,3 +289,34 @@ def test_restart_mid_bidding_forgets_pending_locks_and_restart_mid_sooli_resumes
                           expected_event_index=runner.event_cursor, action=action_from_data(action))
             n += 1
     raise AssertionError("no sooli reached")
+
+
+def test_first_ai_move_after_the_reveal_waits_for_the_fade(monkeypatch):
+    import asyncio
+
+    from tuppi_server import match_runner
+
+    waits = []
+
+    async def fake_sleep(seconds):
+        waits.append(seconds)
+
+    monkeypatch.setattr(match_runner.asyncio, "sleep", fake_sleep)
+    monkeypatch.setattr(match_runner, "REVEAL_PAUSE_SECONDS", 3.0)
+    for attempt in range(40):
+        waits.clear()
+        runner = LiveMatchRunner(match_ref=f"reveal-{attempt}", ai_seats=frozenset({1, 2, 3}), ruleset_id=V3,
+                                 ai_profile_key=TEST_AI_PROFILE_KEY, initial_dealer=attempt % 4)
+        bid = runner.bidding(0)["options"][0]
+
+        async def scenario():
+            await runner.submit_async(seat=0, client_action_id="lock-0", match_ref=runner.match_ref,
+                                      expected_event_index=runner.event_cursor, action=action_from_data(bid),
+                                      ai_action_delay_seconds=0.5)
+
+        asyncio.run(scenario())
+        assert not runner.collecting_bids()
+        if waits:  # an AI acted after the reveal: its first move waited for the fade
+            assert waits[0] == 3.0 and all(w == 0.5 for w in waits[1:])
+            return
+    raise AssertionError("no deal where an AI moves after the reveal")
