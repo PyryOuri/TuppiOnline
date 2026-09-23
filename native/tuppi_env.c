@@ -247,3 +247,12 @@ void tc_env_set_state_repeat(TcEnv *e, int j, const TcDeal *d, int count) {
 }
 
 void tc_env_park_all(TcEnv *e) { for (int i = 0; i < e->n; i++) e->g[i].d.phase = TC_PH_DONE; }
+
+// All current hands and actors, for labelling (research data only; never
+// reachable from a policy).
+void tc_env_hands(const TcEnv *e, uint64_t *hands, int32_t *actor) {
+  for (int i = 0; i < e->n; i++) {
+    for (int s = 0; s < 4; s++) hands[4 * i + s] = e->g[i].d.hand[s];
+    actor[i] = e->g[i].d.cur;
+  }
+}

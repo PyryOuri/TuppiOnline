@@ -7,6 +7,50 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## 2026-09-23 (day) — where the gain comes from, and what does not add to it
+
+**Breakdown** (256 base deals, seed v5, search W=64 vs the incumbent pair on
+the same deals):
+
+| | Incumbent pair | Search team |
+| --- | ---: | ---: |
+| deals where own team declares RAMI | 37.7% | 48.7% |
+| RAMI made when own team declares | 71.8% | 79.6% |
+| incumbent's RAMIs stolen when defending | 28.2% | 38.6% |
+| NOLO deals won | 50.0% | 69.2% |
+
+Better declarer play, better defence, better NOLO play, and more declarations
+because more contracts are makeable.
+
+**Refinements that are within noise** (same 128 deals, paired vs W=64
+reference +0.0142):
+
+| Variant | Paired |
+| --- | --- |
+| ties go to the blueprint's action | -0.0007 +- 0.0020 |
+| deviate only if gain > 0.005 equity | **-0.0134 +- 0.0031** (the gain is many small improvements) |
+| 256 worlds for showing decisions | +0.0010 +- 0.0023 |
+| team seats rolled out by `xi1_small` | +0.0005 +- 0.0024 |
+
+**Learned belief (card-location network).** Trained on 8M native self-play
+positions (distilled-search team vs clone team): held-out NLL 0.436 nats per
+unseen card vs 1.099 uniform-over-3 (TuppiProject Phase 5G-B's hard-uniform
+baseline: 1.050). Using it:
+
+* reweighting 1024 uniform candidates collapses (median ESS in early play 6
+  of 1024 at alpha 0.5), so worlds are instead drawn *exactly* from the
+  tempered product of the network's marginals over the hard-feasible set
+  (`tc_sample_world_weighted`, a DP over cards x capacities; tested against
+  enumeration);
+* the search gets monotonically worse the more it trusts the belief: alpha
+  0.25 -0.0001 +- 0.0024, alpha 0.5 -0.0022 +- 0.0026, alpha 1.0
+  **-0.0075 +- 0.0030**.
+
+Most likely the belief is confidently wrong about the *partner*, who is the
+search agent (declares RAMI on ~50% of deals vs the clone's ~37%), not the
+policies in the training data. Uniform worlds are the robust choice; beliefs
+learned from bots would transfer to humans even less.
+
 ## 2026-09-23 (morning) — solver-tail depth
 
 Same 128 deals (seed v3), W=64, paired against tail 6 (+0.0142):

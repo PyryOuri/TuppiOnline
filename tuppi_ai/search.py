@@ -34,12 +34,23 @@ class Searcher:
 
     def __init__(self, net: qmodel.QNet, equity_table: np.ndarray, worlds: int = 32,
                  dd_left: int = 0, seed: int = 0, max_actions: int = 26, belief: int = 0,
-                 belief_t: float = 1.0, belief_eps: float = 0.1, belief_seats: str = "all"):
+                 belief_t: float = 1.0, belief_eps: float = 0.1, belief_seats: str = "all",
+                 belief_net=None, belief_n: int = 1024, belief_alpha: float = 0.5, team_net=None,
+                 opp_temp: float = 0.0):
         self.net = net
         self.worlds = worlds
         self.dd_left = dd_left
         self.belief, self.belief_t, self.belief_eps = belief, belief_t, belief_eps
         self.belief_seats = belief_seats
+        # Learned card-location belief: uniform candidates reweighted by the
+        # product of the network's per-card probabilities, tempered by alpha.
+        self.belief_net, self.belief_n, self.belief_alpha = belief_net, belief_n, belief_alpha
+        self.last_ess = None
+        # Optional different rollout policy for the searching seat's own team.
+        self.team_net = team_net
+        # If > 0, opponents' rollout moves are sampled from softmax(logits / opp_temp)
+        # instead of taken greedily: less reliance on predicting them exactly.
+        self.opp_temp = opp_temp
         self.np_rng = np.random.default_rng(seed)
         self._hf = np.zeros((64, native.feature_dim(net.encoder)), dtype=np.uint8)
         self._hm = np.zeros((64, native.NUM_ACTIONS), dtype=np.uint8)
@@ -71,17 +82,73 @@ class Searcher:
                 self._collect(total, live, n)
                 if not live.any():
                     break
-            feat, mask, _, _ = env.observe()
+            feat, mask, seat, _ = env.observe()
             with torch.no_grad():
-                q = self.net(torch.from_numpy(feat))
-                acts = qmodel.masked_argmax(q, torch.from_numpy(mask)).numpy().astype(np.int32)
+                x = torch.from_numpy(feat)
+                q = self.net(x).numpy()
+                if self.team_net is not None:
+                    mine = (seat & 1) == me_team
+                    if mine.any():
+                        q[mine] = self.team_net(torch.from_numpy(feat[mine])).numpy()
+                qm = np.where(mask == 1, q, -np.inf)
+                acts = qm.argmax(1).astype(np.int32)
+                if self.opp_temp > 0:
+                    opp = (seat & 1) != me_team
+                    if opp.any():
+                        z = qm[opp] / self.opp_temp
+                        z -= z.max(1, keepdims=True)
+                        pr = np.exp(z)
+                        pr /= pr.sum(1, keepdims=True)
+                        u = self.np_rng.random((len(pr), 1))
+                        acts[opp] = (pr.cumsum(1) < u).sum(1).astype(np.int32)
             acts[mask.sum(axis=1) == 0] = 0
             env.step(acts)
             self._collect(total, live, n)
         values = total.reshape(w, k).mean(axis=0)
         return values if me_team == 0 else -values
 
+    def _direct_belief_worlds(self, obs: native.TcObs, w: int) -> list:
+        """Exact draws from the tempered product of the network's card marginals."""
+        feat = native.encode(obs, encoder=self.belief_net.encoder)[None]
+        with torch.no_grad():
+            p = torch.softmax(self.belief_net(torch.from_numpy(feat)), dim=2)[0].numpy()
+        wt = p ** self.belief_alpha
+        worlds = []
+        for _ in range(w):
+            world = native.sample_world_weighted(obs, wt, self.rng)
+            if world is None:  # belief and constraints disagree completely: fall back
+                world = native.sample_world(obs, self.rng)
+            worlds.append(world)
+        return worlds
+
+    def _learned_belief_worlds(self, obs: native.TcObs, w: int) -> list:
+        if self.belief_n <= 0:
+            return self._direct_belief_worlds(obs, w)
+        n = self.belief_n
+        cands = []
+        while len(cands) < n:
+            world = native.sample_world(obs, self.rng)
+            if world is None:
+                raise RuntimeError("no world consistent with the observation")
+            cands.append(world)
+        feat = native.encode(obs, encoder=self.belief_net.encoder)[None]
+        with torch.no_grad():
+            logp = torch.log_softmax(self.belief_net(torch.from_numpy(feat)), dim=2)[0].numpy()  # (52, 3)
+        hands = np.array([[c.hand[(obs.seat + r) & 3] for r in (1, 2, 3)] for c in cands], dtype=np.uint64)
+        bits = np.unpackbits(hands.view(np.uint8).reshape(n, 3, 8), axis=2, bitorder="little")[:, :, :52]
+        # log p of each candidate's placement: sum over cards held by others
+        lw = self.belief_alpha * np.einsum("nrc,cr->n", bits.astype(np.float32), logp)
+        wts = np.exp(lw - lw.max())
+        wts /= wts.sum()
+        self.last_ess = 1.0 / float(np.sum(wts ** 2))
+        # Systematic resampling keeps duplicates to the minimum the weights force.
+        u = (self.np_rng.random() + np.arange(w)) / w
+        pick = np.minimum(np.searchsorted(np.cumsum(wts), u), n - 1)
+        return [cands[i] for i in pick]
+
     def sample_worlds(self, obs: native.TcObs, w: int) -> list:
+        if self.belief_net is not None:
+            return self._learned_belief_worlds(obs, w)
         n = w * self.belief if self.belief > 1 else w
         cands = []
         while len(cands) < n:
@@ -128,14 +195,20 @@ class SearchAgent:
     """Engine-interface agent: blueprint for showing, search for trick play."""
 
     def __init__(self, net, equity_table, seat: int, worlds: int = 32, dd_left: int = 0,
-                 search_showing=False, seed: int = 0, **belief):
+                 search_showing=False, seed: int = 0, keep: float | None = None,
+                 show_worlds: int | None = None, **belief):
         """search_showing: False (blueprint shows), True/1 (search every legal show), or 2
         (search only the blueprint's preferred card for each contract, then keep
         the blueprint's card within the chosen contract)."""
         self.seat = seat
         self.net = net
         self.search_showing = search_showing
+        self.keep = keep  # None: plain argmax; >= 0: keep the blueprint's action unless beaten by more
         self.searcher = Searcher(net, equity_table, worlds=worlds, dd_left=dd_left, seed=seed + seat, **belief)
+        self.show_searcher = None
+        if show_worlds and show_worlds != worlds:
+            self.show_searcher = Searcher(net, equity_table, worlds=show_worlds, dd_left=dd_left,
+                                          seed=seed + seat + 17, **belief)
         self._feat = np.zeros((1, native.feature_dim(net.encoder)), dtype=np.uint8)
 
     def choose_action(self, observation):
@@ -144,6 +217,7 @@ class SearchAgent:
             return legal[0]
         obs = obs_from_player_observation(observation)
         ids = [action_id(a) for a in legal]
+        searcher = self.show_searcher if (obs.phase == native.PH_SHOW and self.show_searcher) else self.searcher
         if obs.phase == native.PH_SHOW and self.search_showing != 1 and self.search_showing is not True:
             native.encode(obs, self._feat[0], self.net.encoder)
             with torch.no_grad():
@@ -158,7 +232,15 @@ class SearchAgent:
                     reps.append(max(cands, key=lambda i: q[i]))
             if len(reps) == 1:
                 return legal[ids.index(reps[0])]
-            values = self.searcher.action_values(obs, reps)
+            values = searcher.action_values(obs, reps)
             return legal[ids.index(reps[int(np.argmax(values))])]
-        values = self.searcher.action_values(obs, ids)
-        return legal[int(np.argmax(values))]
+        values = searcher.action_values(obs, ids)
+        best = int(np.argmax(values))
+        if self.keep is not None:
+            native.encode(obs, self._feat[0], self.net.encoder)
+            with torch.no_grad():
+                q = self.net(torch.from_numpy(self._feat))[0].numpy()
+            bp = int(np.argmax([q[i] for i in ids]))
+            if values[bp] >= values[best] - self.keep:
+                best = bp
+        return legal[best]

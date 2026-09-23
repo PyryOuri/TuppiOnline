@@ -125,3 +125,58 @@ def test_sampling_is_uniform_over_enumerated_worlds():
         if checked >= 12:
             break
     assert checked >= 5
+
+
+def test_weighted_sampler_matches_enumerated_product_distribution():
+    """Exact draws from prod_c w[c, owner]: checked against enumeration, with
+    unit weights (must be uniform) and with random weights."""
+    rng = random.Random(23)
+    state = C.c_uint64(4242)
+    checked = 0
+    for _ in range(400):
+        deal = _random_position(rng, rng.choice([44, 45, 46]))
+        if deal.phase != native.PH_PLAY:
+            continue
+        me = deal.cur
+        obs = native.observe(deal, me)
+        played, voids = _constraints(deal)
+        others = [(me + r) & 3 for r in (1, 2, 3)]
+        played_mask = sum(1 << deal.play_card[i] for i in range(deal.n_played))
+        known = {s: 0 for s in range(4)}
+        for i in range(deal.n_shows):
+            c, s = deal.show_card[i], deal.show_seat[i]
+            if s != me and not played_mask >> c & 1:
+                known[s] |= 1 << c
+        free = _bits(FULL & ~played_mask & ~deal.hand[me] & ~sum(known.values()))
+        caps = [13 - played[s] - bin(known[s]).count("1") for s in others]
+        worlds = []
+        for first in itertools.combinations(free, caps[0]):
+            rest = [c for c in free if c not in first]
+            for second in itertools.combinations(rest, caps[1]):
+                third = tuple(c for c in rest if c not in second)
+                parts = (first, second, third)
+                if all(c // 13 not in voids[others[j]] for j in range(3) for c in parts[j]):
+                    worlds.append(parts)
+        if not 5 <= len(worlds) <= 200:
+            continue
+        for unit_weights in (True, False):
+            w = np.ones((52, 3)) if unit_weights else np.array([[rng.uniform(0.1, 3) for _ in range(3)] for _ in range(52)])
+            probs = np.array([np.prod([w[c, j] for j in range(3) for c in parts[j]]) for parts in worlds])
+            probs /= probs.sum()
+            index = {tuple(known[others[j]] | sum(1 << c for c in parts[j]) for j in range(3)): i
+                     for i, parts in enumerate(worlds)}
+            counts = np.zeros(len(worlds))
+            draws = 80 * len(worlds)
+            for _ in range(draws):
+                x = native.sample_world_weighted(obs, w, state)
+                assert x is not None
+                counts[index[tuple(x.hand[s] for s in others)]] += 1
+            expected = probs * draws
+            ok = expected > 5
+            chi2 = (((counts - expected) ** 2) / expected)[ok].sum()
+            dof = max(int(ok.sum()) - 1, 1)
+            assert chi2 < dof + 6 * (2 * dof) ** 0.5, (unit_weights, chi2, dof)
+        checked += 1
+        if checked >= 8:
+            break
+    assert checked >= 4

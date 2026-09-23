@@ -218,3 +218,84 @@ int tc_history_rows(const TcDeal *world, int seat_mask, int encoder, int max_row
   }
   return rows;
 }
+
+// Exact sampling from a product-form belief restricted to the hard-feasible set:
+// P(world) proportional to prod over free cards c of w[c][owner_rel(c) - 1],
+// where w is a 52x3 table over the observer's relative seats 1..3 (callers pass
+// tempered probabilities). Voids force w = 0; shown-but-unplayed cards stay with
+// their shower. A DP over the free cards with state = remaining capacities of
+// the first two other seats (the third is implied) makes the draw exact.
+int tc_sample_world_weighted(const TcObs *o, const float *wtab, uint64_t *rng, TcDeal *out) {
+  int played_by[4], void_mask[4];
+  u64 played_all;
+  public_state(o, out, played_by, void_mask, &played_all);
+  const int me = o->seat;
+  int others[3];
+  for (int j = 0; j < 3; j++) others[j] = (me + 1 + j) & 3;
+  u64 known[4] = {0, 0, 0, 0};
+  for (int i = 0; i < o->n_shows; i++) {
+    int c = o->show_card[i], s = o->show_seat[i];
+    if (s != me && !(played_all >> c & 1ULL)) known[s] |= 1ULL << c;
+  }
+  u64 free_cards = FULL_DECK & ~o->hand & ~played_all & ~(known[0] | known[1] | known[2] | known[3]);
+  int cap[3];
+  for (int j = 0; j < 3; j++) {
+    cap[j] = 13 - played_by[others[j]] - __builtin_popcountll(known[others[j]]);
+    if (cap[j] < 0) return -1;
+  }
+  int cards[52], m = 0;
+  u64 fm = free_cards;
+  while (fm) { cards[m++] = __builtin_ctzll(fm); fm &= fm - 1; }
+  if (m != cap[0] + cap[1] + cap[2]) return -1;
+  double w[52][3];
+  for (int i = 0; i < m; i++) {
+    int c = cards[i];
+    for (int j = 0; j < 3; j++) {
+      double v = wtab[3 * c + j];
+      w[i][j] = (void_mask[others[j]] >> (c / 13) & 1) ? 0.0 : (v > 1e-12 ? v : 1e-12);
+    }
+  }
+  // Z[i][a][b]: weight of placing cards i..m-1 with capacities a, b and
+  // (m - i - a - b) for the three others. Each layer is rescaled by its max.
+  static __thread double Z[53][14][14];
+  for (int a = 0; a < 14; a++) for (int b = 0; b < 14; b++) Z[m][a][b] = (a == 0 && b == 0) ? 1.0 : 0.0;
+  for (int i = m - 1; i >= 0; i--) {
+    int rem = m - i;
+    double mx = 0.0;
+    for (int a = 0; a < 14; a++) {
+      for (int b = 0; b < 14; b++) {
+        int c3 = rem - a - b;
+        double z = 0.0;
+        if (c3 >= 0 && c3 <= 13) {
+          if (a > 0) z += w[i][0] * Z[i + 1][a - 1][b];
+          if (b > 0) z += w[i][1] * Z[i + 1][a][b - 1];
+          if (c3 > 0) z += w[i][2] * Z[i + 1][a][b];
+        }
+        Z[i][a][b] = z;
+        if (z > mx) mx = z;
+      }
+    }
+    if (mx <= 0.0) return -1;
+    for (int a = 0; a < 14; a++) for (int b = 0; b < 14; b++) Z[i][a][b] /= mx;
+  }
+  if (Z[0][cap[0]][cap[1]] <= 0.0) return -1;
+  u64 hands[4] = {0, 0, 0, 0};
+  hands[me] = o->hand;
+  for (int s = 0; s < 4; s++) hands[s] |= known[s];
+  int a = cap[0], b = cap[1];
+  for (int i = 0; i < m; i++) {
+    int c3 = (m - i) - a - b;
+    double p0 = a > 0 ? w[i][0] * Z[i + 1][a - 1][b] : 0.0;
+    double p1 = b > 0 ? w[i][1] * Z[i + 1][a][b - 1] : 0.0;
+    double p2 = c3 > 0 ? w[i][2] * Z[i + 1][a][b] : 0.0;
+    double r = unit(rng) * (p0 + p1 + p2);
+    int j = r < p0 ? 0 : (r < p0 + p1 ? 1 : 2);
+    if (j == 0 && p0 == 0.0) j = p1 > 0 ? 1 : 2;
+    if (j == 1 && p1 == 0.0) j = p2 > 0 ? 2 : 0;
+    if (j == 2 && p2 == 0.0) j = p0 > 0 ? 0 : 1;
+    hands[others[j]] |= 1ULL << cards[i];
+    if (j == 0) a--; else if (j == 1) b--;
+  }
+  for (int s = 0; s < 4; s++) out->hand[s] = hands[s];
+  return 0;
+}

@@ -94,6 +94,9 @@ lib.tc_env_set_state_repeat.argtypes = [C.c_void_p, C.c_int, _P(TcDeal), C.c_int
 lib.tc_env_park_all.argtypes = [C.c_void_p]
 lib.tc_history_rows.argtypes = [_P(TcDeal), C.c_int, C.c_int, C.c_int, C.c_void_p, C.c_void_p, C.c_void_p]
 lib.tc_history_rows.restype = C.c_int
+lib.tc_env_hands.argtypes = [C.c_void_p, C.c_void_p, C.c_void_p]
+lib.tc_sample_world_weighted.argtypes = [_P(TcObs), C.c_void_p, _P(C.c_uint64), _P(TcDeal)]
+lib.tc_sample_world_weighted.restype = C.c_int
 lib.tc_sample_world.argtypes = [_P(TcObs), _P(C.c_uint64), _P(TcDeal)]
 lib.tc_sample_world.restype = C.c_int
 
@@ -114,6 +117,15 @@ def history_rows(world: TcDeal, seat_mask: int, encoder: int, feat: np.ndarray,
     """Past unforced decisions of seats in seat_mask, replayed inside `world`."""
     return lib.tc_history_rows(C.byref(world), seat_mask, encoder, len(action), feat.ctypes.data,
                                mask.ctypes.data, action.ctypes.data)
+
+
+def sample_world_weighted(obs: TcObs, weights: np.ndarray, rng_state: C.c_uint64) -> TcDeal | None:
+    """Exact draw from prod_c weights[c, relative_seat - 1] over hard-feasible worlds."""
+    w = np.ascontiguousarray(weights, dtype=np.float32).reshape(52, 3)
+    world = TcDeal()
+    if lib.tc_sample_world_weighted(C.byref(obs), w.ctypes.data, C.byref(rng_state), C.byref(world)) != 0:
+        return None
+    return world
 
 
 def sample_world(obs: TcObs, rng_state: C.c_uint64) -> TcDeal | None:
@@ -221,6 +233,13 @@ class Env:
 
     def deal(self, i: int) -> TcDeal:
         return lib.tc_env_deal(self._h, i).contents
+
+    def hands(self) -> tuple[np.ndarray, np.ndarray]:
+        """(n, 4) uint64 hands and current actors - research labelling only."""
+        h = np.zeros((self.n, 4), dtype=np.uint64)
+        a = np.zeros(self.n, dtype=np.int32)
+        lib.tc_env_hands(self._h, h.ctypes.data, a.ctypes.data)
+        return h, a
 
     def reset_all(self) -> None:
         lib.tc_env_reset_all(self._h)

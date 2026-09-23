@@ -53,8 +53,18 @@ def _make_candidate(spec: str) -> dict:
         table = _W["equity"].table
         belief = {"belief": int(opts.get("belief", 0)), "belief_t": float(opts.get("bt", 1.0)),
                   "belief_eps": float(opts.get("be", 0.1)), "belief_seats": opts.get("bs", "all")}
+        if "ot" in opts:
+            belief["opp_temp"] = float(opts["ot"])
+        if "team" in opts:
+            belief["team_net"] = qmodel.load(opts["team"], "cpu")
+        if "bn" in opts:
+            from .belief import load as load_belief
+            belief.update(belief_net=load_belief(opts["bn"]), belief_n=int(opts.get("bN", 1024)),
+                          belief_alpha=float(opts.get("ba", 0.5)))
         return {s: SearchAgent(net, table, s, worlds=int(opts.get("w", 32)), dd_left=int(opts.get("dd", 0)),
-                               search_showing=int(opts.get("show", "0")), **belief) for s in range(4)}
+                               search_showing=int(opts.get("show", "0")),
+                               keep=float(opts["keep"]) if "keep" in opts else None,
+                               show_worlds=int(opts["sw"]) if "sw" in opts else None, **belief) for s in range(4)}
     from .policies import PolicyAgent, from_spec
     policy = from_spec(spec, "cpu")
     return {s: PolicyAgent(policy, s) for s in range(4)}
@@ -114,7 +124,8 @@ def measure(index: int, seed: str, scores: str) -> dict:
             hands = tuple(base[(seat + rotation) % 4] for seat in range(4))
             for team in (0, 1):
                 games.append(_play(hands, score, team))
-    out = {"index": index, "score": score, "value": statistics.fmean(g["value"] for g in games)}
+    out = {"index": index, "score": score, "value": statistics.fmean(g["value"] for g in games),
+           "games": games}
     for key in ("won", "points", "tricks", "rami", "cand_declared", "opp_declared", "stolen"):
         out[key] = statistics.fmean(float(g[key]) for g in games)
     return out
@@ -143,7 +154,8 @@ def evaluate(candidate: str, deals: int, seed: str = "tuppi-ai-eval-v1", scores:
     summary = summarise(rows)
     summary.update({"candidate": candidate, "opponent": opponent, "seed": seed, "scores": scores,
                     "seconds": round(time.time() - t0, 1),
-                    "values": [r["value"] for r in rows]})
+                    "values": [r["value"] for r in rows],
+                    "games": [g for r in rows for g in r["games"]]})
     return summary
 
 
