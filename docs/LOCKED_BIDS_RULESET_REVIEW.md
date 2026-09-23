@@ -323,11 +323,21 @@ study wasted a run because its statistic could never reach the gate.
 
 ## 8. Decision and report back (fill in)
 
-- Chosen option (i or ii):
-- Ruleset id / branch:
-- Which checklist items you take on, and which you leave:
-- When your edits to `search.py` / `tuppi_env.c` are committed:
-- Anything in the plan you disagree with:
+- Chosen option (i or ii): **(i)**. v2 results exist (`runs/sooli/bank_v1.pkl`
+  and the play/offer evaluations recorded in `STATUS.md`), so v2 stays as it
+  is and the real game is v3.
+- Ruleset id / branch: `project_target_v3` = v2 + locked bids. TuppiProject
+  branch `rules/project-target-v3-locked-bids`, from the sooli branch
+  (worktree `TuppiProject-sooli`); TuppiClient on its own branch in a
+  separate worktree.
+- Which checklist items you take on, and which you leave: all of Part A
+  (owner's request of 2026-09-23: "do the server, protocol and swift client,
+  also implement the locked bids"), plus sooli in the server, protocol and
+  client. Parts B and C are left for their session.
+- When your edits to `search.py` / `tuppi_env.c` are committed: TuppiAI
+  `3040f63` (with `tuppi_search.c`, `tuppi_sooli_policy.c`, `native.py`).
+- Anything in the plan you disagree with: nothing so far. The native sampler
+  changes land in `tuppi_search.c`, as the plan says.
 
 **Still open with the owner** (not blocking):
 

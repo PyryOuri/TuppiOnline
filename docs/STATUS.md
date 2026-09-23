@@ -7,6 +7,66 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## Sooli (project_target_v2): the bot's sooli decisions
+
+Not on the instrument above: sooli needs `project_target_v2`, which the
+incumbent does not play. Measured natively (the native core is lockstep-tested
+against the v2 engine). Survival = the soolaaja takes no trick. Tools:
+`tools/sooli_bank.py`, `tools/sooli_play_eval.py`, `tools/sooli_offer_check.py`.
+
+**How often sooli is viable.** Over 15,570 random RAMI deals (shows by the
+rollout clone), a defender whose sooli survives a perfect exchange and
+perfect-information play exists in about 5% of RAMI deals, close to the
+owner's human rate of ~1 in 20.
+
+**The realistic bank** (`runs/sooli/bank_v1.pkl`): 1,219 soolis the bot
+itself accepts (offer by search, margin 0.02; searched give; heuristic
+return) out of 14,000 random deals, i.e. about 11% of RAMI deals, roughly
+twice the human rate.
+
+Soolaaja survival on that bank, by the RAMI pair's play (soolaaja heuristic;
++-0.027):
+
+| RAMI pair | Survival |
+| --- | --- |
+| heuristic | 0.546 |
+| search, uniform-with-prefilter belief | 0.419 |
+| search, exposure tilt 0.2 / 0.3 / 0.45 | 0.366 / 0.346 / 0.366 |
+| **search, prefilter + tilt 0.3 (default)** | **0.334** (paired -0.085 +- 0.026 vs. prefilter only) |
+| search, plausible exchange + tilt 0.3 | 0.346 |
+| reference: knows the soolaaja's hand | 0.203 |
+| reference: perfect information | 0.110 |
+
+The belief is what matters: the uniform sampler draws soolaaja hands with a
+median exposure of 33, the banked soolaajas' real hands have 15. The tilt
+reweights worlds by exp(-lambda * exposure); exposure against the rest of the
+deck is a sum over suits of max(0, rank_i - 2i) in ace-low ranks, so the tilt
+is sampled exactly inside the suit-split DP (0.1-0.3 ms per world, 15-180x
+faster than rejection).
+
+**The offer.** Against realised outcomes on 1,500 prefiltered offers (sooli
+play by the heuristics for all three): the search with heuristic sooli play
+in its rollouts gains +0.023 +- 0.006 equity per offer vs. never accepting;
+the same search with the solver finishing the rollouts accepts only 28 of
+1,500 (+0.004); the 8-world heuristic offer accepts 30 (+0.002); hindsight
+would gain +0.059. Against the stronger RAMI pair (default search above), the
+bank's accepted soolis still gain +0.050 +- 0.013 per sooli over declining,
+positive in every predicted-gain bucket; predictions are about twice the
+realised gain, so the 0.02 margin stays. These are very weak defending hands:
+sooli caps the loss of an ordinary RAMI deal that would be lost heavily.
+
+**The exchange** (PI survival after the exchange on positions that survive a
+perfect exchange): heuristic give + heuristic return 0.573; searched give
+0.619; a searched return never beat the heuristic "lowest card" return on
+either bank (0.547 vs 0.573; 0.106-0.112 vs 0.110 with the new beliefs).
+Each half of a perfect exchange is worth ~0.18-0.19 here, so the return is
+where the most is left, and only better inference about the soolaaja's hand
+can get it.
+
+**Defaults** (`tuppi_ai/search.py`, `SOOLI_DEFAULTS`): offer by search with
+margin 0.02; give and sooli play by search; return by the heuristic; beliefs
+prefilter + tilt 0.3.
+
 ## 2026-09-24 — spending the speed: W=128 becomes the default
 
 512 fresh base deals (seed v6), paired, both with the native search:
