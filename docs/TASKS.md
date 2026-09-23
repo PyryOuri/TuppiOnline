@@ -68,6 +68,24 @@ reference implementation, native core, bot, server/client, training) are in
   them (new heuristics, or learning from scratch in the native engine, which
   earlier proved slow), and this is the least predictable part of T3.
 
+## T4 - Locked bid cards and the convention tests
+
+**Status: planned, not started.** On 2026-09-23 the owner decided to switch to
+locked bid cards, as in the real game: nobody sees another player's bid before
+bidding. The owner also asked for two convention tests, one for the table's
+NOLO short-suit system and one for the RAMI signals. The plan is in
+`docs/LOCKED_BIDS_AND_CONVENTION_TESTS_PLAN.md`; the background is in
+`docs/CONVENTIONS.md`.
+
+- **The rules change** needs a new ruleset id, recommended `project_target_v3`
+  = v2 + locked bids.
+- **It touches every layer:**
+  - specification;
+  - reference engine;
+  - native core and bot;
+  - server, protocol and client, which overlaps T1.
+- **The NOLO test** needs no rules change and can start first.
+
 ## Suggested order (to decide with the owner)
 
 T3 changes the rules underneath T1 and T2, so specifying it first avoids
