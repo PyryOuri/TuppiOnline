@@ -50,11 +50,10 @@ positions) be generated from the owner's own mistakes?
 
 ## T3 — Add the "sooli" submode
 
-**Status of the rules.** Not specified anywhere in TuppiProject, TuppiClient or
-the archive ("solo" there only means one human with three AI seats). **The
-owner's rule specification is needed first** - when it is called, who plays
-alone, how the showing phase changes, trick play, scoring, and how it
-interacts with the rising score.
+**Status: planned, not started.** Rules given by the owner on 2026-09-24,
+key questions answered the same day; the analysis and phased plan (spec,
+reference implementation, native core, bot, server/client, training) are in
+`docs/SOOLI_PLAN.md`.
 
 **Consequences once specified.**
 - TuppiProject's versioning policy: any change to legal actions, contract
