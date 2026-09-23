@@ -24,7 +24,15 @@ AI; the real-game app completed (history, replays, end-of-match analysis for
 locked bids and sooli); table polish; stability and merging with the other
 author's work. Mac only. AI pacing near-instant (0.5 s or less).
 
-**Status: in progress (started 2026-09-23).**
+**Status: done (2026-09-23).** TuppiAI's bot is the live server's AI when
+installed (profile `tuppi_ai_search_v1`, labelled "TuppiAI"), with the
+after-deal review and 0.5 s pacing; the live server defaults to the real game
+(`project_target_v3`). Sooli deals are archived and replayed; the end of a
+match summarises the reviews. Table fixes found by rendering the live table to
+images (`TableSnapshotTests`): the lock panel stayed up after locking, card
+codes instead of symbols, generic seat names in tricks, an empty trick panel
+before play. Restart tests mid-bidding and mid-sooli. Merge rehearsed:
+`docs/MERGING_V3.md`.
 
 ## T2 — Training functions that carry the bot's improvements to the human
 
