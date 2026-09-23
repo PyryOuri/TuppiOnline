@@ -29,6 +29,18 @@ from tuppi_rules import (
     validate_trick,
 )
 
+from tuppi_rules.sooli import (
+    SOOLI_MAX_TRICKS,
+    SooliScore,
+    score_sooli,
+    sooli_offer_order,
+    sooli_trick_seats,
+    sooli_trick_winner,
+    transition_after_sooli,
+    validate_exchange,
+    validate_sooli_trick,
+)
+
 from .errors import StateInvariantError
 from .event_builder import build_expected_deal_events
 from .identity import calculate_deal_id
@@ -64,6 +76,18 @@ class EnginePhase(StrEnum):
     TRICK_PLAY = "TRICK_PLAY"
     DEAL_COMPLETE = "DEAL_COMPLETE"
     MATCH_COMPLETE = "MATCH_COMPLETE"
+    # project_target_v2 only
+    SOOLI_OFFER = "SOOLI_OFFER"
+    SOOLI_GIVE = "SOOLI_GIVE"
+    SOOLI_RETURN = "SOOLI_RETURN"
+    SOOLI_PLAY = "SOOLI_PLAY"
+
+
+SOOLI_PHASES = frozenset(
+    {EnginePhase.SOOLI_OFFER, EnginePhase.SOOLI_GIVE, EnginePhase.SOOLI_RETURN, EnginePhase.SOOLI_PLAY}
+)
+#: Phases in which a deal is waiting for an action.
+ACTIVE_PHASES = frozenset({EnginePhase.SHOWING, EnginePhase.TRICK_PLAY}) | SOOLI_PHASES
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,6 +113,38 @@ class CompletedTrick:
         expected_winner = trick_winner(validated)
         if type(self.winner) is not int or self.winner != expected_winner:
             raise StateInvariantError("completed trick winner is invalid")
+
+
+@dataclass(frozen=True, slots=True)
+class SooliTrick:
+    """One completed three-card sooli trick (project_target_v2)."""
+
+    trick_index: int
+    leader: int
+    plays: tuple[PlayedCard, ...]
+    winner: int
+
+    def __post_init__(self) -> None:
+        if type(self.trick_index) is not int or self.trick_index not in range(SOOLI_MAX_TRICKS):
+            raise StateInvariantError("sooli trick_index must be an integer in 0..12")
+        if type(self.leader) is not int or self.leader not in range(4):
+            raise StateInvariantError("sooli trick leader must be an integer in 0..3")
+        if (
+            type(self.plays) is not tuple
+            or len(self.plays) != 3
+            or any(not isinstance(play, PlayedCard) for play in self.plays)
+        ):
+            raise StateInvariantError("a sooli trick holds exactly three PlayedCard values")
+        if len({play.seat for play in self.plays}) != 3 or len({play.card for play in self.plays}) != 3:
+            raise StateInvariantError("sooli trick seats and cards must be distinct")
+        if self.plays[0].seat != self.leader:
+            raise StateInvariantError("sooli trick leader disagrees with first play")
+        try:
+            expected = sooli_trick_winner(self.plays)
+        except RulesError as exc:
+            raise StateInvariantError(f"sooli trick is invalid: {exc}") from exc
+        if type(self.winner) is not int or self.winner != expected:
+            raise StateInvariantError("sooli trick winner is invalid")
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,6 +175,13 @@ class DealState:
     next_dealer: int | None
     event_start_index: int
     events: tuple[PublicEvent, ...]
+    # project_target_v2 (sooli); defaults describe every v1 state.
+    sooli_decisions: tuple[tuple[int, bool], ...] = ()
+    soolaaja: int | None = None
+    sooli_given: Card | None = None
+    sooli_returned: Card | None = None
+    sooli_tricks: tuple[SooliTrick, ...] = ()
+    sooli_current: tuple[PlayedCard, ...] = ()
 
     def __post_init__(self) -> None:
         # Implicit revalidation of a state this engine just produced. Elided
@@ -157,8 +220,19 @@ def _validate_deal_state(state: DealState) -> None:
 
 
 def _validate_deal_state_rules(state: DealState) -> None:
-    if state.ruleset_id is not RulesetId.PROJECT_TARGET_V1:
-        raise StateInvariantError("clean engine supports only project_target_v1")
+    if state.ruleset_id not in (RulesetId.PROJECT_TARGET_V1, RulesetId.PROJECT_TARGET_V2):
+        raise StateInvariantError("clean engine supports project_target_v1 and project_target_v2")
+    v2 = state.ruleset_id is RulesetId.PROJECT_TARGET_V2
+    sooli_fields_default = (
+        state.sooli_decisions == ()
+        and state.soolaaja is None
+        and state.sooli_given is None
+        and state.sooli_returned is None
+        and state.sooli_tricks == ()
+        and state.sooli_current == ()
+    )
+    if not v2 and (not sooli_fields_default or state.phase in SOOLI_PHASES):
+        raise StateInvariantError("project_target_v1 has no sooli")
     if not is_valid_match_ref(state.match_ref):
         raise StateInvariantError("match_ref does not match the public schema")
     if not is_valid_deal_ref(state.deal_ref):
@@ -246,6 +320,11 @@ def _validate_deal_state_rules(state: DealState) -> None:
         raise StateInvariantError("a card has been played more than once")
 
     replay_hands = [list(hand) for hand in initial_hands]
+    sooli = state.soolaaja is not None
+    if sooli:
+        _apply_recorded_exchange(state, initial_hands, replay_hands)
+    elif state.sooli_given is not None or state.sooli_returned is not None or state.sooli_tricks or state.sooli_current:
+        raise StateInvariantError("sooli play fields require a soolaaja")
     previous_winner: int | None = None
     for trick in state.completed_tricks:
         expected_leader = state.first_leader if trick.trick_index == 0 else previous_winner
@@ -279,17 +358,26 @@ def _validate_deal_state_rules(state: DealState) -> None:
             )
             replay_hands[play.seat].remove(play.card)
 
+    sooli_ended = False
+    if sooli:
+        if state.completed_tricks or state.current_trick:
+            raise StateInvariantError("a sooli deal has no four-card tricks")
+        sooli_ended = _replay_sooli_tricks(state, replay_hands)
+
     expected_hands = tuple(tuple(hand) for hand in replay_hands)
     if state.hands != expected_hands:
         raise StateInvariantError("current hands disagree with the accepted play history")
 
+    winners = tuple(trick.winner for trick in state.completed_tricks) + tuple(
+        trick.winner for trick in state.sooli_tricks
+    )
     expected_team_tricks = (
-        sum(team_for_seat(trick.winner).value == 0 for trick in state.completed_tricks),
-        sum(team_for_seat(trick.winner).value == 1 for trick in state.completed_tricks),
+        sum(team_for_seat(winner).value == 0 for winner in winners),
+        sum(team_for_seat(winner).value == 1 for winner in winners),
     )
     if state.team_tricks != expected_team_tricks:
         raise StateInvariantError("team trick totals disagree with trick winners")
-    if sum(state.team_tricks) != len(state.completed_tricks):
+    if sum(state.team_tricks) != len(winners):
         raise StateInvariantError("team trick totals must equal completed trick count")
 
     if state.phase is EnginePhase.SHOWING:
@@ -312,6 +400,8 @@ def _validate_deal_state_rules(state: DealState) -> None:
             for value in (state.deal_score, state.ending_score, state.next_dealer)
         ):
             raise StateInvariantError("SHOWING phase cannot contain terminal scoring fields")
+        if not sooli_fields_default:
+            raise StateInvariantError("SHOWING phase cannot contain sooli fields")
     else:
         resolution = resolve_showing(dealer=state.dealer, actions=state.show_actions)
         if state.contract is not resolution.contract or state.declarer != resolution.declarer:
@@ -323,8 +413,12 @@ def _validate_deal_state_rules(state: DealState) -> None:
         )
         if state.first_leader != expected_first:
             raise StateInvariantError("first_leader disagrees with contract resolution")
+        if v2:
+            _validate_sooli_offers(state)
 
-    if state.phase is EnginePhase.TRICK_PLAY:
+    if state.phase in SOOLI_PHASES:
+        _validate_sooli_phase(state, sooli_ended)
+    elif state.phase is EnginePhase.TRICK_PLAY:
         if len(state.completed_tricks) >= 13:
             raise StateInvariantError("TRICK_PLAY cannot contain 13 completed tricks")
         if not state.current_trick:
@@ -342,6 +436,10 @@ def _validate_deal_state_rules(state: DealState) -> None:
             for value in (state.deal_score, state.ending_score, state.next_dealer)
         ):
             raise StateInvariantError("TRICK_PLAY cannot contain terminal scoring fields")
+        if sooli:
+            raise StateInvariantError("a sooli deal is played in SOOLI_PLAY, not TRICK_PLAY")
+    elif sooli and state.phase in (EnginePhase.DEAL_COMPLETE, EnginePhase.MATCH_COMPLETE):
+        _validate_sooli_completion(state, sooli_ended)
     elif state.phase in (EnginePhase.DEAL_COMPLETE, EnginePhase.MATCH_COMPLETE):
         if state.current_actor is not None or state.current_trick:
             raise StateInvariantError("completed state cannot have an actor or partial trick")
@@ -388,9 +486,151 @@ def _validate_deal_state_rules(state: DealState) -> None:
         ),
         EnginePhase.DEAL_COMPLETE: (EventType.DEALER_ROTATED,),
         EnginePhase.MATCH_COMPLETE: (EventType.MATCH_COMPLETED,),
+        EnginePhase.SOOLI_OFFER: (EventType.CONTRACT_RESOLVED, EventType.SOOLI_DECISION),
+        EnginePhase.SOOLI_GIVE: (EventType.SOOLI_DECISION,),
+        EnginePhase.SOOLI_RETURN: (EventType.SOOLI_DECISION,),
+        EnginePhase.SOOLI_PLAY: (EventType.TRICK_STARTED, EventType.CARD_PLAYED),
     }[state.phase]
     if state.events[-1].event_type not in expected_last:
         raise StateInvariantError("last public event is inconsistent with deal phase")
+
+
+def _apply_recorded_exchange(state: DealState, initial_hands, replay_hands) -> None:
+    """Replay the exchange onto `replay_hands` (soolaaja gives first, partner returns)."""
+    solo = state.soolaaja
+    if type(solo) is not int or solo not in range(4):
+        raise StateInvariantError("soolaaja must be a seat")
+    partner = (solo + 2) % 4
+    if state.sooli_given is None:
+        if state.sooli_returned is not None:
+            raise StateInvariantError("the partner cannot return before the soolaaja gives")
+        return
+    validate_exchange(giver_hand=initial_hands[solo], card=state.sooli_given)
+    replay_hands[solo].remove(state.sooli_given)
+    replay_hands[partner].append(state.sooli_given)
+    if state.sooli_returned is None:
+        return
+    validate_exchange(giver_hand=replay_hands[partner], card=state.sooli_returned, received=state.sooli_given)
+    replay_hands[partner].remove(state.sooli_returned)
+    replay_hands[solo].append(state.sooli_returned)
+
+
+def _sooli_next_leader(state: DealState) -> int:
+    if state.declarer is None:
+        raise StateInvariantError("sooli requires a declarer")
+    return state.sooli_tricks[-1].winner if state.sooli_tricks else state.declarer
+
+
+def _replay_sooli_tricks(state: DealState, replay_hands) -> bool:
+    """Validate the sooli transcript against `replay_hands`; return whether it has ended."""
+    if state.declarer is None or state.soolaaja is None:
+        raise StateInvariantError("sooli play requires a declarer and a soolaaja")
+    if type(state.sooli_tricks) is not tuple or any(not isinstance(t, SooliTrick) for t in state.sooli_tricks):
+        raise StateInvariantError("sooli_tricks must contain SooliTrick values")
+    if (state.sooli_tricks or state.sooli_current) and state.sooli_returned is None:
+        raise StateInvariantError("sooli play cannot start before the exchange")
+    leader = state.declarer
+    ended = False
+    for index, trick in enumerate(state.sooli_tricks):
+        if ended:
+            raise StateInvariantError("no sooli trick may follow the end of the deal")
+        if SooliTrick(trick_index=trick.trick_index, leader=trick.leader, plays=trick.plays,
+                      winner=trick.winner) != trick or trick.trick_index != index:
+            raise StateInvariantError("sooli trick contains invalid fields")
+        if trick.leader != leader:
+            raise StateInvariantError("sooli trick has the wrong leader")
+        validate_sooli_trick(trick.plays, leader=leader, declarer=state.declarer, soolaaja=state.soolaaja)
+        led = trick.plays[0].card.suit
+        for position, play in enumerate(trick.plays):
+            validate_play(hand=replay_hands[play.seat], card=play.card, led_suit=None if position == 0 else led)
+            replay_hands[play.seat].remove(play.card)
+        ended = trick.winner == state.soolaaja or index + 1 == SOOLI_MAX_TRICKS
+        leader = trick.winner
+    if type(state.sooli_current) is not tuple or any(not isinstance(p, PlayedCard) for p in state.sooli_current):
+        raise StateInvariantError("sooli_current must contain PlayedCard values")
+    if state.sooli_current:
+        if ended:
+            raise StateInvariantError("no sooli card may be played after the deal ended")
+        validate_sooli_trick(state.sooli_current, leader=leader, declarer=state.declarer,
+                             soolaaja=state.soolaaja, complete=False)
+        if len(state.sooli_current) >= 3:
+            raise StateInvariantError("a complete sooli trick must be recorded as a SooliTrick")
+        led = state.sooli_current[0].card.suit
+        for position, play in enumerate(state.sooli_current):
+            validate_play(hand=replay_hands[play.seat], card=play.card, led_suit=None if position == 0 else led)
+            replay_hands[play.seat].remove(play.card)
+    return ended
+
+
+def _validate_sooli_offers(state: DealState) -> None:
+    decisions = state.sooli_decisions
+    if type(decisions) is not tuple or any(
+        type(d) is not tuple or len(d) != 2 or type(d[0]) is not int or type(d[1]) is not bool for d in decisions
+    ):
+        raise StateInvariantError("sooli_decisions must be (seat, bool) pairs")
+    if state.contract is not Contract.RAMI:
+        if decisions or state.soolaaja is not None or state.phase in SOOLI_PHASES:
+            raise StateInvariantError("sooli exists only in a RAMI deal")
+        return
+    order = sooli_offer_order(state.declarer)
+    if tuple(seat for seat, _ in decisions) != order[: len(decisions)]:
+        raise StateInvariantError("sooli offers must follow seat order from the declarer")
+    if any(accepted for _, accepted in decisions[:-1]):
+        raise StateInvariantError("no offer may follow an accepted sooli")
+    accepted = bool(decisions) and decisions[-1][1]
+    if accepted != (state.soolaaja is not None) or (accepted and state.soolaaja != decisions[-1][0]):
+        raise StateInvariantError("soolaaja disagrees with the sooli decisions")
+    complete = accepted or len(decisions) == 2
+    if (state.phase is EnginePhase.SOOLI_OFFER) == complete:
+        raise StateInvariantError("sooli offer phase disagrees with the decisions")
+
+
+def _validate_sooli_phase(state: DealState, ended: bool) -> None:
+    if any(value is not None for value in (state.deal_score, state.ending_score, state.next_dealer)):
+        raise StateInvariantError("an active sooli phase cannot contain terminal scoring fields")
+    if state.phase is EnginePhase.SOOLI_OFFER:
+        if state.completed_tricks or state.current_trick or state.sooli_tricks or state.sooli_current:
+            raise StateInvariantError("no card may be played before the sooli offers are answered")
+        expected_actor = sooli_offer_order(state.declarer)[len(state.sooli_decisions)]
+    elif state.soolaaja is None:
+        raise StateInvariantError("sooli exchange and play require a soolaaja")
+    elif state.phase is EnginePhase.SOOLI_GIVE:
+        if state.sooli_given is not None or state.sooli_tricks or state.sooli_current:
+            raise StateInvariantError("SOOLI_GIVE precedes the exchange")
+        expected_actor = state.soolaaja
+    elif state.phase is EnginePhase.SOOLI_RETURN:
+        if state.sooli_given is None or state.sooli_returned is not None or state.sooli_tricks or state.sooli_current:
+            raise StateInvariantError("SOOLI_RETURN follows the soolaaja's card and precedes play")
+        expected_actor = (state.soolaaja + 2) % 4
+    else:  # SOOLI_PLAY
+        if state.sooli_returned is None or ended:
+            raise StateInvariantError("SOOLI_PLAY requires a finished exchange and an unfinished deal")
+        leader = _sooli_next_leader(state)
+        seats = sooli_trick_seats(leader=leader, declarer=state.declarer, soolaaja=state.soolaaja)
+        expected_actor = seats[len(state.sooli_current)]
+    if state.current_actor != expected_actor:
+        raise StateInvariantError(f"{state.phase.value} current_actor is invalid")
+
+
+def _validate_sooli_completion(state: DealState, ended: bool) -> None:
+    if state.current_actor is not None or state.sooli_current or not ended:
+        raise StateInvariantError("a completed sooli deal has no actor, no partial trick, and has ended")
+    last = state.sooli_tricks[-1]
+    expected = score_sooli(declarer=state.declarer, soolaaja=state.soolaaja,
+                           soolaaja_won_trick=last.winner == state.soolaaja,
+                           tricks_played=len(state.sooli_tricks))
+    if not isinstance(state.deal_score, SooliScore) or state.deal_score != expected:
+        raise StateInvariantError("sooli deal score disagrees with the transcript")
+    if not isinstance(state.ending_score, MatchScore):
+        raise StateInvariantError("completed deal requires a match score")
+    if state.ending_score != transition_after_sooli(state.starting_score, state.deal_score):
+        raise StateInvariantError("ending score disagrees with rising-score transition")
+    terminal = is_match_terminal(state.ending_score)
+    if state.phase is EnginePhase.MATCH_COMPLETE:
+        if not terminal or state.next_dealer is not None:
+            raise StateInvariantError("MATCH_COMPLETE fields are inconsistent")
+    elif terminal or state.next_dealer != rotate_dealer(state.dealer):
+        raise StateInvariantError("DEAL_COMPLETE dealer or score is inconsistent")
 
 
 def _expected_events(state: DealState) -> tuple[PublicEvent, ...]:
@@ -413,4 +653,10 @@ def _expected_events(state: DealState) -> tuple[PublicEvent, ...]:
         deal_score=state.deal_score,
         score_after=state.ending_score,
         next_dealer=state.next_dealer,
+        ruleset_id=state.ruleset_id,
+        sooli_decisions=state.sooli_decisions,
+        soolaaja=state.soolaaja,
+        sooli_exchanged=state.sooli_returned is not None,
+        sooli_tricks=state.sooli_tricks,
+        sooli_current=state.sooli_current,
     )

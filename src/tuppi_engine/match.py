@@ -28,7 +28,7 @@ from .errors import (
 from .events import PublicEvent
 from .observations import PlayerObservation, _observation_for_validated
 from .results import DealResult, MatchResult, ResearchDealResult
-from .state import DealState, EnginePhase, validate_deal_state
+from .state import ACTIVE_PHASES, DealState, EnginePhase, validate_deal_state
 from .trusted import is_trusted
 from .transitions import _apply_action_validated, research_deal_result_from_state
 from .validation import is_valid_match_ref
@@ -45,7 +45,7 @@ class MatchState:
     active_deal: DealState | None
     completed_deals: tuple[ResearchDealResult, ...]
     public_events: tuple[PublicEvent, ...]
-    ruleset_id: RulesetId = field(default=RulesetId.PROJECT_TARGET_V1, init=False)
+    ruleset_id: RulesetId = RulesetId.PROJECT_TARGET_V1
 
     def __post_init__(self) -> None:
         # Implicit revalidation of a state this engine just produced. Elided
@@ -63,7 +63,11 @@ class MatchState:
 
 
 def create_match(
-    *, initial_score: MatchScore, initial_dealer: int, match_ref: str
+    *,
+    initial_score: MatchScore,
+    initial_dealer: int,
+    match_ref: str,
+    ruleset_id: RulesetId = RulesetId.PROJECT_TARGET_V1,
 ) -> MatchState:
     if not isinstance(initial_score, MatchScore):
         raise InvalidConstructionError("initial_score must be a MatchScore")
@@ -89,6 +93,7 @@ def create_match(
         active_deal=None,
         completed_deals=(),
         public_events=(),
+        ruleset_id=ruleset_id,
     )
 
 
@@ -113,6 +118,7 @@ def begin_explicit_deal(state: MatchState, explicit_deal: ExplicitDeal) -> Match
         deal_ref=deal_ref,
         deal_number=deal_number,
         event_start_index=len(state.public_events),
+        ruleset_id=state.ruleset_id,
     )
     return MatchState(
         match_ref=state.match_ref,
@@ -124,6 +130,7 @@ def begin_explicit_deal(state: MatchState, explicit_deal: ExplicitDeal) -> Match
         active_deal=active,
         completed_deals=state.completed_deals,
         public_events=state.public_events + active.events,
+        ruleset_id=state.ruleset_id,
     )
 
 
@@ -142,7 +149,7 @@ def apply_match_action(state: MatchState, action: Action) -> MatchState:
         raise TerminalStateError(
             "completed deal accepts no actions; begin the next explicit deal"
         )
-    if state.phase not in (EnginePhase.SHOWING, EnginePhase.TRICK_PLAY):
+    if state.phase not in ACTIVE_PHASES:
         raise WrongPhaseError("no active deal action is currently expected")
     if state.active_deal is None:
         raise StateInvariantError("active phase has no private deal state")
@@ -171,6 +178,7 @@ def apply_match_action(state: MatchState, action: Action) -> MatchState:
         active_deal=active,
         completed_deals=completed,
         public_events=new_public_events,
+        ruleset_id=state.ruleset_id,
     )
 
 
@@ -198,7 +206,7 @@ def play_active_deal(
     """Run one finite deal, exposing only the current actor's observation."""
 
     validate_match_state(state)
-    if state.phase not in (EnginePhase.SHOWING, EnginePhase.TRICK_PLAY):
+    if state.phase not in ACTIVE_PHASES:
         raise WrongPhaseError("play_active_deal requires an active deal")
     if type(agents) is not tuple or len(agents) != 4:
         raise AgentProtocolError("runner requires exactly four agents")
@@ -211,7 +219,7 @@ def play_active_deal(
 
     current = state
     accepted_actions = 0
-    while current.phase in (EnginePhase.SHOWING, EnginePhase.TRICK_PLAY):
+    while current.phase in ACTIVE_PHASES:
         actor = current.current_actor
         if actor is None:
             raise StateInvariantError("active deal has no current actor")
@@ -221,8 +229,8 @@ def play_active_deal(
             action_audit(action)
         current = apply_match_action(current, action)
         accepted_actions += 1
-        if accepted_actions > 56:
-            raise StateInvariantError("deal exceeded the maximum 4 shows plus 52 plays")
+        if accepted_actions > 60:
+            raise StateInvariantError("deal exceeded 4 shows, 2 sooli answers, 2 exchanges and 52 plays")
     return current
 
 
@@ -252,8 +260,10 @@ def validate_match_state(state: MatchState) -> MatchState:
 
 
 def _validate_match_state(state: MatchState) -> None:
-    if state.ruleset_id is not RulesetId.PROJECT_TARGET_V1:
-        raise StateInvariantError("match supports only project_target_v1")
+    if state.ruleset_id not in (RulesetId.PROJECT_TARGET_V1, RulesetId.PROJECT_TARGET_V2):
+        raise StateInvariantError("match supports project_target_v1 and project_target_v2")
+    if state.active_deal is not None and state.active_deal.ruleset_id is not state.ruleset_id:
+        raise StateInvariantError("active deal ruleset disagrees with the match")
     if not is_valid_match_ref(state.match_ref):
         raise StateInvariantError("match_ref does not match the public schema")
     if not isinstance(state.initial_score, MatchScore):

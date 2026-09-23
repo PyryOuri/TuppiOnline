@@ -26,12 +26,25 @@ class EventType(StrEnum):
     MATCH_SCORE_CHANGED = "match_score_changed"
     DEALER_ROTATED = "dealer_rotated"
     MATCH_COMPLETED = "match_completed"
+    # project_target_v2 only
+    SOOLI_DECISION = "sooli_decision"
+    SOOLI_EXCHANGED = "sooli_exchanged"
+
+
+#: Event types that exist only under project_target_v2.
+V2_ONLY_EVENT_TYPES = frozenset({EventType.SOOLI_DECISION, EventType.SOOLI_EXCHANGED})
 
 
 class DealOutcome(StrEnum):
     NOLO = "NOLO"
     MADE_RAMI = "MADE_RAMI"
     STOLEN_RAMI = "STOLEN_RAMI"
+    # project_target_v2 only: the soolaaja took no trick / took a trick.
+    SOOLI_WON = "SOOLI_WON"
+    SOOLI_LOST = "SOOLI_LOST"
+
+
+SOOLI_OUTCOMES = frozenset({DealOutcome.SOOLI_WON, DealOutcome.SOOLI_LOST})
 
 
 class ScoreTransitionKind(StrEnum):
@@ -171,8 +184,36 @@ class DealCompletedPayload:
         if type(self.points) is not int or self.points <= 0:
             raise StateInvariantError("points must be a positive integer")
         _team_tricks(self.team_tricks)
-        if sum(self.team_tricks) != 13:
+        if self.outcome in SOOLI_OUTCOMES:
+            if self.contract is not Contract.RAMI or not 1 <= sum(self.team_tricks) <= 13:
+                raise StateInvariantError("a sooli deal is a RAMI deal of 1 to 13 tricks")
+        elif sum(self.team_tricks) != 13:
             raise StateInvariantError("completed deal trick totals must sum to 13")
+
+
+@dataclass(frozen=True, slots=True)
+class SooliDecisionPayload:
+    seat: int
+    play_sooli: bool
+
+    def __post_init__(self) -> None:
+        _seat(self.seat, "seat")
+        if type(self.play_sooli) is not bool:
+            raise StateInvariantError("play_sooli must be a boolean")
+
+
+@dataclass(frozen=True, slots=True)
+class SooliExchangedPayload:
+    """Public record that the exchange happened; the cards stay private."""
+
+    soolaaja: int
+    partner: int
+
+    def __post_init__(self) -> None:
+        _seat(self.soolaaja, "soolaaja")
+        _seat(self.partner, "partner")
+        if (self.soolaaja + 2) % 4 != self.partner:
+            raise StateInvariantError("the sooli partner must sit opposite the soolaaja")
 
 
 @dataclass(frozen=True, slots=True)
@@ -229,6 +270,8 @@ EventPayload: TypeAlias = (
     | MatchScoreChangedPayload
     | DealerRotatedPayload
     | MatchCompletedPayload
+    | SooliDecisionPayload
+    | SooliExchangedPayload
 )
 
 
@@ -242,11 +285,13 @@ class PublicEvent:
     schema_version: str = field(
         default=PUBLIC_EVENT_SCHEMA_VERSION, init=False
     )
-    ruleset_id: RulesetId = field(
-        default=RulesetId.PROJECT_TARGET_V1, init=False
-    )
+    ruleset_id: RulesetId = RulesetId.PROJECT_TARGET_V1
 
     def __post_init__(self) -> None:
+        if self.ruleset_id not in (RulesetId.PROJECT_TARGET_V1, RulesetId.PROJECT_TARGET_V2):
+            raise StateInvariantError("event ruleset is not supported")
+        if self.event_type in V2_ONLY_EVENT_TYPES and self.ruleset_id is not RulesetId.PROJECT_TARGET_V2:
+            raise StateInvariantError("sooli events exist only under project_target_v2")
         if type(self.event_index) is not int or self.event_index < 0:
             raise StateInvariantError("event_index must be a nonnegative integer")
         if not isinstance(self.event_type, EventType):
@@ -269,6 +314,8 @@ class PublicEvent:
             (EventType.MATCH_SCORE_CHANGED, MatchScoreChangedPayload),
             (EventType.DEALER_ROTATED, DealerRotatedPayload),
             (EventType.MATCH_COMPLETED, MatchCompletedPayload),
+            (EventType.SOOLI_DECISION, SooliDecisionPayload),
+            (EventType.SOOLI_EXCHANGED, SooliExchangedPayload),
         )
         payload_type = next(
             payload_class

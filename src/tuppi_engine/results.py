@@ -30,11 +30,21 @@ from tuppi_rules import (
     validate_show_action,
 )
 
+from tuppi_rules.sooli import (
+    SOOLI_MAX_TRICKS,
+    SooliScore,
+    score_sooli,
+    sooli_offer_order,
+    transition_after_sooli,
+    validate_exchange,
+    validate_sooli_trick,
+)
+
 from .deal import ExplicitDeal
 from .errors import StateInvariantError
 from .event_builder import build_expected_deal_events
 from .events import DealOutcome, PublicEvent
-from .state import CompletedTrick
+from .state import CompletedTrick, SooliTrick
 from .validation import (
     expected_deal_ref,
     is_sha256_identifier,
@@ -69,7 +79,11 @@ class DealResult:
     next_dealer: int | None
     events: tuple[PublicEvent, ...]
     schema_version: str = field(default=DEAL_RESULT_SCHEMA_VERSION, init=False)
-    ruleset_id: RulesetId = field(default=RulesetId.PROJECT_TARGET_V1, init=False)
+    ruleset_id: RulesetId = RulesetId.PROJECT_TARGET_V1
+    # project_target_v2 (sooli). Exchanged cards are private and not recorded here.
+    sooli_decisions: tuple[tuple[int, bool], ...] = ()
+    soolaaja: int | None = None
+    sooli_tricks: tuple[SooliTrick, ...] = ()
 
     def __post_init__(self) -> None:
         try:
@@ -111,6 +125,16 @@ class DealResult:
             or any(not isinstance(action, RulesShowAction) for action in self.show_actions)
         ):
             raise StateInvariantError("result must contain ordered show actions")
+        if self.ruleset_id not in (RulesetId.PROJECT_TARGET_V1, RulesetId.PROJECT_TARGET_V2):
+            raise StateInvariantError("result ruleset is not supported")
+        v2 = self.ruleset_id is RulesetId.PROJECT_TARGET_V2
+        if not v2 and (self.sooli_decisions or self.soolaaja is not None or self.sooli_tricks):
+            raise StateInvariantError("project_target_v1 has no sooli")
+        if v2:
+            self._validate_sooli_decisions()
+        if self.soolaaja is not None:
+            self._validate_sooli_result()
+            return
         if (
             type(self.completed_tricks) is not tuple
             or len(self.completed_tricks) != 13
@@ -230,6 +254,114 @@ class DealResult:
             deal_score=self.deal_score,
             score_after=self.score_after,
             next_dealer=self.next_dealer,
+            ruleset_id=self.ruleset_id,
+            sooli_decisions=self.sooli_decisions,
+        )
+        if self.events != expected_events:
+            raise StateInvariantError("result events disagree with its public transcript")
+
+    def _validate_common(self) -> None:
+        if not isinstance(self.score_before, MatchScore) or not isinstance(self.score_after, MatchScore):
+            raise StateInvariantError("result scores must be MatchScore values")
+        if MatchScore(self.score_before.team0, self.score_before.team1) != self.score_before:
+            raise StateInvariantError("result score_before contains invalid fields")
+        if MatchScore(self.score_after.team0, self.score_after.team1) != self.score_after:
+            raise StateInvariantError("result score_after contains invalid fields")
+        if type(self.match_terminal) is not bool or self.match_terminal != is_match_terminal(self.score_after):
+            raise StateInvariantError("result terminal flag disagrees with score")
+        if self.match_terminal:
+            if self.next_dealer is not None:
+                raise StateInvariantError("terminal result cannot rotate dealer")
+        elif type(self.next_dealer) is not int or self.next_dealer != rotate_dealer(self.dealer):
+            raise StateInvariantError("nonterminal result requires the next dealer")
+        if (
+            type(self.events) is not tuple
+            or not self.events
+            or any(not isinstance(event, PublicEvent) for event in self.events)
+        ):
+            raise StateInvariantError("result requires immutable public events")
+
+    def _validate_sooli_decisions(self) -> None:
+        decisions = self.sooli_decisions
+        if type(decisions) is not tuple or any(
+            type(d) is not tuple or len(d) != 2 or type(d[0]) is not int or type(d[1]) is not bool
+            for d in decisions
+        ):
+            raise StateInvariantError("sooli_decisions must be (seat, bool) pairs")
+        if self.contract is not Contract.RAMI:
+            if decisions or self.soolaaja is not None:
+                raise StateInvariantError("sooli exists only in a RAMI deal")
+            return
+        order = sooli_offer_order(self.declarer)
+        if tuple(seat for seat, _ in decisions) != order[: len(decisions)]:
+            raise StateInvariantError("sooli offers must follow seat order from the declarer")
+        if any(accepted for _, accepted in decisions[:-1]):
+            raise StateInvariantError("no offer may follow an accepted sooli")
+        accepted = bool(decisions) and decisions[-1][1]
+        if not accepted and len(decisions) != 2:
+            raise StateInvariantError("a finished v2 RAMI deal has two declines or one acceptance")
+        if accepted != (self.soolaaja is not None) or (accepted and self.soolaaja != decisions[-1][0]):
+            raise StateInvariantError("soolaaja disagrees with the sooli decisions")
+
+    def _validate_sooli_result(self) -> None:
+        self._validate_common()
+        if self.contract is not Contract.RAMI or self.completed_tricks != ():
+            raise StateInvariantError("a sooli result is a RAMI deal without four-card tricks")
+        tricks = self.sooli_tricks
+        if type(tricks) is not tuple or not 1 <= len(tricks) <= SOOLI_MAX_TRICKS or any(
+            not isinstance(t, SooliTrick) for t in tricks
+        ):
+            raise StateInvariantError("a sooli result holds 1 to 13 sooli tricks")
+        partner = (self.soolaaja + 2) % 4
+        shown_by = {show.shown_card: show.seat for show in self.show_actions}
+        void: dict[int, set] = {seat: set() for seat in range(4)}
+        leader = self.declarer
+        for index, trick in enumerate(tricks):
+            if SooliTrick(trick_index=trick.trick_index, leader=trick.leader, plays=trick.plays,
+                          winner=trick.winner) != trick or trick.trick_index != index or trick.leader != leader:
+                raise StateInvariantError("sooli result trick is invalid")
+            validate_sooli_trick(trick.plays, leader=leader, declarer=self.declarer, soolaaja=self.soolaaja)
+            led = trick.plays[0].card.suit
+            for position, play in enumerate(trick.plays):
+                if play.card.suit in void[play.seat]:
+                    raise StateInvariantError("a player played a suit it had shown void in")
+                if position and play.card.suit is not led:
+                    void[play.seat].add(led)
+                owner = shown_by.get(play.card)
+                if owner is not None and owner != play.seat and {owner, play.seat} != {self.soolaaja, partner}:
+                    raise StateInvariantError("shown-card ownership disagrees with the play transcript")
+            if trick.winner == self.soolaaja and index + 1 != len(tricks):
+                raise StateInvariantError("the deal ends at the first trick the soolaaja wins")
+            leader = trick.winner
+        last = tricks[-1]
+        if last.winner != self.soolaaja and len(tricks) != SOOLI_MAX_TRICKS:
+            raise StateInvariantError("a sooli deal ends at a soolaaja trick or after 13 tricks")
+        expected = score_sooli(declarer=self.declarer, soolaaja=self.soolaaja,
+                               soolaaja_won_trick=last.winner == self.soolaaja, tricks_played=len(tricks))
+        if not isinstance(self.deal_score, SooliScore) or self.deal_score != expected:
+            raise StateInvariantError("sooli result score disagrees with its transcript")
+        winners = tuple(t.winner for t in tricks)
+        totals = (sum(w % 2 == 0 for w in winners), sum(w % 2 == 1 for w in winners))
+        if self.team_tricks != totals:
+            raise StateInvariantError("sooli result trick totals disagree with its transcript")
+        outcome = DealOutcome.SOOLI_LOST if expected.soolaaja_won_trick else DealOutcome.SOOLI_WON
+        if self.outcome is not outcome:
+            raise StateInvariantError("sooli result outcome disagrees with its transcript")
+        if transition_after_sooli(self.score_before, self.deal_score) != self.score_after:
+            raise StateInvariantError("sooli result score transition is invalid")
+        resolution = resolve_showing(dealer=self.dealer, actions=self.show_actions)
+        if resolution.contract is not self.contract or resolution.declarer != self.declarer:
+            raise StateInvariantError("result showing resolution is invalid")
+        if first_leader(contract=self.contract, dealer=self.dealer, declarer=self.declarer) != self.first_leader:
+            raise StateInvariantError("result first leader is invalid")
+        expected_events = build_expected_deal_events(
+            event_start_index=self.events[0].event_index, match_ref=self.match_ref, deal_ref=self.deal_ref,
+            deal_number=self.deal_number, dealer=self.dealer, forehand_seat=self.forehand,
+            score_before=self.score_before, show_actions=self.show_actions, contract=self.contract,
+            declarer=self.declarer, first_leader_seat=self.first_leader, completed_tricks=(), current_trick=(),
+            team_tricks=self.team_tricks, deal_score=self.deal_score, score_after=self.score_after,
+            next_dealer=self.next_dealer, ruleset_id=self.ruleset_id, sooli_decisions=self.sooli_decisions,
+            soolaaja=self.soolaaja, sooli_exchanged=True, sooli_tricks=tricks, sooli_current=(),
         )
         if self.events != expected_events:
             raise StateInvariantError("result events disagree with its public transcript")
@@ -242,6 +374,9 @@ class ResearchDealResult:
     public_result: DealResult
     deal_id: str
     initial_hands: tuple[tuple[Card, ...], ...]
+    # project_target_v2 sooli: the private exchange, known to research only.
+    sooli_given: Card | None = None
+    sooli_returned: Card | None = None
 
     def __post_init__(self) -> None:
         try:
@@ -276,6 +411,30 @@ class ResearchDealResult:
             )
             if show != expected:
                 raise StateInvariantError("research show is not valid for its initial hand")
+        solo = self.public_result.soolaaja
+        if solo is None:
+            if self.sooli_given is not None or self.sooli_returned is not None:
+                raise StateInvariantError("exchange cards require a sooli deal")
+        else:
+            partner = (solo + 2) % 4
+            validate_exchange(giver_hand=hands[solo], card=self.sooli_given)
+            partner_hand = list(hands[partner]) + [self.sooli_given]
+            validate_exchange(giver_hand=partner_hand, card=self.sooli_returned, received=self.sooli_given)
+            after = [list(h) for h in hands]
+            after[solo].remove(self.sooli_given)
+            after[solo].append(self.sooli_returned)
+            after[partner] = [c for c in partner_hand if c != self.sooli_returned]
+            complete = len(self.public_result.sooli_tricks) == SOOLI_MAX_TRICKS and \
+                self.public_result.sooli_tricks[-1].winner != solo
+            for seat in range(4):
+                played = [p.card for t in self.public_result.sooli_tricks for p in t.plays if p.seat == seat]
+                if seat == partner and played:
+                    raise StateInvariantError("the sooli partner's hand is out of play")
+                if not frozenset(played) <= frozenset(after[seat]) or len(set(played)) != len(played):
+                    raise StateInvariantError("research ownership disagrees with the sooli transcript")
+                if complete and seat != partner and frozenset(played) != frozenset(after[seat]):
+                    raise StateInvariantError("a completed sooli plays every active card")
+            return
         for seat in range(4):
             played = tuple(
                 play.card

@@ -84,8 +84,11 @@ def create_deal_state(
     deal_ref: str,
     deal_number: int,
     event_start_index: int,
+    ruleset_id: RulesetId = RulesetId.PROJECT_TARGET_V1,
 ) -> DealState:
     """Create the first immutable state for an explicit deal."""
+    if ruleset_id not in (RulesetId.PROJECT_TARGET_V1, RulesetId.PROJECT_TARGET_V2):
+        raise InvalidConstructionError("unsupported ruleset")
 
     if not isinstance(explicit_deal, ExplicitDeal):
         raise InvalidConstructionError("explicit_deal must be an ExplicitDeal")
@@ -125,9 +128,10 @@ def create_deal_state(
             forehand=forehand(checked.dealer),
             score_before=checked_score,
         ),
+        ruleset_id=ruleset_id,
     )
     return DealState(
-        ruleset_id=RulesetId.PROJECT_TARGET_V1,
+        ruleset_id=ruleset_id,
         match_ref=match_ref,
         deal_ref=deal_ref,
         deal_id=checked.deal_id,

@@ -1,6 +1,6 @@
 """Deterministic clean engine for the authoritative ``project_target_v1`` rules."""
 
-from .actions import Action, PlayCardAction, ShowAction
+from .actions import Action, PlayCardAction, ShowAction, SooliDecisionAction, SooliExchangeAction
 from .agents import Agent, FirstLegalActionAgent, FixedScriptAgent
 from .deal import (
     DEAL_IDENTITY_SCHEMA_VERSION,
@@ -74,7 +74,7 @@ from .serialization import (
     strict_json_load_file,
     strict_json_loads,
 )
-from .state import CompletedTrick, DealState, EnginePhase, validate_deal_state
+from .state import SooliTrick, CompletedTrick, DealState, EnginePhase, validate_deal_state
 from .transitions import (
     apply_action,
     deal_result_from_state,
@@ -111,6 +111,9 @@ __all__ = (
     "MatchResult",
     "MatchState",
     "PlayCardAction",
+    "SooliDecisionAction",
+    "SooliExchangeAction",
+    "SooliTrick",
     "PlayerObservation",
     "PublicEvent",
     "ResearchDealResult",

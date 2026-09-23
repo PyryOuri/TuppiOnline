@@ -19,9 +19,9 @@ from tuppi_rules import (
     validate_seat,
 )
 
-from .actions import Action, PlayCardAction, ShowAction
+from .actions import Action, PlayCardAction, ShowAction, SooliDecisionAction, SooliExchangeAction
 from .errors import StateInvariantError, WrongPhaseError
-from .state import CompletedTrick, DealState, EnginePhase, validate_deal_state
+from .state import CompletedTrick, DealState, EnginePhase, SooliTrick, validate_deal_state
 from .validation import is_valid_deal_ref, is_valid_match_ref
 
 
@@ -54,8 +54,17 @@ class PlayerObservation:
     deal_terminal: bool
     match_terminal: bool
     schema_version: str = field(default=OBSERVATION_SCHEMA_VERSION, init=False)
-    ruleset_id: RulesetId = field(default=RulesetId.PROJECT_TARGET_V1, init=False)
+    ruleset_id: RulesetId = RulesetId.PROJECT_TARGET_V1
     visibility: str = field(default="player_private", init=False)
+    # project_target_v2 (sooli). The exchanged cards are visible only to the
+    # soolaaja and the partner; the RAMI pair sees that the exchange happened.
+    sooli_decisions: tuple[tuple[int, bool], ...] = ()
+    soolaaja: int | None = None
+    sooli_exchanged: bool = False
+    sooli_given_card: Card | None = None
+    sooli_returned_card: Card | None = None
+    sooli_tricks: tuple[SooliTrick, ...] = ()
+    sooli_current_trick: tuple[PlayedCard, ...] = ()
 
     def __post_init__(self) -> None:
         if not is_valid_match_ref(self.match_ref):
@@ -86,6 +95,9 @@ class PlayerObservation:
             raise StateInvariantError("public shown-card list disagrees with show history")
         if self.match_terminal and not self.deal_terminal:
             raise StateInvariantError("match-terminal observation must be deal-terminal")
+        in_exchange = self.soolaaja is not None and self.observing_seat in (self.soolaaja, (self.soolaaja + 2) % 4)
+        if not in_exchange and (self.sooli_given_card is not None or self.sooli_returned_card is not None):
+            raise StateInvariantError("exchanged cards are private to the soolaaja and the partner")
 
 
 def legal_actions_for(state: DealState, observing_seat: int) -> tuple[Action, ...]:
@@ -128,6 +140,19 @@ def _legal_actions_for_validated(state: DealState, seat: int) -> tuple[Action, .
         )
         if not actions:
             raise StateInvariantError("current playing actor has no legal actions")
+        return actions
+    if state.phase is EnginePhase.SOOLI_OFFER:
+        return (SooliDecisionAction(seat=seat, play_sooli=False), SooliDecisionAction(seat=seat, play_sooli=True))
+    if state.phase is EnginePhase.SOOLI_GIVE:
+        return tuple(SooliExchangeAction(seat=seat, card=card) for card in hand)
+    if state.phase is EnginePhase.SOOLI_RETURN:
+        return tuple(SooliExchangeAction(seat=seat, card=card) for card in hand if card != state.sooli_given)
+    if state.phase is EnginePhase.SOOLI_PLAY:
+        led_suit = state.sooli_current[0].card.suit if state.sooli_current else None
+        allowed = legal_cards(hand, led_suit)
+        actions = tuple(PlayCardAction(seat=seat, card=card) for card in hand if card in allowed)
+        if not actions:
+            raise StateInvariantError("current sooli actor has no legal actions")
         return actions
     raise WrongPhaseError(f"legal actions are unavailable in {state.phase.value}")
 
@@ -173,4 +198,16 @@ def _observation_for_validated(state: DealState, seat: int) -> PlayerObservation
         legal_actions=_legal_actions_for_validated(state, seat),
         deal_terminal=state.complete,
         match_terminal=state.terminal,
+        ruleset_id=state.ruleset_id,
+        sooli_decisions=tuple(state.sooli_decisions),
+        soolaaja=state.soolaaja,
+        sooli_exchanged=state.sooli_returned is not None,
+        sooli_given_card=state.sooli_given if _knows_exchange(state, seat) else None,
+        sooli_returned_card=state.sooli_returned if _knows_exchange(state, seat) else None,
+        sooli_tricks=tuple(state.sooli_tricks),
+        sooli_current_trick=tuple(state.sooli_current),
     )
+
+
+def _knows_exchange(state: DealState, seat: int) -> bool:
+    return state.soolaaja is not None and seat in (state.soolaaja, (state.soolaaja + 2) % 4)
