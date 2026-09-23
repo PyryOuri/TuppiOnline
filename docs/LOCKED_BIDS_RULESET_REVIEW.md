@@ -232,29 +232,31 @@ Order and effort come from the plan, where the details are.
 
 **Now**
 
-- [ ] Fill in section 8 (D1 and what you will take on).
-- [ ] Commit the conventions documents in TuppiAI, **by explicit path only**:
+- [x] Fill in section 8 (D1 and what you will take on).
+- [x] Commit the conventions documents in TuppiAI, **by explicit path only**:
   `docs/CONVENTIONS.md`, `docs/LOCKED_BIDS_AND_CONVENTION_TESTS_PLAN.md`,
   `docs/LOCKED_BIDS_RULESET_REVIEW.md`, `docs/TASKS.md`. Never `git add -A`:
   the working tree also holds your uncommitted sooli work and `.DS_Store`.
-- [ ] Commit your own sooli edits to `search.py` and `tuppi_env.c`. The
-  harness waits for them.
+- [x] Commit your own sooli edits to `search.py` and `tuppi_env.c`. The
+  harness waits for them. (`3040f63`)
 
 **Part A: locked bids** (plan A3-A7)
 
-- [ ] Specification, decisions table, config and schema for the chosen id.
-- [ ] Engine visibility plus events, with v3 tests: no bid visible to another
+- [x] Specification, decisions table, config and schema for the chosen id.
+- [x] Engine visibility plus events, with v3 tests: no bid visible to another
   seat before resolution; the revealed prefix public afterwards; discarded bids
   nowhere; a property test.
-- [ ] Native masking and sampler changes, with differential tests against the
+- [x] Native masking and sampler changes, with differential tests against the
   reference.
-- [ ] Clone check, and a fine-tune if needed.
-- [ ] Re-baseline the best agent under the new rules (~15-30 min), recorded in
-  `docs/STATUS.md`.
-- [ ] Server, protocol and client: simultaneous locking and the reveal step.
+- [x] Clone check, and a fine-tune if needed (99.56% masked vs 99.84%
+  visible: not needed).
+- [x] Re-baseline the best agent under the new rules (~15-30 min), recorded in
+  `docs/STATUS.md`. (+0.0152 vs +0.0150 under v1 on the same deals; 42 min.)
+- [x] Server, protocol and client: simultaneous locking and the reveal step.
   Add a message-capture privacy test. Coordinate with the other author's server
-  edits and with T1.
-- [ ] `tools/serve_human.py` moves to the new rules.
+  edits and with T1. (Branches, not merged: the main checkouts carry the other
+  author's uncommitted edits; their server diff is small and does not overlap.)
+- [x] `tools/serve_human.py` moves to the new rules.
 
 **Parts B and C: the tests** (plan B, C and "Shared infrastructure")
 

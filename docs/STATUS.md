@@ -7,6 +7,33 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## project_target_v3 (locked bids + sooli): re-baseline against the incumbent
+
+The same 512 base deals as the W=128 v1 result (seed v6), best agent against
+`partner_aware_lead_v2` (with TuppiProject's sooli fallback: it never offers
+sooli and defends one with simple heuristics), under `project_target_v3`
+(`tuppi_ai.evaluate --ruleset v3`):
+
+| Rules | Equity/deal vs incumbent | Deal win | Bot declares | Opp. RAMI stolen |
+| --- | --- | ---: | ---: | ---: |
+| v1 (earlier bids visible) | +0.0150 [+0.0135, +0.0165] | 66.5% | 48.5% | 22.7% |
+| **v3 (blind bids, sooli)** | **+0.0152 [+0.0136, +0.0168]** | 66.5% | 46.9% | 22.1% |
+| paired v3 - v1 | +0.0002 +- 0.0012 | | | |
+
+Two effects that cancel: bidding blind loses part of the showing edge (the
+bot declares less often: it can no longer see a partner's or an opponent's
+earlier bid), and sooli adds: the bot played 93 soolis in 4,096 games (2.3%)
+and won 68 (73%), +0.035 equity per sooli game. The 73% is against the
+fallback's weak RAMI defence; against the bot's own RAMI play the banked
+soolis survive ~34-39% (below). Clone check for masked bids: its bids agree
+with the incumbent's 99.56% (99.84% with earlier bids visible), so no
+fine-tune. The run took 2,535 s (v1: 857 s): sooli searches are costlier.
+
+**Soolaaja play against the strong RAMI pair** (bank of the bot's own
+soolis, RAMI pair = search with prefilter + tilt 0.3): heuristic soolaaja
+0.334, searched soolaaja 0.390 (paired +0.056 +- 0.025; with heuristic
+rollouts 0.376). The default searches.
+
 ## Sooli (project_target_v2): the bot's sooli decisions
 
 Not on the instrument above: sooli needs `project_target_v2`, which the

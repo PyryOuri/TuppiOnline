@@ -1,8 +1,10 @@
 # Sooli: rules analysis and implementation plan
 
-Status: **plan only, nothing implemented.** Rules as given by the owner on
-2026-09-24; Q1-Q4 answered the same day (section 2). Q5 items are working
-assumptions until the owner corrects them.
+Status: **implemented** (phases A-E; F, training features, not started). Rules
+as given by the owner on 2026-09-24; Q1-Q4 answered the same day (section 2);
+the implementer's "the partner may not return the received card" confirmed by
+the owner 2026-09-23. Results in `docs/STATUS.md` ("Sooli"); locked bids on top
+are `project_target_v3` (`docs/LOCKED_BIDS_RULESET_REVIEW.md`).
 
 ## 1. The rules, and what they imply
 

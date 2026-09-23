@@ -10,9 +10,20 @@ so your normal rooms and history are not touched.
 ```sh
 cd /Users/pyryouri/Developer/TuppiAI
 TUPPI_AI_SEATS="1:incumbent,2:search,3:incumbent" \
-TUPPI_AI_CHECKPOINT=runs/bc_small.pt TUPPI_AI_WORLDS=128 \
-  ~/.venvs/tuppi-ai/bin/python tools/serve_human.py          # add --lan for another device
+  ~/.venvs/tuppi-v2/bin/python tools/serve_human.py          # add --lan for another device
 ```
+
+This plays the real game, `project_target_v3`: locked bids (you lock your bid
+without seeing anyone's; the bids are revealed in order once everyone has
+locked) and sooli (after a RAMI the defenders are asked in turn). It needs the
+TuppiProject branch `rules/project-target-v3-locked-bids` (the `tuppi-v2`
+environment points at that worktree, `TuppiProject-sooli`) and a client built
+from the TuppiClient branch `feature/v3-locked-bids-sooli` (worktree
+`TuppiClient-v3`: `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+swift run`). For the old rules use `TUPPI_SERVER_RULESET=project_target_v1`
+with `~/.venvs/tuppi-ai`. Search seats play sooli themselves; incumbent seats
+never offer sooli. The deal and match analysis buttons are hidden in v3 rooms
+(the analysis is built for v1 deals).
 
 It listens on port **8766** (the normal server uses 8765), so point the client
 at `http://127.0.0.1:8766`. Create a room with three AI seats; you are seat 0.

@@ -50,10 +50,14 @@ positions) be generated from the owner's own mistakes?
 
 ## T3 — Add the "sooli" submode
 
-**Status: planned, not started.** Rules given by the owner on 2026-09-24,
-key questions answered the same day; the analysis and phased plan (spec,
-reference implementation, native core, bot, server/client, training) are in
-`docs/SOOLI_PLAN.md`.
+**Status: done except training features (Phase F).** Rules given by the owner on 2026-09-24,
+key questions answered the same day; the analysis and phased plan are in
+`docs/SOOLI_PLAN.md`. Implemented (2026-09-23): ruleset `project_target_v2`
+(TuppiProject branch `rules/project-target-v3-locked-bids`, which carries v2
+and v3), the native core, solver, sampler and heuristics, the searched sooli
+bot (results in `docs/STATUS.md`), and sooli in the server, protocol and
+Swift client (TuppiClient branch `feature/v3-locked-bids-sooli`). Not merged
+into the main checkouts, which carry other authors' uncommitted work.
 
 **Consequences once specified.**
 - TuppiProject's versioning policy: any change to legal actions, contract
@@ -70,7 +74,11 @@ reference implementation, native core, bot, server/client, training) are in
 
 ## T4 - Locked bid cards and the convention tests
 
-**Status: planned, not started.** On 2026-09-23 the owner decided to switch to
+**Status: Part A (locked bids) done; Parts B and C (convention tests) not
+started.** Ruleset `project_target_v3` = v2 + locked bids, through the engine,
+native core, bot, server, protocol and client (same branches as T3); decision
+D1 and the details are in `docs/LOCKED_BIDS_RULESET_REVIEW.md` section 8. On
+2026-09-23 the owner decided to switch to
 locked bid cards, as in the real game: nobody sees another player's bid before
 bidding. The owner also asked for two convention tests, one for the table's
 NOLO short-suit system and one for the RAMI signals. The plan is in
