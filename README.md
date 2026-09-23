@@ -7,16 +7,17 @@ them, or a player that talks to them only through `PlayerObservation`.
 
 ## Current best agent
 
-`search:runs/bc_small.pt:w=64:dd=6:show=1` - at every decision (showing and
-card play), 64 hidden-hand layouts are drawn uniformly from those consistent
+`search:runs/bc_small.pt:w=128:dd=6:show=1` - at every decision (showing and
+card play), 128 hidden-hand layouts are drawn uniformly from those consistent
 with the seat's observation, every legal action is played out in each by a
 behaviour clone of `partner_aware_lead_v2`, the last 6 tricks are solved
 exactly, and the action with the best mean match-equity change is chosen.
-Against the incumbent: +0.0143 [+0.0125, +0.0161] equity per deal over 384
-fresh base deals, and 95.3% [92.8, 97.8] of complete matches (128 duplicate
-pairs, 116 won / 12 tied / 0 lost; 228/28/0 over 256 pairs on two seeds).
+Against the incumbent: +0.0150 equity per deal over 512 fresh base deals
+(+0.0013 +- 0.0011 over 64 worlds on the same deals). The match figures were
+measured with 64 worlds: 94.5% of complete matches (228 won / 28 tied / 0 lost
+over 256 duplicate pairs on two seeds).
 The search runs in C (`native/tuppi_env.c: tc_search_values`, network forward
-in `native/tuppi_mlp.c`); a decision takes ~8 ms (card play, median) to ~24 ms
+in `native/tuppi_mlp.c`); a decision takes ~13 ms (card play, median) to ~36 ms
 (showing) using all cores. See
 `docs/STATUS.md` for every result, including what failed.
 

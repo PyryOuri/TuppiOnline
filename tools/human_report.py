@@ -79,7 +79,7 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--root", type=Path, default=ROOT / "runs" / "human_server")
     p.add_argument("--bot", choices=("search", "incumbent"), default="search")
-    p.add_argument("--worlds", type=int, default=64)
+    p.add_argument("--worlds", type=int, default=128)
     args = p.parse_args()
     equity = Equity.load(ROOT / "runs" / "equity_incumbent.json")
     for plan_dir in sorted(d for d in args.root.iterdir() if d.is_dir()):

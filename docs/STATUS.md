@@ -7,6 +7,21 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## 2026-09-24 — spending the speed: W=128 becomes the default
+
+512 fresh base deals (seed v6), paired, both with the native search:
+
+| Worlds | Equity/deal vs incumbent | Deal win |
+| ---: | --- | ---: |
+| 64 | +0.0137 [+0.0121, +0.0152] | 65.1% |
+| **128** | **+0.0150** | 66.5% |
+| difference | **+0.0013 +- 0.0011** | |
+
+Small but real (the earlier 128-deal estimate was +0.0008 +- 0.0021).
+Latency at W=128 with all cores: showing median 36 ms (max 43), card play
+median 13 ms (max 61). `serve_human.py` and `human_report.py` now default to
+128 worlds. Going further (256) is not planned: the curve is flattening.
+
 ## 2026-09-24 — exact speed-ups (same moves)
 
 The per-decision search now runs entirely in C (`tc_search_values`): world

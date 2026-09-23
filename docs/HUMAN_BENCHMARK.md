@@ -10,7 +10,7 @@ so your normal rooms and history are not touched.
 ```sh
 cd /Users/pyryouri/Developer/TuppiAI
 TUPPI_AI_SEATS="1:incumbent,2:search,3:incumbent" \
-TUPPI_AI_CHECKPOINT=runs/bc_small.pt TUPPI_AI_WORLDS=64 \
+TUPPI_AI_CHECKPOINT=runs/bc_small.pt TUPPI_AI_WORLDS=128 \
   ~/.venvs/tuppi-ai/bin/python tools/serve_human.py          # add --lan for another device
 ```
 

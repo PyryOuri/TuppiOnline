@@ -52,7 +52,7 @@ def main() -> None:
 
     plan = _plan()
     checkpoint = os.environ.get("TUPPI_AI_CHECKPOINT", str(ROOT / "runs" / "bc_small.pt"))
-    worlds = int(os.environ.get("TUPPI_AI_WORLDS", "64"))
+    worlds = int(os.environ.get("TUPPI_AI_WORLDS", "128"))
     net = qmodel.load(checkpoint, "cpu")
     table = Equity.load(ROOT / "runs" / "equity_incumbent.json").table
     original = match_runner._construct_ai_agents
