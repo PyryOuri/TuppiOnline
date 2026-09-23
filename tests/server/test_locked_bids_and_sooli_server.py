@@ -109,7 +109,7 @@ def test_bid_after_the_first_rami_is_never_revealed_or_stored():
     raise AssertionError("no deal reached")
 
 
-def _drive_human_match(runner, rng, deals):
+def _drive_human_match(runner, rng, deals, prefix="c"):
     """Every seat human: lock bids in random order, answer sooli, exchange, play."""
     n = 0
     done = 0
@@ -121,7 +121,7 @@ def _drive_human_match(runner, rng, deals):
                     break
                 options = runner.bidding(seat)["options"]
                 if options:
-                    ack = _lock(runner, seat, rng.choice(options), f"c{n}")
+                    ack = _lock(runner, seat, rng.choice(options), f"{prefix}{n}")
                     n += 1
                     assert ack["status"] == "accepted"
                     for s in range(4):
@@ -135,7 +135,7 @@ def _drive_human_match(runner, rng, deals):
             action = next(a for a in legal if a["play_sooli"] is accept)
         else:
             action = rng.choice(legal)
-        ack = runner.submit(seat=seat, client_action_id=f"c{n}", match_ref=runner.match_ref,
+        ack = runner.submit(seat=seat, client_action_id=f"{prefix}{n}", match_ref=runner.match_ref,
                             expected_event_index=runner.event_cursor, action=action_from_data(action))
         n += 1
         assert ack["status"] == "accepted", ack
@@ -250,3 +250,42 @@ def test_tuppi_ai_profile_plays_a_v3_deal():
     seat = room.snapshot()["seats"][1]
     assert seat["agent_profile"] == TUPPI_AI_PROFILE_KEY and seat["display_name"] == "TuppiAI"
     validate_instance(room.snapshot(), "https://example.invalid/tuppi/schemas/network/http_api.schema.json#/$defs/lobbySnapshot")
+
+
+def test_restart_mid_bidding_forgets_pending_locks_and_restart_mid_sooli_resumes():
+    rng = random.Random("restart")
+    runner = LiveMatchRunner(match_ref="restart-v3", ruleset_id=V3)
+    bid = runner.bidding(2)["options"][0]
+    _lock(runner, 2, bid, "pending-2")
+    record = json.loads(json.dumps(runner.persistence_record()))
+    assert "pending-2" not in json.dumps(record)
+    restored = LiveMatchRunner.from_persistence_record(record)
+    assert restored.collecting_bids() and restored.bidding(2)["own_bid"] is None
+    assert restored.bidding(2)["options"]  # the seat simply locks again
+    # drive to a sooli exchange or sooli play, restart there, and finish the deal
+    for attempt in range(60):
+        runner = LiveMatchRunner(match_ref=f"restart-s{attempt}", ruleset_id=V3)
+        n = 0
+        while not runner.terminal and len(runner.state.completed_deals) == 0:
+            if runner.collecting_bids():
+                for seat in range(4):
+                    if runner.collecting_bids() and runner.bidding(seat)["options"]:
+                        opts = runner.bidding(seat)["options"]
+                        rami = [o for o in opts if o["declared_contract"] == "RAMI"]
+                        _lock(runner, seat, (rami or opts)[0], f"c{n}")
+                        n += 1
+                continue
+            phase = runner.state.phase.value
+            if phase in ("SOOLI_RETURN", "SOOLI_PLAY"):
+                runner = LiveMatchRunner.from_persistence_record(json.loads(json.dumps(runner.persistence_record())))
+                assert runner.state.phase.value == phase
+                _drive_human_match(runner, rng, deals=1, prefix="after-restart-")
+                assert runner.state.completed_deals[-1].public_result.soolaaja is not None
+                return
+            seat = runner.current_actor
+            legal = runner.observation(seat)["legal_actions"]
+            action = next((a for a in legal if a.get("play_sooli")), rng.choice(legal))
+            runner.submit(seat=seat, client_action_id=f"c{n}", match_ref=runner.match_ref,
+                          expected_event_index=runner.event_cursor, action=action_from_data(action))
+            n += 1
+    raise AssertionError("no sooli reached")
