@@ -386,6 +386,9 @@
         "properties": {
           "completed_tricks": {
             "minItems": 13
+          },
+          "own_hand": {
+            "maxItems": 0
           }
         }
       }
@@ -428,6 +431,9 @@
         "properties": {
           "completed_tricks": {
             "minItems": 13
+          },
+          "own_hand": {
+            "maxItems": 0
           }
         }
       }
@@ -525,9 +531,6 @@
           "current_actor": {
             "type": "null"
           },
-          "own_hand": {
-            "maxItems": 0
-          },
           "completed_tricks": {
             "minItems": 1,
             "maxItems": 13
@@ -562,9 +565,6 @@
         "properties": {
           "current_actor": {
             "type": "null"
-          },
-          "own_hand": {
-            "maxItems": 0
           },
           "completed_tricks": {
             "minItems": 1,

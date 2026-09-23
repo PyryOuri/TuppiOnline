@@ -22,6 +22,7 @@ from tuppi_agents.void_lead import (
     VOID_LEAD_PROFILE_KEY,
     construct_void_lead_agent,
 )
+from tuppi_agents.sooli import SooliFallbackAgent
 from tuppi_engine import (
     Action,
     EngineError,
@@ -29,16 +30,18 @@ from tuppi_engine import (
     ExplicitDeal,
     FirstLegalActionAgent,
     MatchState,
+    ShowAction,
     apply_match_action,
     begin_explicit_deal,
     create_match,
     explicit_deal_from_data,
     explicit_deal_to_data,
+    locked_bid_options,
     match_observation_for,
     validate_match_state,
 )
 from tuppi_engine.serialization import action_from_data, action_to_data
-from tuppi_rules import MatchScore
+from tuppi_rules import LOCKED_BID_RULESETS, SOOLI_RULESETS, SUPPORTED_RULESETS, MatchScore, RulesetId
 
 from .contract_evaluation import (
     MAXIMUM_SAMPLES,
@@ -57,7 +60,9 @@ from .training_analysis import generate_training_analysis
 
 PROTOCOL_VERSION = "tuppi.network.v1"
 ACK_SCHEMA_VERSION = "tuppi.network.action_acknowledgement.v1"
-MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v3"
+BIDDING_SCHEMA_VERSION = "tuppi.network.bidding.v1"
+MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v4"
+V3_MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v3"
 PREVIOUS_MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v2"
 LEGACY_MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v1"
 #: The live AI. Seats play the strongest policy available, which is the
@@ -85,6 +90,20 @@ def _configured_ai_delay() -> float:
 
 
 AI_ACTION_DELAY_SECONDS = _configured_ai_delay()
+
+
+def _for_ruleset(agents: dict[int, object], ruleset_id: RulesetId) -> dict[int, object]:
+    """Give agents without their own sooli behaviour the simple fallback.
+
+    An agent that plays sooli itself declares ``handles_sooli = True``.
+    """
+
+    if ruleset_id not in SOOLI_RULESETS:
+        return agents
+    return {
+        seat: agent if getattr(agent, "handles_sooli", False) else SooliFallbackAgent(agent)
+        for seat, agent in agents.items()
+    }
 
 
 def _construct_ai_agents(
@@ -122,6 +141,19 @@ class AcceptedActionRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class _LockedBid:
+    """project_target_v3: a human's bid, held until every human has locked.
+
+    Never persisted: a bid that is not revealed is never stored.
+    """
+
+    client_action_id: str
+    seat: int
+    action: Action
+    acknowledgement: dict[str, object]
+
+
+@dataclass(frozen=True, slots=True)
 class _PendingHumanSubmission:
     client_action_id: str
     action_index: int
@@ -145,11 +177,16 @@ class LiveMatchRunner:
         ai_profile_key: str = DEFAULT_AI_PROFILE_KEY,
         contract_rollout_samples: int = 0,
         auto_run_ai: bool = True,
+        ruleset_id: RulesetId = RulesetId.PROJECT_TARGET_V1,
     ) -> None:
+        if ruleset_id not in SUPPORTED_RULESETS:
+            raise ValueError("unsupported ruleset")
+        self.ruleset_id = RulesetId(ruleset_id)
         self.state: MatchState = create_match(
             initial_score=initial_score or MatchScore(0, 0),
             initial_dealer=initial_dealer,
             match_ref=match_ref,
+            ruleset_id=self.ruleset_id,
         )
         self.ai_seats = frozenset(ai_seats)
         if any(seat not in range(4) for seat in self.ai_seats):
@@ -161,15 +198,17 @@ class LiveMatchRunner:
         ):
             raise ValueError("contract_rollout_samples must be in 0..64")
         self.contract_rollout_samples = contract_rollout_samples
-        self._ai_agents = _construct_ai_agents(
-            self.ai_seats,
-            profile_key=self.ai_profile_key,
+        self._ai_agents = _for_ruleset(
+            _construct_ai_agents(self.ai_seats, profile_key=self.ai_profile_key),
+            self.ruleset_id,
         )
         self._records: dict[str, AcceptedActionRecord] = {}
         self._accepted_actions: list[AcceptedActionRecord] = []
         self._deals: list[ExplicitDeal] = []
         self._next_action_index = 0
         self._next_ai_action_id = 0
+        self._locked_bids: dict[int, _LockedBid] = {}
+        self._discarded_bid_acks: dict[str, dict[str, object]] = {}
         self._ensure_deal_started()
         if auto_run_ai:
             self._run_ai_until_human_or_terminal()
@@ -192,8 +231,19 @@ class LiveMatchRunner:
         }
         required_v2 = required_v1 | {"ai_profile_key"}
         required_v3 = required_v2 | {"contract_rollout_samples"}
+        required_v4 = required_v3 | {"ruleset_id"}
         schema_version = record.get("schema_version")
+        ruleset_id = RulesetId.PROJECT_TARGET_V1
         if schema_version == MATCH_RECORD_SCHEMA_VERSION:
+            required = required_v4
+            ai_profile_key = record.get("ai_profile_key")
+            contract_rollout_samples = record.get("contract_rollout_samples")
+            action_record_version = 3
+            try:
+                ruleset_id = RulesetId(record.get("ruleset_id"))
+            except ValueError as exc:
+                raise ValueError("persisted ruleset_id is invalid") from exc
+        elif schema_version == V3_MATCH_RECORD_SCHEMA_VERSION:
             required = required_v3
             ai_profile_key = record.get("ai_profile_key")
             contract_rollout_samples = record.get("contract_rollout_samples")
@@ -251,25 +301,29 @@ class LiveMatchRunner:
             raise ValueError("persisted deal dealer sequence is invalid")
 
         runner = cls.__new__(cls)
+        runner.ruleset_id = ruleset_id
         runner.state = create_match(
             initial_score=initial_score,
             initial_dealer=initial_dealer,
             match_ref=match_ref,
+            ruleset_id=ruleset_id,
         )
         runner.ai_seats = frozenset(ai_seats_data)
         if any(seat not in range(4) for seat in runner.ai_seats):
             raise ValueError("persisted ai_seats contains an invalid seat")
         runner.ai_profile_key = ai_profile_key
         runner.contract_rollout_samples = contract_rollout_samples
-        runner._ai_agents = _construct_ai_agents(
-            runner.ai_seats,
-            profile_key=runner.ai_profile_key,
+        runner._ai_agents = _for_ruleset(
+            _construct_ai_agents(runner.ai_seats, profile_key=runner.ai_profile_key),
+            runner.ruleset_id,
         )
         runner._records = {}
         runner._accepted_actions = []
         runner._deals = deals
         runner._next_action_index = 0
         runner._next_ai_action_id = 0
+        runner._locked_bids = {}
+        runner._discarded_bid_acks = {}
         runner._ensure_deal_started()
 
         for raw_record in actions_data:
@@ -457,6 +511,7 @@ class LiveMatchRunner:
             ],
             "match_ref": self.match_ref,
             "public_events": project_event_batch(self.state.public_events),
+            "ruleset_id": self.ruleset_id.value,
             "schema_version": MATCH_RECORD_SCHEMA_VERSION,
         }
 
@@ -475,9 +530,135 @@ class LiveMatchRunner:
             ),
             "observation": self.observation(seat),
         }
+        bidding = self.bidding(seat)
+        if bidding is not None:
+            result["bidding"] = bidding
         if self.terminal:
             result["match_result"] = project_match_result(self.state)
         return result
+
+    # ------------------------------------------------------ locked bids (v3)
+
+    def collecting_bids(self) -> bool:
+        """project_target_v3 showing: bids are being locked, none applied yet."""
+
+        return (
+            self.ruleset_id in LOCKED_BID_RULESETS
+            and not self.terminal
+            and self.state.phase is EnginePhase.SHOWING
+        )
+
+    def _human_seats(self) -> frozenset[int]:
+        return frozenset(range(4)) - self.ai_seats
+
+    def bidding(self, seat: int) -> dict[str, object] | None:
+        """What ``seat`` may know while bids are locked: who has locked, its
+        own bid and, until it locks, its options. Never another seat's bid.
+        AI seats bid blind when showing runs, so they count as locked."""
+
+        if not self.collecting_bids():
+            return None
+        own = self._locked_bids.get(seat)
+        options = (
+            ()
+            if own is not None or seat in self.ai_seats
+            else locked_bid_options(self.state.active_deal, seat)
+        )
+        return {
+            "locked_seats": sorted(set(self._locked_bids) | set(self.ai_seats)),
+            "options": [action_to_data(action) for action in options],
+            "own_bid": None if own is None else action_to_data(own.action),
+            "schema_version": BIDDING_SCHEMA_VERSION,
+        }
+
+    def _lock_bid(
+        self,
+        *,
+        seat: int,
+        client_action_id: str,
+        expected_event_index: int,
+        action: Action,
+    ) -> dict[str, object]:
+        if seat in self.ai_seats:
+            return self._rejected(client_action_id, code="ai_seat", seat=seat)
+        if action.seat != seat:
+            return self._rejected(client_action_id, code="seat_mismatch", seat=seat)
+        if expected_event_index != self.event_cursor:
+            return self._stale(client_action_id, seat=seat, expected_event_index=expected_event_index)
+        if seat in self._locked_bids:
+            return self._rejected(client_action_id, code="bid_already_locked", seat=seat)
+        if not isinstance(action, ShowAction) or action not in locked_bid_options(self.state.active_deal, seat):
+            return self._rejected(client_action_id, code="illegal_action", seat=seat)
+        acknowledgement = self._acknowledgement(client_action_id=client_action_id, status="accepted")
+        self._locked_bids[seat] = _LockedBid(
+            client_action_id=client_action_id, seat=seat, action=action, acknowledgement=acknowledgement
+        )
+        return acknowledgement
+
+    def _all_bids_locked(self) -> bool:
+        return all(seat in self._locked_bids for seat in self._human_seats())
+
+    def _resolve_locked_showing(self) -> None:
+        """Apply the bids in seat order, blind, until showing resolves.
+
+        AI seats decide at their turn from an observation that shows no bid.
+        Human bids come from the lock buffer. The locked bids after the first
+        RAMI are discarded unseen and never stored.
+        """
+
+        while self.state.phase is EnginePhase.SHOWING:
+            actor = self.current_actor
+            if actor in self.ai_seats:
+                action, evaluation = self._choose_ai_action(actor)
+                self._apply_ai_action(actor, action=action, contract_evaluation=evaluation)
+                continue
+            locked = self._locked_bids.pop(actor)
+            expected_event_index = self.event_cursor
+            before_event_count = len(self.state.public_events)
+            self.state = apply_match_action(self.state, locked.action)
+            event_batch = tuple(
+                project_event_batch(
+                    self.state.public_events,
+                    after_event_index=(
+                        self.state.public_events[before_event_count - 1].event_index
+                        if before_event_count
+                        else -1
+                    ),
+                )
+            )
+            indices = tuple(item["event_index"] for item in event_batch)
+            acknowledgement = self._acknowledgement(
+                client_action_id=locked.client_action_id,
+                status="accepted",
+                accepted_event_indices=indices,
+            )
+            record = AcceptedActionRecord(
+                client_action_id=locked.client_action_id,
+                action_index=self._next_action_index,
+                seat=actor,
+                expected_event_index=expected_event_index,
+                action=action_to_data(locked.action),
+                accepted_event_indices=indices,
+                event_batch=event_batch,
+                acknowledgement=acknowledgement,
+                contract_evaluation=None,
+            )
+            self._records[locked.client_action_id] = record
+            self._accepted_actions.append(record)
+            self._next_action_index += 1
+        for locked in self._locked_bids.values():
+            self._discarded_bid_acks[locked.client_action_id] = locked.acknowledgement
+        self._locked_bids = {}
+
+    def _maybe_resolve_showing(self) -> bool:
+        """Run a v3 showing once every human has locked. False while waiting."""
+
+        if not self.collecting_bids():
+            return True
+        if not self._all_bids_locked():
+            return False
+        self._resolve_locked_showing()
+        return True
 
     def submit(
         self,
@@ -490,6 +671,17 @@ class LiveMatchRunner:
     ) -> dict[str, object]:
         """Submit one client action and return an acknowledgement payload."""
 
+        locked = self._submit_locked_bid(
+            seat=seat,
+            client_action_id=client_action_id,
+            match_ref=match_ref,
+            expected_event_index=expected_event_index,
+            action=action,
+        )
+        if locked is not None:
+            if locked.get("status") == "accepted":
+                self._run_ai_until_human_or_terminal()
+            return locked
         pending, immediate = self._prepare_human_submission(
             seat=seat,
             client_action_id=client_action_id,
@@ -518,6 +710,22 @@ class LiveMatchRunner:
     ) -> dict[str, object]:
         """Submit an action while allowing the server to pace AI turn starts."""
 
+        locked = self._submit_locked_bid(
+            seat=seat,
+            client_action_id=client_action_id,
+            match_ref=match_ref,
+            expected_event_index=expected_event_index,
+            action=action,
+        )
+        if locked is not None:
+            if locked.get("status") == "accepted":
+                if on_human_action is not None:
+                    await on_human_action()
+                await self._run_ai_until_human_or_terminal_async(
+                    on_state_change=on_state_change,
+                    delay_seconds=ai_action_delay_seconds,
+                )
+            return locked
         pending, immediate = self._prepare_human_submission(
             seat=seat,
             client_action_id=client_action_id,
@@ -548,6 +756,45 @@ class LiveMatchRunner:
         await self._run_ai_until_human_or_terminal_async(
             on_state_change=on_state_change,
             delay_seconds=ai_action_delay_seconds,
+        )
+
+    def _submit_locked_bid(
+        self,
+        *,
+        seat: int,
+        client_action_id: str,
+        match_ref: str,
+        expected_event_index: int,
+        action: Action,
+    ) -> dict[str, object] | None:
+        """The v3 lock path; None when the submission is not a bid to lock."""
+
+        if not self.collecting_bids() and client_action_id not in self._discarded_bid_acks:
+            return None
+        self._validate_submission_fields(
+            seat=seat,
+            client_action_id=client_action_id,
+            match_ref=match_ref,
+            expected_event_index=expected_event_index,
+        )
+        existing = self._records.get(client_action_id)
+        if existing is not None:
+            return {**existing.acknowledgement, "status": "duplicate"}
+        if client_action_id in self._discarded_bid_acks:
+            return {**self._discarded_bid_acks[client_action_id], "status": "duplicate"}
+        pending = next(
+            (bid for bid in self._locked_bids.values() if bid.client_action_id == client_action_id),
+            None,
+        )
+        if pending is not None:
+            return {**pending.acknowledgement, "status": "duplicate"}
+        if match_ref != self.match_ref:
+            return self._rejected(client_action_id, code="match_not_found", seat=seat)
+        return self._lock_bid(
+            seat=seat,
+            client_action_id=client_action_id,
+            expected_event_index=expected_event_index,
+            action=action,
         )
 
     def _prepare_human_submission(
@@ -704,6 +951,8 @@ class LiveMatchRunner:
     def _run_ai_until_human_or_terminal(self) -> None:
         while not self.terminal:
             self._ensure_deal_started()
+            if not self._maybe_resolve_showing():
+                return
             actor = self.current_actor
             if actor is None or actor not in self.ai_seats:
                 return
@@ -721,6 +970,14 @@ class LiveMatchRunner:
             raise ValueError("AI action delay must be numeric and in 0..60")
         while not self.terminal:
             self._ensure_deal_started()
+            if self.collecting_bids():
+                # All bids are taken at once when every human has locked; the
+                # AI bids blind at its turn, with no pacing between bids.
+                if not self._maybe_resolve_showing():
+                    return
+                if on_state_change is not None:
+                    await on_state_change()
+                continue
             actor = self.current_actor
             if actor is None or actor not in self.ai_seats:
                 return

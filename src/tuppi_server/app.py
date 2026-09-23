@@ -463,6 +463,9 @@ class TuppiASGIApp:
             "match_ref": runner.match_ref,
             "observation": reconnect["observation"],
         }
+        if "bidding" in reconnect:
+            # project_target_v3 showing: lock status and this seat's own bid only.
+            payload["bidding"] = reconnect["bidding"]
         if runner.terminal:
             payload["match_result"] = reconnect.get("match_result")
         connection.last_event_index = runner.event_cursor

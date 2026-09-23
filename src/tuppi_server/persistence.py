@@ -16,6 +16,8 @@ from tuppi_engine import atomic_write_canonical_json, strict_json_load_file
 
 
 ROOM_RECORD_SCHEMA_VERSION = "tuppi.server.room_record.v2"
+#: A room on a ruleset other than project_target_v1 records its ruleset_id.
+RULESET_ROOM_RECORD_SCHEMA_VERSION = "tuppi.server.room_record.v3"
 LEGACY_ROOM_RECORD_SCHEMA_VERSION = "tuppi.server.room_record.v1"
 POST_MATCH_ANALYSIS_RECORD_SCHEMA_VERSION = (
     "tuppi.server.post_match_analysis_record.v1"
@@ -44,7 +46,10 @@ class FileRoomStore:
         code = record.get("room_code")
         if not isinstance(code, str) or _ROOM_CODE.fullmatch(code) is None:
             raise PersistenceError("room record has an invalid room_code")
-        if record.get("schema_version") != ROOM_RECORD_SCHEMA_VERSION:
+        if record.get("schema_version") not in (
+            ROOM_RECORD_SCHEMA_VERSION,
+            RULESET_ROOM_RECORD_SCHEMA_VERSION,
+        ):
             raise PersistenceError("unsupported room record schema_version")
         try:
             self.root.mkdir(parents=True, exist_ok=True, mode=0o700)

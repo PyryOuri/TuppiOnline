@@ -32,10 +32,29 @@ from .post_match_diagnostics import generate_post_match_diagnostics
 from .persistence import (
     LEGACY_ROOM_RECORD_SCHEMA_VERSION,
     ROOM_RECORD_SCHEMA_VERSION,
+    RULESET_ROOM_RECORD_SCHEMA_VERSION,
     FileRoomStore,
     PersistenceError,
 )
 from .projection import project_event_batch
+from tuppi_rules import SUPPORTED_RULESETS, RulesetId
+
+#: The analysis endpoints are built for project_target_v1 deals.
+ANALYSIS_RULESETS = frozenset({RulesetId.PROJECT_TARGET_V1})
+SOOLI_PHASE_NAMES = frozenset({"SOOLI_OFFER", "SOOLI_GIVE", "SOOLI_RETURN", "SOOLI_PLAY"})
+
+
+def configured_ruleset() -> RulesetId:
+    """The ruleset of new rooms: ``TUPPI_SERVER_RULESET`` (default v1)."""
+
+    raw = os.environ.get("TUPPI_SERVER_RULESET", RulesetId.PROJECT_TARGET_V1.value)
+    try:
+        ruleset = RulesetId(raw)
+    except ValueError as exc:
+        raise ValueError(f"TUPPI_SERVER_RULESET is not a ruleset: {raw!r}") from exc
+    if ruleset not in SUPPORTED_RULESETS:
+        raise ValueError(f"unsupported ruleset {raw!r}")
+    return ruleset
 
 
 class RoomError(Exception):
@@ -80,6 +99,7 @@ class Room:
         default_factory=dict
     )
     ai_action_delay_ms: int = DEFAULT_AI_ACTION_DELAY_MS
+    ruleset_id: RulesetId = RulesetId.PROJECT_TARGET_V1
 
     def session_for_seat(self, seat: int) -> Session | None:
         return next((item for item in self.sessions.values() if item.seat == seat), None)
@@ -112,17 +132,20 @@ class Room:
                     "seat": seat,
                 }
             )
-        return {
+        snapshot: dict[str, object] = {
             "ai_action_delay_ms": self.ai_action_delay_ms,
             "lifecycle": self.lifecycle,
             "room_code": self.code,
             "seats": seats,
         }
+        if self.ruleset_id is not RulesetId.PROJECT_TARGET_V1:
+            snapshot["ruleset_id"] = self.ruleset_id.value
+        return snapshot
 
     def persistence_record(self) -> dict[str, object]:
         """Return private room/session/match material for the file store."""
 
-        return {
+        record: dict[str, object] = {
             "ai_action_delay_ms": self.ai_action_delay_ms,
             "ai_seats": sorted(self.ai_seats),
             "host_token": self.host_token,
@@ -142,6 +165,10 @@ class Room:
                 None if self.runner is None else self.runner.persistence_record()
             ),
         }
+        if self.ruleset_id is not RulesetId.PROJECT_TARGET_V1:
+            record["schema_version"] = RULESET_ROOM_RECORD_SCHEMA_VERSION
+            record["ruleset_id"] = self.ruleset_id.value
+        return record
 
 
 class RoomManager:
@@ -157,8 +184,12 @@ class RoomManager:
         persistence_dir: str | Path | None = None,
         *,
         contract_rollout_samples: int = 0,
+        ruleset_id: RulesetId = RulesetId.PROJECT_TARGET_V1,
     ) -> None:
         self._rooms: dict[str, Room] = {}
+        if ruleset_id not in SUPPORTED_RULESETS:
+            raise ValueError("unsupported ruleset")
+        self._ruleset_id = RulesetId(ruleset_id)
         if (
             type(contract_rollout_samples) is not int
             or not 0 <= contract_rollout_samples <= 64
@@ -184,7 +215,7 @@ class RoomManager:
             samples = int(raw_samples)
         except ValueError as exc:
             raise ValueError("TUPPI_CONTRACT_ROLLOUT_SAMPLES must be an integer") from exc
-        return cls(root, contract_rollout_samples=samples)
+        return cls(root, contract_rollout_samples=samples, ruleset_id=configured_ruleset())
 
     def create_room(
         self,
@@ -196,7 +227,7 @@ class RoomManager:
         self._validate_ai_seats(ai_seats)
         code = self._new_code()
         host_token = self._new_token()
-        room = Room(code=code, host_token=host_token, ai_seats=set(ai_seats))
+        room = Room(code=code, host_token=host_token, ai_seats=set(ai_seats), ruleset_id=self._ruleset_id)
         session = Session(token=host_token, seat=0, display_name=name)
         room.sessions[host_token] = session
         room.lifecycle = "configured" if ai_seats else "waiting"
@@ -279,6 +310,7 @@ class RoomManager:
                 ai_seats=frozenset(room.ai_seats),
                 contract_rollout_samples=self._contract_rollout_samples,
                 auto_run_ai=auto_run_ai,
+                ruleset_id=room.ruleset_id,
             )
             room.lifecycle = "playing"
         else:
@@ -376,6 +408,8 @@ class RoomManager:
         room, session = self.session(code=code, token=token)
         if room.runner is None or not room.runner.terminal:
             raise RoomError("match_not_complete")
+        if room.ruleset_id not in ANALYSIS_RULESETS:
+            raise RoomError("analysis_unavailable_for_ruleset")
         # A stored v1 envelope is retained only for compatibility with the
         # historical fixture/demo hook.  Real completed rooms reconstruct a
         # fresh seat-scoped v3 response from their durable match record.  This
@@ -410,6 +444,10 @@ class RoomManager:
         room, session = self.session(code=code, token=token)
         if room.runner is None or room.runner.terminal:
             raise RoomError("no_active_deal")
+        deal = room.runner.state.active_deal
+        if deal is not None and (deal.soolaaja is not None or deal.phase.value in SOOLI_PHASE_NAMES):
+            # The odds model is the four-hand v1 one; a sooli deal has a dead hand.
+            raise RoomError("analysis_unavailable_in_sooli")
         return room.runner.training_analysis(session.seat)
 
     def completed_deal_analysis_for_session(
@@ -436,6 +474,8 @@ class RoomManager:
         room, session = self.session(code=code, token=token)
         if room.runner is None:
             raise RoomError("match_not_started")
+        if room.ruleset_id not in ANALYSIS_RULESETS:
+            raise RoomError("analysis_unavailable_for_ruleset")
         if (
             type(deal_number) is not int
             or deal_number < 0
@@ -567,7 +607,15 @@ class RoomManager:
         }
         expected_v2 = expected_v1 | {"ai_action_delay_ms"}
         schema_version = record.get("schema_version")
-        if schema_version == ROOM_RECORD_SCHEMA_VERSION:
+        ruleset_id = RulesetId.PROJECT_TARGET_V1
+        if schema_version == RULESET_ROOM_RECORD_SCHEMA_VERSION:
+            expected = expected_v2 | {"ruleset_id"}
+            ai_action_delay_ms = record.get("ai_action_delay_ms")
+            try:
+                ruleset_id = RulesetId(record.get("ruleset_id"))
+            except ValueError as exc:
+                raise PersistenceError("persisted ruleset_id is invalid") from exc
+        elif schema_version == ROOM_RECORD_SCHEMA_VERSION:
             expected = expected_v2
             ai_action_delay_ms = record.get("ai_action_delay_ms")
         elif schema_version == LEGACY_ROOM_RECORD_SCHEMA_VERSION:
@@ -606,6 +654,7 @@ class RoomManager:
             ai_seats=set(ai_seats_data),
             lifecycle=lifecycle,
             ai_action_delay_ms=ai_action_delay_ms,
+            ruleset_id=ruleset_id,
         )
         for raw_session in sessions_data:
             if type(raw_session) is not dict or set(raw_session) != {
@@ -643,6 +692,8 @@ class RoomManager:
             room.runner = LiveMatchRunner.from_persistence_record(runner_record)
             if room.runner.match_ref != f"room-{room.code.lower()}":
                 raise PersistenceError("persisted runner match_ref disagrees with room")
+            if room.runner.ruleset_id is not room.ruleset_id:
+                raise PersistenceError("persisted runner ruleset disagrees with room")
             room.lifecycle = "playing" if not room.runner.terminal else "completed"
         return room
 
