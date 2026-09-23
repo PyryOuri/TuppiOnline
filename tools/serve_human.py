@@ -70,8 +70,13 @@ def main() -> None:
         return agents
 
     match_runner._construct_ai_agents = construct
+    if os.environ.get("TUPPI_AI_REVIEW", "1") == "1":
+        # After-deal review of the human's own decisions by the best agent's search.
+        from tuppi_ai.review import ServerReviewer
+        app.app.rooms.deal_reviewer = ServerReviewer()
     print(f"TuppiAI seat plan: {plan}; best agent ({ROLLOUT.name}, W={worlds}); "
-          f"rules {os.environ['TUPPI_SERVER_RULESET']}")
+          f"rules {os.environ['TUPPI_SERVER_RULESET']}; review "
+          f"{'on' if os.environ.get('TUPPI_AI_REVIEW', '1') == '1' else 'off'}")
     print(f"server data dir: {os.environ['TUPPI_SERVER_DATA_DIR']}")
     app.main(sys.argv[1:])
 

@@ -25,6 +25,8 @@ complaints or wishes exist today? Mac only, or other devices too?
 
 ## T2 — Training functions that carry the bot's improvements to the human
 
+**Status: in progress (started 2026-09-23).**
+
 **Scope.** The client's learning features: live training odds
 (`tuppi_server/training_analysis.py`: suit splits, card locations), completed
 deal review and same-shuffle replay (`completed_deal_review.py`, `analysis.py`),
@@ -44,9 +46,11 @@ post-match diagnostics.
 - Guard against privacy leaks: live (in-hand) advice may use only the seat's
   own observation; hindsight review after the deal may use the full deal.
 
-**Open questions for the owner.** Live hints during play, review after each
-deal, or both? How much detail per decision? Should drills (practice
-positions) be generated from the owner's own mistakes?
+**Owner's answers (2026-09-23).** A review **after each deal** (no live
+hints); **only clear mistakes**, one line each (your move, the bot's move, the
+equity cost, the kind of decision); for the **real game's rules
+(`project_target_v3`) first**, the v1 analysis stays as it is; **drills later**,
+once the review has proved useful.
 
 ## T3 — Add the "sooli" submode
 

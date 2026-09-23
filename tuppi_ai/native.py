@@ -349,6 +349,24 @@ class Mlp:
             self._h = None
 
 
+lib.tc_search_world_values.argtypes = [C.c_void_p, C.c_void_p, _P(TcObs), C.c_void_p, C.c_int, C.c_int, C.c_int,
+                                       _P(C.c_uint64), C.c_void_p, C.c_void_p]
+lib.tc_search_world_values.restype = C.c_int
+
+
+def search_world_values(env: "Env", mlp: Mlp, obs: TcObs, actions, worlds: int, dd_left: int,
+                        rng_state: C.c_uint64) -> np.ndarray:
+    """(worlds, actions) values, observer's sign; the same worlds for every action."""
+    a = np.ascontiguousarray(actions, dtype=np.int32)
+    mean = np.zeros(len(a), dtype=np.float64)
+    out = np.zeros((worlds, len(a)), dtype=np.float64)
+    rc = lib.tc_search_world_values(env._h, mlp._h, C.byref(obs), a.ctypes.data, len(a), worlds, dd_left,
+                                    C.byref(rng_state), mean.ctypes.data, out.ctypes.data)
+    if rc != 0:
+        raise RuntimeError(f"native search failed ({rc})")
+    return out
+
+
 def search_values(env: "Env", mlp: Mlp, obs: TcObs, actions, worlds: int, dd_left: int,
                   rng_state: C.c_uint64) -> np.ndarray:
     a = np.ascontiguousarray(actions, dtype=np.int32)

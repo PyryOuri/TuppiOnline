@@ -328,8 +328,24 @@ static void resolve_sooli(TcEnv *e, int i, uint64_t *rng, double *total) {
 // averaged over worlds and signed for the observer's team. The same steps, in
 // the same order and with the same rounding, as tuppi_ai.search.Searcher.
 // Returns 0, -1 if no world exists, -2 if the environment is too small.
+static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *actions, int k, int w,
+                       int dd_left, uint64_t *rng, double *values, double *per_world);
+
 int tc_search_values(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *actions, int k, int w,
                      int dd_left, uint64_t *rng, double *values) {
+  return search_core(e, m, o, actions, k, w, dd_left, rng, values, NULL);
+}
+
+// As tc_search_values, and also every world's value of every action in
+// per_world[wi * k + ai] (observer's sign). The worlds are shared by all
+// actions, so per-world differences give the paired standard error of a gap.
+int tc_search_world_values(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *actions, int k, int w,
+                           int dd_left, uint64_t *rng, double *values, double *per_world) {
+  return search_core(e, m, o, actions, k, w, dd_left, rng, values, per_world);
+}
+
+static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *actions, int k, int w,
+                       int dd_left, uint64_t *rng, double *values, double *per_world) {
   const int n = w * k;
   if (n > e->n) return -2;
   TcDeal world;
@@ -401,6 +417,8 @@ int tc_search_values(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *ac
     for (int wi = 0; wi < w; wi++) s += total[wi * k + a];
     values[a] = sign * (s / w);
   }
+  if (per_world)
+    for (int i = 0; i < n; i++) per_world[i] = sign * total[i];
   free(total);
   free(idx);
   return 0;
