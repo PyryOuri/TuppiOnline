@@ -94,6 +94,8 @@ does not compound; the search itself carries the strength.
 | --- | --- | --- |
 | per-deal equity, fresh seed v4 | 384 base deals (3072 games) | **+0.0143 [+0.0125, +0.0161]**; 65.8% deals won; +4.2 points and 7.00 tricks per deal |
 | **complete matches to 52**, fresh streams | 128 complementary pairs (256 matches) | **p_win 0.953 [0.928, 0.978]**; pairs 116 won / 12 tied / 0 lost; 0 censored; 20.1 deals per leg |
+| replication, new stream seed match-v2 | 128 pairs | p_win 0.9375 [0.909, 0.966]; 112 / 16 / 0 |
+| **pooled** | 256 pairs (512 matches) | **228 won / 28 tied / 0 lost; p_win 0.945** |
 
 Agent: `search:runs/bc_small.pt:w=64:dd=6:show=1` - uniform hard-feasible
 worlds, every legal action (showing included) rolled out by the incumbent
