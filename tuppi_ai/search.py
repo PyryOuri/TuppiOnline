@@ -214,6 +214,9 @@ SOOLI_DEFAULTS = {"give": "search", "return": "heur", "play": "search", "belief"
 class SearchAgent:
     """Engine-interface agent: blueprint for showing, search for trick play."""
 
+    #: Plays every sooli decision itself (servers must not wrap it in a fallback).
+    handles_sooli = True
+
     def __init__(self, net, equity_table, seat: int, worlds: int = 32, dd_left: int = 0,
                  search_showing=False, seed: int = 0, keep: float | None = None,
                  show_worlds: int | None = None, rami_bonus: float = 0.0, sooli: dict | None = None,

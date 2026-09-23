@@ -204,3 +204,34 @@ def test_exact_tilt_matches_rejection():
             stats[mode] = (mean, var / n)
         diff = stats[16][0] - stats[4][0]
         assert abs(diff) < 4 * (stats[16][1] + stats[4][1]) ** 0.5, stats
+
+
+def test_locked_bid_worlds_generate_legal_earlier_bids():
+    """project_target_v3 showing: no earlier bid is pinned; each world carries
+    generated NOLO bids for the earlier seats that are legal for its hands."""
+    rng = random.Random("v3-sampler-show")
+    state = C.c_uint64(31)
+    checked = 0
+    while checked < 60:
+        cards = list(range(52))
+        rng.shuffle(cards)
+        hands = [sum(1 << c for c in cards[s * 13:(s + 1) * 13]) for s in range(4)]
+        deal = native.new_deal(hands, rng.randrange(4), ruleset=3)
+        for _ in range(rng.randrange(0, 4)):
+            nolo = [a for a in native.legal(deal) if 52 <= a < 104]
+            native.lib.tc_apply(deal, rng.choice(nolo))
+        if deal.phase != native.PH_SHOW:
+            continue
+        checked += 1
+        me = deal.cur
+        obs = native.observe(deal, me)
+        assert obs.n_shows == deal.n_shows and not any(obs.show_card[i] for i in range(4))
+        for _ in range(10):
+            world = native.sample_world(obs, state)
+            assert world is not None
+            assert bytes(native.observe(world, me)) == bytes(obs)
+            replay = native.new_deal([world.hand[s] for s in range(4)], world.dealer, ruleset=3)
+            for i in range(world.n_shows):
+                assert world.show_contract[i] == native.NOLO
+                assert native.lib.tc_apply(replay, 52 + world.show_card[i]) == 0
+            assert replay.cur == me and replay.phase == native.PH_SHOW

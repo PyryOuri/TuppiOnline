@@ -26,7 +26,18 @@ DEALER = 0
 _W: dict = {}
 
 
-def _init(candidate: str, opponent: str, equity_path: str) -> None:
+RULESETS = {"v1": "project_target_v1", "v2": "project_target_v2", "v3": "project_target_v3"}
+
+
+def _with_sooli(agents: dict, ruleset: str) -> dict:
+    """Agents without their own sooli play get TuppiProject's simple fallback."""
+    if ruleset == "v1":
+        return agents
+    from tuppi_agents.sooli import SooliFallbackAgent
+    return {s: a if getattr(a, "handles_sooli", False) else SooliFallbackAgent(a) for s, a in agents.items()}
+
+
+def _init(candidate: str, opponent: str, equity_path: str, ruleset: str = "v1") -> None:
     import torch
 
     torch.set_num_threads(1)
@@ -34,8 +45,9 @@ def _init(candidate: str, opponent: str, equity_path: str) -> None:
     from .incumbent import incumbent_agents
 
     _W["equity"] = Equity.load(Path(equity_path))
-    _W["opponent"] = incumbent_agents(opponent)
-    _W["candidate"] = _make_candidate(candidate)
+    _W["ruleset"] = ruleset
+    _W["opponent"] = _with_sooli(incumbent_agents(opponent), ruleset)
+    _W["candidate"] = _with_sooli(_make_candidate(candidate), ruleset)
 
 
 def _make_candidate(spec: str) -> dict:
@@ -90,10 +102,18 @@ def _play(hands, score, candidate_team):
     from tuppi_rules import MatchScore
 
     cand, opp = _W["candidate"], _W["opponent"]
-    state = begin_explicit_deal(
-        create_match(initial_score=MatchScore(*score), initial_dealer=DEALER, match_ref="tuppi-ai-eval"),
-        ExplicitDeal(dealer=DEALER, hands=hands))
-    while state.phase in (EnginePhase.SHOWING, EnginePhase.TRICK_PLAY):
+    ruleset = _W.get("ruleset", "v1")
+    if ruleset == "v1":
+        match = create_match(initial_score=MatchScore(*score), initial_dealer=DEALER, match_ref="tuppi-ai-eval")
+        active = (EnginePhase.SHOWING, EnginePhase.TRICK_PLAY)
+    else:
+        from tuppi_engine.state import ACTIVE_PHASES
+        from tuppi_rules import RulesetId
+        match = create_match(initial_score=MatchScore(*score), initial_dealer=DEALER, match_ref="tuppi-ai-eval",
+                             ruleset_id=RulesetId(RULESETS[ruleset]))
+        active = ACTIVE_PHASES
+    state = begin_explicit_deal(match, ExplicitDeal(dealer=DEALER, hands=hands))
+    while state.phase in active:
         seat = state.current_actor
         actor = cand[seat] if seat % 2 == candidate_team else opp[seat]
         state = apply_match_action(state, actor.choose_action(match_observation_for(state, seat)))
@@ -109,7 +129,13 @@ def _play(hands, score, candidate_team):
         "rami": r.contract.value == "RAMI",
         "cand_declared": declarer_team == candidate_team,
         "opp_declared": declarer_team is not None and declarer_team != candidate_team,
-        "stolen": r.deal_score.stolen_rami,
+        "stolen": bool(getattr(r.deal_score, "stolen_rami", False)),
+        "cand_sooli": getattr(r, "soolaaja", None) is not None and r.soolaaja % 2 == candidate_team,
+        "opp_sooli": getattr(r, "soolaaja", None) is not None and r.soolaaja % 2 != candidate_team,
+        "cand_sooli_won": (getattr(r, "soolaaja", None) is not None and r.soolaaja % 2 == candidate_team
+                           and r.deal_score.winner_team.value == candidate_team),
+        "opp_sooli_won": (getattr(r, "soolaaja", None) is not None and r.soolaaja % 2 != candidate_team
+                          and r.deal_score.winner_team.value != candidate_team),
     }
 
 
@@ -130,9 +156,13 @@ def measure(index: int, seed: str, scores: str) -> dict:
                 games.append(_play(hands, score, team))
     out = {"index": index, "score": score, "value": statistics.fmean(g["value"] for g in games),
            "games": games}
-    for key in ("won", "points", "tricks", "rami", "cand_declared", "opp_declared", "stolen"):
+    for key in STAT_KEYS:
         out[key] = statistics.fmean(float(g[key]) for g in games)
     return out
+
+
+STAT_KEYS = ("won", "points", "tricks", "rami", "cand_declared", "opp_declared", "stolen",
+             "cand_sooli", "opp_sooli", "cand_sooli_won", "opp_sooli_won")
 
 
 def summarise(rows: list[dict]) -> dict:
@@ -143,20 +173,21 @@ def summarise(rows: list[dict]) -> dict:
     se = sd / math.sqrt(n)
     summary = {"base_deals": n, "games": 8 * n, "equity_per_deal": mean, "sd": sd,
                "ci95": [mean - 1.96 * se, mean + 1.96 * se]}
-    for key in ("won", "points", "tricks", "rami", "cand_declared", "opp_declared", "stolen"):
+    for key in STAT_KEYS:
         summary[key] = statistics.fmean(r[key] for r in rows)
     return summary
 
 
 def evaluate(candidate: str, deals: int, seed: str = "tuppi-ai-eval-v1", scores: str = "zero",
              opponent: str = "partner_aware_lead_v2", workers: int = 12,
-             equity_path: str = str(ROOT / "models" / "equity_incumbent.json")) -> dict:
+             equity_path: str = str(ROOT / "models" / "equity_incumbent.json"), ruleset: str = "v1") -> dict:
     t0 = time.time()
     with ProcessPoolExecutor(workers, initializer=_init,
-                             initargs=(candidate, opponent, equity_path)) as pool:
+                             initargs=(candidate, opponent, equity_path, ruleset)) as pool:
         rows = list(pool.map(measure, range(deals), [seed] * deals, [scores] * deals, chunksize=8))
     summary = summarise(rows)
     summary.update({"candidate": candidate, "opponent": opponent, "seed": seed, "scores": scores,
+                    "ruleset": RULESETS[ruleset],
                     "seconds": round(time.time() - t0, 1),
                     "values": [r["value"] for r in rows],
                     "games": [g for r in rows for g in r["games"]]})
@@ -172,9 +203,12 @@ def main() -> None:
     parser.add_argument("--scores", choices=("zero", "uniform"), default="zero")
     parser.add_argument("--opponent", default="partner_aware_lead_v2")
     parser.add_argument("--workers", type=int, default=12)
+    parser.add_argument("--ruleset", choices=tuple(RULESETS), default="v1",
+                        help="v1; v2 = + sooli; v3 = + sooli and locked bids (the real game)")
     parser.add_argument("--out", type=Path)
     args = parser.parse_args()
-    summary = evaluate(args.checkpoint, args.deals, args.seed, args.scores, args.opponent, args.workers)
+    summary = evaluate(args.checkpoint, args.deals, args.seed, args.scores, args.opponent, args.workers,
+                       ruleset=args.ruleset)
     print(json.dumps({k: v for k, v in summary.items() if k not in ("values", "games")}, indent=1))
     if args.out:
         args.out.write_text(json.dumps(summary, indent=1))

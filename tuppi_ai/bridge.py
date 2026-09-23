@@ -66,7 +66,8 @@ def obs_from_player_observation(observation) -> TcObs:
     o.dealer = observation.dealer
     o.phase = _PHASE.get(observation.phase, PH_DONE)
     shows = observation.show_actions
-    o.n_shows = len(shows)
+    # project_target_v3 showing: no bid is visible, only how many were taken.
+    o.n_shows = len(shows) + getattr(observation, "bids_locked", 0)
     for i, show in enumerate(shows):
         o.show_seat[i] = show.seat
         o.show_card[i] = card_to_index(show.shown_card)
@@ -94,7 +95,7 @@ def obs_from_player_observation(observation) -> TcObs:
     o.score[0] = observation.match_score.team0
     o.score[1] = observation.match_score.team1
     ruleset = getattr(observation, "ruleset_id", None)
-    o.ruleset = 2 if ruleset is not None and ruleset.value == "project_target_v2" else 1
+    o.ruleset = {"project_target_v2": 2, "project_target_v3": 3}.get(getattr(ruleset, "value", None), 1)
     o.trick_size = 3 if sooli else 4
     decisions = getattr(observation, "sooli_decisions", ())
     o.n_decisions = len(decisions)

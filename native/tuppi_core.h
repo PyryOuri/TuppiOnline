@@ -22,6 +22,9 @@
 #define TC_PH_SHOW 0
 #define TC_PH_PLAY 1
 #define TC_PH_DONE 2
+// Rulesets: 1 = project_target_v1, 2 = v1 + sooli, 3 = v2 + locked bids
+// (during showing no seat sees another's bid; only how many were taken).
+#define TC_LOCKED(o) ((o)->ruleset == 3 && (o)->phase == TC_PH_SHOW)
 // project_target_v2 (sooli)
 #define TC_PH_SOOLI_OFFER 3
 #define TC_PH_SOOLI_GIVE 4

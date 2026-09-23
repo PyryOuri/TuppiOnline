@@ -50,12 +50,13 @@ def _deal(rng):
     return tuple(tuple(cards[s * 13:(s + 1) * 13]) for s in range(4))
 
 
-def _play_lockstep(hands, dealer, score, chooser, rng, check_all_seats=True):
+def _play_lockstep(hands, dealer, score, chooser, rng, check_all_seats=True, ruleset=2):
+    ruleset_id = {2: RulesetId.PROJECT_TARGET_V2, 3: RulesetId.PROJECT_TARGET_V3}[ruleset]
     state = begin_explicit_deal(
         create_match(initial_score=score, initial_dealer=dealer, match_ref="diff-v2",
-                     ruleset_id=RulesetId.PROJECT_TARGET_V2),
+                     ruleset_id=ruleset_id),
         ExplicitDeal(dealer=dealer, hands=hands))
-    deal = native.new_deal([mask_of(h) for h in hands], dealer, score.team0, score.team1, ruleset=2)
+    deal = native.new_deal([mask_of(h) for h in hands], dealer, score.team0, score.team1, ruleset=ruleset)
     steps = 0
     while state.phase in ACTIVE_PHASES:
         seat = state.current_actor
@@ -105,18 +106,23 @@ def _chooser(p_accept):
         legal = observation.legal_actions
         if isinstance(legal[0], SooliDecisionAction):
             return legal[1] if rng.random() < p_accept else legal[0]
+        if observation.phase is EnginePhase.SHOWING:
+            # NOLO often, so that several seats bid before a RAMI
+            nolo = [a for a in legal if a.declared_contract.value == "NOLO"]
+            if nolo and rng.random() < 0.5:
+                return rng.choice(nolo)
         return rng.choice(legal)
     return choose
 
 
-@pytest.mark.parametrize("seed", range(3))
-def test_random_v2_play_matches_engine(seed):
-    rng = random.Random(f"diff-v2-{seed}")
+@pytest.mark.parametrize("seed,ruleset", [(0, 2), (1, 2), (2, 2), (0, 3), (1, 3)])
+def test_random_v2_play_matches_engine(seed, ruleset):
+    rng = random.Random(f"diff-v2-{seed}-{ruleset}")
     kinds = {"nolo": 0, "rami": 0, "sooli": 0}
     with trusted_transitions():
         for i in range(120):
             result = _play_lockstep(_deal(rng), rng.randrange(4), _random_score(rng), _chooser(0.6), rng,
-                                    check_all_seats=(i % 4 == 0))
+                                    check_all_seats=(i % 4 == 0), ruleset=ruleset)
             kinds["nolo" if result.contract is Contract.NOLO else
                   "sooli" if result.soolaaja is not None else "rami"] += 1
     assert min(kinds.values()) > 0, kinds

@@ -35,7 +35,7 @@ int tc_sooli_rank(int card) { int r = card % 13; return r == 12 ? 0 : r + 1; }
 
 void tc_deal_init_v(TcDeal *d, const uint64_t hands[4], int dealer, int score0, int score1, int ruleset) {
   tc_deal_init(d, hands, dealer, score0, score1);
-  d->ruleset = (uint8_t)(ruleset == 2 ? 2 : 1);
+  d->ruleset = (uint8_t)(ruleset == 2 || ruleset == 3 ? ruleset : 1);
 }
 
 void tc_deal_init(TcDeal *d, const uint64_t hands[4], int dealer, int score0, int score1) {
@@ -236,7 +236,7 @@ int tc_apply(TcDeal *d, int action) {
       d->contract = TC_RAMI;
       d->declarer = (int8_t)seat;
       d->first_leader = (uint8_t)((seat + 3) & 3);
-      if (d->ruleset == 2) {  // defenders are asked about sooli first
+      if (d->ruleset >= 2) {  // defenders are asked about sooli first
         d->phase = TC_PH_SOOLI_OFFER;
         d->cur = (uint8_t)((seat + 1) & 3);
         return 0;
@@ -288,10 +288,12 @@ void tc_observe(const TcDeal *d, int seat, TcObs *o) {
   o->dealer = d->dealer;
   o->phase = d->phase;
   o->n_shows = d->n_shows;
-  memcpy(o->show_seat, d->show_seat, 4);
-  memcpy(o->show_card, d->show_card, 4);
-  memcpy(o->show_contract, d->show_contract, 4);
-  memcpy(o->show_verbal, d->show_verbal, 4);
+  if (!(d->ruleset == 3 && d->phase == TC_PH_SHOW)) {  // locked bids: the count only
+    memcpy(o->show_seat, d->show_seat, 4);
+    memcpy(o->show_card, d->show_card, 4);
+    memcpy(o->show_contract, d->show_contract, 4);
+    memcpy(o->show_verbal, d->show_verbal, 4);
+  }
   o->contract = d->contract;
   o->declarer = d->declarer;
   o->first_leader = d->first_leader;
@@ -391,7 +393,7 @@ void tc_encode(const TcObs *o, uint8_t *out) {
     for (int v = 0; v < 4; v++)
       if (void_mask[r] >> v & 1) out[F_VOID + 4 * (r - 1) + v] = 1;
 
-  for (int i = 0; i < o->n_shows; i++) {
+  for (int i = 0; i < (TC_LOCKED(o) ? 0 : o->n_shows); i++) {
     int r = REL(o->show_seat[i]), c = o->show_card[i];
     uint8_t *b = out + F_SHOW + 56 * r;
     b[c] = 1;

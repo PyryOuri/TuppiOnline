@@ -53,7 +53,7 @@ static void public_state(const TcObs *o, TcDeal *d, int played_by[4], int void_m
   d->score[0] = o->score[0];
   d->score[1] = o->score[1];
   d->winner_team = -1;
-  d->ruleset = o->ruleset == 2 ? 2 : 1;
+  d->ruleset = o->ruleset == 2 || o->ruleset == 3 ? o->ruleset : 1;
   d->trick_size = o->trick_size == 3 ? 3 : 4;
   d->n_decisions = o->n_decisions;
   memcpy(d->decision_seat, o->decision_seat, 2);
@@ -279,7 +279,7 @@ int tc_sample_world(const TcObs *o, uint64_t *rng, TcDeal *out) {
   if (o->soolaaja >= 0 && (o->phase == TC_PH_SOOLI_RETURN || o->trick_size == 3))
     return sample_sooli(o, rng, out, played_by, void_mask, played_all, others);
   u64 known[4] = {0, 0, 0, 0};
-  for (int i = 0; i < o->n_shows; i++) {
+  for (int i = 0; i < (TC_LOCKED(o) ? 0 : o->n_shows); i++) {
     int c = o->show_card[i], s = o->show_seat[i];
     if (s != me && !(played_all >> c & 1ULL)) known[s] |= 1ULL << c;
   }
@@ -292,6 +292,24 @@ int tc_sample_world(const TcObs *o, uint64_t *rng, TcDeal *out) {
   for (int s = 0; s < 4; s++) hands[s] |= known[s];
   if (count_or_draw(others, cap, free_cards, void_mask, rng, hands, NULL) == -INFINITY) return -1;
   for (int s = 0; s < 4; s++) out->hand[s] = hands[s];
+  if (TC_LOCKED(o)) {
+    // Locked bids: the earlier bids are unseen, and all were NOLO (a RAMI
+    // would have ended showing). Each earlier seat bids a random legal NOLO
+    // card of its sampled hand, as players pick bid cards (owner: "roughly
+    // at random"). Only hands matter for the rest of the deal.
+    for (int i = 0; i < o->n_shows; i++) {
+      int s = (o->dealer + 1 + i) & 3;
+      u64 valid = tc_valid_show_cards(hands[s], TC_NOLO);
+      int n = __builtin_popcountll(valid), pick = (int)(splitmix(rng) % (u64)(n ? n : 1));
+      int c = -1;
+      for (u64 m = valid; m; m &= m - 1) { if (pick-- == 0) { c = __builtin_ctzll(m); break; } }
+      if (c < 0) return -1;
+      out->show_seat[i] = (uint8_t)s;
+      out->show_card[i] = (uint8_t)c;
+      out->show_contract[i] = TC_NOLO;
+      out->show_verbal[i] = (uint8_t)tc_verbal_required(c, TC_NOLO);
+    }
+  }
   return 0;
 }
 
@@ -469,6 +487,7 @@ int tc_sample_world_weighted(const TcObs *o, const float *wtab, uint64_t *rng, T
   int others[3];
   for (int j = 0; j < 3; j++) others[j] = (me + 1 + j) & 3;
   u64 known[4] = {0, 0, 0, 0};
+  if (TC_LOCKED(o)) return -1;  // v1 beliefs only
   for (int i = 0; i < o->n_shows; i++) {
     int c = o->show_card[i], s = o->show_seat[i];
     if (s != me && !(played_all >> c & 1ULL)) known[s] |= 1ULL << c;
