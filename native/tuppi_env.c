@@ -23,6 +23,9 @@ typedef struct {
   double p_random_start; // probability a new match starts from a random score
   int single_deal;       // if set, a finished deal is left finished
   int encoder;           // feature encoder version (1 or 2)
+  int sooli_belief;      // tc_sample_world_sooli mode for searches in sooli phases
+  int sooli_return_pi;   // rollouts: the partner returns the perfect-information best card
+  int sooli_play_heur;   // rollouts: sooli trick play by the heuristics instead of the solver
 } TcEnv;
 
 static inline u64 splitmix(u64 *x) {
@@ -93,6 +96,11 @@ void tc_env_set_options(TcEnv *e, double p_random_start, int single_deal) {
   e->single_deal = single_deal;
 }
 void tc_env_set_encoder(TcEnv *e, int version) { e->encoder = version; }
+void tc_env_set_sooli(TcEnv *e, int belief, int return_pi, int play_heur) {
+  e->sooli_belief = belief;
+  e->sooli_return_pi = return_pi;
+  e->sooli_play_heur = play_heur;
+}
 void tc_env_reset_all(TcEnv *e) { for (int i = 0; i < e->n; i++) new_match(e, &e->g[i]); }
 
 // Explicit deal for duplicate evaluation (single-deal mode).
@@ -106,7 +114,7 @@ TcDeal *tc_env_deal(TcEnv *e, int i) { return &e->g[i].d; }
 // Features and legal-action masks for every game's current actor.
 void tc_env_observe(TcEnv *e, uint8_t *feat, uint8_t *mask, int32_t *seat, int32_t *phase) {
   int dim = tc_feature_dim_v(e->encoder);
-  int acts[TC_NUM_ACTIONS];
+  int acts[TC_NUM_ACTIONS_V2];
   TcObs o;
   memset(mask, 0, (size_t)e->n * TC_NUM_ACTIONS);
   for (int i = 0; i < e->n; i++) {
@@ -121,7 +129,7 @@ void tc_env_observe(TcEnv *e, uint8_t *feat, uint8_t *mask, int32_t *seat, int32
     tc_observe(&g->d, s, &o);
     tc_encode_v(&o, feat + (size_t)i * dim, e->encoder);
     int k = tc_legal(&g->d, acts);
-    for (int j = 0; j < k; j++) mask[(size_t)i * TC_NUM_ACTIONS + acts[j]] = 1;
+    for (int j = 0; j < k; j++) if (acts[j] < TC_NUM_ACTIONS) mask[(size_t)i * TC_NUM_ACTIONS + acts[j]] = 1;
     seat[i] = s;
     phase[i] = g->d.phase;
   }
@@ -202,7 +210,7 @@ int tc_env_dd_finish(TcEnv *e, int dd_left, int32_t *done, float *delta0) {
 // into feat/mask consecutively and their indices into idx. Returns the count.
 int tc_env_observe_live(TcEnv *e, uint8_t *feat, uint8_t *mask, int32_t *idx) {
   int dim = tc_feature_dim_v(e->encoder), k = 0;
-  int acts[TC_NUM_ACTIONS];
+  int acts[TC_NUM_ACTIONS_V2];
   TcObs o;
   for (int i = 0; i < e->n; i++) {
     TcGame *g = &e->g[i];
@@ -212,7 +220,7 @@ int tc_env_observe_live(TcEnv *e, uint8_t *feat, uint8_t *mask, int32_t *idx) {
     uint8_t *mk = mask + (size_t)k * TC_NUM_ACTIONS;
     memset(mk, 0, TC_NUM_ACTIONS);
     int n = tc_legal(&g->d, acts);
-    for (int j = 0; j < n; j++) mk[acts[j]] = 1;
+    for (int j = 0; j < n; j++) if (acts[j] < TC_NUM_ACTIONS) mk[acts[j]] = 1;
     idx[k++] = i;
   }
   return k;
@@ -270,6 +278,47 @@ static void record_if_done(TcEnv *e, int i, double *total) {
   total[i] += (double)delta;
 }
 
+int tc_sooli_policy(const TcObs *o, uint64_t *rng);
+int tc_sample_world_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, int mode);
+
+// The returned card that keeps the soolaaja alive under perfect information
+// (the first in id order), or the heuristic's if none does.
+static int pi_return(const TcDeal *d, uint64_t *rng) {
+  int acts[TC_NUM_ACTIONS_V2], k = tc_legal(d, acts);
+  for (int j = 0; j < k; j++) {
+    TcDeal c = *d;
+    if (tc_apply(&c, acts[j]) == 0 && tc_sooli_solve(&c) == 1) return acts[j];
+  }
+  TcObs ob;
+  tc_observe(d, d->cur, &ob);
+  return tc_sooli_policy(&ob, rng);
+}
+
+// project_target_v2: sooli decisions inside rollouts are taken by the
+// observation-only heuristics (tuppi_sooli_policy.c) and sooli trick play is
+// finished by the perfect-information solver. Serial: it is rare and uses rng.
+static void resolve_sooli(TcEnv *e, int i, uint64_t *rng, double *total) {
+  TcDeal *d = &e->g[i].d;
+  while (d->phase == TC_PH_SOOLI_OFFER || d->phase == TC_PH_SOOLI_GIVE || d->phase == TC_PH_SOOLI_RETURN) {
+    TcObs ob;
+    tc_observe(d, d->cur, &ob);
+    int a = d->phase == TC_PH_SOOLI_RETURN && e->sooli_return_pi ? pi_return(d, rng) : tc_sooli_policy(&ob, rng);
+    if (tc_apply(d, a) != 0) { d->phase = TC_PH_DONE; return; }
+  }
+  if (d->phase == TC_PH_SOOLI_PLAY) {
+    if (e->sooli_play_heur) {
+      while (d->phase == TC_PH_SOOLI_PLAY) {
+        TcObs ob;
+        tc_observe(d, d->cur, &ob);
+        if (tc_apply(d, tc_sooli_policy(&ob, rng)) != 0) { d->phase = TC_PH_DONE; return; }
+      }
+    } else {
+      tc_sooli_finish(d);
+    }
+    record_if_done(e, i, total);
+  }
+}
+
 // Values of `k` candidate actions for the observer of `o`: `w` uniform
 // hard-feasible worlds, every candidate played out in each world greedily by
 // the network for all four seats (each from its own observation), the last
@@ -283,7 +332,7 @@ int tc_search_values(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *ac
   if (n > e->n) return -2;
   TcDeal world;
   for (int wi = 0; wi < w; wi++) {
-    if (tc_sample_world(o, rng, &world) != 0) return -1;
+    if (tc_sample_world_sooli(o, rng, &world, e->sooli_belief) != 0) return -1;
     for (int ai = 0; ai < k; ai++) { e->g[wi * k + ai].d = world; e->g[wi * k + ai].live = 1; }
   }
   double *total = calloc((size_t)n, sizeof(double));
@@ -294,6 +343,8 @@ int tc_search_values(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *ac
   }
   const int enc = tc_mlp_encoder(m), dim = tc_feature_dim_v(enc);
   for (;;) {
+    for (int i = 0; i < n; i++)
+      if (e->g[i].d.phase >= TC_PH_SOOLI_OFFER) resolve_sooli(e, i, rng, total);
     if (dd_left > 0) {
       int todo = 0;
       for (int i = 0; i < n; i++) {

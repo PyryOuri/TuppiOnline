@@ -53,19 +53,29 @@ static void public_state(const TcObs *o, TcDeal *d, int played_by[4], int void_m
   d->score[0] = o->score[0];
   d->score[1] = o->score[1];
   d->winner_team = -1;
+  d->ruleset = o->ruleset == 2 ? 2 : 1;
+  d->trick_size = o->trick_size == 3 ? 3 : 4;
+  d->n_decisions = o->n_decisions;
+  memcpy(d->decision_seat, o->decision_seat, 2);
+  memcpy(d->decision_accept, o->decision_accept, 2);
+  d->soolaaja = o->soolaaja;
+  d->given = o->known_given;
+  d->returned = o->known_returned;
   for (int i = 0; i < 4; i++) { played_by[i] = 0; void_mask[i] = 0; }
   *played_all = 0;
-  int leader = o->first_leader, n = o->n_played;
-  for (int t = 0; t < n; t += 4) {
+  const int ts = d->trick_size;
+  int leader = ts == 3 ? o->declarer : o->first_leader, n = o->n_played;
+  for (int t = 0; t < n; t += ts) {
     int led = o->play_card[t] / 13, best = t;
-    for (int i = t; i < n && i < t + 4; i++) {
+    for (int i = t; i < n && i < t + ts; i++) {
       int c = o->play_card[i], s = o->play_seat[i];
       played_by[s]++;
       *played_all |= 1ULL << c;
       if (c / 13 != led) void_mask[s] |= 1 << led;
-      if (i > t && c / 13 == led && c % 13 > o->play_card[best] % 13) best = i;
+      int higher = ts == 3 ? tc_sooli_rank(c) > tc_sooli_rank(o->play_card[best]) : c % 13 > o->play_card[best] % 13;
+      if (i > t && c / 13 == led && higher) best = i;
     }
-    if (t + 4 <= n) {
+    if (t + ts <= n) {
       int w = o->play_seat[best];
       d->team_tricks[w & 1]++;
       leader = w;
@@ -75,34 +85,26 @@ static void public_state(const TcObs *o, TcDeal *d, int played_by[4], int void_m
   else if (o->phase == TC_PH_PLAY) {
     int pos = n & 3;
     d->cur = (uint8_t)(pos ? ((o->play_seat[n - pos] + pos) & 3) : leader);
+  } else if (o->phase == TC_PH_SOOLI_OFFER) {
+    d->cur = (uint8_t)((o->declarer + (o->n_decisions ? 3 : 1)) & 3);
+  } else if (o->phase == TC_PH_SOOLI_GIVE) {
+    d->cur = (uint8_t)o->soolaaja;
+  } else if (o->phase == TC_PH_SOOLI_RETURN) {
+    d->cur = (uint8_t)((o->soolaaja + 2) & 3);
+  } else if (o->phase == TC_PH_SOOLI_PLAY) {
+    int pos = n % 3, lead = pos ? o->play_seat[n - pos] : leader;
+    d->cur = (uint8_t)(pos == 0 ? lead : pos == 1 ? ((lead + 2) & 3) : o->soolaaja);
   }
 }
 
-// Returns 0 on success, -1 if the constraints admit no world.
-int tc_sample_world(const TcObs *o, uint64_t *rng, TcDeal *out) {
-  init_lfact();
-  int played_by[4], void_mask[4];
-  u64 played_all;
-  public_state(o, out, played_by, void_mask, &played_all);
-  const int me = o->seat;
-  int others[3], k = 0;
-  for (int s = 0; s < 4; s++) if (s != me) others[k++] = s;
-  u64 known[4] = {0, 0, 0, 0};
-  for (int i = 0; i < o->n_shows; i++) {
-    int c = o->show_card[i], s = o->show_seat[i];
-    if (s != me && !(played_all >> c & 1ULL)) known[s] |= 1ULL << c;
-  }
-  u64 known_all = known[0] | known[1] | known[2] | known[3];
-  u64 free_cards = FULL_DECK & ~o->hand & ~played_all & ~known_all;
-  int cap[3];
-  for (int j = 0; j < 3; j++) {
-    int s = others[j];
-    cap[j] = 13 - played_by[s] - __builtin_popcountll(known[s]);
-    if (cap[j] < 0) return -1;
-  }
+// Log number of assignments of `free_cards` to the three `others` with exact
+// capacities and no card of a void suit, and, if `hands` is given, an exact
+// uniform draw of one such assignment (added to hands). -INFINITY if none.
+static double count_or_draw(const int others[3], const int cap[3], u64 free_cards, const int void_mask[4],
+                            u64 *rng, u64 hands[4]) {
   int size[4];
   for (int v = 0; v < 4; v++) size[v] = __builtin_popcountll(free_cards & SUIT_MASK(v));
-  if (size[0] + size[1] + size[2] + size[3] != cap[0] + cap[1] + cap[2]) return -1;
+  if (size[0] + size[1] + size[2] + size[3] != cap[0] + cap[1] + cap[2]) return -INFINITY;
 
   // W[v][a][b] = log number of ways to place suits v..3 given remaining
   // capacities a, b for the first two others (the third is implied).
@@ -139,11 +141,9 @@ int tc_sample_world(const TcObs *o, uint64_t *rng, TcDeal *out) {
       }
     }
   }
-  if (W[0][cap[0]][cap[1]] == -INFINITY) return -1;
+  if (cap[0] > 13 || cap[1] > 13 || W[0][cap[0]][cap[1]] == -INFINITY) return -INFINITY;
+  if (!hands) return W[0][cap[0]][cap[1]];
 
-  u64 hands[4] = {0, 0, 0, 0};
-  hands[me] = o->hand;
-  for (int s = 0; s < 4; s++) hands[s] |= known[s];
   int a = cap[0], b = cap[1];
   for (int v = 0; v < 4; v++) {
     int m = size[v], c = remaining_after[v] - a - b;
@@ -160,7 +160,7 @@ int tc_sample_world(const TcObs *o, uint64_t *rng, TcDeal *out) {
         sx[ns] = x; sy[ns] = y; ns++;
       }
     }
-    if (!ns) return -1;
+    if (!ns) return -INFINITY;
     double r = unit(rng), acc = 0.0;
     int pick = ns - 1;
     for (int i = 0; i < ns; i++) { acc += exp(lw[i]); if (r < acc) { pick = i; break; } }
@@ -177,6 +177,148 @@ int tc_sample_world(const TcObs *o, uint64_t *rng, TcDeal *out) {
     a -= cx;
     b -= cy;
   }
+  return W[0][cap[0]][cap[1]];
+}
+
+// Capacities of the others and free cards given the known placements.
+static int setup(const TcObs *o, const int others[3], const int hand_size[4], const u64 known[4], u64 played_all,
+                 int cap[3], u64 *free_cards) {
+  u64 known_all = known[0] | known[1] | known[2] | known[3];
+  *free_cards = FULL_DECK & ~o->hand & ~played_all & ~known_all;
+  for (int j = 0; j < 3; j++) {
+    int s = others[j];
+    cap[j] = hand_size[s] - __builtin_popcountll(known[s]);
+    if (cap[j] < 0) return -1;
+  }
+  return 0;
+}
+
+static int sample_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, const int played_by[4], const int void_mask[4],
+                        u64 played_all, const int others[3]);
+
+// Returns 0 on success, -1 if the constraints admit no world.
+int tc_sample_world(const TcObs *o, uint64_t *rng, TcDeal *out) {
+  init_lfact();
+  int played_by[4], void_mask[4];
+  u64 played_all;
+  public_state(o, out, played_by, void_mask, &played_all);
+  const int me = o->seat;
+  int others[3], k = 0;
+  for (int s = 0; s < 4; s++) if (s != me) others[k++] = s;
+  if (o->soolaaja >= 0 && (o->phase == TC_PH_SOOLI_RETURN || o->trick_size == 3))
+    return sample_sooli(o, rng, out, played_by, void_mask, played_all, others);
+  u64 known[4] = {0, 0, 0, 0};
+  for (int i = 0; i < o->n_shows; i++) {
+    int c = o->show_card[i], s = o->show_seat[i];
+    if (s != me && !(played_all >> c & 1ULL)) known[s] |= 1ULL << c;
+  }
+  int hand_size[4], cap[3];
+  for (int s = 0; s < 4; s++) hand_size[s] = 13 - played_by[s];
+  u64 free_cards;
+  if (setup(o, others, hand_size, known, played_all, cap, &free_cards) != 0) return -1;
+  u64 hands[4] = {0, 0, 0, 0};
+  hands[me] = o->hand;
+  for (int s = 0; s < 4; s++) hands[s] |= known[s];
+  if (count_or_draw(others, cap, free_cards, void_mask, rng, hands) == -INFINITY) return -1;
+  for (int s = 0; s < 4; s++) out->hand[s] = hands[s];
+  return 0;
+}
+
+// Worlds once a sooli exchange has begun (project_target_v2). Hand sizes follow
+// the exchange (during the return the soolaaja holds 12 cards and the partner
+// 14). The soolaaja and the partner know both exchanged cards, so every shown
+// card's holder is known to them. The RAMI pair does not: a card shown by the
+// soolaaja or the partner and not yet played is with one of the two, and the
+// cases are weighted by their numbers of worlds times the number of exchanges
+// (given card, returned card) that lead to them, i.e. a uniform prior over the
+// exchange. A RAMI player is never asked during the return, so that case is
+// unsupported (-1).
+static int sample_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, const int played_by[4], const int void_mask[4],
+                        u64 played_all, const int others[3]) {
+  const int me = o->seat, S = o->soolaaja, P = (S + 2) & 3;
+  const int returning = o->phase == TC_PH_SOOLI_RETURN;
+  const int knows = me == S || me == P;
+  if (!knows && returning) return -1;
+  int hand_size[4];
+  for (int s = 0; s < 4; s++) hand_size[s] = 13 - played_by[s];
+  if (returning) { hand_size[S]--; hand_size[P]++; }
+  const int g = o->known_given, r = o->known_returned;
+  u64 known[4] = {0, 0, 0, 0};
+  int unsure[2], n_unsure = 0, x_card = -1, y_card = -1;
+  for (int i = 0; i < o->n_shows; i++) {
+    int c = o->show_card[i], s = o->show_seat[i];
+    if (s == S) x_card = c;
+    if (s == P) y_card = c;
+    if (played_all >> c & 1ULL) continue;
+    int loc = s;
+    if (knows) loc = c == g ? P : (c == r ? S : s);
+    else if (s == S || s == P) { unsure[n_unsure++] = c; continue; }
+    if (loc != me) known[loc] |= 1ULL << c;
+  }
+  if (knows) {
+    if (g >= 0 && P != me && !(played_all >> g & 1ULL)) known[P] |= 1ULL << g;
+    if (r >= 0 && S != me && !(played_all >> r & 1ULL)) known[S] |= 1ULL << r;
+  }
+  for (int s = 0; s < 4; s++) known[s] &= ~o->hand;
+  u64 base[4] = {0, 0, 0, 0};
+  base[me] = o->hand;
+  for (int s = 0; s < 4; s++) base[s] |= known[s];
+  if (knows || n_unsure == 0) {
+    int cap[3];
+    u64 free_cards;
+    if (setup(o, others, hand_size, known, played_all, cap, &free_cards) != 0) return -1;
+    if (count_or_draw(others, cap, free_cards, void_mask, rng, base) == -INFINITY) return -1;
+    for (int s = 0; s < 4; s++) out->hand[s] = base[s];
+    return 0;
+  }
+  // RAMI observer: every placement of the unsure cards with S or P.
+  double lw[4];
+  u64 case_known[4][4];
+  int n_cases = 1 << n_unsure;
+  double best = -INFINITY;
+  for (int m = 0; m < n_cases; m++) {
+    u64 *kk = case_known[m];
+    for (int s = 0; s < 4; s++) kk[s] = known[s];
+    int ok = 1;
+    for (int j = 0; j < n_unsure; j++) {
+      int c = unsure[j], loc = (m >> j & 1) ? P : S;
+      if (loc == S && (void_mask[S] >> (c / 13) & 1)) ok = 0;
+      kk[loc] |= 1ULL << c;
+    }
+    int cap[3];
+    u64 free_cards;
+    lw[m] = -INFINITY;
+    if (!ok || setup(o, others, hand_size, kk, played_all, cap, &free_cards) != 0) continue;
+    double w = count_or_draw(others, cap, free_cards, void_mask, NULL, NULL);
+    if (w == -INFINITY) continue;
+    // Exchanges (given, returned) leading to this placement: the soolaaja's
+    // post-exchange cards S' and the partner's P'.
+    int x_in_s = 0, y_in_s = 0;
+    if (x_card >= 0) x_in_s = (kk[S] >> x_card & 1ULL) || (played_all >> x_card & 1ULL);
+    if (y_card >= 0) y_in_s = (kk[S] >> y_card & 1ULL) || (played_all >> y_card & 1ULL);
+    int n_r = y_in_s ? 1 : 13 - (x_card >= 0 && x_in_s);
+    int n_g = (x_card >= 0 && !x_in_s) ? 1 : 13 - (y_card >= 0 && !y_in_s);
+    lw[m] = w + log((double)n_r * n_g);
+    if (lw[m] > best) best = lw[m];
+  }
+  if (best == -INFINITY) return -1;
+  double total = 0.0;
+  for (int m = 0; m < n_cases; m++) total += lw[m] == -INFINITY ? 0.0 : exp(lw[m] - best);
+  double u = unit(rng) * total, acc = 0.0;
+  int pick = -1;
+  for (int m = 0; m < n_cases; m++) {
+    if (lw[m] == -INFINITY) continue;
+    pick = m;
+    acc += exp(lw[m] - best);
+    if (u < acc) break;
+  }
+  u64 hands[4] = {0, 0, 0, 0};
+  hands[me] = o->hand;
+  for (int s = 0; s < 4; s++) hands[s] |= case_known[pick][s];
+  int cap[3];
+  u64 free_cards;
+  setup(o, others, hand_size, case_known[pick], played_all, cap, &free_cards);
+  if (count_or_draw(others, cap, free_cards, void_mask, rng, hands) == -INFINITY) return -1;
   for (int s = 0; s < 4; s++) out->hand[s] = hands[s];
   return 0;
 }
@@ -190,6 +332,7 @@ int tc_sample_world(const TcObs *o, uint64_t *rng, TcDeal *out) {
 // Returns the number of rows written (at most max_rows).
 int tc_history_rows(const TcDeal *world, int seat_mask, int encoder, int max_rows,
                     uint8_t *feat, uint8_t *mask, int32_t *action) {
+  if (world->n_decisions || world->soolaaja >= 0) return -1;  // sooli histories are not replayed here
   uint64_t init[4];
   for (int s = 0; s < 4; s++) init[s] = world->hand[s];
   for (int i = 0; i < world->n_played; i++) init[world->play_seat[i]] |= 1ULL << world->play_card[i];
@@ -226,6 +369,7 @@ int tc_history_rows(const TcDeal *world, int seat_mask, int encoder, int max_row
 // their shower. A DP over the free cards with state = remaining capacities of
 // the first two other seats (the third is implied) makes the draw exact.
 int tc_sample_world_weighted(const TcObs *o, const float *wtab, uint64_t *rng, TcDeal *out) {
+  if (o->soolaaja >= 0 && (o->phase == TC_PH_SOOLI_RETURN || o->trick_size == 3)) return -1;  // v1 beliefs only
   int played_by[4], void_mask[4];
   u64 played_all;
   public_state(o, out, played_by, void_mask, &played_all);

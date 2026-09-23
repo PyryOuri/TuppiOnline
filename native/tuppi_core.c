@@ -28,8 +28,23 @@ int tc_verbal_required(int card, int contract) {
   return !((ELIGIBLE & colour) >> card & 1ULL);
 }
 
+// Lets the Python bindings refuse a stale library with a different layout.
+void tc_struct_sizes(int *out) { out[0] = (int)sizeof(TcDeal); out[1] = (int)sizeof(TcObs); }
+
+int tc_sooli_rank(int card) { int r = card % 13; return r == 12 ? 0 : r + 1; }
+
+void tc_deal_init_v(TcDeal *d, const uint64_t hands[4], int dealer, int score0, int score1, int ruleset) {
+  tc_deal_init(d, hands, dealer, score0, score1);
+  d->ruleset = (uint8_t)(ruleset == 2 ? 2 : 1);
+}
+
 void tc_deal_init(TcDeal *d, const uint64_t hands[4], int dealer, int score0, int score1) {
   memset(d, 0, sizeof *d);
+  d->ruleset = 1;
+  d->trick_size = 4;
+  d->soolaaja = -1;
+  d->given = -1;
+  d->returned = -1;
   for (int i = 0; i < 4; i++) d->hand[i] = hands[i];
   d->dealer = (uint8_t)dealer;
   d->phase = TC_PH_SHOW;
@@ -41,8 +56,20 @@ void tc_deal_init(TcDeal *d, const uint64_t hands[4], int dealer, int score0, in
   d->score[1] = (uint8_t)score1;
 }
 
-static int legal_from(u64 hand, int phase, int n_played, const uint8_t *play_card, int *actions) {
+static int legal_from(u64 hand, int phase, int n_played, const uint8_t *play_card, int trick_size, int given,
+                      int *actions) {
   int k = 0;
+  if (phase == TC_PH_SOOLI_OFFER) {
+    actions[0] = TC_ACT_SOOLI_DECLINE;
+    actions[1] = TC_ACT_SOOLI_ACCEPT;
+    return 2;
+  }
+  if (phase == TC_PH_SOOLI_GIVE || phase == TC_PH_SOOLI_RETURN) {
+    u64 m = hand;
+    if (phase == TC_PH_SOOLI_RETURN && given >= 0) m &= ~(1ULL << given);
+    while (m) { int c = __builtin_ctzll(m); m &= m - 1; actions[k++] = TC_ACT_EXCHANGE + c; }
+    return k;
+  }
   if (phase == TC_PH_SHOW) {
     for (int contract = 0; contract < 2; contract++) {
       u64 m = tc_valid_show_cards(hand, contract);
@@ -54,9 +81,9 @@ static int legal_from(u64 hand, int phase, int n_played, const uint8_t *play_car
     }
     return k;
   }
-  if (phase != TC_PH_PLAY) return 0;
+  if (phase != TC_PH_PLAY && phase != TC_PH_SOOLI_PLAY) return 0;
   u64 legal = hand;
-  int pos = n_played & 3;
+  int pos = trick_size == 3 ? n_played % 3 : n_played & 3;
   if (pos) {
     int led = suit_of(play_card[n_played - pos]);
     u64 f = hand & SUIT_MASK(led);
@@ -71,7 +98,7 @@ static int legal_from(u64 hand, int phase, int n_played, const uint8_t *play_car
 }
 
 int tc_legal(const TcDeal *d, int *actions) {
-  return legal_from(d->hand[d->cur], d->phase, d->n_played, d->play_card, actions);
+  return legal_from(d->hand[d->cur], d->phase, d->n_played, d->play_card, d->trick_size, d->given, actions);
 }
 
 int tc_next_score(const uint8_t score[2], int winner_team, int points, uint8_t out[2]) {
@@ -120,8 +147,82 @@ void tc_finish_with_tricks(TcDeal *d, int team0_tricks) {
   finish(d);
 }
 
+static void finish_sooli(TcDeal *d, int soolaaja_won_trick) {
+  d->phase = TC_PH_DONE;
+  d->sooli_won = (uint8_t)!soolaaja_won_trick;
+  d->winner_team = (int8_t)(soolaaja_won_trick ? (d->declarer & 1) : (d->soolaaja & 1));
+  d->points = TC_SOOLI_POINTS;
+  d->stolen = 0;
+}
+
+static int apply_sooli(TcDeal *d, int action) {
+  int seat = d->cur;
+  if (d->phase == TC_PH_SOOLI_OFFER) {
+    if (action != TC_ACT_SOOLI_DECLINE && action != TC_ACT_SOOLI_ACCEPT) return -1;
+    int i = d->n_decisions++;
+    d->decision_seat[i] = (uint8_t)seat;
+    d->decision_accept[i] = (uint8_t)(action == TC_ACT_SOOLI_ACCEPT);
+    if (action == TC_ACT_SOOLI_ACCEPT) {
+      d->soolaaja = (int8_t)seat;
+      d->phase = TC_PH_SOOLI_GIVE;
+    } else if (d->n_decisions == 1) {
+      d->cur = (uint8_t)((d->declarer + 3) & 3);
+    } else {
+      d->phase = TC_PH_PLAY;  // both declined: an ordinary RAMI deal
+      d->cur = d->first_leader;
+    }
+    return 0;
+  }
+  if (d->phase == TC_PH_SOOLI_GIVE || d->phase == TC_PH_SOOLI_RETURN) {
+    int c = action - TC_ACT_EXCHANGE;
+    if (c < 0 || c >= 52 || !(d->hand[seat] >> c & 1ULL)) return -1;
+    int partner = (d->soolaaja + 2) & 3;
+    if (d->phase == TC_PH_SOOLI_GIVE) {
+      d->hand[seat] &= ~(1ULL << c);
+      d->hand[partner] |= 1ULL << c;
+      d->given = (int8_t)c;
+      d->phase = TC_PH_SOOLI_RETURN;
+      d->cur = (uint8_t)partner;
+    } else {
+      if (c == d->given) return -1;
+      d->hand[seat] &= ~(1ULL << c);
+      d->hand[(int)d->soolaaja] |= 1ULL << c;
+      d->returned = (int8_t)c;
+      d->phase = TC_PH_SOOLI_PLAY;
+      d->trick_size = 3;
+      d->cur = (uint8_t)d->declarer;  // the declarer leads the first sooli trick
+    }
+    return 0;
+  }
+  // TC_PH_SOOLI_PLAY
+  if (action < 0 || action >= 52) return -1;
+  u64 b = 1ULL << action;
+  if (!(d->hand[seat] & b)) return -1;
+  int pos = d->n_played % 3;
+  if (pos) {
+    int led = suit_of(d->play_card[d->n_played - pos]);
+    if (suit_of(action) != led && (d->hand[seat] & SUIT_MASK(led))) return -1;
+  }
+  d->hand[seat] &= ~b;
+  d->play_card[d->n_played] = (uint8_t)action;
+  d->play_seat[d->n_played] = (uint8_t)seat;
+  d->n_played++;
+  if (pos == 0) { d->cur = (uint8_t)((seat + 2) & 3); return 0; }        // other RAMI player
+  if (pos == 1) { d->cur = (uint8_t)d->soolaaja; return 0; }             // soolaaja last
+  int start = d->n_played - 3, led = suit_of(d->play_card[start]), best = start;
+  for (int i = start + 1; i < start + 3; i++)
+    if (suit_of(d->play_card[i]) == led && tc_sooli_rank(d->play_card[i]) > tc_sooli_rank(d->play_card[best])) best = i;
+  int winner = d->play_seat[best];
+  d->team_tricks[winner & 1]++;
+  if (winner == d->soolaaja) { finish_sooli(d, 1); return 0; }
+  if (d->n_played == 39) { finish_sooli(d, 0); return 0; }
+  d->cur = (uint8_t)winner;
+  return 0;
+}
+
 int tc_apply(TcDeal *d, int action) {
   int seat = d->cur;
+  if (d->phase >= TC_PH_SOOLI_OFFER) return apply_sooli(d, action);
   if (d->phase == TC_PH_SHOW) {
     if (action < 52 || action >= TC_NUM_ACTIONS) return -1;
     int contract = (action - 52) / 52, card = (action - 52) % 52;
@@ -135,6 +236,11 @@ int tc_apply(TcDeal *d, int action) {
       d->contract = TC_RAMI;
       d->declarer = (int8_t)seat;
       d->first_leader = (uint8_t)((seat + 3) & 3);
+      if (d->ruleset == 2) {  // defenders are asked about sooli first
+        d->phase = TC_PH_SOOLI_OFFER;
+        d->cur = (uint8_t)((seat + 1) & 3);
+        return 0;
+      }
       d->phase = TC_PH_PLAY;
       d->cur = d->first_leader;
     } else if (d->n_shows == 4) {
@@ -194,10 +300,19 @@ void tc_observe(const TcDeal *d, int seat, TcObs *o) {
   memcpy(o->play_seat, d->play_seat, d->n_played);
   o->score[0] = d->score[0];
   o->score[1] = d->score[1];
+  o->ruleset = d->ruleset;
+  o->trick_size = d->trick_size;
+  o->n_decisions = d->n_decisions;
+  memcpy(o->decision_seat, d->decision_seat, 2);
+  memcpy(o->decision_accept, d->decision_accept, 2);
+  o->soolaaja = d->soolaaja;
+  int knows = d->soolaaja >= 0 && (seat == d->soolaaja || seat == ((d->soolaaja + 2) & 3));
+  o->known_given = knows ? d->given : -1;
+  o->known_returned = knows ? d->returned : -1;
 }
 
 int tc_legal_obs(const TcObs *o, int *actions) {
-  return legal_from(o->hand, o->phase, o->n_played, o->play_card, actions);
+  return legal_from(o->hand, o->phase, o->n_played, o->play_card, o->trick_size, o->known_given, actions);
 }
 
 // ---------------------------------------------------------------- encoder
@@ -237,24 +352,27 @@ void tc_encode(const TcObs *o, uint8_t *out) {
   u64 played_all = 0;
   int void_mask[4] = {0, 0, 0, 0};
   int tricks[2] = {0, 0};
-  int n = o->n_played, full = n - (n & 3);
-  int leader = o->first_leader;
-  for (int t = 0; t < full; t += 4) {
+  const int ts = o->trick_size == 3 ? 3 : 4;
+  const int ace_low = ts == 3;
+#define RANKV(c) (ace_low ? tc_sooli_rank(c) : rank_of(c))
+  int n = o->n_played, full = n - (n % ts);
+  int leader = ts == 3 ? o->declarer : o->first_leader;
+  for (int t = 0; t < full; t += ts) {
     int led = suit_of(o->play_card[t]), best = t;
-    for (int i = t; i < t + 4; i++) {
+    for (int i = t; i < t + ts; i++) {
       int c = o->play_card[i], r = REL(o->play_seat[i]);
       played_all |= 1ULL << c;
       out[F_PLAYED + 52 * r + c] = 1;
       if (i == t) out[F_LED + 52 * r + c] = 1;
       else if (suit_of(c) != led) { out[F_DISCARD + 52 * r + c] = 1; void_mask[r] |= 1 << led; }
-      if (i > t && suit_of(c) == led && rank_of(c) > rank_of(o->play_card[best])) best = i;
+      if (i > t && suit_of(c) == led && RANKV(c) > RANKV(o->play_card[best])) best = i;
     }
     int w = o->play_seat[best];
     tricks[w & 1]++;
     leader = w;
   }
-  int pos = n & 3;
-  if (o->phase == TC_PH_PLAY && pos) {
+  int pos = n % ts;
+  if ((o->phase == TC_PH_PLAY || o->phase == TC_PH_SOOLI_PLAY) && pos) {
     int t = full, led = suit_of(o->play_card[t]), best = t;
     leader = o->play_seat[t];
     out[F_LED_SUIT + led] = 1;
@@ -265,7 +383,7 @@ void tc_encode(const TcObs *o, uint8_t *out) {
       if (r >= 1) out[F_TRICK + 52 * (r - 1) + c] = 1;
       if (i == t) out[F_LED + 52 * r + c] = 1;
       else if (suit_of(c) != led) { out[F_DISCARD + 52 * r + c] = 1; void_mask[r] |= 1 << led; }
-      if (i > t && suit_of(c) == led && rank_of(c) > rank_of(o->play_card[best])) best = i;
+      if (i > t && suit_of(c) == led && RANKV(c) > RANKV(o->play_card[best])) best = i;
     }
     out[F_WINNING + REL(o->play_seat[best])] = 1;
   }
@@ -287,10 +405,10 @@ void tc_encode(const TcObs *o, uint8_t *out) {
 
   out[F_CONTRACT + (o->contract < 0 ? 0 : 1 + o->contract)] = 1;
   out[F_DECLARER + (o->declarer < 0 ? 4 : REL(o->declarer))] = 1;
-  if (o->phase == TC_PH_PLAY) {
+  if (o->phase == TC_PH_PLAY || o->phase == TC_PH_SOOLI_PLAY) {
     out[F_LEADER + REL(leader)] = 1;
     out[F_POSITION + pos] = 1;
-    out[F_TRICK_INDEX + (n >> 2 > 12 ? 12 : n >> 2)] = 1;
+    out[F_TRICK_INDEX + (n / ts > 12 ? 12 : n / ts)] = 1;
   }
   int own = s & 1;
   out[F_TRICKS + tricks[own]] = 1;
@@ -299,6 +417,7 @@ void tc_encode(const TcObs *o, uint8_t *out) {
   out[F_SCORE + (lo > 12 ? 12 : lo)] = 1;
   out[F_SCORE + 13 + (lt > 12 ? 12 : lt)] = 1;
   out[F_DEALER + REL(o->dealer)] = 1;
+#undef RANKV
   if (o->phase == TC_PH_SHOW) out[F_SHOW_POS + (o->n_shows & 3)] = 1;
 #undef REL
 }
@@ -315,12 +434,15 @@ void tc_encode_v(const TcObs *o, uint8_t *out, int version) {
   tc_encode(o, out);
   if (version != 2) return;
   memset(out + F_DIM, 0, F2_DIM - F_DIM);
-  int n = o->n_played;
-  for (int i = 0; i < n; i++) out[F2_TRICK_OF + 13 * o->play_card[i] + (i >> 2)] = 1;
-  for (int t = 0; t + 4 <= n; t += 4) {
+  int n = o->n_played, ts = o->trick_size == 3 ? 3 : 4;
+  for (int i = 0; i < n; i++) out[F2_TRICK_OF + 13 * o->play_card[i] + i / ts] = 1;
+  for (int t = 0; t + ts <= n; t += ts) {
     int led = suit_of(o->play_card[t]), best = t;
-    for (int i = t + 1; i < t + 4; i++)
-      if (suit_of(o->play_card[i]) == led && rank_of(o->play_card[i]) > rank_of(o->play_card[best])) best = i;
+    for (int i = t + 1; i < t + ts; i++) {
+      int c = o->play_card[i], b = o->play_card[best];
+      int higher = ts == 3 ? tc_sooli_rank(c) > tc_sooli_rank(b) : rank_of(c) > rank_of(b);
+      if (suit_of(c) == led && higher) best = i;
+    }
     out[F2_WON + o->play_card[best]] = 1;
   }
 }

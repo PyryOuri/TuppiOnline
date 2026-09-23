@@ -13,6 +13,11 @@ lib = C.CDLL(str(_LIB_PATH))
 NUM_ACTIONS = 156
 NOLO, RAMI = 0, 1
 PH_SHOW, PH_PLAY, PH_DONE = 0, 1, 2
+# project_target_v2 (sooli): phases and the action ids outside the network head.
+PH_SOOLI_OFFER, PH_SOOLI_GIVE, PH_SOOLI_RETURN, PH_SOOLI_PLAY = 3, 4, 5, 6
+SOOLI_PHASES = (PH_SOOLI_OFFER, PH_SOOLI_GIVE, PH_SOOLI_RETURN, PH_SOOLI_PLAY)
+ACT_SOOLI_DECLINE, ACT_SOOLI_ACCEPT, ACT_EXCHANGE = 156, 157, 158
+NUM_ACTIONS_V2 = 210
 U8x4 = C.c_uint8 * 4
 U8x52 = C.c_uint8 * 52
 
@@ -30,6 +35,10 @@ class TcDeal(C.Structure):
         ("team_tricks", C.c_uint8 * 2),
         ("score", C.c_uint8 * 2),
         ("winner_team", C.c_int8), ("points", C.c_uint8), ("stolen", C.c_uint8),
+        ("ruleset", C.c_uint8), ("trick_size", C.c_uint8), ("n_decisions", C.c_uint8),
+        ("decision_seat", C.c_uint8 * 2), ("decision_accept", C.c_uint8 * 2),
+        ("soolaaja", C.c_int8), ("given", C.c_int8), ("returned", C.c_int8),
+        ("sooli_won", C.c_uint8),
     ]
 
 
@@ -44,11 +53,26 @@ class TcObs(C.Structure):
         ("n_played", C.c_uint8),
         ("play_card", U8x52), ("play_seat", U8x52),
         ("score", C.c_uint8 * 2),
+        ("ruleset", C.c_uint8), ("trick_size", C.c_uint8), ("n_decisions", C.c_uint8),
+        ("decision_seat", C.c_uint8 * 2), ("decision_accept", C.c_uint8 * 2),
+        ("soolaaja", C.c_int8), ("known_given", C.c_int8), ("known_returned", C.c_int8),
     ]
 
 
 _P = C.POINTER
 lib.tc_deal_init.argtypes = [_P(TcDeal), _P(C.c_uint64), C.c_int, C.c_int, C.c_int]
+lib.tc_deal_init_v.argtypes = [_P(TcDeal), _P(C.c_uint64), C.c_int, C.c_int, C.c_int, C.c_int]
+lib.tc_struct_sizes.argtypes = [_P(C.c_int)]
+lib.tc_sooli_solve.argtypes = [_P(TcDeal)]
+lib.tc_sooli_solve.restype = C.c_int
+lib.tc_sooli_move_values.argtypes = [_P(TcDeal), _P(C.c_int), C.c_int, _P(C.c_int)]
+lib.tc_sooli_move_values.restype = C.c_int
+lib.tc_sooli_finish.argtypes = [_P(TcDeal)]
+lib.tc_sooli_nodes.restype = C.c_long
+lib.tc_sooli_policy.argtypes = [_P(TcObs), _P(C.c_uint64)]
+lib.tc_sooli_policy.restype = C.c_int
+lib.tc_sooli_offer_prefilter.argtypes = [C.c_uint64]
+lib.tc_sooli_offer_prefilter.restype = C.c_int
 lib.tc_legal.argtypes = [_P(TcDeal), _P(C.c_int)]
 lib.tc_legal.restype = C.c_int
 lib.tc_apply.argtypes = [_P(TcDeal), C.c_int]
@@ -64,6 +88,7 @@ lib.tc_encode_v.argtypes = [_P(TcObs), _P(C.c_uint8), C.c_int]
 lib.tc_feature_dim_v.argtypes = [C.c_int]
 lib.tc_feature_dim_v.restype = C.c_int
 lib.tc_env_set_encoder.argtypes = [C.c_void_p, C.c_int]
+lib.tc_env_set_sooli.argtypes = [C.c_void_p, C.c_int, C.c_int, C.c_int]
 lib.tc_valid_show_cards.argtypes = [C.c_uint64, C.c_int]
 lib.tc_valid_show_cards.restype = C.c_uint64
 lib.tc_verbal_required.argtypes = [C.c_int, C.c_int]
@@ -109,6 +134,12 @@ lib.tc_sample_world.restype = C.c_int
 
 FEATURE_DIM = lib.tc_feature_dim()
 
+_sizes = (C.c_int * 2)()
+lib.tc_struct_sizes(_sizes)
+if (_sizes[0], _sizes[1]) != (C.sizeof(TcDeal), C.sizeof(TcObs)):
+    raise ImportError(f"libtuppi struct layout mismatch: native {tuple(_sizes)}, "
+                      f"ctypes {(C.sizeof(TcDeal), C.sizeof(TcObs))}; rebuild native/")
+
 
 def feature_dim(encoder: int = 1) -> int:
     return lib.tc_feature_dim_v(encoder)
@@ -143,13 +174,34 @@ def sample_world(obs: TcObs, rng_state: C.c_uint64) -> TcDeal | None:
 
 
 def legal(deal: TcDeal) -> list[int]:
-    buf = (C.c_int * NUM_ACTIONS)()
+    buf = (C.c_int * NUM_ACTIONS_V2)()
     k = lib.tc_legal(C.byref(deal), buf)
     return list(buf[:k])
 
 
+def sooli_solve(deal: TcDeal) -> int:
+    """1 if the soolaaja survives under perfect-information play, 0 if not, -1 outside sooli play."""
+    return lib.tc_sooli_solve(C.byref(deal))
+
+
+def sooli_move_values(deal: TcDeal, actions: list[int]) -> list[int]:
+    acts = (C.c_int * len(actions))(*actions)
+    out = (C.c_int * len(actions))()
+    if lib.tc_sooli_move_values(C.byref(deal), acts, len(actions), out) != 0:
+        raise ValueError("not in sooli play, or an illegal action")
+    return list(out)
+
+
+def sooli_policy(obs: TcObs, rng_state: C.c_uint64) -> int:
+    """The observation-only sooli heuristic's action (tuppi_sooli_policy.c)."""
+    a = lib.tc_sooli_policy(C.byref(obs), C.byref(rng_state))
+    if a < 0:
+        raise ValueError("not a sooli decision")
+    return a
+
+
 def legal_obs(obs: TcObs) -> list[int]:
-    buf = (C.c_int * NUM_ACTIONS)()
+    buf = (C.c_int * NUM_ACTIONS_V2)()
     k = lib.tc_legal_obs(C.byref(obs), buf)
     return list(buf[:k])
 
@@ -167,10 +219,10 @@ def observe(deal: TcDeal, seat: int) -> TcObs:
     return obs
 
 
-def new_deal(hands_masks, dealer: int, score0: int = 0, score1: int = 0) -> TcDeal:
+def new_deal(hands_masks, dealer: int, score0: int = 0, score1: int = 0, ruleset: int = 1) -> TcDeal:
     deal = TcDeal()
     arr = (C.c_uint64 * 4)(*hands_masks)
-    lib.tc_deal_init(C.byref(deal), arr, dealer, score0, score1)
+    lib.tc_deal_init_v(C.byref(deal), arr, dealer, score0, score1, ruleset)
     return deal
 
 
@@ -193,6 +245,10 @@ class Env:
         self.done = np.zeros(n, dtype=np.int32)
         self.delta0 = np.zeros(n, dtype=np.float32)
         self.info = np.zeros((n, 8), dtype=np.int32)
+
+    def set_sooli(self, belief: int = 0, return_pi: bool = False, play_heur: bool = False) -> None:
+        """Search options for sooli decisions (see tc_sample_world_sooli, resolve_sooli)."""
+        lib.tc_env_set_sooli(self._h, belief, int(return_pi), int(play_heur))
 
     def set_equity(self, equity: np.ndarray) -> None:
         eq = np.ascontiguousarray(equity, dtype=np.float64).reshape(25, 2)
