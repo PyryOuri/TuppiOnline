@@ -196,7 +196,7 @@ class SearchAgent:
 
     def __init__(self, net, equity_table, seat: int, worlds: int = 32, dd_left: int = 0,
                  search_showing=False, seed: int = 0, keep: float | None = None,
-                 show_worlds: int | None = None, **belief):
+                 show_worlds: int | None = None, rami_bonus: float = 0.0, **belief):
         """search_showing: False (blueprint shows), True/1 (search every legal show), or 2
         (search only the blueprint's preferred card for each contract, then keep
         the blueprint's card within the chosen contract)."""
@@ -204,6 +204,10 @@ class SearchAgent:
         self.net = net
         self.search_showing = search_showing
         self.keep = keep  # None: plain argmax; >= 0: keep the blueprint's action unless beaten by more
+        # Added to the value of declaring RAMI (RETURN_SCALE units): the rollouts
+        # play the rest of the deal with the clone, which undervalues contracts
+        # this agent's own (better) play would make.
+        self.rami_bonus = rami_bonus
         self.searcher = Searcher(net, equity_table, worlds=worlds, dd_left=dd_left, seed=seed + seat, **belief)
         self.show_searcher = None
         if show_worlds and show_worlds != worlds:
@@ -235,6 +239,8 @@ class SearchAgent:
             values = searcher.action_values(obs, reps)
             return legal[ids.index(reps[int(np.argmax(values))])]
         values = searcher.action_values(obs, ids)
+        if self.rami_bonus and obs.phase == native.PH_SHOW:
+            values = values + self.rami_bonus * np.array([1.0 if i >= 104 else 0.0 for i in ids])
         best = int(np.argmax(values))
         if self.keep is not None:
             native.encode(obs, self._feat[0], self.net.encoder)

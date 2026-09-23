@@ -32,6 +32,14 @@ reference +0.0142):
 | 256 worlds for showing decisions | +0.0010 +- 0.0023 |
 | team seats rolled out by `xi1_small` | +0.0005 +- 0.0024 |
 
+| stochastic opponent rollouts (softmax T=4), at home | -0.0004 +- 0.0022 |
+| same, vs `legacy_heuristic_port_v1` (paired vs plain search) | -0.0015 +- 0.0017 |
+| bonus on own RAMI declarations, +0.001 equity | -0.0030 +- 0.0024 (RAMI rate 85% -> 93%) |
+| bonus +0.002 / +0.005 / +0.01 equity | -0.0057 / -0.0121 / -0.0130 |
+
+Showing is already calibrated: many show decisions are near-ties, and any
+push toward RAMI over-declares.
+
 **Learned belief (card-location network).** Trained on 8M native self-play
 positions (distilled-search team vs clone team): held-out NLL 0.436 nats per
 unseen card vs 1.099 uniform-over-3 (TuppiProject Phase 5G-B's hard-uniform

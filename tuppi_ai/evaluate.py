@@ -64,6 +64,7 @@ def _make_candidate(spec: str) -> dict:
         return {s: SearchAgent(net, table, s, worlds=int(opts.get("w", 32)), dd_left=int(opts.get("dd", 0)),
                                search_showing=int(opts.get("show", "0")),
                                keep=float(opts["keep"]) if "keep" in opts else None,
+                               rami_bonus=float(opts.get("rb", 0.0)),
                                show_worlds=int(opts["sw"]) if "sw" in opts else None, **belief) for s in range(4)}
     from .policies import PolicyAgent, from_spec
     policy = from_spec(spec, "cpu")
