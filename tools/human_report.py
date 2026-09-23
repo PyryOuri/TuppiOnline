@@ -20,18 +20,15 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def _agents(plan: dict[int, str], bot: str, worlds: int):
-    from tuppi_ai import model as qmodel
-    from tuppi_ai.equity import Equity
+    from tuppi_ai.best import best_agents
     from tuppi_ai.incumbent import incumbent_agents
-    from tuppi_ai.search import SearchAgent
 
     inc = incumbent_agents()
-    net = qmodel.load(ROOT / "runs" / "bc_small.pt")
-    table = Equity.load(ROOT / "runs" / "equity_incumbent.json").table
     kinds = dict(plan)
     kinds[0] = bot
-    return {s: (SearchAgent(net, table, s, worlds=worlds, dd_left=6, search_showing=True, seed=100 + s)
-                if kinds.get(s, "incumbent") == "search" else inc[s]) for s in range(4)}
+    searched = [s for s in range(4) if kinds.get(s, "incumbent") == "search"]
+    best = best_agents(searched, worlds=worlds, seed=100)
+    return {s: best.get(s, inc[s]) for s in range(4)}
 
 
 def _deals_of(runner: dict):
@@ -79,9 +76,10 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--root", type=Path, default=ROOT / "runs" / "human_server")
     p.add_argument("--bot", choices=("search", "incumbent"), default="search")
-    p.add_argument("--worlds", type=int, default=128)
+    p.add_argument("--worlds", type=int, default=128)  # tuppi_ai.best.WORLDS
     args = p.parse_args()
-    equity = Equity.load(ROOT / "runs" / "equity_incumbent.json")
+    from tuppi_ai.best import EQUITY
+    equity = Equity.load(EQUITY)
     for plan_dir in sorted(d for d in args.root.iterdir() if d.is_dir()):
         plan = {int(x.split("-")[0]): x.split("-")[1] for x in plan_dir.name.split("_")}
         agents = _agents(plan, args.bot, args.worlds)

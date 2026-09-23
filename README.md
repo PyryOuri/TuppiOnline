@@ -7,8 +7,11 @@ them, or a player that talks to them only through `PlayerObservation`.
 
 ## Current best agent
 
-`search:runs/bc_small.pt:w=128:dd=6:show=1` - at every decision (showing and
-card play), 128 hidden-hand layouts are drawn uniformly from those consistent
+`tuppi_ai/best.py` (`best_agents()`, or `--checkpoint best` in the evaluators).
+Its two model files are tracked in `models/`: `rollout_clone_small.pt` (the
+behaviour clone used for play-outs) and `equity_incumbent.json` (match-equity
+table). At every decision (showing and card play), 128 hidden-hand layouts are
+drawn uniformly from those consistent
 with the seat's observation, every legal action is played out in each by a
 behaviour clone of `partner_aware_lead_v2`, the last 6 tricks are solved
 exactly, and the action with the best mean match-equity change is chosen.

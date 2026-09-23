@@ -66,7 +66,7 @@ def evaluate_matches(candidate: str, pairs: int, seed: str = "tuppi-ai-match-v1"
                      opponent: str = "partner_aware_lead_v2", workers: int = 12,
                      cap: int = DEFAULT_CAP, equity_path: str | None = None) -> dict:
     from .evaluate import ROOT
-    equity_path = equity_path or str(ROOT / "runs" / "equity_incumbent.json")
+    equity_path = equity_path or str(ROOT / "models" / "equity_incumbent.json")
     t0 = time.time()
     with ProcessPoolExecutor(workers, initializer=_init_worker,
                              initargs=(candidate, opponent, equity_path)) as pool:

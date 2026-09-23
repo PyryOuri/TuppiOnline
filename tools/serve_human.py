@@ -9,8 +9,8 @@ server's rooms and history are untouched.
         ~/.venvs/tuppi-ai/bin/python tools/serve_human.py [--lan] [--port 8766]
 
 Seat kinds: `incumbent` (partner_aware_lead_v2, the server's normal AI) and
-`search` (TuppiAI search agent; checkpoint from TUPPI_AI_CHECKPOINT). Seats not
-listed keep the server's normal AI.
+`search` (the best TuppiAI agent, `tuppi_ai.best`). Seats not listed keep the
+server's normal AI.
 
 Caveat: the protocol only allows the profile names partner_aware_v1 and
 partner_aware_lead_v2, so the client still labels every AI seat
@@ -46,27 +46,20 @@ def _plan() -> dict[int, str]:
 def main() -> None:
     from tuppi_server import app, match_runner
 
-    from tuppi_ai import model as qmodel
-    from tuppi_ai.equity import Equity
-    from tuppi_ai.search import SearchAgent
+    from tuppi_ai.best import ROLLOUT, WORLDS, best_agents
 
     plan = _plan()
-    checkpoint = os.environ.get("TUPPI_AI_CHECKPOINT", str(ROOT / "runs" / "bc_small.pt"))
-    worlds = int(os.environ.get("TUPPI_AI_WORLDS", "128"))
-    net = qmodel.load(checkpoint, "cpu")
-    table = Equity.load(ROOT / "runs" / "equity_incumbent.json").table
+    worlds = int(os.environ.get("TUPPI_AI_WORLDS", str(WORLDS)))
     original = match_runner._construct_ai_agents
 
     def construct(seats, *, profile_key):
         agents = original(seats, profile_key=profile_key)
-        for seat in seats:
-            if plan.get(seat) == "search":
-                agents[seat] = SearchAgent(net, table, seat, worlds=worlds, dd_left=6,
-                                           search_showing=True, seed=seat)
+        searched = [s for s in seats if plan.get(s) == "search"]
+        agents.update(best_agents(searched, worlds=worlds))
         return agents
 
     match_runner._construct_ai_agents = construct
-    print(f"TuppiAI seat plan: {plan}; search checkpoint {checkpoint}, W={worlds}")
+    print(f"TuppiAI seat plan: {plan}; best agent ({ROLLOUT.name}, W={worlds})")
     print(f"server data dir: {os.environ['TUPPI_SERVER_DATA_DIR']}")
     app.main(sys.argv[1:])
 

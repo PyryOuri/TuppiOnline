@@ -41,6 +41,9 @@ def _init(candidate: str, opponent: str, equity_path: str) -> None:
 def _make_candidate(spec: str) -> dict:
     """`profile:<key>`, a policy spec (see policies.py), or
     `search:<ckpt>[:w=32][:dd=6][:show=1][:belief=4][:bt=1.0][:be=0.1]`."""
+    if spec == "best":
+        from .best import best_agents
+        return best_agents()
     if spec.startswith("profile:"):
         from .incumbent import incumbent_agents
         return incumbent_agents(spec.split(":", 1)[1])
@@ -147,7 +150,7 @@ def summarise(rows: list[dict]) -> dict:
 
 def evaluate(candidate: str, deals: int, seed: str = "tuppi-ai-eval-v1", scores: str = "zero",
              opponent: str = "partner_aware_lead_v2", workers: int = 12,
-             equity_path: str = str(ROOT / "runs" / "equity_incumbent.json")) -> dict:
+             equity_path: str = str(ROOT / "models" / "equity_incumbent.json")) -> dict:
     t0 = time.time()
     with ProcessPoolExecutor(workers, initializer=_init,
                              initargs=(candidate, opponent, equity_path)) as pool:
@@ -162,7 +165,8 @@ def evaluate(candidate: str, deals: int, seed: str = "tuppi-ai-eval-v1", scores:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--checkpoint", required=True, help="checkpoint path or profile:<key>")
+    parser.add_argument("--checkpoint", required=True,
+                        help="best | profile:<key> | checkpoint path | search:<ckpt>:<options>")
     parser.add_argument("--deals", type=int, default=1000)
     parser.add_argument("--seed", default="tuppi-ai-eval-v1")
     parser.add_argument("--scores", choices=("zero", "uniform"), default="zero")
@@ -171,7 +175,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path)
     args = parser.parse_args()
     summary = evaluate(args.checkpoint, args.deals, args.seed, args.scores, args.opponent, args.workers)
-    print(json.dumps({k: v for k, v in summary.items() if k != "values"}, indent=1))
+    print(json.dumps({k: v for k, v in summary.items() if k not in ("values", "games")}, indent=1))
     if args.out:
         args.out.write_text(json.dumps(summary, indent=1))
 
