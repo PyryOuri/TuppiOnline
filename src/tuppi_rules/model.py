@@ -18,6 +18,8 @@ from .errors import (
 
 class RulesetId(StrEnum):
     PROJECT_TARGET_V1 = "project_target_v1"
+    #: project_target_v1 plus the sooli subgame (docs/rules/project_target_v2.md).
+    PROJECT_TARGET_V2 = "project_target_v2"
 
 
 class Suit(StrEnum):
