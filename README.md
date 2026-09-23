@@ -156,6 +156,18 @@ TUPPI_SERVER_DATA_DIR=/private/tmp/tuppi-server-state \
   --host 127.0.0.1 --port 8765
 ```
 
+`TUPPI_SERVER_RULESET` chooses the rules of new rooms: `project_target_v1`
+(default), `project_target_v2` (plus sooli) or `project_target_v3` (sooli and
+locked bids, the real game: every human locks a bid blind, the server applies
+the bids in seat order once all have locked, and bids after the first RAMI are
+discarded unseen and never stored; see `docs/rules/project_target_v3.md`). The
+ruleset is stored with each room. The completed-deal and post-match analysis
+endpoints answer `analysis_unavailable_for_ruleset` in v2/v3 rooms, and the
+training odds `analysis_unavailable_in_sooli` during a sooli; both are built
+for four-hand v1 deals. The server's AI plays sooli through
+`tuppi_agents.sooli.SooliFallbackAgent` (never offers; heuristic exchange and
+play) unless an agent declares `handles_sooli`.
+
 The default private-alpha AI profile is the observation-only
 `partner_aware_v1`. Live deals use server-side CSPRNG and never expose a deal
 seed. Protocol schemas live in `schemas/network/`; fixture export and client
