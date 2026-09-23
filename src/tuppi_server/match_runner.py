@@ -101,7 +101,7 @@ AI_ACTION_DELAY_SECONDS = _configured_ai_delay()
 
 
 def _configured_reveal_pause() -> float:
-    raw = os.environ.get("TUPPI_SERVER_REVEAL_PAUSE_SECONDS", "3.0")
+    raw = os.environ.get("TUPPI_SERVER_REVEAL_PAUSE_SECONDS", "2.5")
     try:
         pause = float(raw)
     except ValueError as exc:
@@ -112,10 +112,16 @@ def _configured_reveal_pause() -> float:
 
 
 #: project_target_v3: after the locked bids are revealed, the first AI move
-#: waits this long, so the clients can show all revealed bids together and let
-#: them fade out before anyone plays (the client shows them for 2.4 s and fades
-#: them in 0.4 s).
+#: waits until the clients have shown the reveal: the bids appear one by one in
+#: seat order from the forehand (the first RAMI ends it), then all fade out
+#: together. The client takes 0.7 s per further bid, holds 1.8 s and fades in
+#: 0.4 s; the pause is REVEAL_PAUSE_SECONDS + REVEAL_STEP_SECONDS per further bid.
 REVEAL_PAUSE_SECONDS = _configured_reveal_pause()
+REVEAL_STEP_SECONDS = 0.7
+
+
+def reveal_pause(revealed_bids: int) -> float:
+    return REVEAL_PAUSE_SECONDS + REVEAL_STEP_SECONDS * max(0, revealed_bids - 1)
 
 
 def _for_ruleset(agents: dict[int, object], ruleset_id: RulesetId) -> dict[int, object]:
@@ -1000,7 +1006,7 @@ class LiveMatchRunner:
         delay = AI_ACTION_DELAY_SECONDS if delay_seconds is None else delay_seconds
         if not isinstance(delay, (int, float)) or isinstance(delay, bool) or not 0 <= delay <= 60:
             raise ValueError("AI action delay must be numeric and in 0..60")
-        revealed = False
+        revealed = 0
         while not self.terminal:
             self._ensure_deal_started()
             if self.collecting_bids():
@@ -1010,15 +1016,15 @@ class LiveMatchRunner:
                     return
                 if on_state_change is not None:
                     await on_state_change()
-                revealed = True
+                revealed = len(self.state.active_deal.show_actions) if self.state.active_deal else 1
                 continue
             actor = self.current_actor
             if actor is None or actor not in self.ai_seats:
                 return
             # The first move after a reveal waits until the revealed bids have
-            # been shown and have faded out.
-            await asyncio.sleep(max(delay, REVEAL_PAUSE_SECONDS) if revealed else delay)
-            revealed = False
+            # been shown, one by one, and have faded out.
+            await asyncio.sleep(max(delay, reveal_pause(revealed)) if revealed else delay)
+            revealed = 0
             action, evaluation = await asyncio.to_thread(self._choose_ai_action, actor)
             self._apply_ai_action(actor, action=action, contract_evaluation=evaluation)
             if on_state_change is not None:

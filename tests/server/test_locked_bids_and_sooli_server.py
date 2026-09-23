@@ -12,6 +12,8 @@ from __future__ import annotations
 import json
 import random
 
+import pytest
+
 from tuppi_engine import EnginePhase, action_from_data
 from tuppi_rules import RulesetId
 from tuppi_server import LiveMatchRunner
@@ -302,7 +304,7 @@ def test_first_ai_move_after_the_reveal_waits_for_the_fade(monkeypatch):
         waits.append(seconds)
 
     monkeypatch.setattr(match_runner.asyncio, "sleep", fake_sleep)
-    monkeypatch.setattr(match_runner, "REVEAL_PAUSE_SECONDS", 3.0)
+    monkeypatch.setattr(match_runner, "REVEAL_PAUSE_SECONDS", 2.5)
     for attempt in range(40):
         waits.clear()
         runner = LiveMatchRunner(match_ref=f"reveal-{attempt}", ai_seats=frozenset({1, 2, 3}), ruleset_id=V3,
@@ -317,6 +319,8 @@ def test_first_ai_move_after_the_reveal_waits_for_the_fade(monkeypatch):
         asyncio.run(scenario())
         assert not runner.collecting_bids()
         if waits:  # an AI acted after the reveal: its first move waited for the fade
-            assert waits[0] == 3.0 and all(w == 0.5 for w in waits[1:])
+            revealed = len(runner.state.active_deal.show_actions)  # the human still holds cards
+            assert waits[0] == pytest.approx(2.5 + 0.7 * (revealed - 1))
+            assert all(w == 0.5 for w in waits[1:])
             return
     raise AssertionError("no deal where an AI moves after the reveal")
