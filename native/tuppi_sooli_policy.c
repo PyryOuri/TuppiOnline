@@ -14,6 +14,7 @@
 //  - Play: the soolaaja ducks as high as it can and discards to reduce
 //    exposure; RAMI players lead their lowest cards where the soolaaja may
 //    still follow, follow under the leader's card and discard high.
+#include <math.h>
 #include <string.h>
 
 #include "tuppi_core.h"
@@ -24,6 +25,14 @@ typedef uint64_t u64;
 #define OFFER_WORLDS 8
 
 int tc_sample_world(const TcObs *o, uint64_t *rng, TcDeal *out);
+int tc_sample_world_tilted(const TcObs *o, uint64_t *rng, TcDeal *out, double lambda);
+
+static inline u64 splitmix_(u64 *x) {
+  u64 z = (*x += 0x9E3779B97F4A7C15ULL);
+  z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+  z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+  return z ^ (z >> 31);
+}
 
 static inline u64 to_low(u64 h) {
   u64 out = 0;
@@ -192,24 +201,86 @@ int tc_sooli_policy(const TcObs *o, uint64_t *rng) {
 }
 
 // Sooli-conditioned worlds. The uniform sampler ignores that the soolaaja
-// chose to play sooli; these modes reject worlds whose soolaaja hand would
-// not have been offered (up to SOOLI_TRIES draws, then the last uniform one):
+// chose to play sooli; these modes reject worlds whose soolaaja hand is
+// implausible (up to SOOLI_TRIES draws, then the last one drawn):
 //   bit 0: the soolaaja's hand passes the offer prefilter (before the
 //          exchange when the observer knows it, i.e. the partner during the
 //          return; the post-exchange hand, incl. cards played since, for RAMI
 //          observers);
 //   bit 1: the partner during the return: the heuristic give from that hand is
-//          the card actually received.
-// Mode 0 or any other observer or phase is tc_sample_world.
-#define SOOLI_TRIES 400
-int tc_sample_world_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, int mode) {
+//          the card actually received;
+//   bit 2: exposure tilt: keep a world with probability exp(-lambda * x),
+//          x = exposure of that soolaaja hand against the rest of the deck;
+//   bit 4: exact exposure tilt (tc_sample_world_tilted) instead of bit 2's
+//          rejection: the same target distribution at the cost of one draw;
+//   bit 3: RAMI observers: some exchange (given g from the dead hand, returned
+//          r from the soolaaja's cards) consistent with the shown cards makes
+//          a pre-exchange soolaaja hand that passes the prefilter, with g among
+//          the heuristic give's EXCHANGE_TOP choices from it and r among the
+//          heuristic return's EXCHANGE_TOP choices.
+// Mode 0, or any other observer or phase, is tc_sample_world.
+#define SOOLI_TRIES 2000
+#define EXCHANGE_TOP 2
+
+// How many cards the heuristic give prefers to c (0 = its choice).
+static int give_rank(u64 hand, int c) {
+  u64 mine = to_low(hand), others = to_low(FULL_DECK & ~hand);
+  int pc = low_of(c), dc = exposure(mine & ~(1ULL << pc), others), rank = 0;
+  for (u64 m = hand; m; m &= m - 1) {
+    int x = __builtin_ctzll(m), px = low_of(x);
+    if (x == c) continue;
+    int dx = exposure(mine & ~(1ULL << px), others);
+    if (dx < dc || (dx == dc && px % 13 > pc % 13)) rank++;
+  }
+  return rank;
+}
+
+static long return_key(u64 hand, int g, int c) {
+  int p = low_of(c), suit = c / 13;
+  int held = __builtin_popcountll(hand & (SM << (13 * suit)));
+  return (long)(p % 13) * 1000 + (suit == g / 13 ? 100 : 0) + held;
+}
+
+// How many cards the heuristic return (hand holds the received g) prefers to c.
+static int return_rank(u64 hand, int g, int c) {
+  long kc = return_key(hand, g, c);
+  int rank = 0;
+  for (u64 m = hand; m; m &= m - 1) {
+    int x = __builtin_ctzll(m);
+    if (x == g || x == c) continue;
+    if (return_key(hand, g, x) < kc) rank++;
+  }
+  return rank;
+}
+
+static int exchange_plausible(u64 s_now, u64 dead, int x_card, int y_card) {
+  for (u64 rm = s_now; rm; rm &= rm - 1) {
+    int r = __builtin_ctzll(rm);
+    if (r == x_card) continue;  // X stayed with the soolaaja unless given
+    for (u64 gm = dead; gm; gm &= gm - 1) {
+      int g = __builtin_ctzll(gm);
+      if (g == y_card) continue;
+      u64 s_pre = (s_now & ~(1ULL << r)) | (1ULL << g), p14 = dead | (1ULL << r);
+      if (x_card >= 0 && !(s_pre >> x_card & 1ULL)) continue;
+      if (y_card >= 0 && !((p14 & ~(1ULL << g)) >> y_card & 1ULL)) continue;
+      if (return_rank(p14, g, r) >= EXCHANGE_TOP) continue;
+      if (!offer_prefilter(s_pre)) continue;
+      if (give_rank(s_pre, g) >= EXCHANGE_TOP) continue;
+      return 1;
+    }
+  }
+  return 0;
+}
+int tc_sample_world_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, int mode, double lambda) {
   const int S = o->soolaaja, P = (S + 2) & 3;
   int applies = mode && S >= 0 && o->seat != S &&
                 ((o->phase == TC_PH_SOOLI_RETURN && o->seat == P) || (o->phase == TC_PH_SOOLI_PLAY && o->seat != P));
   if (!applies) return tc_sample_world(o, rng, out);
   u64 played = played_mask(o);
+  const double tilt = (mode & 16) ? lambda : 0.0;
+  if (!(mode & ~16)) return tc_sample_world_tilted(o, rng, out, tilt);
   for (int t = 0; t < SOOLI_TRIES; t++) {
-    if (tc_sample_world(o, rng, out) != 0) return -1;
+    if (tc_sample_world_tilted(o, rng, out, tilt) != 0) return -1;
     u64 s_hand = out->hand[S];
     for (int i = 0; i < o->n_played; i++) if (o->play_seat[i] == S) s_hand |= 1ULL << o->play_card[i];
     if (o->phase == TC_PH_SOOLI_RETURN) s_hand |= 1ULL << o->known_given;
@@ -218,9 +289,22 @@ int tc_sample_world_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, int mode) 
       u64 others = FULL_DECK & ~s_hand & ~played;
       if (least_exposed_without(s_hand, others) != o->known_given) continue;
     }
+    if ((mode & 8) && o->phase == TC_PH_SOOLI_PLAY) {
+      int xc = -1, yc = -1;
+      for (int i = 0; i < o->n_shows; i++) {
+        if (o->show_seat[i] == S) xc = o->show_card[i];
+        if (o->show_seat[i] == P) yc = o->show_card[i];
+      }
+      if (!exchange_plausible(s_hand, out->hand[P], xc, yc)) continue;
+    }
+    if (mode & 4) {
+      int x = exposure(to_low(s_hand), to_low(FULL_DECK & ~s_hand));
+      double u = (splitmix_(rng) >> 11) * (1.0 / 9007199254740992.0);
+      if (u >= exp(-lambda * x)) continue;
+    }
     return 0;
   }
-  return 0;  // keep the last uniform world
+  return 0;  // keep the last world drawn
 }
 
 // The offer heuristic's static test alone (exposed for tests and analysis).

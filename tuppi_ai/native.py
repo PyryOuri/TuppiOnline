@@ -88,7 +88,9 @@ lib.tc_encode_v.argtypes = [_P(TcObs), _P(C.c_uint8), C.c_int]
 lib.tc_feature_dim_v.argtypes = [C.c_int]
 lib.tc_feature_dim_v.restype = C.c_int
 lib.tc_env_set_encoder.argtypes = [C.c_void_p, C.c_int]
-lib.tc_env_set_sooli.argtypes = [C.c_void_p, C.c_int, C.c_int, C.c_int]
+lib.tc_env_set_sooli.argtypes = [C.c_void_p, C.c_int, C.c_int, C.c_int, C.c_double]
+lib.tc_sample_world_sooli.argtypes = [_P(TcObs), _P(C.c_uint64), _P(TcDeal), C.c_int, C.c_double]
+lib.tc_sample_world_sooli.restype = C.c_int
 lib.tc_valid_show_cards.argtypes = [C.c_uint64, C.c_int]
 lib.tc_valid_show_cards.restype = C.c_uint64
 lib.tc_verbal_required.argtypes = [C.c_int, C.c_int]
@@ -246,9 +248,10 @@ class Env:
         self.delta0 = np.zeros(n, dtype=np.float32)
         self.info = np.zeros((n, 8), dtype=np.int32)
 
-    def set_sooli(self, belief: int = 0, return_pi: bool = False, play_heur: bool = False) -> None:
+    def set_sooli(self, belief: int = 0, return_pi: bool = False, play_heur: bool = False,
+                  lam: float = 0.0) -> None:
         """Search options for sooli decisions (see tc_sample_world_sooli, resolve_sooli)."""
-        lib.tc_env_set_sooli(self._h, belief, int(return_pi), int(play_heur))
+        lib.tc_env_set_sooli(self._h, belief, int(return_pi), int(play_heur), float(lam))
 
     def set_equity(self, equity: np.ndarray) -> None:
         eq = np.ascontiguousarray(equity, dtype=np.float64).reshape(25, 2)

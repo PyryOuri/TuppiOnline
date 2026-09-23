@@ -97,13 +97,62 @@ static void public_state(const TcObs *o, TcDeal *d, int played_by[4], int void_m
   }
 }
 
+// Optional exponential tilt on one other seat's holding (sooli beliefs): each
+// assignment is weighted by exp(-lambda * exposure) of that seat's cards
+// together with `fixed` (its cards known or already played). Exposure against
+// the rest of the deck is a sum over suits of max(0, rank_i - 2i) over the
+// seat's ace-low ranks in increasing order, so the weighted count still
+// factorises over suits and the draw stays exact.
+typedef struct { int j; double lambda; u64 fixed; } Tilt;
+
+// Log weight of splitting a suit's m free cards x / y / z among the others.
+static inline double split_term(const Tilt *t, const double *logA, int m, int x, int y, int z) {
+  if (!t) return lfact[m] - lfact[x] - lfact[y] - lfact[z];
+  int n[3] = {x, y, z}, k = n[t->j], p = n[(t->j + 1) % 3];
+  return logA[k] + lfact[m - k] - lfact[p] - lfact[m - k - p];
+}
+
+static int suit_exposure_low(unsigned low13) {
+  int d = 0, i = 0;
+  while (low13) {
+    int r = __builtin_ctz(low13);
+    low13 &= low13 - 1;
+    if (r > 2 * i) d += r - 2 * i;
+    i++;
+  }
+  return d;
+}
+static inline unsigned suit_low(u64 hand, int v) {
+  unsigned m = (unsigned)((hand >> (13 * v)) & 0x1FFFULL);
+  return ((m & 0xFFFu) << 1) | (m >> 12);
+}
+// Tilt weight of giving the seat the subset `sub` (bit i = i-th free card of
+// the suit, ascending) of the suit's free cards.
+static double tilt_weight(const Tilt *t, int v, const int *cards, int nc, unsigned sub) {
+  u64 h = t->fixed;
+  for (int i = 0; i < nc; i++) if (sub >> i & 1u) h |= 1ULL << cards[i];
+  return exp(-t->lambda * suit_exposure_low(suit_low(h, v)));
+}
+
 // Log number of assignments of `free_cards` to the three `others` with exact
 // capacities and no card of a void suit, and, if `hands` is given, an exact
 // uniform draw of one such assignment (added to hands). -INFINITY if none.
 static double count_or_draw(const int others[3], const int cap[3], u64 free_cards, const int void_mask[4],
-                            u64 *rng, u64 hands[4]) {
+                            u64 *rng, u64 hands[4], const Tilt *tilt) {
   int size[4];
   for (int v = 0; v < 4; v++) size[v] = __builtin_popcountll(free_cards & SUIT_MASK(v));
+  // logA[v][k]: log of the tilt-weighted number of k-subsets of suit v's free
+  // cards for the tilted seat (log C(m, k) without a tilt).
+  double logA[4][14];
+  int suit_cards[4][13];
+  for (int v = 0; v < 4; v++) {
+    int nc = 0;
+    for (u64 fm = free_cards & SUIT_MASK(v); fm; fm &= fm - 1) suit_cards[v][nc++] = __builtin_ctzll(fm);
+    if (!tilt) continue;
+    double A[14] = {0};
+    for (unsigned sub = 0; sub < (1u << nc); sub++) A[__builtin_popcount(sub)] += tilt_weight(tilt, v, suit_cards[v], nc, sub);
+    for (int k = 0; k <= nc; k++) logA[v][k] = log(A[k]);
+  }
   if (size[0] + size[1] + size[2] + size[3] != cap[0] + cap[1] + cap[2]) return -INFINITY;
 
   // W[v][a][b] = log number of ways to place suits v..3 given remaining
@@ -130,7 +179,7 @@ static double count_or_draw(const int others[3], const int cap[3], u64 free_card
             if (z && (void_mask[others[2]] >> v & 1)) continue;
             double rest = W[v + 1][a - x][b - y];
             if (rest == -INFINITY) continue;
-            double t = lfact[m] - lfact[x] - lfact[y] - lfact[z] + rest;
+            double t = split_term(tilt, logA[v], m, x, y, z) + rest;
             terms[nt++] = t;
             if (t > best) best = t;
           }
@@ -156,7 +205,7 @@ static double count_or_draw(const int others[3], const int cap[3], u64 free_card
         if (z > c || (z && (void_mask[others[2]] >> v & 1))) continue;
         double rest = W[v + 1][a - x][b - y];
         if (rest == -INFINITY) continue;
-        lw[ns] = lfact[m] - lfact[x] - lfact[y] - lfact[z] + rest - W[v][a][b];
+        lw[ns] = split_term(tilt, logA[v], m, x, y, z) + rest - W[v][a][b];
         sx[ns] = x; sy[ns] = y; ns++;
       }
     }
@@ -165,14 +214,36 @@ static double count_or_draw(const int others[3], const int cap[3], u64 free_card
     int pick = ns - 1;
     for (int i = 0; i < ns; i++) { acc += exp(lw[i]); if (r < acc) { pick = i; break; } }
     int cx = sx[pick], cy = sy[pick];
-    // Deal the suit's free cards: a random permutation split x / y / z.
     int cards[13], nc = 0;
     u64 fm = free_cards & SUIT_MASK(v);
     while (fm) { cards[nc++] = __builtin_ctzll(fm); fm &= fm - 1; }
-    for (int i = nc - 1; i > 0; i--) { int j = (int)(splitmix(rng) % (u64)(i + 1)); int t = cards[i]; cards[i] = cards[j]; cards[j] = t; }
-    for (int i = 0; i < nc; i++) {
-      int who = i < cx ? 0 : (i < cx + cy ? 1 : 2);
-      hands[others[who]] |= 1ULL << cards[i];
+    if (tilt) {
+      // The tilted seat's subset by weight, then the rest uniformly.
+      int n3[3] = {cx, cy, m - cx - cy}, k = n3[tilt->j];
+      double r2 = unit(rng) * exp(logA[v][k]), acc2 = 0.0;
+      unsigned chosen = 0, last = 0;
+      for (unsigned sub = 0; sub < (1u << nc); sub++) {
+        if (__builtin_popcount(sub) != k) continue;
+        last = sub;
+        acc2 += tilt_weight(tilt, v, cards, nc, sub);
+        if (r2 < acc2) { chosen = sub; break; }
+        chosen = last;
+      }
+      int rest[13], nr = 0;
+      for (int i = 0; i < nc; i++) {
+        if (chosen >> i & 1u) hands[others[tilt->j]] |= 1ULL << cards[i];
+        else rest[nr++] = cards[i];
+      }
+      for (int i = nr - 1; i > 0; i--) { int j = (int)(splitmix(rng) % (u64)(i + 1)); int t = rest[i]; rest[i] = rest[j]; rest[j] = t; }
+      int j1 = (tilt->j + 1) % 3, j2 = (tilt->j + 2) % 3, n1 = n3[j1];
+      for (int i = 0; i < nr; i++) hands[others[i < n1 ? j1 : j2]] |= 1ULL << rest[i];
+    } else {
+      // Deal the suit's free cards: a random permutation split x / y / z.
+      for (int i = nc - 1; i > 0; i--) { int j = (int)(splitmix(rng) % (u64)(i + 1)); int t = cards[i]; cards[i] = cards[j]; cards[j] = t; }
+      for (int i = 0; i < nc; i++) {
+        int who = i < cx ? 0 : (i < cx + cy ? 1 : 2);
+        hands[others[who]] |= 1ULL << cards[i];
+      }
     }
     a -= cx;
     b -= cy;
@@ -219,9 +290,19 @@ int tc_sample_world(const TcObs *o, uint64_t *rng, TcDeal *out) {
   u64 hands[4] = {0, 0, 0, 0};
   hands[me] = o->hand;
   for (int s = 0; s < 4; s++) hands[s] |= known[s];
-  if (count_or_draw(others, cap, free_cards, void_mask, rng, hands) == -INFINITY) return -1;
+  if (count_or_draw(others, cap, free_cards, void_mask, rng, hands, NULL) == -INFINITY) return -1;
   for (int s = 0; s < 4; s++) out->hand[s] = hands[s];
   return 0;
+}
+
+// Exposure tilt for sooli worlds (tc_sample_world_tilted); 0 = none.
+static __thread double sooli_tilt = 0.0;
+
+int tc_sample_world_tilted(const TcObs *o, uint64_t *rng, TcDeal *out, double lambda) {
+  sooli_tilt = lambda;
+  int r = tc_sample_world(o, rng, out);
+  sooli_tilt = 0.0;
+  return r;
 }
 
 // Worlds once a sooli exchange has begun (project_target_v2). Hand sizes follow
@@ -263,11 +344,20 @@ static int sample_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, const int pl
   u64 base[4] = {0, 0, 0, 0};
   base[me] = o->hand;
   for (int s = 0; s < 4; s++) base[s] |= known[s];
+  // The tilted seat is the soolaaja; its fixed cards are those it is known to
+  // hold, those it has played and, during the return, the card it gave.
+  u64 s_played = 0;
+  for (int i = 0; i < o->n_played; i++) if (o->play_seat[i] == S) s_played |= 1ULL << o->play_card[i];
+  Tilt tilt = {0, sooli_tilt, 0};
+  int tilted = sooli_tilt > 0.0 && me != S;
+  for (int j = 0; j < 3; j++) if (others[j] == S) tilt.j = j;
+  if (returning && g >= 0) s_played |= 1ULL << g;
   if (knows || n_unsure == 0) {
     int cap[3];
     u64 free_cards;
     if (setup(o, others, hand_size, known, played_all, cap, &free_cards) != 0) return -1;
-    if (count_or_draw(others, cap, free_cards, void_mask, rng, base) == -INFINITY) return -1;
+    tilt.fixed = known[S] | s_played;
+    if (count_or_draw(others, cap, free_cards, void_mask, rng, base, tilted ? &tilt : NULL) == -INFINITY) return -1;
     for (int s = 0; s < 4; s++) out->hand[s] = base[s];
     return 0;
   }
@@ -289,7 +379,8 @@ static int sample_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, const int pl
     u64 free_cards;
     lw[m] = -INFINITY;
     if (!ok || setup(o, others, hand_size, kk, played_all, cap, &free_cards) != 0) continue;
-    double w = count_or_draw(others, cap, free_cards, void_mask, NULL, NULL);
+    tilt.fixed = kk[S] | s_played;
+    double w = count_or_draw(others, cap, free_cards, void_mask, NULL, NULL, tilted ? &tilt : NULL);
     if (w == -INFINITY) continue;
     // Exchanges (given, returned) leading to this placement: the soolaaja's
     // post-exchange cards S' and the partner's P'.
@@ -318,7 +409,8 @@ static int sample_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, const int pl
   int cap[3];
   u64 free_cards;
   setup(o, others, hand_size, case_known[pick], played_all, cap, &free_cards);
-  if (count_or_draw(others, cap, free_cards, void_mask, rng, hands) == -INFINITY) return -1;
+  tilt.fixed = case_known[pick][S] | s_played;
+  if (count_or_draw(others, cap, free_cards, void_mask, rng, hands, tilted ? &tilt : NULL) == -INFINITY) return -1;
   for (int s = 0; s < 4; s++) out->hand[s] = hands[s];
   return 0;
 }

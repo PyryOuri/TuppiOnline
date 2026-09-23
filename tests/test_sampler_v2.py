@@ -147,3 +147,60 @@ def test_rami_observer_exchange_odds():
             got = counts.get(key, 0) / n
             sd = (p * (1 - p) / n) ** 0.5
             assert abs(got - p) < 5 * sd + 1e-4, (key, got, p)
+
+
+def _exposure(hand):
+    d = 0
+    for v in range(4):
+        m = (hand >> (13 * v)) & 0x1FFF
+        low, i = ((m & 0xFFF) << 1) | (m >> 12), 0
+        for r in range(13):
+            if low >> r & 1:
+                d += max(0, r - 2 * i)
+                i += 1
+    return d
+
+
+def _tilted(obs, state, mode, lam):
+    w = native.TcDeal()
+    assert native.lib.tc_sample_world_sooli(C.byref(obs), C.byref(state), C.byref(w), mode, lam) == 0
+    return w
+
+
+def test_tilted_worlds_are_valid_worlds():
+    rng = random.Random("v2-sampler-tilt-valid")
+    state = C.c_uint64(21)
+    for _ in range(80):
+        deal, _, history = _drive(rng, native.PH_SOOLI_PLAY, extra_plays=rng.randrange(0, 12))
+        if deal.cur == deal.soolaaja:
+            continue
+        me = deal.cur
+        obs = native.observe(deal, me)
+        for _ in range(5):
+            world = _tilted(obs, state, 16, 0.3)
+            assert bytes(native.observe(world, me)) == bytes(obs)
+            end = _replay(world, deal, history)
+            assert end is not None and [end.hand[s] for s in range(4)] == [world.hand[s] for s in range(4)]
+
+
+def test_exact_tilt_matches_rejection():
+    """Mode 16 (exact) and mode 4 (rejection) target the same tilted belief."""
+    rng = random.Random("v2-sampler-tilt-exact")
+    state = C.c_uint64(22)
+    checked = 0
+    while checked < 3:
+        deal, _, _ = _drive(rng, native.PH_SOOLI_PLAY, extra_plays=rng.randrange(0, 6))
+        if deal.cur == deal.soolaaja:
+            continue
+        checked += 1
+        S = deal.soolaaja
+        played = sum(1 << deal.play_card[i] for i in range(deal.n_played) if deal.play_seat[i] == S)
+        obs = native.observe(deal, deal.cur)
+        stats = {}
+        for mode, n in ((16, 3000), (4, 1500)):
+            xs = [_exposure(_tilted(obs, state, mode, 0.08).hand[S] | played) for _ in range(n)]
+            mean = sum(xs) / n
+            var = sum((x - mean) ** 2 for x in xs) / (n - 1)
+            stats[mode] = (mean, var / n)
+        diff = stats[16][0] - stats[4][0]
+        assert abs(diff) < 4 * (stats[16][1] + stats[4][1]) ** 0.5, stats

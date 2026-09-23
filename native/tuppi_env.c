@@ -26,6 +26,7 @@ typedef struct {
   int sooli_belief;      // tc_sample_world_sooli mode for searches in sooli phases
   int sooli_return_pi;   // rollouts: the partner returns the perfect-information best card
   int sooli_play_heur;   // rollouts: sooli trick play by the heuristics instead of the solver
+  double sooli_lambda;   // exposure tilt of sooli beliefs (mode bit 2)
 } TcEnv;
 
 static inline u64 splitmix(u64 *x) {
@@ -96,7 +97,8 @@ void tc_env_set_options(TcEnv *e, double p_random_start, int single_deal) {
   e->single_deal = single_deal;
 }
 void tc_env_set_encoder(TcEnv *e, int version) { e->encoder = version; }
-void tc_env_set_sooli(TcEnv *e, int belief, int return_pi, int play_heur) {
+void tc_env_set_sooli(TcEnv *e, int belief, int return_pi, int play_heur, double lambda) {
+  e->sooli_lambda = lambda;
   e->sooli_belief = belief;
   e->sooli_return_pi = return_pi;
   e->sooli_play_heur = play_heur;
@@ -279,7 +281,7 @@ static void record_if_done(TcEnv *e, int i, double *total) {
 }
 
 int tc_sooli_policy(const TcObs *o, uint64_t *rng);
-int tc_sample_world_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, int mode);
+int tc_sample_world_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, int mode, double lambda);
 
 // The returned card that keeps the soolaaja alive under perfect information
 // (the first in id order), or the heuristic's if none does.
@@ -332,7 +334,7 @@ int tc_search_values(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *ac
   if (n > e->n) return -2;
   TcDeal world;
   for (int wi = 0; wi < w; wi++) {
-    if (tc_sample_world_sooli(o, rng, &world, e->sooli_belief) != 0) return -1;
+    if (tc_sample_world_sooli(o, rng, &world, e->sooli_belief, e->sooli_lambda) != 0) return -1;
     for (int ai = 0; ai < k; ai++) { e->g[wi * k + ai].d = world; e->g[wi * k + ai].live = 1; }
   }
   double *total = calloc((size_t)n, sizeof(double));

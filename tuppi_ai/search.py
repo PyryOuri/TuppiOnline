@@ -199,12 +199,25 @@ class Searcher:
         live[done] = False
 
 
+# project_target_v2 sooli decisions (docs/STATUS.md, "Sooli"). Per phase:
+# "search" (candidates are priced by the same search; ties go to the
+# heuristic) or "heur" (tuppi_sooli_policy.c). The offer is always searched:
+# accept if its value beats declining by more than offer_margin (equity).
+# belief, lam: tc_sample_world_sooli mode and exposure tilt for the observers
+# who do not know the soolaaja's hand (17 = offer prefilter + exact tilt);
+# offer_play_heur: the accept rollouts finish sooli play with the heuristics
+# (True) or the solver (False).
+SOOLI_DEFAULTS = {"give": "search", "return": "heur", "play": "search", "belief": 17, "lam": 0.3,
+                  "offer_play_heur": True, "offer_margin": 0.02}
+
+
 class SearchAgent:
     """Engine-interface agent: blueprint for showing, search for trick play."""
 
     def __init__(self, net, equity_table, seat: int, worlds: int = 32, dd_left: int = 0,
                  search_showing=False, seed: int = 0, keep: float | None = None,
-                 show_worlds: int | None = None, rami_bonus: float = 0.0, **belief):
+                 show_worlds: int | None = None, rami_bonus: float = 0.0, sooli: dict | None = None,
+                 **belief):
         """search_showing: False (blueprint shows), True/1 (search every legal show), or 2
         (search only the blueprint's preferred card for each contract, then keep
         the blueprint's card within the chosen contract)."""
@@ -222,6 +235,29 @@ class SearchAgent:
             self.show_searcher = Searcher(net, equity_table, worlds=show_worlds, dd_left=dd_left,
                                           seed=seed + seat + 17, **belief)
         self._feat = np.zeros((1, native.feature_dim(net.encoder)), dtype=np.uint8)
+        self.sooli = {**SOOLI_DEFAULTS, **(sooli or {})}
+
+    def _sooli_action(self, obs: native.TcObs, ids: list[int]) -> int:
+        cfg, phase = self.sooli, obs.phase
+        env = self.searcher.env
+        if self.searcher.mlp is None:  # only the native search loop handles sooli phases
+            a = native.sooli_policy(obs, self.searcher.rng)
+            return a
+        if phase == native.PH_SOOLI_OFFER:
+            env.set_sooli(cfg["belief"], False, cfg["offer_play_heur"], cfg["lam"])
+            order = [native.ACT_SOOLI_DECLINE, native.ACT_SOOLI_ACCEPT]
+            v = self.searcher.action_values(obs, order)
+            self.last_sooli_values = dict(zip(order, v))
+            return native.ACT_SOOLI_ACCEPT if v[1] - v[0] > cfg["offer_margin"] else native.ACT_SOOLI_DECLINE
+        key = {native.PH_SOOLI_GIVE: "give", native.PH_SOOLI_RETURN: "return", native.PH_SOOLI_PLAY: "play"}[phase]
+        h = native.sooli_policy(obs, self.searcher.rng)
+        if cfg[key] == "heur":
+            return h
+        order = [h] + [i for i in ids if i != h]
+        env.set_sooli(cfg["belief"], False, False, cfg["lam"])
+        v = self.searcher.action_values(obs, order)
+        self.last_sooli_values = dict(zip(order, v))
+        return order[int(np.argmax(v))]
 
     def choose_action(self, observation):
         legal = observation.legal_actions
@@ -229,6 +265,13 @@ class SearchAgent:
             return legal[0]
         obs = obs_from_player_observation(observation)
         ids = [action_id(a) for a in legal]
+        if obs.phase in native.SOOLI_PHASES:
+            return legal[ids.index(self._sooli_action(obs, ids))]
+        if obs.ruleset == 2:  # soolis inside the rollouts are played as at the offer
+            cfg = self.sooli
+            for sr in {id(self.searcher): self.searcher, id(self.show_searcher): self.show_searcher}.values():
+                if sr is not None:
+                    sr.env.set_sooli(cfg["belief"], False, cfg["offer_play_heur"], cfg["lam"])
         searcher = self.show_searcher if (obs.phase == native.PH_SHOW and self.show_searcher) else self.searcher
         if obs.phase == native.PH_SHOW and self.search_showing != 1 and self.search_showing is not True:
             native.encode(obs, self._feat[0], self.net.encoder)

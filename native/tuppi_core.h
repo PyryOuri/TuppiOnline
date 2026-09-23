@@ -105,7 +105,8 @@ long tc_sooli_nodes(void);
 // observer in a sooli phase, -1 otherwise.
 int tc_sooli_policy(const TcObs *o, uint64_t *rng);
 int tc_sooli_offer_prefilter(uint64_t hand);
-int tc_sample_world_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, int mode);
+int tc_sample_world_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, int mode, double lambda);
+int tc_sample_world_tilted(const TcObs *o, uint64_t *rng, TcDeal *out, double lambda);
 
 // Ends a deal with the given final team-0 trick count (for solver tails).
 void tc_finish_with_tricks(TcDeal *d, int team0_tricks);
