@@ -7,6 +7,19 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## 2026-09-23 (morning) — solver-tail depth
+
+Same 128 deals (seed v3), W=64, paired against tail 6 (+0.0142):
+
+| Tail | Equity/deal | Paired vs tail 6 | Time |
+| --- | --- | --- | ---: |
+| 4 tricks | +0.0144 | +0.0001 +- 0.0022 | 432 s |
+| 6 tricks | +0.0142 | reference | 319 s |
+| 8 tricks | +0.0117 | -0.0025 +- 0.0023 | 1453 s |
+
+A longer perfect-information tail adds clairvoyance optimism and costs time;
+6 is the setting.
+
 ## 2026-09-23 (morning) — expert iteration round 2 does not compound
 
 947k decisions searched at W=64 over `xi1_small`, distilled together with the

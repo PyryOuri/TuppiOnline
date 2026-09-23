@@ -5,6 +5,18 @@ TuppiProject's `tuppi_rules` / `tuppi_engine` stay the authoritative reference;
 everything here is either a fast re-implementation differential-tested against
 them, or a player that talks to them only through `PlayerObservation`.
 
+## Current best agent
+
+`search:runs/bc_small.pt:w=64:dd=6:show=1` - at every decision (showing and
+card play), 64 hidden-hand layouts are drawn uniformly from those consistent
+with the seat's observation, every legal action is played out in each by a
+behaviour clone of `partner_aware_lead_v2`, the last 6 tricks are solved
+exactly, and the action with the best mean match-equity change is chosen.
+Against the incumbent: +0.0143 [+0.0125, +0.0161] equity per deal over 384
+fresh base deals, and 95.3% [92.8, 97.8] of complete matches (128 duplicate
+pairs, 116 won / 12 tied / 0 lost). Decisions take ~0.1-0.7 s. See
+`docs/STATUS.md` for every result, including what failed.
+
 ## Layout
 
 | Path | What |
