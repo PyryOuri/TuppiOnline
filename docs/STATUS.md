@@ -7,6 +7,33 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## After-deal review (T2): calibrating "clear mistake"
+
+The review (`tuppi_ai/review.py`, served through TuppiProject's
+`/v1/rooms/{code}/deals/{n}/review`) re-decides each of a seat's decisions
+from that seat's observation at the time with the best agent's search
+(W=256; flags confirmed on 1,024 fresh worlds with the recommendation held
+fixed, which removes the best-of-many selection bias from the reported
+cost). Calibration (`tools/review_calibrate.py`, 60 v3 deals, bot seats 0/2
+vs incumbent 1/3, every seat reviewed; 1,289 bot and 1,318 incumbent
+decisions):
+
+| Threshold (gap, SE) | Bot flags / seat-deal | Incumbent flags / seat-deal | Incumbent flagged cost / seat-deal |
+| --- | ---: | ---: | ---: |
+| 0.004, 2.5 | 0.125 | 1.74 | 0.046 |
+| **0.01, 2.5 (default)** | **0.058** | **1.19** | **0.043** |
+| 0.01, 3.0 | 0.042 | 1.15 | 0.042 |
+
+The bot reviewing its own play is the false-alarm check: a player who plays
+like the bot sees a flag about once every 17 deals. The incumbent's flags
+are mostly leads (121 of 210 at 0.004), then follows, discards, sooli leads,
+bids and sooli offers. **The estimated costs are inflated:** the incumbent's
+flagged costs add up to about six times its measured deficit (~0.0075 per
+seat-deal), the usual optimism of search values about the search's own
+choices. The client therefore shows them as the bot's estimate and says that
+the ranking is more reliable than the size. Review time: about 1 s per deal
+(4 s for the first, which loads the model).
+
 ## project_target_v3 (locked bids + sooli): re-baseline against the incumbent
 
 The same 512 base deals as the W=128 v1 result (seed v6), best agent against

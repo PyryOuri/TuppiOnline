@@ -25,7 +25,14 @@ complaints or wishes exist today? Mac only, or other devices too?
 
 ## T2 — Training functions that carry the bot's improvements to the human
 
-**Status: in progress (started 2026-09-23).**
+**Status: the after-deal review is done (2026-09-23); drills later, as the
+owner decided.** The bot's search re-decides each of the player's decisions
+from the player's own observation; only clear mistakes are listed (gap >= 0.01
+equity and >= 2.5 SE, confirmed on fresh worlds). Server endpoint
+(TuppiProject branch `rules/project-target-v3-locked-bids`, `deal_review.py`),
+TuppiAI reviewer (`tuppi_ai/review.py`, installed by `tools/serve_human.py`),
+client sheet after each deal (TuppiClient branch `feature/v3-locked-bids-sooli`).
+Calibration in `docs/STATUS.md`.
 
 **Scope.** The client's learning features: live training odds
 (`tuppi_server/training_analysis.py`: suit splits, card locations), completed

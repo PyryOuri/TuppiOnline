@@ -25,6 +25,10 @@ with `~/.venvs/tuppi-ai`. Search seats play sooli themselves; incumbent seats
 never offer sooli. The deal and match analysis buttons are hidden in v3 rooms
 (the analysis is built for v1 deals).
 
+After each deal the table bar shows the bot's review of your own decisions
+("Jako N: 2 selvää virhettä"): the clear mistakes only, re-decided from what
+you knew at the time. `TUPPI_AI_REVIEW=0` turns it off.
+
 It listens on port **8766** (the normal server uses 8765), so point the client
 at `http://127.0.0.1:8766`. Create a room with three AI seats; you are seat 0.
 
