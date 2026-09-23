@@ -28,6 +28,7 @@ from .match_runner import (
     DEFAULT_AI_PROFILE_KEY,
     LiveMatchRunner,
 )
+from .deal_review import DealReviewError, generate_deal_review
 from .post_match_diagnostics import generate_post_match_diagnostics
 from .persistence import (
     LEGACY_ROOM_RECORD_SCHEMA_VERSION,
@@ -98,6 +99,7 @@ class Room:
     completed_deal_analyses: dict[tuple[int, int], dict[str, object]] = field(
         default_factory=dict
     )
+    deal_reviews: dict[tuple[int, int], dict[str, object]] = field(default_factory=dict)
     ai_action_delay_ms: int = DEFAULT_AI_ACTION_DELAY_MS
     ruleset_id: RulesetId = RulesetId.PROJECT_TARGET_V1
 
@@ -187,6 +189,9 @@ class RoomManager:
         ruleset_id: RulesetId = RulesetId.PROJECT_TARGET_V1,
     ) -> None:
         self._rooms: dict[str, Room] = {}
+        #: Optional after-deal reviewer (``tuppi_server.deal_review.DealReviewer``),
+        #: installed by a deployment that has a bot able to re-decide positions.
+        self.deal_reviewer = None
         if ruleset_id not in SUPPORTED_RULESETS:
             raise ValueError("unsupported ruleset")
         self._ruleset_id = RulesetId(ruleset_id)
@@ -518,6 +523,42 @@ class RoomManager:
                 bot_policy_id=BOT_REPLAY_POLICY_ID,
             )
         return deepcopy(generated)
+
+    def deal_review_for_session(
+        self,
+        *,
+        code: str,
+        token: str,
+        deal_number: int,
+    ) -> dict[str, object]:
+        """This session's own decisions in a completed deal, re-decided by the reviewer.
+
+        Available once the deal is complete, to its participants only, and
+        scoped to the requesting seat. Cached per deal and seat.
+        """
+
+        room, session = self.session(code=code, token=token)
+        if self.deal_reviewer is None:
+            raise RoomError("review_unavailable")
+        if room.runner is None:
+            raise RoomError("match_not_started")
+        if (
+            type(deal_number) is not int
+            or deal_number < 0
+            or deal_number >= len(room.runner.state.completed_deals)
+        ):
+            raise RoomError("deal_not_complete")
+        key = (deal_number, session.seat)
+        cached = room.deal_reviews.get(key)
+        if cached is None:
+            try:
+                cached = generate_deal_review(
+                    room.runner, seat=session.seat, deal_number=deal_number, reviewer=self.deal_reviewer
+                )
+            except DealReviewError as exc:
+                raise RoomError("review_failed") from exc
+            room.deal_reviews[key] = cached
+        return deepcopy(cached)
 
     def get(self, code: str) -> Room:
         normalized = code.strip().upper()

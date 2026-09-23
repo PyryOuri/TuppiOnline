@@ -78,7 +78,12 @@ class TuppiASGIApp:
             payload = strict_json_loads(body.decode("utf-8")) if body else {}
             if type(payload) is not dict:
                 raise ProtocolError("request body must be an object")
-            response = self._http_command(path, payload)
+            if path.endswith("/review"):
+                # A review searches for seconds: keep the event loop (and the
+                # other seats' play) moving while it runs.
+                response = await asyncio.to_thread(self._http_command, path, payload)
+            else:
+                response = self._http_command(path, payload)
         except RoomError as exc:
             status = 404 if str(exc) in {"room_not_found", "invalid_session"} else 409
             await self._json_response(send, status, {"error": str(exc)})
@@ -109,6 +114,24 @@ class TuppiASGIApp:
             }
 
         parts = [part for part in path.split("/") if part]
+        if (
+            len(parts) == 6
+            and parts[0:2] == ["v1", "rooms"]
+            and parts[3] == "deals"
+            and parts[5] == "review"
+        ):
+            self._require_fields(payload, required={"session_token"})
+            try:
+                deal_number = int(parts[4])
+            except ValueError as exc:
+                raise ProtocolError("invalid_deal_number") from exc
+            if str(deal_number) != parts[4]:
+                raise ProtocolError("invalid_deal_number")
+            return self.rooms.deal_review_for_session(
+                code=parts[2].upper(),
+                token=self._string(payload, "session_token"),
+                deal_number=deal_number,
+            )
         if (
             len(parts) == 6
             and parts[0:2] == ["v1", "rooms"]
