@@ -25,7 +25,7 @@ from tuppi_rules import (
     validate_show_action,
 )
 
-from tuppi_rules import RulesetId
+from tuppi_rules import LOCKED_BID_RULESETS, SOOLI_RULESETS, RulesetId
 from tuppi_rules.sooli import (
     SOOLI_MAX_TRICKS,
     SooliScore,
@@ -51,6 +51,7 @@ from .events import (
     MatchScoreChangedPayload,
     PublicEvent,
     ScoreTransitionKind,
+    BidLockedPayload,
     ShowAcceptedPayload,
     SooliDecisionPayload,
     SooliExchangedPayload,
@@ -147,18 +148,29 @@ def _apply_show_action(state: DealState, action: ShowAction) -> DealState:
         raise InvalidActionError(f"illegal show action: {exc}") from exc
 
     shows = state.show_actions + (accepted,)
-    additions: list[tuple[EventType, EventPayload]] = [
+    resolved = accepted.declared_contract is Contract.RAMI or len(shows) == 4
+    locked = state.ruleset_id in LOCKED_BID_RULESETS
+    if locked:
+        # v3: the bid is taken blind; the bids are revealed, in order, only
+        # when showing resolves.
+        additions: list[tuple[EventType, EventPayload]] = [
+            (EventType.BID_LOCKED, BidLockedPayload(seat=accepted.seat, bid_index=len(state.show_actions)))
+        ]
+    revealed = shows if locked and resolved else (() if locked else (accepted,))
+    if not locked:
+        additions = []
+    additions.extend(
         (
             EventType.SHOW_ACCEPTED,
             ShowAcceptedPayload(
-                seat=accepted.seat,
-                shown_card=accepted.shown_card,
-                declared_contract=accepted.declared_contract,
-                verbal_required=accepted.verbal_required,
+                seat=show.seat,
+                shown_card=show.shown_card,
+                declared_contract=show.declared_contract,
+                verbal_required=show.verbal_required,
             ),
         )
-    ]
-    resolved = accepted.declared_contract is Contract.RAMI or len(shows) == 4
+        for show in revealed
+    )
     if not resolved:
         return replace(
             state,
@@ -186,7 +198,7 @@ def _apply_show_action(state: DealState, action: ShowAction) -> DealState:
             ),
         )
     )
-    if state.ruleset_id is RulesetId.PROJECT_TARGET_V2 and resolution.contract is Contract.RAMI:
+    if state.ruleset_id in SOOLI_RULESETS and resolution.contract is Contract.RAMI:
         # v2: the defenders are asked about sooli before any card is played.
         return replace(
             state,

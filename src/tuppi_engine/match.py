@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 
 from tuppi_rules import (
+    SUPPORTED_RULESETS,
     MatchScore,
     RulesetId,
     Team,
@@ -260,7 +261,7 @@ def validate_match_state(state: MatchState) -> MatchState:
 
 
 def _validate_match_state(state: MatchState) -> None:
-    if state.ruleset_id not in (RulesetId.PROJECT_TARGET_V1, RulesetId.PROJECT_TARGET_V2):
+    if state.ruleset_id not in SUPPORTED_RULESETS:
         raise StateInvariantError("match supports project_target_v1 and project_target_v2")
     if state.active_deal is not None and state.active_deal.ruleset_id is not state.ruleset_id:
         raise StateInvariantError("active deal ruleset disagrees with the match")

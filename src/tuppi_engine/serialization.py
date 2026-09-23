@@ -12,6 +12,8 @@ import tempfile
 from typing import Any
 
 from tuppi_rules import (
+    LOCKED_BID_RULESETS,
+    SOOLI_RULESETS,
     CARD_ENCODING_ID,
     RULESET_ID,
     Card,
@@ -25,10 +27,13 @@ from tuppi_rules import (
     is_match_terminal,
 )
 
-from .actions import Action, PlayCardAction, ShowAction
+from tuppi_rules.sooli import SooliScore
+
+from .actions import Action, PlayCardAction, ShowAction, SooliDecisionAction, SooliExchangeAction
 from .deal import EXPLICIT_DEAL_SCHEMA_VERSION, ExplicitDeal
 from .errors import EngineValidationError, SerializationError
 from .events import (
+    BidLockedPayload,
     CardPlayedPayload,
     ContractResolvedPayload,
     DealCompletedPayload,
@@ -39,6 +44,8 @@ from .events import (
     MatchScoreChangedPayload,
     PublicEvent,
     ShowAcceptedPayload,
+    SooliDecisionPayload,
+    SooliExchangedPayload,
     TrickCompletedPayload,
     TrickStartedPayload,
 )
@@ -111,6 +118,10 @@ def action_to_data(action: Action) -> dict[str, object]:
             "seat": action.seat,
             "type": "play",
         }
+    if isinstance(action, SooliDecisionAction):
+        return {"play_sooli": action.play_sooli, "seat": action.seat, "type": "sooli_decision"}
+    if isinstance(action, SooliExchangeAction):
+        return {"card": card_to_code(action.card), "seat": action.seat, "type": "sooli_exchange"}
     raise SerializationError("cannot serialize a non-engine action")
 
 
@@ -192,6 +203,12 @@ def event_to_data(event: PublicEvent) -> dict[str, object]:
             "final_score": _score_data(payload.final_score),
             "winner_team": payload.winner_team.value,
         }
+    elif isinstance(payload, BidLockedPayload):
+        payload_data = {"bid_index": payload.bid_index, "seat": payload.seat}
+    elif isinstance(payload, SooliDecisionPayload):
+        payload_data = {"play_sooli": payload.play_sooli, "seat": payload.seat}
+    elif isinstance(payload, SooliExchangedPayload):
+        payload_data = {"partner": payload.partner, "soolaaja": payload.soolaaja}
     else:
         raise SerializationError("unknown public event payload")
     return {
@@ -229,25 +246,66 @@ def _event_sequence_to_data(
         raise SerializationError(f"event indices must be contiguous{qualifier}")
     if any(event.match_ref != match_ref for event in events):
         raise SerializationError("event belongs to a different match_ref")
+    rulesets = {event.ruleset_id for event in events} or {RULESET_ID}
+    if len(rulesets) != 1:
+        raise SerializationError("events belong to different rulesets")
     identity = {
         "events": event_data,
         "match_ref": match_ref,
-        "ruleset_id": RULESET_ID.value,
+        "ruleset_id": rulesets.pop().value,
         "schema_version": PUBLIC_EVENT_LOG_SCHEMA_VERSION,
     }
     return {**identity, "event_log_id": _digest(identity)}
 
 
+def _sooli_observation_data(observation: PlayerObservation) -> dict[str, object]:
+    return {
+        "decisions": [
+            {"play_sooli": accepted, "seat": seat} for seat, accepted in observation.sooli_decisions
+        ],
+        "exchanged": observation.sooli_exchanged,
+        "given_card": (
+            None if observation.sooli_given_card is None else card_to_code(observation.sooli_given_card)
+        ),
+        "partner": None if observation.soolaaja is None else (observation.soolaaja + 2) % 4,
+        "returned_card": (
+            None if observation.sooli_returned_card is None else card_to_code(observation.sooli_returned_card)
+        ),
+        "soolaaja": observation.soolaaja,
+    }
+
+
 def observation_to_data(observation: PlayerObservation) -> dict[str, object]:
+    """Wire form of an observation.
+
+    project_target_v1 observations keep their original keys. Under the sooli
+    rulesets a ``sooli`` block is added, and a sooli deal's three-card tricks
+    are reported in ``completed_tricks`` and ``current_trick`` (the four-card
+    trick lists are empty in a sooli deal). Under locked bids ``bids_locked``
+    counts the hidden bids taken during showing.
+    """
+
     if not isinstance(observation, PlayerObservation):
         raise SerializationError("observation must be a PlayerObservation")
+    sooli_deal = observation.sooli_exchanged
+    completed = observation.sooli_tricks if sooli_deal else observation.completed_tricks
+    current = observation.sooli_current_trick if sooli_deal else observation.current_trick
+    data = _observation_data(observation, completed, current)
+    if observation.ruleset_id in SOOLI_RULESETS:
+        data["sooli"] = _sooli_observation_data(observation)
+    if observation.ruleset_id in LOCKED_BID_RULESETS:
+        data["bids_locked"] = observation.bids_locked
+    return data
+
+
+def _observation_data(observation: PlayerObservation, completed, current) -> dict[str, object]:
     return {
         "completed_tricks": [
-            completed_trick_to_data(trick) for trick in observation.completed_tricks
+            completed_trick_to_data(trick) for trick in completed
         ],
         "contract": None if observation.contract is None else observation.contract.value,
         "current_actor": observation.current_actor,
-        "current_trick": [_played_card_data(play) for play in observation.current_trick],
+        "current_trick": [_played_card_data(play) for play in current],
         "deal_ref": observation.deal_ref,
         "deal_terminal": observation.deal_terminal,
         "dealer": observation.dealer,
@@ -281,20 +339,29 @@ def deal_result_to_data(result: DealResult) -> dict[str, object]:
     event_log = _event_sequence_to_data(
         result.events, match_ref=result.match_ref, require_zero=False
     )
-    return {
+    score = result.deal_score
+    if isinstance(score, SooliScore):
+        # A sooli deal is a RAMI deal: the declaring team is the RAMI pair.
+        score_data = {
+            "declaring_team": score.declarer % 2,
+            "points": score.points,
+            "stolen_rami": False,
+            "winner_team": score.winner_team.value,
+        }
+    else:
+        score_data = {
+            "declaring_team": (
+                None if score.declaring_team is None else score.declaring_team.value
+            ),
+            "points": score.points,
+            "stolen_rami": score.stolen_rami,
+            "winner_team": score.winner_team.value,
+        }
+    data = {
         "contract": result.contract.value,
         "deal_number": result.deal_number,
         "deal_ref": result.deal_ref,
-        "deal_score": {
-            "declaring_team": (
-                None
-                if result.deal_score.declaring_team is None
-                else result.deal_score.declaring_team.value
-            ),
-            "points": result.deal_score.points,
-            "stolen_rami": result.deal_score.stolen_rami,
-            "winner_team": result.deal_score.winner_team.value,
-        },
+        "deal_score": score_data,
         "dealer": result.dealer,
         "declarer": result.declarer,
         "event_log_id": event_log["event_log_id"],
@@ -311,8 +378,22 @@ def deal_result_to_data(result: DealResult) -> dict[str, object]:
         "score_before": _score_data(result.score_before),
         "show_actions": [_show_data(show) for show in result.show_actions],
         "team_tricks": list(result.team_tricks),
-        "tricks": [completed_trick_to_data(trick) for trick in result.completed_tricks],
+        "tricks": [
+            completed_trick_to_data(trick)
+            for trick in (result.sooli_tricks if result.soolaaja is not None else result.completed_tricks)
+        ],
     }
+    if result.ruleset_id in SOOLI_RULESETS:
+        # The exchanged cards are private and are not part of a public result.
+        data["sooli"] = {
+            "decisions": [{"play_sooli": accepted, "seat": seat} for seat, accepted in result.sooli_decisions],
+            "partner": None if result.soolaaja is None else (result.soolaaja + 2) % 4,
+            "soolaaja": result.soolaaja,
+            "soolaaja_won_trick": (
+                None if result.soolaaja is None else bool(score.soolaaja_won_trick)
+            ),
+        }
+    return data
 
 
 def match_result_to_data(result: MatchResult) -> dict[str, object]:
@@ -646,7 +727,21 @@ def action_from_data(value: object) -> Action:
             )
         except EngineValidationError as exc:
             raise SerializationError(f"invalid play action: {exc}") from exc
-    raise SerializationError("script action type must be 'show' or 'play'")
+    if action_type == "sooli_decision":
+        _require_keys(obj, {"play_sooli", "seat", "type"}, "sooli decision")
+        if type(obj["play_sooli"]) is not bool:
+            raise SerializationError("sooli decision play_sooli must be a boolean")
+        try:
+            return SooliDecisionAction(seat=obj["seat"], play_sooli=obj["play_sooli"])
+        except EngineValidationError as exc:
+            raise SerializationError(f"invalid sooli decision: {exc}") from exc
+    if action_type == "sooli_exchange":
+        _require_keys(obj, {"card", "seat", "type"}, "sooli exchange")
+        try:
+            return SooliExchangeAction(seat=obj["seat"], card=_parse_card(obj["card"], "exchanged card"))
+        except EngineValidationError as exc:
+            raise SerializationError(f"invalid sooli exchange: {exc}") from exc
+    raise SerializationError("script action type must be 'show', 'play', 'sooli_decision' or 'sooli_exchange'")
 
 
 def agent_script_to_data(

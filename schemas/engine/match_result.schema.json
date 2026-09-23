@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.invalid/tuppi/schemas/engine/match_result.schema.json",
-  "title": "project_target_v1 terminal match result",
+  "title": "project_target_v1/v2/v3 terminal match result",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -17,13 +17,31 @@
     "events"
   ],
   "properties": {
-    "schema_version": {"const": "tuppi.engine.match_result.v1"},
-    "ruleset_id": {"const": "project_target_v1"},
-    "match_ref": {"$ref": "#/$defs/matchRef"},
-    "initial_score": {"$ref": "#/$defs/nonterminalScore"},
-    "initial_dealer": {"$ref": "#/$defs/seat"},
-    "final_score": {"$ref": "#/$defs/terminalScore"},
-    "winner_team": {"$ref": "#/$defs/team"},
+    "schema_version": {
+      "const": "tuppi.engine.match_result.v1"
+    },
+    "ruleset_id": {
+      "enum": [
+        "project_target_v1",
+        "project_target_v2",
+        "project_target_v3"
+      ]
+    },
+    "match_ref": {
+      "$ref": "#/$defs/matchRef"
+    },
+    "initial_score": {
+      "$ref": "#/$defs/nonterminalScore"
+    },
+    "initial_dealer": {
+      "$ref": "#/$defs/seat"
+    },
+    "final_score": {
+      "$ref": "#/$defs/terminalScore"
+    },
+    "winner_team": {
+      "$ref": "#/$defs/team"
+    },
     "deals": {
       "type": "array",
       "minItems": 1,
@@ -31,7 +49,9 @@
         "$ref": "https://example.invalid/tuppi/schemas/engine/deal_result.schema.json"
       }
     },
-    "event_log_id": {"$ref": "#/$defs/sha256"},
+    "event_log_id": {
+      "$ref": "#/$defs/sha256"
+    },
     "events": {
       "type": "array",
       "minItems": 1,
@@ -41,22 +61,54 @@
     }
   },
   "$defs": {
-    "seat": {"type": "integer", "minimum": 0, "maximum": 3},
-    "team": {"type": "integer", "minimum": 0, "maximum": 1},
-    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
-    "matchRef": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,96}$"},
+    "seat": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3
+    },
+    "team": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "matchRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]{1,96}$"
+    },
     "nonterminalScore": {
       "oneOf": [
         {
           "type": "array",
-          "prefixItems": [{"const": 0}, {"type": "integer", "minimum": 0, "maximum": 51}],
+          "prefixItems": [
+            {
+              "const": 0
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 51
+            }
+          ],
           "items": false,
           "minItems": 2,
           "maxItems": 2
         },
         {
           "type": "array",
-          "prefixItems": [{"type": "integer", "minimum": 1, "maximum": 51}, {"const": 0}],
+          "prefixItems": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 51
+            },
+            {
+              "const": 0
+            }
+          ],
           "items": false,
           "minItems": 2,
           "maxItems": 2
@@ -67,14 +119,30 @@
       "oneOf": [
         {
           "type": "array",
-          "prefixItems": [{"const": 0}, {"type": "integer", "minimum": 52}],
+          "prefixItems": [
+            {
+              "const": 0
+            },
+            {
+              "type": "integer",
+              "minimum": 52
+            }
+          ],
           "items": false,
           "minItems": 2,
           "maxItems": 2
         },
         {
           "type": "array",
-          "prefixItems": [{"type": "integer", "minimum": 52}, {"const": 0}],
+          "prefixItems": [
+            {
+              "type": "integer",
+              "minimum": 52
+            },
+            {
+              "const": 0
+            }
+          ],
           "items": false,
           "minItems": 2,
           "maxItems": 2

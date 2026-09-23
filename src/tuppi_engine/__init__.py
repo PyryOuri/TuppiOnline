@@ -43,6 +43,7 @@ from .observations import (
     CONTRACT_ACTION_ORDER,
     PlayerObservation,
     legal_actions_for,
+    locked_bid_options,
     observation_for,
 )
 from .results import (
@@ -146,6 +147,7 @@ __all__ = (
     "explicit_deal_from_data",
     "explicit_deal_to_data",
     "legal_actions_for",
+    "locked_bid_options",
     "match_input_from_data",
     "match_input_to_data",
     "match_observation_for",

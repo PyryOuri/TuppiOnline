@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 
 from tuppi_rules import (
+    SUPPORTED_RULESETS,
     CARD_ENCODING_ID,
     Card,
     MatchScore,
@@ -87,7 +88,7 @@ def create_deal_state(
     ruleset_id: RulesetId = RulesetId.PROJECT_TARGET_V1,
 ) -> DealState:
     """Create the first immutable state for an explicit deal."""
-    if ruleset_id not in (RulesetId.PROJECT_TARGET_V1, RulesetId.PROJECT_TARGET_V2):
+    if ruleset_id not in SUPPORTED_RULESETS:
         raise InvalidConstructionError("unsupported ruleset")
 
     if not isinstance(explicit_deal, ExplicitDeal):

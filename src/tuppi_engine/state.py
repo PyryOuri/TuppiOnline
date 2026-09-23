@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from tuppi_rules import (
+    SOOLI_RULESETS,
+    SUPPORTED_RULESETS,
     Card,
     Contract,
     DealScore,
@@ -220,9 +222,9 @@ def _validate_deal_state(state: DealState) -> None:
 
 
 def _validate_deal_state_rules(state: DealState) -> None:
-    if state.ruleset_id not in (RulesetId.PROJECT_TARGET_V1, RulesetId.PROJECT_TARGET_V2):
+    if state.ruleset_id not in SUPPORTED_RULESETS:
         raise StateInvariantError("clean engine supports project_target_v1 and project_target_v2")
-    v2 = state.ruleset_id is RulesetId.PROJECT_TARGET_V2
+    v2 = state.ruleset_id in SOOLI_RULESETS
     sooli_fields_default = (
         state.sooli_decisions == ()
         and state.soolaaja is None
@@ -479,7 +481,7 @@ def _validate_deal_state_rules(state: DealState) -> None:
     if state.events != _expected_events(state):
         raise StateInvariantError("public event history disagrees with accepted state")
     expected_last = {
-        EnginePhase.SHOWING: (EventType.DEAL_STARTED, EventType.SHOW_ACCEPTED),
+        EnginePhase.SHOWING: (EventType.DEAL_STARTED, EventType.SHOW_ACCEPTED, EventType.BID_LOCKED),
         EnginePhase.TRICK_PLAY: (
             EventType.TRICK_STARTED,
             EventType.CARD_PLAYED,

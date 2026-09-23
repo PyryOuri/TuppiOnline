@@ -20,6 +20,16 @@ class RulesetId(StrEnum):
     PROJECT_TARGET_V1 = "project_target_v1"
     #: project_target_v1 plus the sooli subgame (docs/rules/project_target_v2.md).
     PROJECT_TARGET_V2 = "project_target_v2"
+    #: project_target_v2 plus locked bid cards (docs/rules/project_target_v3.md).
+    PROJECT_TARGET_V3 = "project_target_v3"
+
+
+#: Every ruleset this code implements.
+SUPPORTED_RULESETS = frozenset(RulesetId)
+#: Rulesets with the sooli subgame.
+SOOLI_RULESETS = frozenset({RulesetId.PROJECT_TARGET_V2, RulesetId.PROJECT_TARGET_V3})
+#: Rulesets whose bids stay hidden from the other seats until showing resolves.
+LOCKED_BID_RULESETS = frozenset({RulesetId.PROJECT_TARGET_V3})
 
 
 class Suit(StrEnum):

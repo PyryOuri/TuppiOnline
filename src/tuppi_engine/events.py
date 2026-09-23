@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TypeAlias
 
-from tuppi_rules import Card, Contract, MatchScore, RulesetId, Team
+from tuppi_rules import LOCKED_BID_RULESETS, SOOLI_RULESETS, SUPPORTED_RULESETS, Card, Contract, MatchScore, RulesetId, Team
 
 from .errors import StateInvariantError
 from .validation import is_valid_deal_ref, is_valid_match_ref
@@ -26,13 +26,18 @@ class EventType(StrEnum):
     MATCH_SCORE_CHANGED = "match_score_changed"
     DEALER_ROTATED = "dealer_rotated"
     MATCH_COMPLETED = "match_completed"
-    # project_target_v2 only
+    # project_target_v2 and v3
     SOOLI_DECISION = "sooli_decision"
     SOOLI_EXCHANGED = "sooli_exchanged"
+    # project_target_v3 only: a seat's bid was taken; what it was stays hidden
+    # until showing resolves (then SHOW_ACCEPTED reveals the bids in order).
+    BID_LOCKED = "bid_locked"
 
 
-#: Event types that exist only under project_target_v2.
+#: Event types that exist only under the sooli rulesets (v2, v3).
 V2_ONLY_EVENT_TYPES = frozenset({EventType.SOOLI_DECISION, EventType.SOOLI_EXCHANGED})
+#: Event types that exist only under the locked-bid rulesets (v3).
+LOCKED_BID_EVENT_TYPES = frozenset({EventType.BID_LOCKED})
 
 
 class DealOutcome(StrEnum):
@@ -103,6 +108,19 @@ class ShowAcceptedPayload:
             raise StateInvariantError("declared_contract must be a Contract")
         if type(self.verbal_required) is not bool:
             raise StateInvariantError("verbal_required must be a boolean")
+
+
+@dataclass(frozen=True, slots=True)
+class BidLockedPayload:
+    """project_target_v3: ``seat`` has bid; the card and declaration stay hidden."""
+
+    seat: int
+    bid_index: int
+
+    def __post_init__(self) -> None:
+        _seat(self.seat, "bid seat")
+        if type(self.bid_index) is not int or self.bid_index not in range(4):
+            raise StateInvariantError("bid_index must be an integer in 0..3")
 
 
 @dataclass(frozen=True, slots=True)
@@ -272,6 +290,7 @@ EventPayload: TypeAlias = (
     | MatchCompletedPayload
     | SooliDecisionPayload
     | SooliExchangedPayload
+    | BidLockedPayload
 )
 
 
@@ -288,10 +307,12 @@ class PublicEvent:
     ruleset_id: RulesetId = RulesetId.PROJECT_TARGET_V1
 
     def __post_init__(self) -> None:
-        if self.ruleset_id not in (RulesetId.PROJECT_TARGET_V1, RulesetId.PROJECT_TARGET_V2):
+        if self.ruleset_id not in SUPPORTED_RULESETS:
             raise StateInvariantError("event ruleset is not supported")
-        if self.event_type in V2_ONLY_EVENT_TYPES and self.ruleset_id is not RulesetId.PROJECT_TARGET_V2:
-            raise StateInvariantError("sooli events exist only under project_target_v2")
+        if self.event_type in V2_ONLY_EVENT_TYPES and self.ruleset_id not in SOOLI_RULESETS:
+            raise StateInvariantError("sooli events exist only under sooli rulesets")
+        if self.event_type in LOCKED_BID_EVENT_TYPES and self.ruleset_id not in LOCKED_BID_RULESETS:
+            raise StateInvariantError("bid_locked events exist only under locked-bid rulesets")
         if type(self.event_index) is not int or self.event_index < 0:
             raise StateInvariantError("event_index must be a nonnegative integer")
         if not isinstance(self.event_type, EventType):
@@ -316,6 +337,7 @@ class PublicEvent:
             (EventType.MATCH_COMPLETED, MatchCompletedPayload),
             (EventType.SOOLI_DECISION, SooliDecisionPayload),
             (EventType.SOOLI_EXCHANGED, SooliExchangedPayload),
+            (EventType.BID_LOCKED, BidLockedPayload),
         )
         payload_type = next(
             payload_class

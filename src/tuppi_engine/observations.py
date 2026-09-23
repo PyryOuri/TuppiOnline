@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from tuppi_rules import (
+    LOCKED_BID_RULESETS,
     Card,
     Contract,
     MatchScore,
@@ -65,6 +66,10 @@ class PlayerObservation:
     sooli_returned_card: Card | None = None
     sooli_tricks: tuple[SooliTrick, ...] = ()
     sooli_current_trick: tuple[PlayedCard, ...] = ()
+    # project_target_v3 (locked bids): during showing no bid is visible, not
+    # even one's own; only how many bids have been taken (public through the
+    # bid_locked events). Zero in every other case.
+    bids_locked: int = 0
 
     def __post_init__(self) -> None:
         if not is_valid_match_ref(self.match_ref):
@@ -95,6 +100,13 @@ class PlayerObservation:
             raise StateInvariantError("public shown-card list disagrees with show history")
         if self.match_terminal and not self.deal_terminal:
             raise StateInvariantError("match-terminal observation must be deal-terminal")
+        hidden = self.ruleset_id in LOCKED_BID_RULESETS and self.phase is EnginePhase.SHOWING
+        if type(self.bids_locked) is not int or not 0 <= self.bids_locked <= 3:
+            raise StateInvariantError("bids_locked must be an integer in 0..3")
+        if hidden and self.show_actions:
+            raise StateInvariantError("locked bids are hidden until showing resolves")
+        if self.bids_locked and not hidden:
+            raise StateInvariantError("bids_locked is only for locked-bid showing")
         in_exchange = self.soolaaja is not None and self.observing_seat in (self.soolaaja, (self.soolaaja + 2) % 4)
         if not in_exchange and (self.sooli_given_card is not None or self.sooli_returned_card is not None):
             raise StateInvariantError("exchanged cards are private to the soolaaja and the partner")
@@ -103,6 +115,36 @@ class PlayerObservation:
 def legal_actions_for(state: DealState, observing_seat: int) -> tuple[Action, ...]:
     validate_deal_state(state)
     return _legal_actions_for_validated(state, validate_seat(observing_seat))
+
+
+def _show_options(hand, seat: int) -> tuple[Action, ...]:
+    actions: list[Action] = []
+    for contract in CONTRACT_ACTION_ORDER:
+        allowed = valid_show_cards(hand, contract)
+        actions.extend(
+            ShowAction(seat=seat, shown_card=card, declared_contract=contract)
+            for card in hand
+            if card in allowed
+        )
+    return tuple(actions)
+
+
+def locked_bid_options(state: DealState, seat: int) -> tuple[Action, ...]:
+    """project_target_v3: the bids ``seat`` may lock now, turn or not.
+
+    A bid's legality depends only on the bidder's own hand, so a live server
+    can let every player lock simultaneously and feed the bids to the engine
+    in seat order. Empty once the seat's bid has been taken, when showing has
+    resolved, or outside the locked-bid rulesets.
+    """
+
+    validate_deal_state(state)
+    seat = validate_seat(seat)
+    if state.ruleset_id not in LOCKED_BID_RULESETS or state.phase is not EnginePhase.SHOWING:
+        return ()
+    if any(show.seat == seat for show in state.show_actions):
+        return ()
+    return _show_options(state.hands[seat], seat)
 
 
 def _legal_actions_for_validated(state: DealState, seat: int) -> tuple[Action, ...]:
@@ -117,18 +159,7 @@ def _legal_actions_for_validated(state: DealState, seat: int) -> tuple[Action, .
         return ()
     hand = state.hands[seat]
     if state.phase is EnginePhase.SHOWING:
-        actions: list[Action] = []
-        for contract in CONTRACT_ACTION_ORDER:
-            allowed = valid_show_cards(hand, contract)
-            actions.extend(
-                ShowAction(
-                    seat=seat,
-                    shown_card=card,
-                    declared_contract=contract,
-                )
-                for card in hand
-                if card in allowed
-            )
+        actions = _show_options(hand, seat)
         if not actions:
             raise StateInvariantError("current showing actor has no legal actions")
         return tuple(actions)
@@ -173,6 +204,8 @@ def _observation_for_validated(state: DealState, seat: int) -> PlayerObservation
     """
 
     current_score = state.ending_score or state.starting_score
+    hidden = state.ruleset_id in LOCKED_BID_RULESETS and state.phase is EnginePhase.SHOWING
+    visible_shows = () if hidden else tuple(state.show_actions)
     return PlayerObservation(
         match_ref=state.match_ref,
         deal_ref=state.deal_ref,
@@ -184,10 +217,8 @@ def _observation_for_validated(state: DealState, seat: int) -> PlayerObservation
         phase=state.phase,
         current_actor=state.current_actor,
         own_hand=tuple(state.hands[seat]),
-        show_actions=tuple(state.show_actions),
-        publicly_shown_cards=tuple(
-            (action.seat, action.shown_card) for action in state.show_actions
-        ),
+        show_actions=visible_shows,
+        publicly_shown_cards=tuple((action.seat, action.shown_card) for action in visible_shows),
         contract=state.contract,
         declarer=state.declarer,
         first_leader=state.first_leader,
@@ -206,6 +237,7 @@ def _observation_for_validated(state: DealState, seat: int) -> PlayerObservation
         sooli_returned_card=state.sooli_returned if _knows_exchange(state, seat) else None,
         sooli_tricks=tuple(state.sooli_tricks),
         sooli_current_trick=tuple(state.sooli_current),
+        bids_locked=len(state.show_actions) if hidden else 0,
     )
 
 

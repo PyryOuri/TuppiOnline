@@ -7,6 +7,8 @@ import hashlib
 import json
 
 from tuppi_rules import (
+    SOOLI_RULESETS,
+    SUPPORTED_RULESETS,
     Card,
     Contract,
     DealScore,
@@ -125,9 +127,9 @@ class DealResult:
             or any(not isinstance(action, RulesShowAction) for action in self.show_actions)
         ):
             raise StateInvariantError("result must contain ordered show actions")
-        if self.ruleset_id not in (RulesetId.PROJECT_TARGET_V1, RulesetId.PROJECT_TARGET_V2):
+        if self.ruleset_id not in SUPPORTED_RULESETS:
             raise StateInvariantError("result ruleset is not supported")
-        v2 = self.ruleset_id is RulesetId.PROJECT_TARGET_V2
+        v2 = self.ruleset_id in SOOLI_RULESETS
         if not v2 and (self.sooli_decisions or self.soolaaja is not None or self.sooli_tricks):
             raise StateInvariantError("project_target_v1 has no sooli")
         if v2:
@@ -498,6 +500,10 @@ class MatchResult:
         expected_events = tuple(event for deal in self.deals for event in deal.events)
         if self.events != expected_events:
             raise StateInvariantError("match result events disagree with deal results")
+        rulesets = {deal.ruleset_id for deal in self.deals}
+        if len(rulesets) != 1:
+            raise StateInvariantError("match result deals disagree on the ruleset")
+        object.__setattr__(self, "ruleset_id", rulesets.pop())
 
 
 @dataclass(frozen=True, slots=True)

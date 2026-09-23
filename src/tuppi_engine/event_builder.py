@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from tuppi_rules import (
+    LOCKED_BID_RULESETS,
+    SOOLI_RULESETS,
     Contract,
     DealScore,
     MatchScore,
@@ -29,6 +31,7 @@ from .events import (
     MatchScoreChangedPayload,
     PublicEvent,
     ScoreTransitionKind,
+    BidLockedPayload,
     ShowAcceptedPayload,
     SooliDecisionPayload,
     SooliExchangedPayload,
@@ -83,19 +86,27 @@ def build_expected_deal_events(
             ),
         )
     ]
-    payloads.extend(
-        (
-            EventType.SHOW_ACCEPTED,
-            ShowAcceptedPayload(
-                seat=action.seat,
-                shown_card=action.shown_card,
-                declared_contract=action.declared_contract,
-                verbal_required=action.verbal_required,
-            ),
+    locked = ruleset_id in LOCKED_BID_RULESETS
+    if locked:
+        # v3: one blind bid_locked per bid; the bids are revealed at resolution.
+        payloads.extend(
+            (EventType.BID_LOCKED, BidLockedPayload(seat=action.seat, bid_index=index))
+            for index, action in enumerate(show_actions)
         )
-        for action in show_actions
-    )
-    v2_rami = ruleset_id is RulesetId.PROJECT_TARGET_V2 and contract is Contract.RAMI
+    if not locked or contract is not None:
+        payloads.extend(
+            (
+                EventType.SHOW_ACCEPTED,
+                ShowAcceptedPayload(
+                    seat=action.seat,
+                    shown_card=action.shown_card,
+                    declared_contract=action.declared_contract,
+                    verbal_required=action.verbal_required,
+                ),
+            )
+            for action in show_actions
+        )
+    v2_rami = ruleset_id in SOOLI_RULESETS and contract is Contract.RAMI
     if contract is not None:
         if first_leader_seat is None:
             raise StateInvariantError("resolved deal lacks first leader")
