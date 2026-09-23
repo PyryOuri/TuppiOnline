@@ -231,3 +231,22 @@ def test_websocket_v3_lock_flow_follows_the_schemas(monkeypatch) -> None:
     ack = next(m for m in messages if m["message_type"] == "action_acknowledgement")["payload"]
     assert ack["status"] == "accepted"
     assert runner.state.phase is not EnginePhase.SHOWING
+
+
+def test_tuppi_ai_profile_plays_a_v3_deal():
+    import pytest
+
+    from tuppi_server.match_runner import TUPPI_AI_PROFILE_KEY, tuppi_ai_available
+    if not tuppi_ai_available():
+        pytest.skip("tuppi_ai is not installed")
+    runner = LiveMatchRunner(match_ref="tuppi-ai-v3", ai_seats=frozenset({1, 2, 3}), ruleset_id=V3,
+                             ai_profile_key=TUPPI_AI_PROFILE_KEY)
+    assert all(getattr(agent, "handles_sooli", False) for agent in runner._ai_agents.values())
+    rng = random.Random("tuppi-ai")
+    _drive_human_match(runner, rng, deals=2)
+    assert len(runner.state.completed_deals) >= 2
+    manager = RoomManager(ai_profile_key=TUPPI_AI_PROFILE_KEY, ruleset_id=V3)
+    room, _ = manager.create_room(display_name="Pelaaja", ai_seats=frozenset({1, 2, 3}))
+    seat = room.snapshot()["seats"][1]
+    assert seat["agent_profile"] == TUPPI_AI_PROFILE_KEY and seat["display_name"] == "TuppiAI"
+    validate_instance(room.snapshot(), "https://example.invalid/tuppi/schemas/network/http_api.schema.json#/$defs/lobbySnapshot")

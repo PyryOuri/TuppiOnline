@@ -26,7 +26,9 @@ from .completed_deal_review import (
 from .match_runner import (
     AI_ACTION_DELAY_SECONDS,
     DEFAULT_AI_PROFILE_KEY,
+    TUPPI_AI_PROFILE_KEY,
     LiveMatchRunner,
+    tuppi_ai_available,
 )
 from .deal_review import DealReviewError, generate_deal_review
 from .post_match_diagnostics import generate_post_match_diagnostics
@@ -46,9 +48,11 @@ SOOLI_PHASE_NAMES = frozenset({"SOOLI_OFFER", "SOOLI_GIVE", "SOOLI_RETURN", "SOO
 
 
 def configured_ruleset() -> RulesetId:
-    """The ruleset of new rooms: ``TUPPI_SERVER_RULESET`` (default v1)."""
+    """The live server's ruleset for new rooms: ``TUPPI_SERVER_RULESET``,
+    default ``project_target_v3`` (the real game). ``RoomManager()`` itself
+    defaults to v1 for tests and embedded use."""
 
-    raw = os.environ.get("TUPPI_SERVER_RULESET", RulesetId.PROJECT_TARGET_V1.value)
+    raw = os.environ.get("TUPPI_SERVER_RULESET", RulesetId.PROJECT_TARGET_V3.value)
     try:
         ruleset = RulesetId(raw)
     except ValueError as exc:
@@ -102,6 +106,7 @@ class Room:
     deal_reviews: dict[tuple[int, int], dict[str, object]] = field(default_factory=dict)
     ai_action_delay_ms: int = DEFAULT_AI_ACTION_DELAY_MS
     ruleset_id: RulesetId = RulesetId.PROJECT_TARGET_V1
+    ai_profile_key: str = DEFAULT_AI_PROFILE_KEY
 
     def session_for_seat(self, seat: int) -> Session | None:
         return next((item for item in self.sessions.values() if item.seat == seat), None)
@@ -111,14 +116,14 @@ class Room:
         for seat in range(4):
             if seat in self.ai_seats:
                 profile_key = (
-                    DEFAULT_AI_PROFILE_KEY
+                    self.ai_profile_key
                     if self.runner is None
                     else self.runner.ai_profile_key
                 )
                 seats.append(
                     {
                         "agent_profile": profile_key,
-                        "display_name": "Tuppi partner AI",
+                        "display_name": "TuppiAI" if profile_key == TUPPI_AI_PROFILE_KEY else "Tuppi partner AI",
                         "kind": "ai",
                         "ready": True,
                         "seat": seat,
@@ -187,8 +192,10 @@ class RoomManager:
         *,
         contract_rollout_samples: int = 0,
         ruleset_id: RulesetId = RulesetId.PROJECT_TARGET_V1,
+        ai_profile_key: str = DEFAULT_AI_PROFILE_KEY,
     ) -> None:
         self._rooms: dict[str, Room] = {}
+        self._ai_profile_key = ai_profile_key
         #: Optional after-deal reviewer (``tuppi_server.deal_review.DealReviewer``),
         #: installed by a deployment that has a bot able to re-decide positions.
         self.deal_reviewer = None
@@ -220,7 +227,18 @@ class RoomManager:
             samples = int(raw_samples)
         except ValueError as exc:
             raise ValueError("TUPPI_CONTRACT_ROLLOUT_SAMPLES must be an integer") from exc
-        return cls(root, contract_rollout_samples=samples, ruleset_id=configured_ruleset())
+        profile = os.environ.get(
+            "TUPPI_SERVER_AI_PROFILE",
+            TUPPI_AI_PROFILE_KEY if tuppi_ai_available() else DEFAULT_AI_PROFILE_KEY,
+        )
+        manager = cls(root, contract_rollout_samples=samples, ruleset_id=configured_ruleset(),
+                      ai_profile_key=profile)
+        if profile == TUPPI_AI_PROFILE_KEY and os.environ.get("TUPPI_SERVER_REVIEW", "1") == "1":
+            # The after-deal review uses the same bot's search.
+            from tuppi_ai.review import ServerReviewer
+
+            manager.deal_reviewer = ServerReviewer()
+        return manager
 
     def create_room(
         self,
@@ -232,7 +250,8 @@ class RoomManager:
         self._validate_ai_seats(ai_seats)
         code = self._new_code()
         host_token = self._new_token()
-        room = Room(code=code, host_token=host_token, ai_seats=set(ai_seats), ruleset_id=self._ruleset_id)
+        room = Room(code=code, host_token=host_token, ai_seats=set(ai_seats), ruleset_id=self._ruleset_id,
+                    ai_profile_key=self._ai_profile_key)
         session = Session(token=host_token, seat=0, display_name=name)
         room.sessions[host_token] = session
         room.lifecycle = "configured" if ai_seats else "waiting"
@@ -316,6 +335,7 @@ class RoomManager:
                 contract_rollout_samples=self._contract_rollout_samples,
                 auto_run_ai=auto_run_ai,
                 ruleset_id=room.ruleset_id,
+                ai_profile_key=room.ai_profile_key,
             )
             room.lifecycle = "playing"
         else:

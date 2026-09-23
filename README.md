@@ -156,12 +156,16 @@ TUPPI_SERVER_DATA_DIR=/private/tmp/tuppi-server-state \
   --host 127.0.0.1 --port 8765
 ```
 
-`TUPPI_SERVER_RULESET` chooses the rules of new rooms: `project_target_v1`
-(default), `project_target_v2` (plus sooli) or `project_target_v3` (sooli and
-locked bids, the real game: every human locks a bid blind, the server applies
+`TUPPI_SERVER_RULESET` chooses the rules of new rooms: `project_target_v3`
+(default for the live server: sooli and locked bids, the real game: every human locks a bid blind, the server applies
 the bids in seat order once all have locked, and bids after the first RAMI are
-discarded unseen and never stored; see `docs/rules/project_target_v3.md`). The
-ruleset is stored with each room. The completed-deal and post-match analysis
+discarded unseen and never stored; see `docs/rules/project_target_v3.md`),
+`project_target_v2` (v1 plus sooli) or `project_target_v1`. The ruleset is
+stored with each room. When the optional `tuppi_ai` package is importable the
+live server's AI is TuppiAI's search bot (`TUPPI_SERVER_AI_PROFILE`, profile
+`tuppi_ai_search_v1`) and the after-deal review (`POST
+/v1/rooms/{code}/deals/{n}/review`) uses the same bot (`TUPPI_SERVER_REVIEW=0`
+turns it off). AI pacing defaults to 0.5 s (`TUPPI_SERVER_AI_ACTION_DELAY_SECONDS`). The completed-deal and post-match analysis
 endpoints answer `analysis_unavailable_for_ruleset` in v2/v3 rooms, and the
 training odds `analysis_unavailable_in_sooli` during a sooli; both are built
 for four-hand v1 deals. The server's AI plays sooli through

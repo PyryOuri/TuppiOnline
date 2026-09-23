@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
+import importlib.util
 import os
 from typing import Any, Awaitable, Callable
 
@@ -76,10 +77,17 @@ BASE_AI_PROFILE_KEY = BASE_PROFILE_KEY
 #: Still accepted, so a room can deliberately request the plain baseline.
 LEGACY_AI_PROFILE_KEY = BASE_PROFILE_KEY
 TEST_AI_PROFILE_KEY = "first_legal_action_v1"
+#: TuppiAI's best agent (the optional package ``tuppi_ai``): search over
+#: sampled worlds with a learned rollout policy; plays sooli itself.
+TUPPI_AI_PROFILE_KEY = "tuppi_ai_search_v1"
+
+
+def tuppi_ai_available() -> bool:
+    return importlib.util.find_spec("tuppi_ai") is not None
 
 
 def _configured_ai_delay() -> float:
-    raw = os.environ.get("TUPPI_SERVER_AI_ACTION_DELAY_SECONDS", "5.0")
+    raw = os.environ.get("TUPPI_SERVER_AI_ACTION_DELAY_SECONDS", "0.5")
     try:
         delay = float(raw)
     except ValueError as exc:
@@ -113,6 +121,12 @@ def _construct_ai_agents(
 ) -> dict[int, object]:
     if profile_key == TEST_AI_PROFILE_KEY:
         return {seat: FirstLegalActionAgent() for seat in seats}
+    if profile_key == TUPPI_AI_PROFILE_KEY:
+        try:
+            from tuppi_ai.best import best_agents
+        except ImportError as exc:
+            raise ValueError("the tuppi_ai package is not installed") from exc
+        return best_agents(sorted(seats))
     if profile_key == DEFAULT_AI_PROFILE_KEY:
         return {
             seat: construct_void_lead_agent(seat, profile_key=BASE_AI_PROFILE_KEY)
