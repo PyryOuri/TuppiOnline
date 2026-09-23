@@ -21,6 +21,23 @@ showing median 0.57 s (max 0.65 s), card play median 0.10 s (max 0.57 s).
 For comparison, every earlier principled method in TuppiProject lost to the
 incumbent's predecessor at p_win 0.0-0.16.
 
+### Starting score
+
+TuppiProject measured everything at 0-0. With starting scores drawn uniformly
+over the 25 nonterminal states (192 base deals, seed scores-v1):
+
+| Starting score | Base deals | Equity/deal |
+| --- | ---: | --- |
+| 0-0 | 10 | +0.0073 +- 0.0083 |
+| someone up 4-24 | 94 | +0.0179 +- 0.0051 |
+| someone up 28-48 | 88 | +0.0615 +- 0.0172 |
+| all | 192 | +0.0373 [+0.0285, +0.0462] |
+
+The search prices rollouts in match equity at the real score and the
+incumbent is score-blind, so the edge grows where the rising-score rule bites.
+Part of the growth is scale (equity swings are larger late in a match); the
+complete-match result above already weights states by how often they occur.
+
 ### Transfer: is the edge general or a model of this opponent?
 
 The search's rollouts play every other seat with the incumbent clone, so against
