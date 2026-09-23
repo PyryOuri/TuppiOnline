@@ -22,6 +22,11 @@ the same deals):
 Better declarer play, better defence, better NOLO play, and more declarations
 because more contracts are makeable.
 
+**Where the time goes** (one base deal, single thread, 6.9 s): rollout network
+forwards ~55%, solver tail ~24%, sampling and bookkeeping the rest. A native
+port of the incumbent for rollouts would buy ~2x, not the orders of magnitude a
+nested search would need.
+
 **Refinements that are within noise** (same 128 deals, paired vs W=64
 reference +0.0142):
 
@@ -96,6 +101,7 @@ does not compound; the search itself carries the strength.
 | **complete matches to 52**, fresh streams | 128 complementary pairs (256 matches) | **p_win 0.953 [0.928, 0.978]**; pairs 116 won / 12 tied / 0 lost; 0 censored; 20.1 deals per leg |
 | replication, new stream seed match-v2 | 128 pairs | p_win 0.9375 [0.909, 0.966]; 112 / 16 / 0 |
 | **pooled** | 256 pairs (512 matches) | **228 won / 28 tied / 0 lost; p_win 0.945** |
+| vs `legacy_heuristic_port_v1` (not modelled by the rollouts) | 96 pairs | p_win 0.990; 94 / 2 / 0; 8.7 deals per leg |
 
 Agent: `search:runs/bc_small.pt:w=64:dd=6:show=1` - uniform hard-feasible
 worlds, every legal action (showing included) rolled out by the incumbent
