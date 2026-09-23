@@ -7,6 +7,22 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## 2026-09-23 (morning) — expert iteration round 2 does not compound
+
+947k decisions searched at W=64 over `xi1_small`, distilled together with the
+round-1 data (2.3M rows, init from the round-1 nets):
+
+| | Equity/deal | Note |
+| --- | --- | --- |
+| `xi2`, no search | +0.0021 [+0.0013, +0.0028] | round 1 was +0.0027 |
+| `xi2_small`, no search | +0.0016 [+0.0008, +0.0024] | |
+| search over `xi2_small`, W=64 | +0.0129 | paired -0.0013 +- 0.0023 vs search over the clone |
+
+Distilled nets match the searched action only ~64% of the time: most of the
+search's gain is calculation over the sampled layouts, which an
+observation-only network does not recover from argmax labels. The loop as run
+does not compound; the search itself carries the strength.
+
 ## 2026-09-23 — headline: W=64 search against the incumbent
 
 | Endpoint | Sample | Result |
