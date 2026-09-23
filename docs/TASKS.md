@@ -19,9 +19,12 @@ three; nothing below has been executed.
 - The bot now decides in ~13-36 ms; the server's 5 s AI pacing is a choice, not
   a need.
 
-**Open questions for the owner.** What "as good as it can get" means here:
-stability, speed, look and feel, new features, match history, analysis? Which
-complaints or wishes exist today? Mac only, or other devices too?
+**Owner's answers (2026-09-23).** All four areas: the new bot as the normal
+AI; the real-game app completed (history, replays, end-of-match analysis for
+locked bids and sooli); table polish; stability and merging with the other
+author's work. Mac only. AI pacing near-instant (0.5 s or less).
+
+**Status: in progress (started 2026-09-23).**
 
 ## T2 — Training functions that carry the bot's improvements to the human
 
