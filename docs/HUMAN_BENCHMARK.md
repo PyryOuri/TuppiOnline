@@ -7,6 +7,11 @@ so your normal rooms and history are not touched.
 
 ## Start the server
 
+**Normal play** (the real game, TuppiAI in every AI seat, the after-deal
+review): `~/Developer/start_tuppi_server.sh`, then open `~/Developer/Tuppi.app`
+(port 8765). The rest of this page is for **benchmark seat plans**, where some
+seats play the old incumbent:
+
 ```sh
 cd /Users/pyryouri/Developer/TuppiAI
 TUPPI_AI_SEATS="1:incumbent,2:search,3:incumbent" \
@@ -17,10 +22,9 @@ This plays the real game, `project_target_v3`: locked bids (you lock your bid
 without seeing anyone's; the bids are revealed in order once everyone has
 locked) and sooli (after a RAMI the defenders are asked in turn). It needs the
 TuppiProject branch `rules/project-target-v3-locked-bids` (the `tuppi-v2`
-environment points at that worktree, `TuppiProject-sooli`) and a client built
-from the TuppiClient branch `feature/v3-locked-bids-sooli` (worktree
-`TuppiClient-v3`: `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
-swift run`). For the old rules use `TUPPI_SERVER_RULESET=project_target_v1`
+environment points at that worktree, `~/Developer/TuppiProject-current`) and the
+current app, `~/Developer/Tuppi.app` (built from the TuppiClient branch
+`feature/v3-locked-bids-sooli`, worktree `~/Developer/TuppiClient-current`). For the old rules use `TUPPI_SERVER_RULESET=project_target_v1`
 with `~/.venvs/tuppi-ai`. Search seats play sooli themselves; incumbent seats
 never offer sooli. The deal and match analysis buttons are hidden in v3 rooms
 (the analysis is built for v1 deals).

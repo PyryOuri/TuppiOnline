@@ -5,8 +5,8 @@ carry another author's uncommitted work, which must not be overwritten.
 
 | Repo | Branch (worktree) | Base |
 | --- | --- | --- |
-| TuppiProject | `rules/project-target-v3-locked-bids` (`~/Developer/TuppiProject-sooli`) | `622d559`, the main checkout's committed HEAD |
-| TuppiClient | `feature/v3-locked-bids-sooli` (`~/Developer/TuppiClient-v3`) | `1d82b4b`, the main checkout's committed HEAD |
+| TuppiProject | `rules/project-target-v3-locked-bids` (`~/Developer/TuppiProject-current`) | `622d559`, the main checkout's committed HEAD |
+| TuppiClient | `feature/v3-locked-bids-sooli` (`~/Developer/TuppiClient-current`) | `1d82b4b`, the main checkout's committed HEAD |
 | TuppiAI | `main` (committed directly; own repo) | - |
 
 ## Rehearsal (done 2026-09-23, in throwaway worktrees)
@@ -37,8 +37,9 @@ read.
    `python tools/sync_tuppi_client_bundle.py --client-root ../TuppiClient --sync`,
    then `git add Sources/TuppiClient/Resources/Fixtures` and commit.
 4. Point `~/.venvs/tuppi-ai` (or the product venv) at the merged TuppiProject;
-   the `tuppi-v2` venv and the two worktrees can then be removed
-   (`git worktree remove`).
+   the `tuppi-v2` venv and the two `-current` worktrees can then be retired
+   (`git worktree remove`), and `~/Developer/start_tuppi_server.sh` pointed at
+   `TuppiProject`.
 
 ## Things to know after merging
 
