@@ -35,7 +35,7 @@ What follows from that:
   A declarer's high-card RAMI hand is often a poor sooli attacker, which is
   why sooli can pay.
 * **The exchange** lets S shed its most dangerous card and take in, ideally, a
-  low one; the partner does not see S's hand when choosing what to give.
+  low one; the partner sees only the card S gave, not S's hand.
 * **Information.** RAMI players see neither S's hand nor the dead hand: 26
   unseen cards split 13/13 between a live hand and a dead one. Shown cards are
   public, but after the exchange a shown card of S or P may have moved to the
@@ -133,8 +133,9 @@ against the Phase B reference, step by step, as for v1.
    brute force on small positions. Used as the play-out evaluator.
 2. **Sooli heuristics (C).** Soolaaja: duck with the highest losing card,
    discard the most dangerous card when void. Attackers: lead suits where the
-   soolaaja is most likely to be forced, play under. Exchange: give the lowest
-   spare card; return the most dangerous card. Serves as rollout policy,
+   soolaaja is most likely to be forced, play under. Exchange: the soolaaja
+   gives its most dangerous card; the partner returns its lowest safe card.
+   Serves as rollout policy,
    baseline, and the incumbent's sooli behaviour.
 3. **Sooli-aware world sampling.** The dead hand as a 13-card holding that
    never plays; shown cards of S and P may have moved in the exchange; S's
