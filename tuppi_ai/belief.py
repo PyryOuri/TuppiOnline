@@ -54,6 +54,9 @@ def main() -> None:
     p.add_argument("--epochs", type=float, default=2.0)
     p.add_argument("--batch", type=int, default=8192)
     p.add_argument("--lr", type=float, default=1e-3)
+    p.add_argument("--init", type=Path, default=None, help="start from this checkpoint (fine-tuning)")
+    p.add_argument("--holdout", type=float, default=100_000,
+                   help="rows held out for the printed NLL: a count, or a fraction if below 1")
     args = p.parse_args()
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     F, L = [], []
@@ -64,8 +67,10 @@ def main() -> None:
     n = len(L)
     rng = np.random.default_rng(0)
     perm = rng.permutation(n)
-    hold, train = perm[:100_000], perm[100_000:]
-    net = BeliefNet().to(device)
+    hold_n = int(args.holdout * n) if args.holdout < 1 else int(args.holdout)
+    hold, train = perm[:hold_n], perm[hold_n:]
+    net = load(args.init, device) if args.init else BeliefNet().to(device)
+    net.train()
     dim = feature_dim(net.encoder)
     opt = torch.optim.AdamW(net.parameters(), lr=args.lr, weight_decay=1e-5, fused=device.type == "mps")
     steps = int(args.epochs * len(train) / args.batch)

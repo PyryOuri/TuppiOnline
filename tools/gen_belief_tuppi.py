@@ -12,6 +12,11 @@ cannot see, which other seat (relative 1..3 -> 0..2) holds it; 255 for cards
 the observer sees (own hand, played). Sooli deals are skipped. Same format as
 `tools/gen_belief.py`, so `python -m tuppi_ai.belief --data <out>` trains on it.
 
+Every game is also saved (hands, dealer, score, every action) in
+`games_*.jsonl`, so test positions and baselines come from replaying it, not
+from new bot play. Every `--test-every`-th deal is held out: saved, but no
+training rows (`tools/belief_eval.py` measures on it).
+
 Throughput: about 12 CPU-seconds per deal (the searches), close to one deal
 per second on this machine with two workers.
 
@@ -43,24 +48,26 @@ def _score(rng: random.Random) -> tuple[int, int]:
     return (4 * level, 0) if rng.random() < 0.5 else (0, 4 * level)
 
 
-def play(job: tuple[int, int, str, str]) -> dict:
-    start, count, seed, out = job
+def play(job: tuple[int, int, str, str, int]) -> dict:
+    start, count, seed, out, test_every = job
+    import json
+
     import torch
 
     torch.set_num_threads(1)
     from tuppi_ai import native
     from tuppi_ai.best import best_agents
     from tuppi_ai.bridge import obs_from_player_observation
-    from tuppi_engine import (EnginePhase, ExplicitDeal, apply_match_action, begin_explicit_deal,
-                              create_match, match_observation_for)
+    from tuppi_engine import (EnginePhase, ExplicitDeal, action_to_data, apply_match_action,
+                              begin_explicit_deal, create_match, match_observation_for)
     from tuppi_engine.state import ACTIVE_PHASES
     from tuppi_engine.trusted import trusted_transitions
     from tuppi_rules import MatchScore, RulesetId
-    from tuppi_rules.cards import FULL_DECK, card_to_index
+    from tuppi_rules.cards import FULL_DECK, card_to_code, card_to_index
 
     agents = best_agents(seed=start)
     dim = native.feature_dim(ENCODER)
-    feats, locs = [], []
+    feats, locs, games = [], [], []
     sooli = 0
     t0 = time.time()
     with trusted_transitions():
@@ -70,10 +77,11 @@ def play(job: tuple[int, int, str, str]) -> dict:
             rng.shuffle(cards)
             hands = tuple(tuple(cards[s * 13:(s + 1) * 13]) for s in range(4))
             dealer = index % 4
-            match = create_match(initial_score=MatchScore(*_score(rng)), initial_dealer=dealer,
+            score = _score(rng)
+            match = create_match(initial_score=MatchScore(*score), initial_dealer=dealer,
                                  match_ref=f"belief-{index}", ruleset_id=RulesetId.PROJECT_TARGET_V3)
             state = begin_explicit_deal(match, ExplicitDeal(dealer=dealer, hands=hands))
-            rows_f, rows_l = [], []
+            rows_f, rows_l, actions = [], [], []
             while state.phase in ACTIVE_PHASES:
                 deal = state.active_deal
                 if deal.phase is EnginePhase.TRICK_PLAY and deal.soolaaja is None:
@@ -91,16 +99,27 @@ def play(job: tuple[int, int, str, str]) -> dict:
                         rows_f.append(np.packbits(f))
                         rows_l.append(loc)
                 seat = state.current_actor
-                state = apply_match_action(state, agents[seat].choose_action(match_observation_for(state, seat)))
-            if state.completed_deals[-1].public_result.soolaaja is not None:
+                action = agents[seat].choose_action(match_observation_for(state, seat))
+                actions.append(action_to_data(action))
+                state = apply_match_action(state, action)
+            is_sooli = state.completed_deals[-1].public_result.soolaaja is not None
+            test = index % test_every == 0
+            games.append({"index": index, "dealer": dealer, "score": list(score), "test": test,
+                          "sooli": is_sooli, "hands": [[card_to_code(c) for c in h] for h in hands],
+                          "actions": actions})
+            if is_sooli:
                 sooli += 1
-                continue  # the deal's rows describe play before a sooli that never came: drop them
-            feats.extend(rows_f)
-            locs.extend(rows_l)
-    path = Path(out) / f"shard_tuppi_{start:06d}.npz"
-    np.savez(path, feat=np.stack(feats), loc=np.stack(locs))
+                continue  # sooli deals give no trick-play rows
+            if not test:
+                feats.extend(rows_f)
+                locs.extend(rows_l)
+    if feats:
+        np.savez(Path(out) / f"shard_tuppi_{start:06d}.npz", feat=np.stack(feats), loc=np.stack(locs))
+    with open(Path(out) / f"games_{start:06d}.jsonl", "w") as fh:
+        for game in games:
+            fh.write(json.dumps(game) + "\n")
     return {"start": start, "deals": count, "rows": len(feats), "sooli_deals": sooli,
-            "seconds": round(time.time() - t0, 1), "path": str(path)}
+            "seconds": round(time.time() - t0, 1)}
 
 
 def main() -> None:
@@ -110,10 +129,11 @@ def main() -> None:
     p.add_argument("--workers", type=int, default=2)
     p.add_argument("--chunk", type=int, default=50)
     p.add_argument("--first", type=int, default=0, help="first deal index (to extend a run)")
+    p.add_argument("--test-every", type=int, default=10, help="hold out every n-th deal")
     p.add_argument("--out", type=Path, required=True)
     args = p.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
-    jobs = [(s, min(args.chunk, args.first + args.deals - s), args.seed, str(args.out))
+    jobs = [(s, min(args.chunk, args.first + args.deals - s), args.seed, str(args.out), args.test_every)
             for s in range(args.first, args.first + args.deals, args.chunk)]
     t0 = time.time()
     rows = deals = 0

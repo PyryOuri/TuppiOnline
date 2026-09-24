@@ -7,6 +7,38 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## Belief net trained on TuppiAI's own play: pilot fails at 500 deals (2026-09-24)
+
+Can a card-location net learned from the bots the owner plays beat the exact
+odds? Pilot with early stopping: `tools/gen_belief_tuppi.py` 500 v3 deals (547
+s; every 10th held out: 47 ordinary test deals; 85,696 training rows from 412
+deals, every seat's view at every trick-play step), `belief_v1` fine-tuned
+(`python -m tuppi_ai.belief --init runs/belief_v1.pt`, lr 3e-4, batch 1024,
+3 or 10 epochs), measured by `tools/belief_eval.py` on the held-out deals and
+on the owner's own 53 ordinary real-game deals from the server's saved rooms
+(the human seat against three TuppiAI bots). Mean NLL per unseen card minus
+the exact odds' (exact: 1.064 on both sets), 95% intervals clustered by deal:
+
+| Net, alpha | Held-out self-play | Owner's games |
+| --- | ---: | ---: |
+| old `belief_v1`, 0.5 | +0.165 [+0.131, +0.199] | +0.190 [+0.154, +0.227] |
+| fine-tuned 3 epochs, 0.5 | +0.176 [+0.148, +0.203] | +0.186 [+0.152, +0.220] |
+| fine-tuned 10 epochs, 0.5 | +0.478 [+0.421, +0.535] | +0.490 [+0.433, +0.548] |
+| old, 0.1 | +0.001 [-0.005, +0.007] | +0.001 [-0.006, +0.008] |
+| fine-tuned 3 epochs, 0.1 | +0.002 [-0.004, +0.008] | +0.002 [-0.004, +0.008] |
+| old / fine-tuned 3 epochs, 0.25 | +0.036 / +0.036 | +0.039 / +0.038 |
+
+**Clear failure; stopped.** No net beats the exact odds at any trust; at alpha
+0.1 they only tie. 412 deals do not teach the net TuppiAI's play: the short
+fine-tune is the old net, the long one memorises the training deals (its
+row-level hold-out, which shares deals with training, fell to 0.047 nats, a
+leak, not skill). Learning TuppiAI's play in general would need deals in the
+tens of thousands (the old net's data came from about 180,000 games), 7-33 h
+at 0.83 deals/s, with an uncertain ceiling: the search picks among near-ties
+by its own sampling noise, which says little about its cards. The owner's
+games and the held-out self-play agree to within 0.03 on every row, so
+self-play is a fair stand-in for the owner's use. The exact odds stay.
+
 ## Bid search: sooli offers resolved in parallel (2026-09-24)
 
 Under project_target_v2/v3 a bid search plays every legal bid to the end in
