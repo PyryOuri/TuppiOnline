@@ -239,9 +239,14 @@ class SearchAgent:
                                           seed=seed + seat + 17, **belief)
         self._feat = np.zeros((1, native.feature_dim(net.encoder)), dtype=np.uint8)
         self.sooli = {**SOOLI_DEFAULTS, **(sooli or {})}
+        #: The last decision's searched values, {action id: equity change for this
+        #: seat's team}, or None when it was forced or taken by a heuristic. Read by
+        #: the game database (tools/gen_game_db.py); never affects the choice.
+        self.last_values: dict[int, float] | None = None
 
     def _sooli_action(self, obs: native.TcObs, ids: list[int]) -> int:
         cfg, phase = self.sooli, obs.phase
+        self.last_values = None
         env = self.searcher.env
         if self.searcher.mlp is None:  # only the native search loop handles sooli phases
             a = native.sooli_policy(obs, self.searcher.rng)
@@ -251,6 +256,7 @@ class SearchAgent:
             order = [native.ACT_SOOLI_DECLINE, native.ACT_SOOLI_ACCEPT]
             v = self.searcher.action_values(obs, order)
             self.last_sooli_values = dict(zip(order, v))
+            self.last_values = {a: float(x) for a, x in zip(order, v)}
             return native.ACT_SOOLI_ACCEPT if v[1] - v[0] > cfg["offer_margin"] else native.ACT_SOOLI_DECLINE
         key = {native.PH_SOOLI_GIVE: "give", native.PH_SOOLI_RETURN: "return", native.PH_SOOLI_PLAY: "play"}[phase]
         h = native.sooli_policy(obs, self.searcher.rng)
@@ -260,10 +266,12 @@ class SearchAgent:
         env.set_sooli(cfg["belief"], False, False, cfg["lam"])
         v = self.searcher.action_values(obs, order)
         self.last_sooli_values = dict(zip(order, v))
+        self.last_values = {a: float(x) for a, x in zip(order, v)}
         return order[int(np.argmax(v))]
 
     def choose_action(self, observation):
         legal = observation.legal_actions
+        self.last_values = None
         if len(legal) == 1:
             return legal[0]
         obs = obs_from_player_observation(observation)
@@ -291,8 +299,10 @@ class SearchAgent:
             if len(reps) == 1:
                 return legal[ids.index(reps[0])]
             values = searcher.action_values(obs, reps)
+            self.last_values = {a: float(x) for a, x in zip(reps, values)}
             return legal[ids.index(reps[int(np.argmax(values))])]
         values = searcher.action_values(obs, ids)
+        self.last_values = {a: float(x) for a, x in zip(ids, values)}
         if self.rami_bonus and obs.phase == native.PH_SHOW:
             values = values + self.rami_bonus * np.array([1.0 if i >= 104 else 0.0 for i in ids])
         best = int(np.argmax(values))

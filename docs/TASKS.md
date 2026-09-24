@@ -135,6 +135,18 @@ NOLO short-suit system and one for the RAMI signals. The plan is in
   - server, protocol and client, which overlaps T1.
 - **The NOLO test** needs no rules change and can start first.
 
+## T5 - The bot's bidding in words a player can use
+
+**Status: planned and parked (2026-09-24), owner's decision: build now, run
+later.** Can TuppiAI's RAMI/NOLO decision be described with countable hand
+features (HCP, controls, lengths, low cards, stoppers, seat, score), and what
+does bidding by that description cost? Plan, prerequisites and pass criteria
+fixed in advance: `docs/BIDDING_EXPLANATION_PLAN.md`. Built and tested at toy
+size: the game database (`tools/gen_game_db.py`, reusable), features, readable
+models, the rule bidder and the play test; start with
+`bash tools/run_bidding_pilot.sh` (~3 h of machine time). Prerequisite: settle
+the ruleset-3 sooli-settings leak in `SearchAgent.choose_action` first.
+
 ## Suggested order (to decide with the owner)
 
 T3 changes the rules underneath T1 and T2, so specifying it first avoids
