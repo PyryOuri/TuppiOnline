@@ -31,6 +31,14 @@ from .match_runner import (
     tuppi_ai_available,
 )
 from .deal_review import DealReviewError, generate_deal_review
+from .real_game_deal_analysis import (
+    REAL_GAME_DEAL_ANALYSIS_SCHEMA_VERSION,
+    REAL_GAME_RULESETS,
+    RealGameAnalysisError,
+    bot_policy_for,
+    generate_real_game_deal_analysis,
+    validate_real_game_deal_analysis,
+)
 from .post_match_diagnostics import generate_post_match_diagnostics
 from .persistence import (
     LEGACY_ROOM_RECORD_SCHEMA_VERSION,
@@ -499,6 +507,8 @@ class RoomManager:
         room, session = self.session(code=code, token=token)
         if room.runner is None:
             raise RoomError("match_not_started")
+        if room.ruleset_id in REAL_GAME_RULESETS:
+            return self._real_game_deal_analysis(room, session.seat, deal_number)
         if room.ruleset_id not in ANALYSIS_RULESETS:
             raise RoomError("analysis_unavailable_for_ruleset")
         if (
@@ -543,6 +553,84 @@ class RoomManager:
                 bot_policy_id=BOT_REPLAY_POLICY_ID,
             )
         return deepcopy(generated)
+
+    def _real_game_deal_analysis(
+        self, room: Room, seat: int, deal_number: int
+    ) -> dict[str, object]:
+        """The real game's completed-deal analysis: the dealt hands, the sooli
+        exchange, a same-cards replay by the room's own bots and the seat's
+        after-deal review. Cached in memory and in the store per deal and seat.
+        """
+
+        runner = room.runner
+        if not isinstance(runner, LiveMatchRunner):
+            raise RoomError("analysis_not_available")
+        if (
+            type(deal_number) is not int
+            or deal_number < 0
+            or deal_number >= len(runner.state.completed_deals)
+        ):
+            raise RoomError("deal_not_complete")
+        cache_key = (deal_number, seat)
+        policy_id = bot_policy_for(runner)["policy_id"]
+        cached = room.completed_deal_analyses.get(cache_key)
+        if cached is None and self._store is not None:
+            cached = self._store.load_completed_deal_analysis(
+                room_code=room.code,
+                deal_number=deal_number,
+                seat=seat,
+                analysis_schema_version=REAL_GAME_DEAL_ANALYSIS_SCHEMA_VERSION,
+                bot_policy_id=policy_id,
+            )
+        if cached is not None:
+            try:
+                validated = validate_real_game_deal_analysis(
+                    cached, runner=runner, seat=seat, deal_number=deal_number
+                )
+            except RealGameAnalysisError:
+                validated = None  # stale: regenerate below
+            if validated is not None:
+                room.completed_deal_analyses[cache_key] = validated
+                return deepcopy(validated)
+        try:
+            generated = generate_real_game_deal_analysis(
+                runner,
+                seat=seat,
+                deal_number=deal_number,
+                review=self._review_or_none(room, seat, deal_number),
+            )
+        except RealGameAnalysisError as exc:
+            raise RoomError("analysis_not_available") from exc
+        room.completed_deal_analyses[cache_key] = generated
+        if self._store is not None:
+            self._store.save_completed_deal_analysis(
+                room_code=room.code,
+                deal_number=deal_number,
+                seat=seat,
+                response=generated,
+                analysis_schema_version=REAL_GAME_DEAL_ANALYSIS_SCHEMA_VERSION,
+                bot_policy_id=policy_id,
+            )
+        return deepcopy(generated)
+
+    def _review_or_none(
+        self, room: Room, seat: int, deal_number: int
+    ) -> dict[str, object] | None:
+        """The seat's after-deal review, or None when this server has no reviewer."""
+
+        if self.deal_reviewer is None or room.runner is None:
+            return None
+        key = (deal_number, seat)
+        cached = room.deal_reviews.get(key)
+        if cached is None:
+            try:
+                cached = generate_deal_review(
+                    room.runner, seat=seat, deal_number=deal_number, reviewer=self.deal_reviewer
+                )
+            except DealReviewError:
+                return None
+            room.deal_reviews[key] = cached
+        return deepcopy(cached)
 
     def deal_review_for_session(
         self,

@@ -78,9 +78,10 @@ class TuppiASGIApp:
             payload = strict_json_loads(body.decode("utf-8")) if body else {}
             if type(payload) is not dict:
                 raise ProtocolError("request body must be an object")
-            if path.endswith("/review"):
-                # A review searches for seconds: keep the event loop (and the
-                # other seats' play) moving while it runs.
+            if path.endswith("/review") or ("/deals/" in path and path.endswith("/analysis")):
+                # A review searches for seconds, and a real-game deal analysis
+                # replays the deal with four searching bots: keep the event loop
+                # (and the other seats' play) moving while they run.
                 response = await asyncio.to_thread(self._http_command, path, payload)
             else:
                 response = self._http_command(path, payload)
