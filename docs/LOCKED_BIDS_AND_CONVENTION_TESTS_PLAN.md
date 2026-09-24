@@ -1,6 +1,7 @@
 # Plan: locked bid cards, the NOLO convention test, the RAMI signal tests
 
-Status: **plan only, nothing implemented.** Written 2026-09-23.
+Status: **Part A done** (locked bids, `project_target_v3`, 2026-09-23; see
+`TASKS.md` T4); **Parts B and C not started.** Written 2026-09-23.
 
 - The owner decided the same day to switch the project to **locked bid cards**,
   as in the real game.

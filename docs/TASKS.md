@@ -1,7 +1,8 @@
 # Task backlog
 
-Recorded 2026-09-24 from the project owner. **Status: not started** for all
-three; nothing below has been executed.
+Recorded 2026-09-24 from the project owner. Each task's status is in its own
+section: T1, T3 and T4 part A are done; T2 has its after-deal review; T4 parts
+B and C (the convention tests) have not started.
 
 ## T1 — Make the application as good as it can get
 
@@ -69,6 +70,19 @@ hints); **only clear mistakes**, one line each (your move, the bot's move, the
 equity cost, the kind of decision); for the **real game's rules
 (`project_target_v3`) first**, the v1 analysis stays as it is; **drills later**,
 once the review has proved useful.
+
+**Added 2026-09-24 (owner's request).**
+- **History analysis for the real game.** "Analysoi" works for sooli and
+  locked-bid deals (`tuppi.analysis.real_game_deal.v1`): all four dealt hands,
+  both exchanged cards of a sooli deal (the dead hand is shown), a replay of
+  the same cards by four TuppiAI bots under the real rules, the comparison, and
+  the review of the player's decisions linked to the replay. Room access keys
+  are kept in `room-credentials.json`, so deals from closed rooms can be
+  analysed while the server keeps the room.
+- **Live odds during sooli.** The training window works in sooli deals with
+  TuppiAI's sampler (`tuppi_ai/sooli_odds.py`): facts-only odds, and the bot's
+  sooli inference (the soolaaja's hand is a sooli hand) behind the trust
+  slider.
 
 ## T3 — Add the "sooli" submode
 

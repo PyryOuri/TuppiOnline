@@ -7,6 +7,49 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## Live odds tool against TuppiAI's bots (2026-09-24)
+
+The training window's odds (TuppiProject `tuppi_server.training_analysis`):
+exact uniform odds over the layouts consistent with the seat's observation,
+and an "assumed" view adding four behavioural rules measured earlier on the
+old reference bots. The owner plays against TuppiAI, so both were re-measured
+there (`tools/odds_calibration.py`: 240 v3 deals, TuppiAI's best agent on all
+four seats, authoritative engine, 1,217 trick-play positions of one observed
+seat; 14 sooli deals counted, not measured). Mean negative log-likelihood of
+each unseen card's true holder (lower is better; uniform over three seats is
+1.099), 95% intervals clustered by deal:
+
+| View | NLL per unseen card | vs exact |
+| --- | ---: | ---: |
+| **exact odds** | **1.065** [1.060, 1.069] | - |
+| belief net `runs/belief_v1.pt`, alpha 0.5 | 1.256 | +0.191 [+0.172, +0.211] |
+| belief net, alpha 1.0 | 1.710 | +0.646 [+0.602, +0.689] |
+| assumed view (69% of positions) | 1.441 | +0.370 [+0.328, +0.411] |
+
+* **The exact odds are calibrated** (every probability bucket within about
+  0.02 of the observed frequency).
+* **The belief net is overconfident against TuppiAI:** at alpha 1.0 its "0.9-1.0"
+  bucket (mean 0.96) is right 42% of the time. It was trained on another
+  policy's play (distilled search vs the clone), as the search result above
+  already suggested. Not added to the tool.
+* **The behavioural rules fail for TuppiAI's bots.** Firings and violations
+  against the true hands: `show_lowest` 358 of 506 (the bot chooses its bid
+  card by search; humans pick theirs freely), `follow_low` 753 of 2,752,
+  `duck_high` 104 of 408, `win_high_last` 13 of 71. The assumed view excluded
+  the true holder of 1,411 of 18,509 cards (7.6%); its median prior is 0.055.
+  **The server now shows no assumed view in the real game or where TuppiAI
+  plays** (TuppiProject `1347153`).
+
+**The sooli view passes** (`tools/sooli_odds_calibration.py`, the bank of 600
+soolis the bot itself accepted, a RAMI player at the first sooli lead, 400
+layouts): facts-only 1.060 nats per unseen card, the search's sooli belief
+(prefilter + tilt 0.3, `tuppi_ai/sooli_odds.py`) **1.007, paired -0.053 +-
+0.004**, mostly on the soolaaja's cards (1.063 -> 0.955) and the dead hand
+(1.063 -> 1.007); calibrated within about 0.01 below 0.6, slightly
+overconfident at 0.6-0.8 (0.64 -> 0.57, 0.73 -> 0.61, few cards). It stays as
+the sooli "assumed" view. Measured on the bot's own soolis; a human soolaaja
+may call sooli on other hands.
+
 ## After-deal review (T2): calibrating "clear mistake"
 
 The review (`tuppi_ai/review.py`, served through TuppiProject's
