@@ -82,7 +82,12 @@ once the review has proved useful.
 - **Live odds during sooli.** The training window works in sooli deals with
   TuppiAI's sampler (`tuppi_ai/sooli_odds.py`): facts-only odds, and the bot's
   sooli inference (the soolaaja's hand is a sooli hand) behind the trust
-  slider.
+  slider; measured to beat the facts-only odds on the bot's own soolis.
+- **No behavioural assumptions in the real game.** The odds window's
+  "assumed" rules were measured on the old bots and fail against TuppiAI's
+  (and humans pick bid cards freely), so the server leaves them out there;
+  the plain odds are calibrated. The belief net was worse and is not used
+  (`docs/STATUS.md`, "Live odds tool against TuppiAI's bots").
 
 ## T3 — Add the "sooli" submode
 
