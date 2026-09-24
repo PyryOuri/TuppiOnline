@@ -54,9 +54,12 @@ worlds), declares RAMI more often (47% of v3 deals against the old bot's
    after a give or a sooli play. The bot's values therefore depend slightly on
    its history within a match, and differ from the measured v2 setup. Fixing
    it (`ruleset >= 2`) changes moves, so it needs a strength check (the v3
-   evaluation, ~40 min). The database describes one bot version, so settle
-   this first. Until then `gen_game_db.py` resets the options at the start of
-   every game (games then depend only on their index; checked).
+   evaluation, ~40 min). **Owner's decision (2026-09-24): not fixed for now**
+   (minor). The database describes the bot as it is, with the options reset at
+   the start of every game by `gen_game_db.py` (games then depend only on
+   their index; checked). If it is fixed later, the database describes the
+   previous bot version: regenerate it (the generator refuses to mix
+   versions).
 2. TuppiAI committed (the generator records the commit and warns when
    `tuppi_ai/` or `native/` has uncommitted changes).
 3. The Mac on mains power; the script keeps it awake (`caffeinate -i`); an

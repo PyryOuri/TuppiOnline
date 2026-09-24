@@ -144,8 +144,9 @@ does bidding by that description cost? Plan, prerequisites and pass criteria
 fixed in advance: `docs/BIDDING_EXPLANATION_PLAN.md`. Built and tested at toy
 size: the game database (`tools/gen_game_db.py`, reusable), features, readable
 models, the rule bidder and the play test; start with
-`bash tools/run_bidding_pilot.sh` (~3 h of machine time). Prerequisite: settle
-the ruleset-3 sooli-settings leak in `SearchAgent.choose_action` first.
+`bash tools/run_bidding_pilot.sh` (~3 h of machine time). The ruleset-3
+sooli-settings leak in `SearchAgent.choose_action` is left unfixed by the
+owner's decision (minor); the database resets it per game.
 
 ## Suggested order (to decide with the owner)
 
