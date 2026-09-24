@@ -89,6 +89,7 @@ lib.tc_feature_dim_v.argtypes = [C.c_int]
 lib.tc_feature_dim_v.restype = C.c_int
 lib.tc_env_set_encoder.argtypes = [C.c_void_p, C.c_int]
 lib.tc_env_set_sooli.argtypes = [C.c_void_p, C.c_int, C.c_int, C.c_int, C.c_double]
+lib.tc_set_rollout_chunk.argtypes = [C.c_int]
 lib.tc_sample_world_sooli.argtypes = [_P(TcObs), _P(C.c_uint64), _P(TcDeal), C.c_int, C.c_double]
 lib.tc_sample_world_sooli.restype = C.c_int
 lib.tc_valid_show_cards.argtypes = [C.c_uint64, C.c_int]
@@ -376,3 +377,9 @@ def search_values(env: "Env", mlp: Mlp, obs: TcObs, actions, worlds: int, dd_lef
     if rc != 0:
         raise RuntimeError(f"native search failed ({rc})")
     return out
+
+
+def set_rollout_chunk(chunk: int) -> None:
+    """Rollouts per network batch in the search (same moves; 32 = lowest latency,
+    128 = least total work, for batch jobs running several processes)."""
+    lib.tc_set_rollout_chunk(chunk)

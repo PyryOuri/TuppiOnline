@@ -109,6 +109,7 @@ long tc_sooli_nodes(void);
 int tc_sooli_policy(const TcObs *o, uint64_t *rng);
 int tc_sooli_offer_prefilter(uint64_t hand);
 int tc_sample_world_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, int mode, double lambda);
+void tc_set_rollout_chunk(int chunk);
 int tc_sample_world_tilted(const TcObs *o, uint64_t *rng, TcDeal *out, double lambda);
 
 // Ends a deal with the given final team-0 trick count (for solver tails).

@@ -65,6 +65,7 @@ def play(job: tuple[int, int, str, str, int]) -> dict:
     from tuppi_rules import MatchScore, RulesetId
     from tuppi_rules.cards import FULL_DECK, card_to_code, card_to_index
 
+    native.set_rollout_chunk(128)  # several processes run: least total work, same moves
     agents = best_agents(seed=start)
     dim = native.feature_dim(ENCODER)
     feats, locs, games = [], [], []

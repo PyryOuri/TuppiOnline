@@ -178,13 +178,22 @@ static int survives_in(TcDeal *w, uint64_t *rng) {
   return tc_sooli_solve(w) == 1;
 }
 
+// Accept when at least half of OFFER_WORLDS sampled worlds survive. The solves
+// stop as soon as that is settled; the remaining worlds are still drawn, so the
+// rng advances exactly as before (survives_in draws nothing: the heuristic
+// exchange and the solver are deterministic) and every decision, here and
+// after, is unchanged.
 static int offer(const TcObs *o, uint64_t *rng) {
   if (!offer_prefilter(o->hand)) return TC_ACT_SOOLI_DECLINE;
-  int alive = 0;
+  const int need = (OFFER_WORLDS + 1) / 2;
+  int alive = 0, settled = 0;
   TcDeal w;
   for (int i = 0; i < OFFER_WORLDS; i++) {
     if (tc_sample_world(o, rng, &w) != 0) return TC_ACT_SOOLI_DECLINE;
+    if (settled) continue;
     alive += survives_in(&w, rng);
+    const int remaining = OFFER_WORLDS - 1 - i;
+    if (alive >= need || alive + remaining < need) settled = 1;
   }
   return 2 * alive >= OFFER_WORLDS ? TC_ACT_SOOLI_ACCEPT : TC_ACT_SOOLI_DECLINE;
 }

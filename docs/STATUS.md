@@ -7,6 +7,30 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## Exact speed-ups for batch generation (2026-09-24)
+
+Both keep every move bit-identical (12 fixed v3 deals, best agent on four
+seats, same move fingerprint before and after; the bot is deterministic):
+
+* **Sooli offer heuristic stops solving once settled.** It accepts when at
+  least 4 of 8 sampled worlds survive; it now stops the solves when that is
+  decided but still draws the remaining worlds, so the rng advances exactly
+  as before. 156.2 -> 134.7 CPU-s for the 12 deals (-14%).
+* **Rollout batch size is a setting** (`native.set_rollout_chunk`): 32 (the
+  default, lowest latency for live play) or 128 (-7% total work, fewer cores
+  per search) for jobs that run several processes; `gen_belief_tuppi.py` uses
+  128.
+
+Tried without gain: a 4x larger sooli solver table (134.8 CPU-s). CPU now:
+bid searches 58%, early trick play 33%; inside them the sooli solver about
+half of the busy time, the endgame solver and the rollout network about a
+quarter each.
+
+Generator throughput (48 deals, on battery): **1.04 deals/s with 3 workers**
+(0.93 with 2), 10.5-10.7 CPU-s per deal, against 0.83 deals/s and 13.7 CPU-s
+before. A long run needs `caffeinate -i`: an earlier measurement stalled when
+the Mac slept.
+
 ## Belief net trained on TuppiAI's own play: pilot fails at 500 deals (2026-09-24)
 
 Can a card-location net learned from the bots the owner plays beat the exact

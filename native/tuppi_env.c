@@ -333,6 +333,13 @@ static void resolve_sooli(TcEnv *e, int i, uint64_t *rng, double *total) {
 static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *actions, int k, int w,
                        int dd_left, uint64_t *rng, double *values, double *per_world);
 
+// Rollouts per network batch in the search. 32 spreads one search over the
+// most cores (lowest latency, for live play); 128 does about 7% less work in
+// total (larger matrix products), for batch jobs that already run several
+// processes. The moves are the same either way.
+static int rollout_chunk = 32;
+void tc_set_rollout_chunk(int chunk) { rollout_chunk = chunk < 8 ? 8 : chunk > 512 ? 512 : chunk; }
+
 int tc_search_values(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *actions, int k, int w,
                      int dd_left, uint64_t *rng, double *values) {
   return search_core(e, m, o, actions, k, w, dd_left, rng, values, NULL);
@@ -398,7 +405,7 @@ static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *
     int live = 0;
     for (int i = 0; i < n; i++) if (e->g[i].d.phase != TC_PH_DONE) idx[live++] = i;
     if (!live) break;
-    const int chunk = 32;
+    const int chunk = rollout_chunk;
     dispatch_apply((size_t)(live + chunk - 1) / chunk, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t c) {
       int lo = (int)c * chunk, hi = lo + chunk < live ? lo + chunk : live, rows = hi - lo;
       uint8_t *feat = malloc((size_t)rows * dim);
