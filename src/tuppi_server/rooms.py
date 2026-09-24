@@ -31,6 +31,10 @@ from .match_runner import (
     tuppi_ai_available,
 )
 from .deal_review import DealReviewError, generate_deal_review
+from .sooli_training_analysis import (
+    SooliTrainingAnalysisError,
+    generate_sooli_training_analysis,
+)
 from .real_game_deal_analysis import (
     REAL_GAME_DEAL_ANALYSIS_SCHEMA_VERSION,
     REAL_GAME_RULESETS,
@@ -48,6 +52,7 @@ from .persistence import (
     PersistenceError,
 )
 from .projection import project_event_batch
+from tuppi_engine import match_observation_for
 from tuppi_rules import SUPPORTED_RULESETS, RulesetId
 
 #: The analysis endpoints are built for project_target_v1 deals.
@@ -207,6 +212,9 @@ class RoomManager:
         #: Optional after-deal reviewer (``tuppi_server.deal_review.DealReviewer``),
         #: installed by a deployment that has a bot able to re-decide positions.
         self.deal_reviewer = None
+        #: Optional sooli layout sampler (``tuppi_server.sooli_training_analysis``)
+        #: for the live odds tool during a sooli deal.
+        self.sooli_odds = None
         if ruleset_id not in SUPPORTED_RULESETS:
             raise ValueError("unsupported ruleset")
         self._ruleset_id = RulesetId(ruleset_id)
@@ -246,6 +254,11 @@ class RoomManager:
             from tuppi_ai.review import ServerReviewer
 
             manager.deal_reviewer = ServerReviewer()
+        if profile == TUPPI_AI_PROFILE_KEY:
+            # Live odds during sooli use the same bot's sooli sampler.
+            from tuppi_ai.sooli_odds import SooliOdds
+
+            manager.sooli_odds = SooliOdds()
         return manager
 
     def create_room(
@@ -479,8 +492,15 @@ class RoomManager:
             raise RoomError("no_active_deal")
         deal = room.runner.state.active_deal
         if deal is not None and (deal.soolaaja is not None or deal.phase.value in SOOLI_PHASE_NAMES):
-            # The odds model is the four-hand v1 one; a sooli deal has a dead hand.
-            raise RoomError("analysis_unavailable_in_sooli")
+            # The exact odds model is the four-hand one; a sooli deal has a dead
+            # hand and a private exchange, so a sampler (the bot's) answers.
+            if self.sooli_odds is None:
+                raise RoomError("analysis_unavailable_in_sooli")
+            observation = match_observation_for(room.runner.state, session.seat)
+            try:
+                return generate_sooli_training_analysis(observation, self.sooli_odds)
+            except (SooliTrainingAnalysisError, ValueError) as exc:
+                raise RoomError("analysis_unavailable_in_sooli") from exc
         return room.runner.training_analysis(session.seat)
 
     def completed_deal_analysis_for_session(

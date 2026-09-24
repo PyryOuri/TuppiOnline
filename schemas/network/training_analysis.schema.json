@@ -2,10 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.invalid/tuppi/schemas/network/training_analysis.schema.json",
   "title": "Versioned Tuppi live training-analysis endpoint response",
-  "description": "The endpoint returns a v1 live training-analysis envelope. Versioned as its own family so a future addition (e.g. a behaviour-weighted posterior) can be introduced without breaking v1 clients.",
+  "description": "The endpoint returns a v1 live training-analysis envelope. Versioned as its own family so a future addition (e.g. a behaviour-weighted posterior) can be introduced without breaking v1 clients. During a sooli deal a server with a layout sampler returns the sampled sooli envelope.",
   "oneOf": [
     {
       "$ref": "https://example.invalid/tuppi/schemas/network/training_analysis_v1.schema.json"
+    },
+    {
+      "$ref": "https://example.invalid/tuppi/schemas/network/training_analysis_sooli_v1.schema.json"
     }
   ]
 }

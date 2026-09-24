@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/network/training_analysis_sooli_v1.schema.json",
+  "title": "Tuppi live training odds during a sooli deal",
+  "description": "POST /v1/rooms/{code}/training_analysis while a sooli is being asked, exchanged or played, on a server with a sooli layout sampler. Sampled odds from layouts consistent with the requesting seat's own observation: suit_splits and card_locations are facts only; assumed is the bot's sooli inference (the soolaaja's hand is a sooli hand), where the bot uses it, else null. A card in the same seat in every layout is counted as known.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "match_ref", "deal_ref", "seat", "other_seats", "suit_splits", "card_locations", "assumed", "source", "sooli"],
+  "properties": {
+    "schema_version": {"const": "tuppi.server.training_analysis.sooli.v1"},
+    "match_ref": {"$ref": "https://example.invalid/tuppi/schemas/network/training_analysis_v1.schema.json#/properties/match_ref"},
+    "deal_ref": {"$ref": "https://example.invalid/tuppi/schemas/network/training_analysis_v1.schema.json#/properties/deal_ref"},
+    "seat": {"$ref": "https://example.invalid/tuppi/schemas/network/training_analysis_v1.schema.json#/properties/seat"},
+    "other_seats": {"$ref": "https://example.invalid/tuppi/schemas/network/training_analysis_v1.schema.json#/properties/other_seats"},
+    "suit_splits": {"$ref": "https://example.invalid/tuppi/schemas/network/training_analysis_v1.schema.json#/properties/suit_splits"},
+    "card_locations": {"$ref": "https://example.invalid/tuppi/schemas/network/training_analysis_v1.schema.json#/properties/card_locations"},
+    "assumed": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rules", "prior_probability", "suit_splits", "card_locations"],
+          "properties": {
+            "rules": {"type": "array", "minItems": 1, "maxItems": 1, "items": {"const": "sooli_low_hand"}},
+            "prior_probability": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+            "suit_splits": {"$ref": "https://example.invalid/tuppi/schemas/network/training_analysis_v1.schema.json#/properties/suit_splits"},
+            "card_locations": {"$ref": "https://example.invalid/tuppi/schemas/network/training_analysis_v1.schema.json#/properties/card_locations"}
+          }
+        }
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["estimator_id", "layouts"],
+      "properties": {
+        "estimator_id": {"type": "string", "minLength": 1, "maxLength": 128},
+        "layouts": {"type": "integer", "minimum": 1}
+      }
+    },
+    "sooli": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["soolaaja", "dead_seat"],
+          "properties": {
+            "soolaaja": {"type": "integer", "minimum": 0, "maximum": 3},
+            "dead_seat": {"type": "integer", "minimum": 0, "maximum": 3}
+          }
+        }
+      ]
+    }
+  }
+}
