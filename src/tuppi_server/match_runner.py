@@ -502,7 +502,13 @@ class LiveMatchRunner:
         """
 
         observation = match_observation_for(self.state, seat)
-        return generate_training_analysis(observation)
+        # The behavioural assumptions describe the old reference bots: off in
+        # the real game (humans pick bid cards freely) and wherever TuppiAI plays.
+        return generate_training_analysis(
+            observation,
+            with_assumptions=self.ruleset_id is RulesetId.PROJECT_TARGET_V1
+            and self.ai_profile_key != TUPPI_AI_PROFILE_KEY,
+        )
 
     def contract_evaluations_for_deal(
         self, deal_number: int

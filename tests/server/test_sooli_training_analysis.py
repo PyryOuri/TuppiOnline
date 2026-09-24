@@ -169,3 +169,36 @@ def test_tuppi_ai_sooli_inference_lowers_the_soolaajas_hand(tmp_path):
     assert expected_rank(assumed["card_locations"]) < expected_rank(response["card_locations"])
     # the same position gives the same numbers
     assert manager.training_analysis_for_session(code=room.code, token=tokens[rami_player]) == response
+
+
+def test_the_real_game_drops_the_behavioural_assumptions(tmp_path):
+    """The rules were measured on the old bots; against TuppiAI they fail
+    (TuppiAI tools/odds_calibration.py), and humans pick bid cards freely."""
+    manager = RoomManager(tmp_path, ruleset_id=V3, ai_profile_key=TEST_AI_PROFILE_KEY)
+    room, tokens = _all_human_room(manager)
+    runner = room.runner
+    rng = random.Random("no-assumptions")
+    n = 0
+    while runner.collecting_bids() or runner.state.active_deal.phase is not EnginePhase.TRICK_PLAY \
+            or len(runner.state.active_deal.completed_tricks) < 2:
+        if runner.state.completed_deals:
+            break
+        if runner.collecting_bids():
+            for seat in range(4):
+                options = runner.bidding(seat)["options"] if runner.collecting_bids() else []
+                if options:
+                    runner.submit(seat=seat, client_action_id=f"b{n}", match_ref=runner.match_ref,
+                                  expected_event_index=runner.event_cursor, action=action_from_data(options[0]))
+                    n += 1
+            continue
+        seat = runner.current_actor
+        legal = runner.observation(seat)["legal_actions"]
+        action = next((a for a in legal if a.get("play_sooli") is False), None) or rng.choice(legal)
+        runner.submit(seat=seat, client_action_id=f"a{n}", match_ref=runner.match_ref,
+                      expected_event_index=runner.event_cursor, action=action_from_data(action))
+        n += 1
+    assert runner.state.active_deal.phase is EnginePhase.TRICK_PLAY
+    response = manager.training_analysis_for_session(code=room.code, token=tokens[0])
+    validate_instance(response, SCHEMA)
+    assert response["schema_version"] == "tuppi.server.training_analysis.v1"
+    assert response["assumed"] is None

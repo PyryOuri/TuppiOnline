@@ -78,13 +78,21 @@ class TrainingAnalysisError(ValueError):
     """An exact training-odds invariant failed, so no answer is returned."""
 
 
-def generate_training_analysis(observation: PlayerObservation) -> dict[str, object]:
+def generate_training_analysis(
+    observation: PlayerObservation, *, with_assumptions: bool = True
+) -> dict[str, object]:
     """Return the seat-scoped live training odds for one observation.
 
     Meaningful any time a deal is in progress, whether or not it is currently
     ``observation.observing_seat``'s turn to act. The caller is expected to
     reject a match that has not yet started or has already finished before
     this is reached (see ``LiveMatchRunner.training_analysis``).
+
+    ``with_assumptions=False`` leaves ``assumed`` null: the behavioural rules
+    were measured on the old reference bots and do not hold for TuppiAI's
+    (TuppiAI ``tools/odds_calibration.py``: ``show_lowest`` violated in 358 of
+    506 firings, the trick-play rules in 18-27%; the assumed view scored worse
+    than the exact odds and excluded the true holder of 7.6% of cards).
     """
 
     model = HardConstraintModel.build(observation)
@@ -104,7 +112,7 @@ def generate_training_analysis(observation: PlayerObservation) -> dict[str, obje
         "card_locations": _card_locations(model),
         "assumed": _assumed_sections(
             observation, other_seats=other_seats, hard_total=total
-        ),
+        ) if with_assumptions else None,
     }
     if set(response) != _RESPONSE_KEYS:  # pragma: no cover - constructed above
         raise TrainingAnalysisError("training analysis produced unexpected fields")
