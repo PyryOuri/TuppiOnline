@@ -7,6 +7,40 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## Bid search: sooli offers resolved in parallel (2026-09-24)
+
+Under project_target_v2/v3 a bid search plays every legal bid to the end in
+128 worlds; most rollouts reach a RAMI, and the defenders' sooli offers in
+them are answered by the heuristic, which runs the exact sooli solver on
+sampled worlds. `search_core` resolved those rollouts one at a time, so a bid
+search took 0.8-3.9 s on about one core, against 0.04-0.07 s on 6-9 cores for
+the same search with no sooli in the rollouts. They now run in parallel
+(`dispatch_apply`; each rollout's own rng stream seeded from one draw of the
+shared one, so a search stays reproducible; the solvers' tables were already
+per-thread; the log-factorial table is now filled once with `dispatch_once`).
+
+| 8 v3 deals, best agent on all four seats | Before | After |
+| --- | ---: | ---: |
+| bid search (6 positions) | 0.84-3.91 s | 0.25-0.66 s |
+| bid decision, mean | 2.15 s | 0.35 s |
+| deal | 6.16 s | 1.50 s |
+| cores busy | 1.8 of 14 | 7.9 of 14 |
+| real-game analysis replay (TuppiProject, 4 deals) | 1.2-11.8 s | 1.3-2.1 s |
+
+The work per deal is unchanged (about 12 CPU-seconds), so jobs that already
+ran 12 processes gain little: the v3 evaluation of 128 base deals (seed v6)
+took 527 s, 4.1 s per deal against 4.95 before. **Strength unchanged:** on
+those 128 deals +0.0185 [+0.0139, +0.0231] against +0.0166 [+0.0132, +0.0199]
+before, paired +0.0020 [-0.0038, +0.0077] (only the rollouts' random draws
+changed; 65 of 1,024 games came out identical).
+
+**Belief-net data from TuppiAI itself** (`tools/gen_belief_tuppi.py`): v3
+self-play of the best agent, every seat's observation at every step of
+ordinary trick play (about 200 rows per deal, against about 45 when only the
+actor is recorded), the `gen_belief.py` format. 0.83 deals/s with two workers
+(40 deals in 48 s, about 14 CPU-seconds per deal): 1,500 deals, about 300,000
+rows, in about 30 minutes.
+
 ## Live odds tool against TuppiAI's bots (2026-09-24)
 
 The training window's odds (TuppiProject `tuppi_server.training_analysis`):

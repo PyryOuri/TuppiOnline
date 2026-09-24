@@ -298,7 +298,9 @@ static int pi_return(const TcDeal *d, uint64_t *rng) {
 
 // project_target_v2: sooli decisions inside rollouts are taken by the
 // observation-only heuristics (tuppi_sooli_policy.c) and sooli trick play is
-// finished by the perfect-information solver. Serial: it is rare and uses rng.
+// finished by the perfect-information solver. One game at a time with its own
+// rng; search_core runs the games in parallel (the solvers' tables are
+// per-thread).
 static void resolve_sooli(TcEnv *e, int i, uint64_t *rng, double *total) {
   TcDeal *d = &e->g[i].d;
   while (d->phase == TC_PH_SOOLI_OFFER || d->phase == TC_PH_SOOLI_GIVE || d->phase == TC_PH_SOOLI_RETURN) {
@@ -361,8 +363,21 @@ static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *
   }
   const int enc = tc_mlp_encoder(m), dim = tc_feature_dim_v(enc);
   for (;;) {
+    // Rollouts that reached a sooli (most RAMI rollouts of a bid search pass
+    // an offer, which the heuristic answers with the exact solver on sampled
+    // worlds): resolved in parallel, each game with its own stream seeded from
+    // one draw of the shared rng, so a search stays reproducible.
+    int ns = 0;
     for (int i = 0; i < n; i++)
-      if (e->g[i].d.phase >= TC_PH_SOOLI_OFFER) resolve_sooli(e, i, rng, total);
+      if (e->g[i].d.phase >= TC_PH_SOOLI_OFFER) idx[ns++] = i;
+    if (ns) {
+      const u64 base = splitmix(rng);
+      dispatch_apply((size_t)ns, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t j) {
+        u64 local = base ^ (0x9E3779B97F4A7C15ULL * (u64)(idx[j] + 1));
+        splitmix(&local);
+        resolve_sooli(e, idx[j], &local, total);
+      });
+    }
     if (dd_left > 0) {
       int todo = 0;
       for (int i = 0; i < n; i++) {

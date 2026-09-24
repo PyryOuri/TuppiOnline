@@ -7,6 +7,7 @@
 // suit are exchangeable under these constraints, so the count of assignments
 // factorises over suits; a DP over remaining capacities (at most 14^3 states)
 // gives exact weights for the per-suit split counts.
+#include <dispatch/dispatch.h>
 #include <math.h>
 #include <string.h>
 
@@ -24,13 +25,17 @@ static inline u64 splitmix(u64 *x) {
 }
 static inline double unit(u64 *x) { return (splitmix(x) >> 11) * (1.0 / 9007199254740992.0); }
 
+// Filled once: the sooli heuristics sample worlds from several threads at a
+// time (search_core resolves rollouts' soolis in parallel).
 static double lfact[53];
-static int lfact_ready = 0;
-static void init_lfact(void) {
-  if (lfact_ready) return;
+static void fill_lfact(void *unused) {
+  (void)unused;
   lfact[0] = 0;
   for (int i = 1; i < 53; i++) lfact[i] = lfact[i - 1] + log((double)i);
-  lfact_ready = 1;
+}
+static void init_lfact(void) {
+  static dispatch_once_t once;
+  dispatch_once_f(&once, NULL, fill_lfact);
 }
 
 // Rebuilds the full public trick state from an observation's history and fills
