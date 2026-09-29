@@ -101,6 +101,7 @@ int tc_next_score(const uint8_t score[2], int winner_team, int points, uint8_t o
 // if the soolaaja survives the rest of the deal, 0 if the RAMI pair can force
 // a trick on them, -1 outside sooli play.
 int tc_sooli_solve(const TcDeal *d);
+int tc_sooli_solve_budget(const TcDeal *d, long budget);  // -2 if the budget ran out
 int tc_sooli_move_values(const TcDeal *d, const int *actions, int k, int *out);
 void tc_sooli_finish(TcDeal *d);
 long tc_sooli_nodes(void);

@@ -9,6 +9,7 @@
 // gives exact weights for the per-suit split counts.
 #include <dispatch/dispatch.h>
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "tuppi_core.h"
@@ -139,16 +140,49 @@ static double tilt_weight(const Tilt *t, int v, const int *cards, int nc, unsign
   return exp(-t->lambda * suit_exposure_low(suit_low(h, v)));
 }
 
-// Log number of assignments of `free_cards` to the three `others` with exact
-// capacities and no card of a void suit, and, if `hands` is given, an exact
-// uniform draw of one such assignment (added to hands). -INFINITY if none.
-static double count_or_draw(const int others[3], const int cap[3], u64 free_cards, const int void_mask[4],
-                            u64 *rng, u64 hands[4], const Tilt *tilt) {
-  int size[4];
+// The counting tables of count_or_draw depend only on the free cards, the
+// three others' voids and the tilt, not on the capacities or the rng, and one
+// search draws hundreds of worlds from the same observation. They are kept in
+// a small per-thread cache; a hit returns exactly the tables a rebuild would
+// compute, so every draw is unchanged.
+typedef struct {
+  int valid, others[3], voids[3], tilted, tj;
+  double lambda;
+  u64 free_cards, fixed;
+  int size[4], remaining_after[5];
+  double logA[4][14];
+  double W[5][14][14];
+} DpTables;
+#define DP_CACHE 8
+static __thread DpTables *dp_cache = NULL;
+static __thread int dp_next = 0;
+
+static const DpTables *dp_tables(const int others[3], u64 free_cards, const int void_mask[4], const Tilt *tilt) {
+  if (!dp_cache) dp_cache = calloc(DP_CACHE, sizeof(DpTables));
+  int voids[3];
+  for (int j = 0; j < 3; j++) voids[j] = void_mask[others[j]] & 15;
+  for (int i = 0; i < DP_CACHE; i++) {
+    const DpTables *t = &dp_cache[i];
+    if (t->valid && t->free_cards == free_cards && t->tilted == (tilt != NULL) && !memcmp(t->others, others, sizeof t->others) &&
+        !memcmp(t->voids, voids, sizeof voids) &&
+        (!tilt || (t->tj == tilt->j && t->lambda == tilt->lambda && t->fixed == tilt->fixed)))
+      return t;
+  }
+  DpTables *T = &dp_cache[dp_next];
+  dp_next = (dp_next + 1) % DP_CACHE;
+  T->valid = 1;
+  memcpy(T->others, others, sizeof T->others);
+  memcpy(T->voids, voids, sizeof voids);
+  T->free_cards = free_cards;
+  T->tilted = tilt != NULL;
+  T->tj = tilt ? tilt->j : 0;
+  T->lambda = tilt ? tilt->lambda : 0.0;
+  T->fixed = tilt ? tilt->fixed : 0;
+  int *size = T->size;
   for (int v = 0; v < 4; v++) size[v] = __builtin_popcountll(free_cards & SUIT_MASK(v));
   // logA[v][k]: log of the tilt-weighted number of k-subsets of suit v's free
   // cards for the tilted seat (log C(m, k) without a tilt).
-  double logA[4][14];
+  double (*logA)[14] = T->logA;
   int suit_cards[4][13];
   for (int v = 0; v < 4; v++) {
     int nc = 0;
@@ -158,12 +192,11 @@ static double count_or_draw(const int others[3], const int cap[3], u64 free_card
     for (unsigned sub = 0; sub < (1u << nc); sub++) A[__builtin_popcount(sub)] += tilt_weight(tilt, v, suit_cards[v], nc, sub);
     for (int k = 0; k <= nc; k++) logA[v][k] = log(A[k]);
   }
-  if (size[0] + size[1] + size[2] + size[3] != cap[0] + cap[1] + cap[2]) return -INFINITY;
 
   // W[v][a][b] = log number of ways to place suits v..3 given remaining
   // capacities a, b for the first two others (the third is implied).
-  double W[5][14][14];
-  int remaining_after[5];
+  double (*W)[14][14] = T->W;
+  int *remaining_after = T->remaining_after;
   remaining_after[4] = 0;
   for (int v = 3; v >= 0; v--) remaining_after[v] = remaining_after[v + 1] + size[v];
   for (int a = 0; a < 14; a++) for (int b = 0; b < 14; b++) W[4][a][b] = (a == 0 && b == 0) ? 0.0 : -INFINITY;
@@ -195,6 +228,19 @@ static double count_or_draw(const int others[3], const int cap[3], u64 free_card
       }
     }
   }
+  return T;
+}
+
+// Log number of assignments of `free_cards` to the three `others` with exact
+// capacities and no card of a void suit, and, if `hands` is given, an exact
+// uniform draw of one such assignment (added to hands). -INFINITY if none.
+static double count_or_draw(const int others[3], const int cap[3], u64 free_cards, const int void_mask[4],
+                            u64 *rng, u64 hands[4], const Tilt *tilt) {
+  const DpTables *T = dp_tables(others, free_cards, void_mask, tilt);
+  const int *size = T->size, *remaining_after = T->remaining_after;
+  const double (*logA)[14] = T->logA;
+  const double (*W)[14][14] = T->W;
+  if (size[0] + size[1] + size[2] + size[3] != cap[0] + cap[1] + cap[2]) return -INFINITY;
   if (cap[0] > 13 || cap[1] > 13 || W[0][cap[0]][cap[1]] == -INFINITY) return -INFINITY;
   if (!hands) return W[0][cap[0]][cap[1]];
 

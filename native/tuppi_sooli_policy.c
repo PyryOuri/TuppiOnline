@@ -166,34 +166,52 @@ static int offer_prefilter(u64 hand) {
 
 int tc_sooli_policy(const TcObs *o, uint64_t *rng);
 
-// Survival of the observer as soolaaja in one world at the offer, with the
-// heuristic exchange and perfect-information play.
-static int survives_in(TcDeal *w, uint64_t *rng) {
-  if (tc_apply(w, TC_ACT_SOOLI_ACCEPT) != 0) return 0;
+// One world at the offer, taken to the start of sooli play with the observer
+// as soolaaja and the heuristic exchange. Returns 0, or -1 if an action was
+// illegal (that world then counts as not surviving).
+static int offer_world(TcDeal *w, uint64_t *rng) {
+  if (tc_apply(w, TC_ACT_SOOLI_ACCEPT) != 0) return -1;
   TcObs ob;
   for (int step = 0; step < 2; step++) {
     tc_observe(w, w->cur, &ob);
-    if (tc_apply(w, tc_sooli_policy(&ob, rng)) != 0) return 0;
+    if (tc_apply(w, tc_sooli_policy(&ob, rng)) != 0) return -1;  // give / return draw nothing
   }
-  return tc_sooli_solve(w) == 1;
+  return 0;
 }
 
-// Accept when at least half of OFFER_WORLDS sampled worlds survive. The solves
-// stop as soon as that is settled; the remaining worlds are still drawn, so the
-// rng advances exactly as before (survives_in draws nothing: the heuristic
-// exchange and the solver are deterministic) and every decision, here and
-// after, is unchanged.
+// Lead nodes a first-pass solve may spend. Positions the soolaaja loses are
+// usually refuted within a few hundred; proving survival often takes 10^5.
+#define OFFER_QUICK_BUDGET 2000
+
+// Accept when at least half of OFFER_WORLDS sampled worlds survive under
+// perfect-information play. The answer depends only on how many survive, so
+// the worlds may be solved in any order and the solves stop once the count is
+// settled: first every world with a small node budget, then, only while it is
+// still open, the worlds that needed more, in full. All worlds are drawn
+// first, as before (the exchange and the solver draw nothing), so the rng
+// advances exactly as it always did and every decision is unchanged.
 static int offer(const TcObs *o, uint64_t *rng) {
   if (!offer_prefilter(o->hand)) return TC_ACT_SOOLI_DECLINE;
   const int need = (OFFER_WORLDS + 1) / 2;
-  int alive = 0, settled = 0;
-  TcDeal w;
-  for (int i = 0; i < OFFER_WORLDS; i++) {
-    if (tc_sample_world(o, rng, &w) != 0) return TC_ACT_SOOLI_DECLINE;
-    if (settled) continue;
-    alive += survives_in(&w, rng);
-    const int remaining = OFFER_WORLDS - 1 - i;
-    if (alive >= need || alive + remaining < need) settled = 1;
+  TcDeal w[OFFER_WORLDS];
+  int state[OFFER_WORLDS];  // 1 survives, 0 does not, -2 undecided
+  for (int i = 0; i < OFFER_WORLDS; i++)
+    if (tc_sample_world(o, rng, &w[i]) != 0) return TC_ACT_SOOLI_DECLINE;
+  int alive = 0, open = OFFER_WORLDS;
+  for (int pass = 0; pass < 2; pass++) {
+    for (int i = 0; i < OFFER_WORLDS; i++) {
+      if (alive >= need) return TC_ACT_SOOLI_ACCEPT;
+      if (alive + open < need) return TC_ACT_SOOLI_DECLINE;
+      if (pass == 0) {
+        const int r = offer_world(&w[i], rng) != 0 ? 0 : tc_sooli_solve_budget(&w[i], OFFER_QUICK_BUDGET);
+        state[i] = r == -2 ? -2 : r == 1;
+      } else if (state[i] == -2) {
+        state[i] = tc_sooli_solve(&w[i]) == 1;
+      } else {
+        continue;
+      }
+      if (state[i] != -2) { open--; alive += state[i]; }
+    }
   }
   return 2 * alive >= OFFER_WORLDS ? TC_ACT_SOOLI_ACCEPT : TC_ACT_SOOLI_DECLINE;
 }

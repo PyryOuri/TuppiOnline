@@ -25,6 +25,9 @@ def _init(worlds: int) -> None:
     import torch
 
     torch.set_num_threads(1)
+    from tuppi_ai import native
+
+    native.set_rollout_chunk(128)  # several processes run: least total work, same moves
     from tuppi_agents.sooli import SooliFallbackAgent
     from tuppi_ai.best import best_agents
     from tuppi_ai.incumbent import incumbent_agents

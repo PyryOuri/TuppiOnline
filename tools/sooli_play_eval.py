@@ -39,8 +39,10 @@ def _init(max_worlds: int) -> None:
     import torch
 
     torch.set_num_threads(1)
-    from tuppi_ai import model as qmodel
     from tuppi_ai import native
+
+    native.set_rollout_chunk(128)  # several processes run: least total work, same moves
+    from tuppi_ai import model as qmodel
     from tuppi_ai.best import EQUITY, ROLLOUT
     from tuppi_ai.equity import Equity
 

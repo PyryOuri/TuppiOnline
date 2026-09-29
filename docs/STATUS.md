@@ -7,6 +7,109 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## Exact speed-ups E0-E5: search 2.1-2.4x faster, same moves (2026-09-29)
+
+Tasks E0-E5 of `docs/EFFICIENCY_PLAN.md`, on branch `perf/e0-e5` (worktree
+`~/Developer/TuppiAI-perf`). Every change is exact: the moves and the
+searched values are bit for bit those of the previous build.
+
+**What changed.**
+
+- **E0, tools.** `tools/profile_search.py` plays fixed v3 deals with the best
+  agent on four seats, fingerprints every decision (action plus the exact bits
+  of every searched value), and compares two source trees in separate
+  processes. `tools/native_oracle.py` dumps exact outputs of the endgame
+  solver, sooli solver, offer heuristic, sampler and network per library, for
+  diffing.
+- **E1, sooli offer.** The offer heuristic accepts when at least 4 of 8
+  worlds survive, and the order in which the worlds are solved cannot change
+  that count. So every world is first solved with a 2,000-node budget, and
+  only while the answer is still open are the undecided worlds solved in full.
+  - Proving survival is where the time goes: about 166k nodes per surviving
+    world against about 1.7k per losing one, and the top 10% of solves take
+    99% of the nodes.
+  - The rng advances exactly as before.
+  - The solver's thread-local state moved into a context struct, and the
+    move representatives and transposition key are cheaper to compute.
+- **E2, sampler.** The suit-split counting tables are cached per observation
+  (8 entries per thread). They depend only on the free cards, the voids and
+  the tilt, so a cached table is the table a rebuild would compute.
+- **E3, endgame solver.**
+  - The last trick is evaluated directly.
+  - Move generation walks only the mover's own cards.
+  - The canonical key walks only the live cards.
+  - There are no thread-local reads in the recursion.
+- **E4, network.**
+  - The first layer adds the active features' columns in the same order as
+    before, one 32-wide register tile at a time, after an eight-bytes-at-a-time
+    scan for active features.
+  - Layer norms run four rows at a time, each row's sums in its old order.
+- **E5, batch settings.** Rollout chunk 128 in the worker initialisers of
+  `evaluate.py` (so also `match_eval.py`), `bid_rule_eval.py`,
+  `review_calibrate.py`, `sooli_bank.py` and `sooli_play_eval.py`.
+
+**Checks.**
+
+- Every oracle is identical on the old and new libraries:
+  - 3,000 endgame solves;
+  - 3,000 sooli solves;
+  - 1,500 offers, decisions and rng states;
+  - 19,200 world draws in every phase and belief mode, and the rng after them;
+  - 3.7M logits.
+- Profile fingerprints are identical in all 20 timed runs.
+- A 48-deal v3 evaluation gives identical values for all 384 games under the
+  old build, the E5-only build and the full build.
+- All 35 tests pass.
+
+**Speed.** Median of 5 paired runs, alternating order, best agent on four
+seats, fixed v3 deals, chunk 32:
+
+| Workload | Wall before -> after | CPU before -> after |
+| --- | ---: | ---: |
+| 12 deals, W=128 | 16.34 -> 7.57 s (**2.16x**) | 119.8 -> 57.1 s (2.10x) |
+| 4 deals, W=1024 (live) | 30.53 -> 14.10 s (**2.17x**) | 335.8 -> 163.6 s (2.05x) |
+
+Runs varied by under 2%.
+
+By decision kind (wall time, W=1024):
+
+- bids 2.75x;
+- early RAMI card play 1.74x;
+- late card play 2.67x;
+- sooli 2.66x.
+
+At W=128, bids are 2.85x.
+
+**Evaluation throughput.** `tuppi_ai.evaluate --checkpoint best --ruleset v3
+--deals 48 --workers 12`, one run each:
+
+| Build | Wall | CPU |
+| --- | ---: | ---: |
+| before | 161.9 s | 2,157 s |
+| E5 only | 155.9 s (-4%) | 2,052 s (-5%) |
+| all of E1-E5 | **69.7 s (2.32x)** | **905 s (2.38x)** |
+
+**Where the time goes now** (W=1024, busy CPU):
+
+- rollout network 37%;
+- sooli solver 30%;
+- endgame solver 28%;
+- sampler 1%.
+
+**Tried, no gain:**
+- a single full-window endgame solve instead of the binary search of
+  null-window probes (5% slower);
+- a column-major sparse first layer (2x slower);
+- a suit-permutation-invariant sooli key (1%, not kept).
+
+**Tried, much slower:** a non-canonical sooli key, 30x slower. The rank
+canonicalisation is essential.
+
+**Not installed.** The live server and the C0-C5 research pins still use
+`TuppiAI/native/libtuppi.dylib` (`02d9b4fa...`); the new build is
+`3d07008f...`. Installing it, and re-pinning
+`tuppi_ai/research/identity.py`, is the owner's decision.
+
 ## Exact speed-ups for batch generation (2026-09-24)
 
 Both keep every move bit-identical (12 fixed v3 deals, best agent on four

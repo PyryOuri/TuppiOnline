@@ -39,23 +39,27 @@ static inline int card_low(int c) { int s = c / 13, r = c % 13; return s * 13 + 
 
 typedef struct { u64 k0, k1; uint8_t val, used; } STE;
 #define STBITS 18
-static __thread STE *stt = NULL;
-static __thread long nodes;
+static __thread STE *stt_tls = NULL;
+static __thread long nodes_tls;
+
+// One solve's state, read through a pointer (thread-local variables in a dylib
+// cost a call per access). A non-zero budget aborts the solve after that many
+// lead nodes; an aborted subtree stores nothing, so the table stays exact.
+typedef struct { STE *stt; long nodes, budget; int aborted; } SCtx;
 
 // h[0], h[1]: the RAMI players (h[L] leads), h[2]: the soolaaja.
 typedef struct { u64 h[3]; } SPos;
 
 static void key_of(const SPos *p, int L, u64 *k0, u64 *k1) {
-  u64 live = p->h[0] | p->h[1] | p->h[2];
+  const u64 live = p->h[0] | p->h[1] | p->h[2], hl = p->h[L], ho = p->h[1 - L];
   u64 part[4];
   for (int s = 0; s < 4; s++) {
-    u64 m = (live >> (13 * s)) & SM, code = 0;
+    u64 m = live & (SM << (13 * s)), code = 0;
     while (m) {
-      int r = __builtin_ctzll(m);
+      const int c = __builtin_ctzll(m);
       m &= m - 1;
-      u64 b = 1ULL << (13 * s + r);
-      int owner = (p->h[L] & b) ? 1 : (p->h[1 - L] & b) ? 2 : 3;
-      code = code << 2 | (u64)owner;
+      // owner 1 (leader), 2 (other RAMI player) or 3 (soolaaja), branch-free
+      code = code << 2 | (3 - 2 * ((hl >> c) & 1) - ((ho >> c) & 1));
     }
     part[s] = code;
   }
@@ -69,28 +73,27 @@ static inline u64 mix(u64 x) {
 
 // Representatives: the lowest card of every run of `hand`'s cards that are
 // adjacent among `live` cards (same suit). Written in ascending order.
+#define SUIT_BOTTOM (1ULL | 1ULL << 13 | 1ULL << 26 | 1ULL << 39)
 static int reps(u64 hand, u64 live, int *mv) {
-  int k = 0;
-  u64 m = hand;
-  while (m) {
-    int c = __builtin_ctzll(m);
-    m &= m - 1;
-    int base = (c / 13) * 13;
-    u64 below = live & ((1ULL << c) - 1) & ~((1ULL << base) - 1);
-    if (below) {
-      int prev = 63 - __builtin_clzll(below);
-      if (hand >> prev & 1ULL) continue;
-    }
-    mv[k++] = c;
+  // follows[c]: the next lower live card of c's suit is in `hand`. Each hand
+  // card marks the cell above it, and the marks move up through cells that
+  // are not live, never across a suit boundary.
+  u64 step = (hand << 1) & ~SUIT_BOTTOM, follows = step;
+  for (step &= ~live; step; step &= ~live) {
+    step = (step << 1) & ~SUIT_BOTTOM;
+    follows |= step;
   }
+  int k = 0;
+  for (u64 m = hand & ~follows; m; m &= m - 1) mv[k++] = __builtin_ctzll(m);
   return k;
 }
 
-static int lead_node(SPos *p, int L);
+static int lead_node(SCtx *x, SPos *p, int L);
 
 // Soolaaja to play last; `hi` is the highest led-suit card so far (low layout)
 // and `winner` the RAMI player holding it. Returns 1 if the soolaaja survives.
-static int third(SPos *p, int L, int led, int hi, int winner, u64 trick_live) {
+// After an abort (x->aborted) every return value is meaningless.
+static int third(SCtx *x, SPos *p, int L, int led, int hi, int winner, u64 trick_live) {
   u64 hs = p->h[2], follow = hs & SUITM(led);
   u64 options;
   if (follow) {
@@ -105,14 +108,15 @@ static int third(SPos *p, int L, int led, int hi, int winner, u64 trick_live) {
   for (int i = k - 1; i >= 0; i--) {
     u64 b = 1ULL << mv[i];
     p->h[2] &= ~b;
-    int r = lead_node(p, winner);
+    int r = lead_node(x, p, winner);
     p->h[2] |= b;
+    if (x->aborted) return 0;
     if (r) return 1;
   }
   return 0;
 }
 
-static int second(SPos *p, int L, int a) {
+static int second(SCtx *x, SPos *p, int L, int a) {
   int O = 1 - L, led = a / 13;
   u64 ho = p->h[O], follow = ho & SUITM(led);
   u64 trick_live = 1ULL << a;
@@ -125,15 +129,17 @@ static int second(SPos *p, int L, int a) {
     p->h[O] &= ~bb;
     int hi = a, winner = L;
     if (b / 13 == led && b > a) { hi = b; winner = O; }
-    int r = third(p, L, led, hi, winner, trick_live | bb);
+    int r = third(x, p, L, led, hi, winner, trick_live | bb);
     p->h[O] |= bb;
+    if (x->aborted) return 0;
     if (!r) return 0;
   }
   return 1;
 }
 
-static int lead_node(SPos *p, int L) {
-  nodes++;
+static int lead_node(SCtx *x, SPos *p, int L) {
+  if (x->budget && x->nodes >= x->budget) { x->aborted = 1; return 0; }
+  x->nodes++;
   u64 hs = p->h[2];
   if (!hs) return 1;
   const int O = 1 - L;
@@ -155,10 +161,9 @@ static int lead_node(SPos *p, int L) {
   }
   if (certain) return 1;
 
-  if (!stt) stt = calloc((size_t)1 << STBITS, sizeof(STE));
   u64 k0, k1;
   key_of(p, L, &k0, &k1);
-  STE *e = &stt[mix(k0 * 0x9E3779B97F4A7C15ULL ^ k1) & (((u64)1 << STBITS) - 1)];
+  STE *e = &x->stt[mix(k0 * 0x9E3779B97F4A7C15ULL ^ k1) & (((u64)1 << STBITS) - 1)];
   if (e->used && e->k0 == k0 && e->k1 == k1) return e->val;
 
   int mv[13];
@@ -174,8 +179,9 @@ static int lead_node(SPos *p, int L) {
   for (int i = 0; i < n && result; i++) {
     u64 b = 1ULL << order[i];
     p->h[L] &= ~b;
-    if (!second(p, L, order[i])) result = 0;
+    if (!second(x, p, L, order[i])) result = 0;
     p->h[L] |= b;
+    if (x->aborted) return 0;
   }
   e->k0 = k0;
   e->k1 = k1;
@@ -198,24 +204,32 @@ static int load(const TcDeal *d, SPos *p, int *L, int trick[2]) {
   return pos;
 }
 
-static int solve_from(SPos *p, int L, int pos, const int trick[2]) {
-  if (pos == 0) return lead_node(p, L);
-  if (pos == 1) return second(p, L, trick[0]);
+static int solve_from(SCtx *x, SPos *p, int L, int pos, const int trick[2]) {
+  if (pos == 0) return lead_node(x, p, L);
+  if (pos == 1) return second(x, p, L, trick[0]);
   int a = trick[0], b = trick[1], led = a / 13, hi = a, winner = L;
   if (b / 13 == led && b > a) { hi = b; winner = 1 - L; }
-  return third(p, L, led, hi, winner, (1ULL << a) | (1ULL << b));
+  return third(x, p, L, led, hi, winner, (1ULL << a) | (1ULL << b));
+}
+
+// As tc_sooli_solve, but gives up after `budget` lead nodes (0 = no limit) and
+// then returns -2. A result it does return is exact.
+int tc_sooli_solve_budget(const TcDeal *d, long budget) {
+  if (d->phase == TC_PH_DONE && d->soolaaja >= 0) return d->sooli_won;
+  if (d->phase != TC_PH_SOOLI_PLAY) return -1;
+  if (!stt_tls) stt_tls = calloc((size_t)1 << STBITS, sizeof(STE));
+  SPos p;
+  int L, trick[2];
+  int pos = load(d, &p, &L, trick);
+  SCtx x = {stt_tls, 0, budget, 0};
+  int r = solve_from(&x, &p, L, pos, trick);
+  nodes_tls += x.nodes;
+  return x.aborted ? -2 : r;
 }
 
 // 1 if the soolaaja survives the rest of the deal under perfect-information
 // play, 0 if the RAMI pair can force a trick on them; -1 if not in sooli play.
-int tc_sooli_solve(const TcDeal *d) {
-  if (d->phase == TC_PH_DONE && d->soolaaja >= 0) return d->sooli_won;
-  if (d->phase != TC_PH_SOOLI_PLAY) return -1;
-  SPos p;
-  int L, trick[2];
-  int pos = load(d, &p, &L, trick);
-  return solve_from(&p, L, pos, trick);
-}
+int tc_sooli_solve(const TcDeal *d) { return tc_sooli_solve_budget(d, 0); }
 
 // Solver values of the current actor's legal moves in sooli play: out[i] = 1
 // if the soolaaja survives after actions[i]. Returns 0, or -1 if not in sooli
@@ -241,4 +255,4 @@ void tc_sooli_finish(TcDeal *d) {
   d->stolen = 0;
 }
 
-long tc_sooli_nodes(void) { long n = nodes; nodes = 0; return n; }
+long tc_sooli_nodes(void) { long n = nodes_tls; nodes_tls = 0; return n; }

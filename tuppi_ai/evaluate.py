@@ -41,6 +41,9 @@ def _init(candidate: str, opponent: str, equity_path: str, ruleset: str = "v1") 
     import torch
 
     torch.set_num_threads(1)
+    from . import native
+
+    native.set_rollout_chunk(128)  # several processes run: least total work, same moves
     from .equity import Equity
     from .incumbent import incumbent_agents
 
