@@ -415,6 +415,16 @@ def value_rollouts(env: "Env", mlp: "Mlp", games: int, ruleset: int, dd_left: in
 
 
 lib.tc_set_parallel.argtypes = [C.c_int]
+lib.tc_set_offer_model.argtypes = [C.c_void_p]
+_offer_model = None
+
+
+def set_offer_model(mlp: "Mlp | None") -> None:
+    """Sooli offers by a fast acceptance model (tuppi_ai/offer_screen.py) instead of
+    the exact heuristic, process-wide; None restores the exact heuristic."""
+    global _offer_model
+    _offer_model = mlp  # keep the native weights alive
+    lib.tc_set_offer_model(mlp._h if mlp is not None else None)
 
 
 def set_parallel(on: bool) -> None:

@@ -87,3 +87,42 @@ def test_suit_permutations_are_bijections_that_move_whole_suits():
     for p in perms:
         assert sorted(p) == list(range(native.PI_DIM))
         assert np.array_equal(p[208:], np.arange(208, native.PI_DIM))
+
+
+def test_fast_offer_model_accepts_with_its_probability_and_is_off_by_default():
+    """tc_set_offer_model: prefiltered offers accept with the model's probability."""
+    from tuppi_ai.offer_screen import IN_DIM
+
+    rng = np.random.default_rng(5)
+    offers = []
+    while len(offers) < 200:  # defender observations at an offer, hand passing the prefilter
+        cards = rng.permutation(52)
+        hands = [sum(1 << int(c) for c in cards[13 * s:13 * s + 13]) for s in range(4)]
+        deal = native.new_deal(hands, int(rng.integers(4)), ruleset=3)
+        rami = [a for a in native.legal(deal) if a >= 104]
+        if not rami:
+            continue
+        native.lib.tc_apply(C.byref(deal), rami[0])
+        obs = native.observe(deal, deal.cur)
+        if native.lib.tc_sooli_offer_prefilter(C.c_uint64(obs.hand)):
+            offers.append(obs)
+
+    def accept_rate(logit):
+        net = vmod.VNet(width=16, blocks=1, in_dim=IN_DIM)
+        with torch.no_grad():
+            for p in net.parameters():
+                p.zero_()
+            net.out.bias.fill_(logit)
+        native.set_offer_model(native.Mlp(net, in_dim=IN_DIM, out_dim=1))
+        try:
+            r = C.c_uint64(9)
+            return np.mean([native.sooli_policy(o, r) == native.ACT_SOOLI_ACCEPT for o in offers])
+        finally:
+            native.set_offer_model(None)
+
+    assert accept_rate(20.0) == 1.0 and accept_rate(-20.0) == 0.0
+    assert 0.35 < accept_rate(0.0) < 0.65  # p = 0.5
+    # Off again: the exact heuristic (deterministic given the rng).
+    a = [native.sooli_policy(o, C.c_uint64(3)) for o in offers[:20]]
+    b = [native.sooli_policy(o, C.c_uint64(3)) for o in offers[:20]]
+    assert a == b

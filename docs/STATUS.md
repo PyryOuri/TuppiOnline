@@ -7,6 +7,51 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## Self-play engine: fast sooli offers, about 30k real-game deals/s (2026-09-29)
+
+For large-scale self-play learning (the owner asked how long 100M games would
+take), the engine plays complete v3 deals with the network on all seats: the
+exact 6-trick tail, and sooli by the heuristics.
+
+**The problem.** At about 9-12k deals/s, 57% of the CPU was the sooli offer
+heuristic: up to 8 exact solves per offer that passes the prefilter, and only
+about 2% of those offers are accepted.
+
+**The fast offer model.** `tuppi_ai/offer_screen.py`, stored as
+`models/offer_model_selfplay.pt`, switched on with `native.set_offer_model`.
+It is off by default, and the move fingerprint is unchanged.
+- It is a 128x2 net from the defender's observation (encoder 1) to the
+  probability that the exact heuristic accepts. In self-play, a prefiltered
+  offer accepts with that probability.
+- Training: 3M self-play offers labelled by the exact heuristic
+  (`tools/gen_offer_data.py`), early-stopped on held-out log-loss, then Platt
+  scaling on a validation set.
+- On 100k fresh test offers: accept rate predicted 2.13% vs actual 2.09%;
+  log-loss 0.049 vs 0.101 for a constant.
+- Screening instead (decline fast, run the exact check otherwise) does not
+  work. The heuristic's own 8-world noise means that keeping 90% of its
+  accepts still needs the exact check on 42% of offers.
+
+**Self-play with the model** (393k deals per arm, same seeds):
+
+| | Exact heuristic | Fast model |
+| --- | ---: | ---: |
+| deals/s | 12,654 | **31,214 (2.5x)** |
+| sooli played | 1.039% ± 0.016% | 1.028% ± 0.016% |
+| soolaaja survived | 34.1% | 31.0% |
+
+Deal-value targets are identical to four decimals. The model accepts
+slightly weaker hands, which changes the outcome of about 0.03% of deals.
+
+**Where the time goes now.** Network 50% (about half of it the sparse first
+layer), endgame tail 42%, and 24% of core time idle between batched steps.
+100M deals take about 1 hour.
+
+**Left for when a training loop exists and has been profiled:**
+- incremental first-layer updates (inexact, fine for self-play);
+- two engine batches in parallel to fill the idle time;
+- the network playing all 13 tricks (27.9k deals/s).
+
 ## Value nets VN1 and VN2 (neither adopted), world counts, serial mode, branch evaluation (2026-09-29)
 
 **Value net VN1** (`tuppi_ai/value.py`, `docs/VALUE_NET_PLAN.md`). A net from
