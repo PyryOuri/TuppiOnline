@@ -170,3 +170,45 @@ void tc_mlp_forward(const TcMlp *m, const uint8_t *feat, int rows, float *out) {
     for (int i = 0; i < m->out_dim; i++) out[(size_t)r * m->out_dim + i] += m->b_out[i];
   free(h); free(t); free(u);
 }
+
+// ------------------------------------------------ incremental first layer
+// For self-play rollouts (tuppi_env.c, tc_env_set_incremental): the caller
+// keeps each seat's first-layer pre-activation and updates it by the columns
+// of the features that changed. Not bitwise equal to tc_mlp_forward (the sums
+// run in another order); never used by the search's exact path.
+int tc_mlp_width(const TcMlp *m) { return m->width; }
+int tc_mlp_in_dim(const TcMlp *m) { return m->in_dim; }
+void tc_mlp_h0_init(const TcMlp *m, float *h) { memcpy(h, m->b_in, sizeof(float) * (size_t)m->width); }
+void tc_mlp_h0_add(const TcMlp *m, float *h, int feature, float sign) {
+  const float *col = m->w_in_t + (size_t)feature * m->width;
+  for (int i = 0; i < m->width; i++) h[i] += sign * col[i];
+}
+
+// As tc_mlp_forward, from given first-layer pre-activations h0[rows][width].
+void tc_mlp_forward_h0(const TcMlp *m, const float *h0, int rows, float *out) {
+  const int W = m->width;
+  float *h = malloc(sizeof(float) * (size_t)rows * W);
+  float *t = malloc(sizeof(float) * (size_t)rows * W);
+  float *u = malloc(sizeof(float) * (size_t)rows * W);
+  for (size_t i = 0; i < (size_t)rows * W; i++) h[i] = h0[i] < 0 ? 0 : h0[i];
+  for (int b = 0; b < m->blocks; b++) {
+    layer_norm(h, t, rows, W, m->ln_g[b], m->ln_b[b]);
+    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, rows, W, W, 1.0f, t, W, m->w1[b], W, 0.0f, u, W);
+    for (int r = 0; r < rows; r++) {
+      float *ur = u + (size_t)r * W;
+      for (int i = 0; i < W; i++) { float v = ur[i] + m->b1[b][i]; ur[i] = v > 0 ? v : 0; }
+    }
+    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, rows, W, W, 1.0f, u, W, m->w2[b], W, 0.0f, t, W);
+    for (int r = 0; r < rows; r++) {
+      float *hr = h + (size_t)r * W, *tr = t + (size_t)r * W;
+      for (int i = 0; i < W; i++) hr[i] += tr[i] + m->b2[b][i];
+    }
+  }
+  layer_norm(h, t, rows, W, m->lnf_g, m->lnf_b);
+  for (size_t i = 0; i < (size_t)rows * W; i++) if (t[i] < 0) t[i] = 0;
+  cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, rows, m->out_dim, W, 1.0f, t, W, m->w_out, W, 0.0f,
+              out, m->out_dim);
+  for (int r = 0; r < rows; r++)
+    for (int i = 0; i < m->out_dim; i++) out[(size_t)r * m->out_dim + i] += m->b_out[i];
+  free(h); free(t); free(u);
+}

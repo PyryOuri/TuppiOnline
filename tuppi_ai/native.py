@@ -259,6 +259,10 @@ class Env:
         self._vnet = vnet  # keep the native weights alive
         lib.tc_env_set_value(self._h, vnet._h if vnet is not None else None, leaf_bid, leaf_play, int(bot_bit))
 
+    def set_incremental(self, on: bool, width: int = 256) -> None:
+        """Self-play only: incremental first layer for networks of this width (not bitwise exact)."""
+        lib.tc_env_set_incremental(self._h, int(on), width)
+
     def set_equity(self, equity: np.ndarray) -> None:
         eq = np.ascontiguousarray(equity, dtype=np.float64).reshape(25, 2)
         lib.tc_env_set_equity(self._h, eq.ctypes.data_as(_P(C.c_double)))
@@ -415,6 +419,7 @@ def value_rollouts(env: "Env", mlp: "Mlp", games: int, ruleset: int, dd_left: in
 
 
 lib.tc_set_parallel.argtypes = [C.c_int]
+lib.tc_env_set_incremental.argtypes = [C.c_void_p, C.c_int, C.c_int]
 lib.tc_set_offer_model.argtypes = [C.c_void_p]
 _offer_model = None
 
@@ -435,6 +440,65 @@ def set_parallel(on: bool) -> None:
 
 if __import__("os").environ.get("TUPPI_AI_SERIAL") == "1":  # batch jobs: one process per core
     set_parallel(False)
+
+
+lib.tc_selfplay_states.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int, _P(C.c_uint64), C.c_double,
+                                   C.c_double, C.c_int, C.c_void_p]
+lib.tc_selfplay_states.restype = C.c_int
+lib.tc_branch_values.argtypes = [C.c_void_p, C.c_void_p, C.c_void_p, C.c_int, C.c_int, C.c_int, _P(C.c_uint64),
+                                 C.c_void_p, C.c_void_p, C.c_void_p]
+lib.tc_branch_values.restype = C.c_int
+lib.tc_encode_states.argtypes = [C.c_void_p, C.c_int, C.c_int, C.c_void_p, C.c_void_p]
+MAX_K = 26  # at most 26 legal network actions (13 cards x 2 contracts in showing)
+
+
+def selfplay_states(env: "Env", mlp: "Mlp", games: int, ruleset: int, rng_state: C.c_uint64, p_record: float,
+                    p_random: float, max_states: int):
+    """Full states recorded at random unforced decisions of policy self-play (docs/SELFPLAY_PLAN.md)."""
+    buf = (TcDeal * max_states)()
+    n = lib.tc_selfplay_states(env._h, mlp._h, games, ruleset, C.byref(rng_state), p_record, p_random,
+                               max_states, buf)
+    if n < 0:
+        raise RuntimeError(f"self-play failed ({n})")
+    return buf, n
+
+
+def branch_values(env: "Env", mlp: "Mlp", states, n: int, dd_left: int, rng_state: C.c_uint64,
+                  offset: int = 0):
+    """(actions [n, MAX_K], k [n], q [n, MAX_K]): every legal action of states[offset:offset+n] played
+    out by the policy; q is the acting team's equity change."""
+    actions = np.zeros((n, MAX_K), dtype=np.int32)
+    k = np.zeros(n, dtype=np.int32)
+    q = np.zeros((n, MAX_K), dtype=np.float32)
+    ptr = C.byref(states, offset * C.sizeof(TcDeal))
+    rc = lib.tc_branch_values(env._h, mlp._h, ptr, n, MAX_K, dd_left, C.byref(rng_state), actions.ctypes.data,
+                              k.ctypes.data, q.ctypes.data)
+    if rc != 0:
+        raise RuntimeError(f"branch values failed ({rc}); environment too small")
+    return actions, k, q
+
+
+def encode_states(states, n: int, encoder: int, offset: int = 0) -> tuple[np.ndarray, np.ndarray]:
+    feat = np.zeros((n, feature_dim(encoder)), dtype=np.uint8)
+    mask = np.zeros((n, NUM_ACTIONS), dtype=np.uint8)
+    lib.tc_encode_states(C.byref(states, offset * C.sizeof(TcDeal)), n, encoder, feat.ctypes.data, mask.ctypes.data)
+    return feat, mask
+
+
+lib.tc_duplicate_eval.argtypes = [C.c_void_p, C.c_void_p, C.c_void_p, C.c_int, C.c_int, C.c_int, C.c_int, C.c_int,
+                                  _P(C.c_uint64), C.c_void_p]
+lib.tc_duplicate_eval.restype = C.c_int
+
+
+def duplicate_eval(env: "Env", mlp_a: "Mlp", mlp_b: "Mlp", base_deals: int, ruleset: int, rng_state: C.c_uint64,
+                   score=(0, 0), dd_left: int = 0) -> np.ndarray:
+    """Per-base-deal mean equity change of the pair playing mlp_a (8 games per base deal)."""
+    out = np.zeros(base_deals, dtype=np.float64)
+    rc = lib.tc_duplicate_eval(env._h, mlp_a._h, mlp_b._h, base_deals, ruleset, score[0], score[1], dd_left,
+                               C.byref(rng_state), out.ctypes.data)
+    if rc != 0:
+        raise RuntimeError(f"duplicate evaluation failed ({rc})")
+    return out
 
 
 def set_rollout_chunk(chunk: int) -> None:
