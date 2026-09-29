@@ -51,6 +51,7 @@ PAD = native.NUM_ACTIONS  # padding action id in compact label rows
 @dataclass
 class Config:
     init: str = str(ROOT.parent / "TuppiAI" / "runs" / "bc_small.pt")
+    baseline: str = str(ROOT.parent / "TuppiAI" / "runs" / "bc_small.pt")  # the fixed opponent of the "vs_clone" check
     offer_model: str = str(ROOT / "models" / "offer_model_selfplay.pt")
     ruleset: int = 3
     states_per_iter: int = 2_000_000
@@ -110,7 +111,7 @@ class Learner:
         self.dev = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
         base = qmodel.load(cfg.init, "cpu")
         self.encoder, self.dim = base.encoder, native.feature_dim(base.encoder)
-        self.clone = native.Mlp(base)
+        self.clone = native.Mlp(qmodel.load(cfg.baseline, "cpu"))
         self.policy = qmodel.load(cfg.init, "cpu")            # pi_k (CPU copy for export)
         if cfg.q_width:  # a larger Q net, trained from scratch
             self.qnet = qmodel.QNet(cfg.q_width, cfg.q_blocks or 4, self.encoder).to(self.dev).train()
