@@ -157,9 +157,12 @@ class Learner:
         self.qnet.train()
         return 1.0 - num / max(den, 1e-12)
 
-    def train_q(self, D: dict) -> float:
+    def train_q(self, D: dict, H: dict | None = None) -> tuple[float, float, int]:
+        """Trains the Q net; with held-out states H, keeps the weights with the best
+        held-out advantage R^2 (checked every 200 steps). Returns (adv mse, R^2, step)."""
         cfg, n = self.cfg, len(D["feat"])
         losses = []
+        best = (self.adv_r2(H), 0, {k: v.detach().clone() for k, v in self.qnet.state_dict().items()}) if H else None
         for step in range(cfg.q_steps):
             idx = torch.randint(0, n, (cfg.batch,), device=self.dev)
             x, m, t = _unpack(D["feat"][idx], self.dim), D["mask"][idx], D["q"][idx]
@@ -176,7 +179,14 @@ class Learner:
             self.opt_q.step()
             if step % 200 == 0:
                 losses.append(float(adv.detach()))
-        return float(np.mean(losses[-3:])) / SCALE ** 2
+            if H is not None and (step + 1) % 200 == 0:
+                r2 = self.adv_r2(H)
+                if r2 > best[0]:
+                    best = (r2, step + 1, {k: v.detach().clone() for k, v in self.qnet.state_dict().items()})
+        if H is None:
+            return float(np.mean(losses[-3:])) / SCALE ** 2, float("nan"), cfg.q_steps
+        self.qnet.load_state_dict(best[2])
+        return float(np.mean(losses[-3:])) / SCALE ** 2, best[0], best[1]
 
     def composite_labels(self, D: dict) -> tuple[torch.Tensor, dict]:
         """argmax_a Q + margin * 1(a = pi_k) for every state of D, and diagnostics."""
@@ -235,8 +245,7 @@ class Learner:
         self.replay = self.replay[-cfg.replay_iters:]
         D = {key: torch.cat([r[key] for r in self.replay]) for key in ("feat", "mask", "q")}
         t1 = time.perf_counter()
-        adv_mse = self.train_q(D)
-        r2 = self.adv_r2(H)
+        adv_mse, r2, q_best_step = self.train_q(D, H)
         if r2 >= cfg.min_adv_r2:
             labels, diag = self.composite_labels(D)
             ce = self.train_policy(D, labels)
@@ -251,7 +260,7 @@ class Learner:
         qmodel.save(self.policy, self.out / f"policy_{self.iteration:03d}.pt")
         qmodel.save(self.qnet, self.out / "q_latest.pt")
         row = {"iteration": self.iteration, "states": int(len(data["feat"])), "replay_states": int(len(D["feat"])),
-               "vs_clone": vs_clone, "vs_prev": vs_prev, "adv_mse": adv_mse, "adv_r2": r2, "policy_ce": ce, **diag,
+               "vs_clone": vs_clone, "vs_prev": vs_prev, "adv_mse": adv_mse, "adv_r2": r2, "q_best_step": q_best_step, "policy_ce": ce, **diag,
                "collect_s": round(data["seconds"], 1), "label_s": round(data["label_seconds"], 1),
                "train_s": round(t2 - t1, 1), "eval_s": round(time.perf_counter() - t2, 1),
                "total_s": round(time.perf_counter() - t0, 1)}
