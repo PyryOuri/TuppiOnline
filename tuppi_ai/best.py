@@ -11,6 +11,12 @@ in each by `models/rollout_clone_small.pt` (a behaviour clone of
 partner_aware_lead_v2) for all four seats; the last 6 tricks are solved
 exactly; the action with the best mean match-equity change (equity table
 `models/equity_incumbent.json`) is chosen. The search runs in C on all cores.
+
+Above 128 worlds (the live server uses 1024), bids use adaptive world
+allocation (E7, docs/EFFICIENCY_PLAN.md): worlds in batches of 128, bids that
+are confidently worse dropped, and an early stop once no bid can beat the
+leader by 0.005. Tested non-inferior at 1024 worlds for about 1.5x less CPU
+per deal (docs/STATUS.md). At 128 worlds or fewer nothing changes.
 """
 
 from __future__ import annotations
@@ -23,6 +29,8 @@ EQUITY = ROOT / "models" / "equity_incumbent.json"
 WORLDS = 128
 SOLVER_TAIL = 6
 SPEC = f"search:{ROLLOUT}:w={WORLDS}:dd={SOLVER_TAIL}:show=1"
+#: E7 adaptive worlds for bids, used when the world count exceeds one batch.
+ADAPTIVE_BIDS = {"batch": 128, "z": 2.5, "delta": 0.005}
 
 
 def best_agents(seats=range(4), worlds: int = WORLDS, seed: int = 0) -> dict:
@@ -32,5 +40,7 @@ def best_agents(seats=range(4), worlds: int = WORLDS, seed: int = 0) -> dict:
 
     net = qmodel.load(ROLLOUT, "cpu")
     table = Equity.load(EQUITY).table
-    return {s: SearchAgent(net, table, s, worlds=worlds, dd_left=SOLVER_TAIL, search_showing=1, seed=seed + s)
+    adaptive = ADAPTIVE_BIDS if worlds > ADAPTIVE_BIDS["batch"] else None
+    return {s: SearchAgent(net, table, s, worlds=worlds, dd_left=SOLVER_TAIL, search_showing=1, seed=seed + s,
+                           adaptive=adaptive)
             for s in seats}
