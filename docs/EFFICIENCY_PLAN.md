@@ -12,7 +12,7 @@ same moves and the same searched values. Measured gains:
 - search 2.16x (W=128) and 2.17x (W=1024) in wall time;
 - the 12-worker evaluator 2.32x.
 
-Details are in `docs/STATUS.md`. E6-E9 have not started.
+Details are in `docs/STATUS.md`. E6-E9: E7 was adopted for bids (live); E6 was not adopted; E9 was closed with no change; E8 was not started.
 
 ## Where the time goes (measured 2026-09-29)
 
@@ -221,6 +221,8 @@ fewer processes with more cores each is faster than 12 oversubscribed ones.
 
 ### E6 - Search one card per rank-equivalent group (approximate)
 
+**Tested, not adopted (2026-09-29):** -0.00057 [-0.00135, +0.00021] at W=128 for 9% less CPU.
+
 **Why.** Two legal cards of one suit with no unplayed card between them take
 the same tricks under every continuation. They differ only in what they show
 the other players, and the clone rollouts read the exact card, so today the
@@ -242,6 +244,8 @@ a choice between equivalent cards as a mistake.
 fresh v3 base deals.
 
 ### E7 - Adaptive world allocation for bids and early play (approximate; the largest lever)
+
+**Adopted for bids above 128 worlds, live (2026-09-29):** -0.00032 [-0.00098, +0.00034] at W=1024, 1.48x less CPU per deal. Card play stays fixed.
 
 **Why.**
 
@@ -276,6 +280,8 @@ its thresholds are calibrated on it.
 
 ### E8 - Cheaper offer model inside rollouts (approximate; after E1)
 
+**Not started.** After E1 and E7 the offers cost much less; see the value-net plan's end-of-bidding leaf, which removes them from bid rollouts.
+
 **Why.** The bot's real offers are decided by search with a 0.02 margin. The
 8-world solver heuristic in the rollouts is only a model of that decision, so
 a cheaper model could also be a more accurate one.
@@ -291,6 +297,8 @@ a cheaper model could also be a more accurate one.
 **Gate.** Agreement on the bank, then a paired strength test.
 
 ### E9 - Solver-tail depth by cost (approximate, low priority)
+
+**Closed, no change (2026-09-29):** depth 5 saves 4% CPU and depth 4 costs 1% more.
 
 **Why.** Depth 4 was about as strong as 6 (v1, W=64), and depth 8 was worse.
 

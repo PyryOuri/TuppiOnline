@@ -75,6 +75,40 @@ a rerun gives statistically equivalent but not bit-identical games. With at
 most one chunk per worker (48 or 96 deals on 12 workers), reruns are
 identical.
 
+## Efficiency tasks E6, E7, E9: adaptive bids adopted for live play (2026-09-29)
+
+Paired tests on 512 fresh v3 base deals against the incumbent, with
+per-decision reseeding (`rs=1`) in both arms. The criterion was fixed in
+advance: non-inferior when the 95% lower bound of variant minus reference is
+above -0.0010 equity per deal.
+
+| Task | Setting | Variant - reference | CPU per deal | Decision |
+| --- | --- | --- | ---: | --- |
+| E6 | W=128, one card per rank-equivalent group | -0.00057 [-0.00135, +0.00021] | -9% | **not adopted** |
+| E7 | W=1024, adaptive worlds for bids (batch 128, z 2.5, delta 0.005) | -0.00032 [-0.00098, +0.00034] | **-32%** (1.48x) | **adopted, live** |
+
+- **E6.** The choice between equivalent cards is not noise. The rollouts
+  model how the incumbent's partner and opponents react to the exact card, and
+  that reaction is real in play, so searching one card per group gives up
+  some signalling value.
+- **E7.** It passes by a narrow margin: the point estimate is slightly
+  negative, and the test could not rule out a small loss.
+  - Behaviour was unchanged: declarations 46.5% vs 46.8%, deals won 68.0% vs
+    67.4%.
+  - Bid time at 1024 worlds is about 2.7x lower.
+  - Card play stays at fixed worlds. The offline screen found that the loose
+    setting costs about 0.04-0.08e-3 per card-play decision, and the strict
+    one saves only 1.3x.
+  - `best.py` turns it on above 128 worlds, so the live server (1024) uses it
+    and the 128-world default is bit for bit unchanged.
+- **E9.** A solver tail of 5 costs 4% less CPU and a tail of 4 costs 1% more.
+  Neither is clearly cheaper, so there was no strength test and no change.
+
+The per-decision reseeding did not keep the arms paired: an early changed
+decision diverges the rest of the deal, so only 32 of 512 (E6) and 82 of 512
+(E7) deals came out identical. `tuppi_ai.branch_eval` (value-net branch) is
+being built as a lower-noise screen for this kind of change.
+
 ## Exact speed-ups E0-E5: search 2.1-2.4x faster, same moves (2026-09-29)
 
 Tasks E0-E5 of `docs/EFFICIENCY_PLAN.md`, on branch `perf/e0-e5` (worktree
