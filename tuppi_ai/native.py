@@ -420,6 +420,12 @@ def value_rollouts(env: "Env", mlp: "Mlp", games: int, ruleset: int, dd_left: in
 
 lib.tc_set_parallel.argtypes = [C.c_int]
 lib.tc_env_set_incremental.argtypes = [C.c_void_p, C.c_int, C.c_int]
+lib.tc_set_branch_share.argtypes = [C.c_int]
+
+
+def set_branch_share(on: bool) -> None:
+    """Branch labels: play out one card per run of rank-equivalent cards and copy its value."""
+    lib.tc_set_branch_share(int(on))
 lib.tc_set_offer_model.argtypes = [C.c_void_p]
 _offer_model = None
 
@@ -452,12 +458,31 @@ lib.tc_encode_states.argtypes = [C.c_void_p, C.c_int, C.c_int, C.c_void_p, C.c_v
 MAX_K = 26  # at most 26 legal network actions (13 cards x 2 contracts in showing)
 
 
+lib.tc_selfplay_states_w.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int, _P(C.c_uint64), C.c_double,
+                                     C.c_double, C.c_void_p, C.c_int, C.c_void_p]
+lib.tc_selfplay_states_w.restype = C.c_int
+lib.tc_record_class.argtypes = [_P(TcDeal)]
+lib.tc_record_class.restype = C.c_int
+N_RECORD_CLASSES = 27  # 0 showing, 1 + trick NOLO play, 14 + trick RAMI play
+
+
+def record_classes(states, n: int) -> np.ndarray:
+    """Position class of each state (as tc_record_class), vectorised over the raw state buffer."""
+    raw = np.frombuffer(states, dtype=np.uint8).reshape(-1, C.sizeof(TcDeal))[:n]
+    phase = raw[:, TcDeal.phase.offset]
+    rami = raw[:, TcDeal.contract.offset].view(np.int8) == RAMI
+    trick = np.minimum(raw[:, TcDeal.n_played.offset] // 4, 12).astype(np.int8)
+    return np.where(phase == PH_SHOW, 0, np.where(rami, 14, 1) + trick).astype(np.int8)
+
+
 def selfplay_states(env: "Env", mlp: "Mlp", games: int, ruleset: int, rng_state: C.c_uint64, p_record: float,
-                    p_random: float, max_states: int):
-    """Full states recorded at random unforced decisions of policy self-play (docs/SELFPLAY_PLAN.md)."""
+                    p_random: float, max_states: int, class_mult: np.ndarray | None = None):
+    """Full states recorded at random unforced decisions of policy self-play (docs/SELFPLAY_PLAN.md);
+    `class_mult` scales the recording probability per position class (importance sampling)."""
     buf = (TcDeal * max_states)()
-    n = lib.tc_selfplay_states(env._h, mlp._h, games, ruleset, C.byref(rng_state), p_record, p_random,
-                               max_states, buf)
+    cm = None if class_mult is None else np.ascontiguousarray(class_mult, dtype=np.float64)
+    n = lib.tc_selfplay_states_w(env._h, mlp._h, games, ruleset, C.byref(rng_state), p_record, p_random,
+                                 None if cm is None else cm.ctypes.data, max_states, buf)
     if n < 0:
         raise RuntimeError(f"self-play failed ({n})")
     return buf, n

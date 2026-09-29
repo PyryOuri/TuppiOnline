@@ -725,8 +725,26 @@ static void random_deals(TcEnv *e, int n, int ruleset, uint64_t *rng) {
 // (before the action); a decision is played uniformly at random with
 // probability p_random, else greedily. Sooli phases by the heuristics (and the
 // fast offer model if one is set). Returns the number of states recorded.
+// Position classes for importance-weighted recording: 0 showing, 1 + trick
+// for NOLO trick play, 14 + trick for RAMI trick play (27 classes).
+static inline int record_class(const TcDeal *d) {
+  if (d->phase == TC_PH_SHOW) return 0;
+  int t = d->n_played / 4;
+  return (d->contract == TC_RAMI ? 14 : 1) + (t > 12 ? 12 : t);
+}
+int tc_record_class(const TcDeal *d) { return record_class(d); }
+
+// class_mult (27 entries, or NULL for 1): the recording probability of an
+// unforced decision is p_record * class_mult[class] (capped at 1).
+int tc_selfplay_states_w(TcEnv *e, const TcMlp *m, int n, int ruleset, uint64_t *rng, double p_record,
+                         double p_random, const double *class_mult, int max_states, TcDeal *out);
 int tc_selfplay_states(TcEnv *e, const TcMlp *m, int n, int ruleset, uint64_t *rng, double p_record,
                        double p_random, int max_states, TcDeal *out) {
+  return tc_selfplay_states_w(e, m, n, ruleset, rng, p_record, p_random, NULL, max_states, out);
+}
+
+int tc_selfplay_states_w(TcEnv *e, const TcMlp *m, int n, int ruleset, uint64_t *rng, double p_record,
+                         double p_random, const double *class_mult, int max_states, TcDeal *out) {
   if (n > e->n) return -2;
   random_deals(e, n, ruleset, rng);
   inc_reset(e, n);
@@ -761,7 +779,8 @@ int tc_selfplay_states(TcEnv *e, const TcMlp *m, int n, int ruleset, uint64_t *r
         TcDeal *d = &g->d;
         int nl = tc_legal(d, legal), best = legal[0];
         if (nl > 1) {
-          if (unit(&g->rng) < p_record) {
+          const double pr = class_mult ? p_record * class_mult[record_class(d)] : p_record;
+          if (unit(&g->rng) < pr) {
             int slot = __atomic_fetch_add(counter, 1, __ATOMIC_RELAXED);
             if (slot < max_states) out[slot] = *d;
           }
@@ -789,6 +808,31 @@ int tc_selfplay_states(TcEnv *e, const TcMlp *m, int n, int ruleset, uint64_t *r
 // team's match-equity change after actions[s * max_k + j]; k[s] actions are
 // valid. e must hold at least the total number of actions. Returns 0, or -2
 // if e is too small.
+// Label sharing (tc_set_branch_share): in trick play, a legal card whose next
+// lower live card of its suit (any hand, or the current trick) is also legal
+// for the mover takes the same tricks under every continuation; only the
+// lowest card of each such run is played out and the others copy its value
+// (measured: identical labels for 95.7% of such pairs under the clone, which
+// reads the exact card; they are 24% of card-play rollouts).
+static int branch_share = 0;
+void tc_set_branch_share(int on) { branch_share = on != 0; }
+
+static int share_rep(const TcDeal *d, int card) {
+  if (!branch_share || d->phase != TC_PH_PLAY || card >= 52) return card;
+  u64 live = d->hand[0] | d->hand[1] | d->hand[2] | d->hand[3];
+  int pos = d->n_played & 3;
+  for (int i = d->n_played - pos; i < d->n_played; i++) live |= 1ULL << d->play_card[i];
+  const u64 own = d->hand[d->cur], sm = 0x1FFFULL << (13 * (card / 13));
+  int c = card;
+  for (;;) {  // walk down while the next lower live card is also the mover's
+    u64 below = live & sm & ((1ULL << c) - 1);
+    if (!below) return c;
+    int nb = 63 - __builtin_clzll(below);
+    if (!(own >> nb & 1ULL)) return c;
+    c = nb;
+  }
+}
+
 int tc_branch_values(TcEnv *e, const TcMlp *m, const TcDeal *states, int n_states, int max_k, int dd_left,
                      uint64_t *rng, int32_t *actions, int32_t *k, float *q) {
   int total_games = 0, legal[TC_NUM_ACTIONS_V2];
@@ -796,27 +840,38 @@ int tc_branch_values(TcEnv *e, const TcMlp *m, const TcDeal *states, int n_state
     int nl = tc_legal(&states[s], legal), kk = 0;
     for (int j = 0; j < nl && kk < max_k; j++) if (legal[j] < TC_NUM_ACTIONS) actions[s * max_k + kk++] = legal[j];
     k[s] = kk;
-    total_games += kk;
+    for (int j = 0; j < kk; j++) total_games += share_rep(&states[s], actions[s * max_k + j]) == actions[s * max_k + j];
   }
   if (total_games > e->n) return -2;
   double *total = calloc((size_t)total_games, sizeof(double));
   int *idx = malloc(sizeof(int) * (size_t)total_games);
+  int *slot = malloc(sizeof(int) * (size_t)n_states * max_k);  // game index of each (state, action)'s rollout
   int g = 0;
   for (int s = 0; s < n_states; s++)
-    for (int j = 0; j < k[s]; j++, g++) {
+    for (int j = 0; j < k[s]; j++) {
+      int a = actions[s * max_k + j];
+      if (share_rep(&states[s], a) != a) continue;
+      slot[s * max_k + j] = g;
       e->g[g].d = states[s];
       e->g[g].live = 1;
-      tc_apply(&e->g[g].d, actions[s * max_k + j]);
+      tc_apply(&e->g[g].d, a);
       record_if_done(e, g, total);
+      g++;
+    }
+  for (int s = 0; s < n_states; s++)  // copies point at their representative's rollout
+    for (int j = 0; j < k[s]; j++) {
+      int a = actions[s * max_k + j], rep = share_rep(&states[s], a);
+      if (rep == a) continue;
+      for (int r = 0; r < k[s]; r++) if (actions[s * max_k + r] == rep) { slot[s * max_k + j] = slot[s * max_k + r]; break; }
     }
   play_out(e, m, total_games, dd_left, rng, total, idx, NULL, NULL);
-  g = 0;
   for (int s = 0; s < n_states; s++) {
     const double sign = (states[s].cur & 1) == 0 ? 1.0 : -1.0;
-    for (int j = 0; j < k[s]; j++, g++) q[s * max_k + j] = (float)(sign * total[g]);
+    for (int j = 0; j < k[s]; j++) q[s * max_k + j] = (float)(sign * total[slot[s * max_k + j]]);
   }
   free(total);
   free(idx);
+  free(slot);
   return 0;
 }
 

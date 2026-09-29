@@ -1,17 +1,30 @@
-"""SP1: self-play approximate policy iteration (docs/SELFPLAY_PLAN.md).
+"""Self-play approximate policy iteration (docs/SELFPLAY_PLAN.md, docs/SCALING_PLAN.md).
 
 Each iteration:
   1. self-play with the current policy pi_k records full states at random
      unforced decisions (native; project_target_v3, fast sooli offers, no
-     solver tail);
+     solver tail), more often in position classes whose decisions are rarely
+     inert (importance sampling; every row carries its weight);
   2. every legal action of every state is played out with pi_k on all seats
-     (native branch labels: the same hidden cards for every action);
-  3. a Q network learns the labels (level plus centred advantages) on the GPU;
+     (native branch labels: the same hidden cards for every action; one
+     rollout per run of rank-equivalent cards);
+  3. a Q network learns the labels (level plus centred advantages) on the GPU,
+     early-stopped on held-out advantage R^2;
   4. the composite policy argmax_a [Q(obs, a) + margin * 1(a = pi_k(obs))] is
      distilled into the next policy net;
   5. a native duplicate check of pi_{k+1} against the clone and against pi_k.
 
-    python -m tuppi_ai.selfplay --name sp1 --hours 6
+The Q net may be larger than the policy net: it is only trained and queried
+on the GPU, while the policy net plays every rollout. Data is kept compact
+(legal actions only, fp16 labels: about 325 bytes per state), written to one
+shard per iteration, and a run can be resumed.
+
+SP1 (2026-09-29; commit f6463ce): 43 iterations, 86.6M labelled states in
+3.7 h; the final policy scores +0.0131 [+0.0119, +0.0143] against the
+incumbent without search (clone -0.0001).
+
+    python -m tuppi_ai.selfplay --name sp2 --hours 6
+    python -m tuppi_ai.selfplay --name sp2 --hours 6 --resume
 """
 
 from __future__ import annotations
@@ -32,6 +45,7 @@ from .value import _unpack
 
 ROOT = Path(__file__).resolve().parents[1]
 SCALE = qmodel.RETURN_SCALE
+PAD = native.NUM_ACTIONS  # padding action id in compact label rows
 
 
 @dataclass
@@ -39,14 +53,16 @@ class Config:
     init: str = str(ROOT.parent / "TuppiAI" / "runs" / "bc_small.pt")
     offer_model: str = str(ROOT / "models" / "offer_model_selfplay.pt")
     ruleset: int = 3
-    states_per_iter: int = 400_000
+    states_per_iter: int = 2_000_000
     p_record: float = 0.04
     p_random: float = 0.03
-    margin: float = 0.003          # equity: how much better than pi_k's action a new one must look
-    min_adv_r2: float = 0.2        # the policy only changes once Q explains this much held-out advantage variance
+    margin: float = 0.006          # equity: how much better than pi_k's action a new one must look
+    min_adv_r2: float = 0.01       # the policy only changes once Q explains this much held-out advantage variance
     replay_iters: int = 3
+    q_width: int = 0               # 0: the policy net's shape, warm-started from it
+    q_blocks: int = 0
     q_steps: int = 2000
-    pi_steps: int = 1500
+    pi_steps: int = 1000
     batch: int = 16384
     lr_q: float = 1e-3
     lr_pi: float = 3e-4
@@ -54,13 +70,38 @@ class Config:
     eval_base: int = 8192
     selfplay_games: int = 16384
     label_games: int = 32768
-    incremental: bool = True       # incremental first layer in self-play and labelling (labels identical in tests)
+    incremental: bool = True       # incremental first layer (labels identical in tests)
+    share_labels: bool = True      # one rollout per run of rank-equivalent cards (95.7% identical labels)
+    importance: bool = True        # record per position class by its measured non-inert rate
+    mult_lo: float = 0.25
+    mult_hi: float = 2.0
+    save_data: bool = True         # one compact shard per iteration in <run>/data
     seed: int = 1
     compile: bool = True
 
 
-def _masked_argmax(q: np.ndarray, mask: np.ndarray) -> np.ndarray:
-    return np.where(mask == 1, q, -np.inf).argmax(axis=1)
+def compact_labels(acts: np.ndarray, k: np.ndarray, q: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """(ids uint8 [n, MAX_K] padded with PAD, labels float16 [n, MAX_K]) from branch_values output."""
+    valid = np.arange(native.MAX_K)[None, :] < k[:, None]
+    return np.where(valid, acts, PAD).astype(np.uint8), np.where(valid, q, 0).astype(np.float16)
+
+
+def dense(ids: torch.Tensor, q: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    """(legal mask [B, 156], scaled targets [B, 156]) from compact rows, on the device."""
+    idx = ids.long()
+    n = len(idx)
+    mask = torch.zeros(n, PAD + 1, dtype=torch.bool, device=idx.device).scatter_(1, idx, True)[:, :PAD]
+    tgt = torch.zeros(n, PAD + 1, device=idx.device).scatter_(1, idx, q.float() * SCALE)[:, :PAD]
+    return mask, tgt
+
+
+def inert_rows(ids: np.ndarray, q: np.ndarray) -> np.ndarray:
+    """True where every legal action has the same label."""
+    valid = ids != PAD
+    qf = q.astype(np.float32)
+    hi = np.where(valid, qf, -np.inf).max(1)
+    lo = np.where(valid, qf, np.inf).min(1)
+    return hi == lo
 
 
 class Learner:
@@ -71,8 +112,11 @@ class Learner:
         self.encoder, self.dim = base.encoder, native.feature_dim(base.encoder)
         self.clone = native.Mlp(base)
         self.policy = qmodel.load(cfg.init, "cpu")            # pi_k (CPU copy for export)
-        self.qnet = qmodel.load(cfg.init, self.dev).train()   # warm start: the clone's trunk ...
-        with torch.no_grad():                                   # ... but a fresh, zero value head
+        if cfg.q_width:  # a larger Q net, trained from scratch
+            self.qnet = qmodel.QNet(cfg.q_width, cfg.q_blocks or 4, self.encoder).to(self.dev).train()
+        else:            # the policy's shape: warm start from its trunk
+            self.qnet = qmodel.load(cfg.init, self.dev).train()
+        with torch.no_grad():  # a fresh, zero value head either way
             self.qnet.out.weight.zero_()
             self.qnet.out.bias.zero_()
         self.pnet = qmodel.load(cfg.init, self.dev).train()
@@ -87,6 +131,7 @@ class Learner:
             om, _ = load_offer(cfg.offer_model)
             self._offer = native.Mlp(om, in_dim=om.config["in_dim"], out_dim=1)
             native.set_offer_model(self._offer)
+        native.set_branch_share(cfg.share_labels)
         from .best import EQUITY
         from .equity import Equity
         table = Equity.load(EQUITY).table
@@ -99,6 +144,7 @@ class Learner:
             for env in (self.env_play, self.env_label):
                 env.set_incremental(True, base.config["width"])
         self.rng = C.c_uint64(cfg.seed * 0x9E3779B97F4A7C15 % 2**64 + 7)
+        self.class_mult = np.ones(native.N_RECORD_CLASSES)
         self.replay: list[dict] = []
         self.iteration = 0
 
@@ -106,72 +152,93 @@ class Learner:
     def collect(self, mlp: native.Mlp) -> dict:
         cfg = self.cfg
         t0 = time.perf_counter()
-        feats, masks, qs, n_total = [], [], [], 0
-        t_label = 0.0
+        feats, ids_all, qs, ws, classes, n_total, t_label = [], [], [], [], [], 0, 0.0
+        mult = self.class_mult if cfg.importance else None
         while n_total < cfg.states_per_iter:
             states, n = native.selfplay_states(self.env_play, mlp, cfg.selfplay_games, cfg.ruleset, self.rng,
-                                               cfg.p_record, cfg.p_random, cfg.selfplay_games * 8)
+                                               cfg.p_record, cfg.p_random, cfg.selfplay_games * 8, mult)
             feat, mask = native.encode_states(states, n, self.encoder)
+            cls = native.record_classes(states, n)
             k = mask.sum(axis=1)
             tl = time.perf_counter()
             start = 0
             while start < n:  # label in chunks that fit the labelling environment
-                cum = np.cumsum(k[start:])
-                stop = start + int(np.searchsorted(cum, cfg.label_games, side="right"))
+                stop = start + int(np.searchsorted(np.cumsum(k[start:]), cfg.label_games, side="right"))
                 acts, kk, qv = native.branch_values(self.env_label, mlp, states, stop - start, 0, self.rng,
                                                     offset=start)
-                q = np.zeros((stop - start, native.NUM_ACTIONS), dtype=np.float32)
-                rows = np.repeat(np.arange(stop - start), native.MAX_K).reshape(-1, native.MAX_K)
-                valid = np.arange(native.MAX_K)[None, :] < kk[:, None]
-                q[rows[valid], acts[valid]] = qv[valid]
-                qs.append(q)
+                ids, q16 = compact_labels(acts, kk, qv)
+                ids_all.append(ids)
+                qs.append(q16)
                 start = stop
             t_label += time.perf_counter() - tl
             feats.append(np.packbits(feat, axis=1))
-            masks.append(mask)
+            ws.append((1.0 / (mult[cls] if mult is not None else np.ones(n))).astype(np.float16))
+            classes.append(cls)
             n_total += n
-        data = {"feat": np.concatenate(feats), "mask": np.concatenate(masks), "q": np.concatenate(qs)}
-        data["seconds"] = time.perf_counter() - t0
-        data["label_seconds"] = t_label
-        return data
+        data = {"feat": np.concatenate(feats), "ids": np.concatenate(ids_all), "q": np.concatenate(qs),
+                "w": np.concatenate(ws)}
+        inert = inert_rows(data["ids"], data["q"])
+        self._update_class_mult(np.concatenate(classes), inert)
+        data["w"] = (data["w"] / data["w"].astype(np.float32).mean()).astype(np.float16)
+        if cfg.save_data:
+            (self.out / "data").mkdir(exist_ok=True)
+            np.savez(self.out / "data" / f"iter_{self.iteration + 1:03d}.npz", **data)
+        return {**data, "seconds": time.perf_counter() - t0, "label_seconds": t_label, "inert": float(inert.mean())}
 
-    def _to_dev(self, data: dict) -> dict:
-        return {"feat": torch.from_numpy(data["feat"]).to(self.dev),
-                "mask": torch.from_numpy(data["mask"]).to(self.dev).bool(),
-                "q": torch.from_numpy(data["q"]).to(self.dev) * SCALE}
+    def _update_class_mult(self, cls: np.ndarray, inert: np.ndarray) -> None:
+        """Recording multiplier per class for the next iteration: proportional to its measured
+        rate of non-inert decisions (smoothed), within [mult_lo, mult_hi]."""
+        rate = np.full(native.N_RECORD_CLASSES, np.nan)
+        for c in range(native.N_RECORD_CLASSES):
+            m = cls == c
+            if m.sum() >= 200:
+                rate[c] = 1.0 - inert[m].mean()
+        overall = 1.0 - inert.mean()
+        target = np.where(np.isnan(rate), 1.0, rate / max(overall, 1e-6))
+        self.class_mult = np.clip(0.5 * self.class_mult + 0.5 * target, self.cfg.mult_lo, self.cfg.mult_hi)
+
+    def _to_dev(self, data) -> dict:
+        return {key: torch.from_numpy(np.ascontiguousarray(data[key])).to(self.dev)
+                for key in ("feat", "ids", "q", "w")}
 
     # ------------------------------------------------------------ training
+    def _batch(self, D: dict, idx: torch.Tensor):
+        mask, tgt = dense(D["ids"][idx], D["q"][idx])
+        return _unpack(D["feat"][idx], self.dim), mask, tgt, D["w"][idx].float()
+
+    @staticmethod
+    def _adv_terms(pred, mask, tgt, w):
+        mf = mask.float() * w[:, None]
+        k = mask.float().sum(1, keepdim=True)
+        pc = pred - (pred * mask).sum(1, keepdim=True) / k
+        tc = tgt - (tgt * mask).sum(1, keepdim=True) / k
+        return mf, pc, tc
+
     def adv_r2(self, H: dict) -> float:
-        """Share of the held-out centred-advantage variance the Q net explains."""
+        """Share of the held-out centred-advantage variance the Q net explains (importance-weighted)."""
         self.qnet.eval()
         num = den = 0.0
         with torch.no_grad():
             for i in range(0, len(H["feat"]), 65536):
-                x, m, t = _unpack(H["feat"][i:i + 65536], self.dim), H["mask"][i:i + 65536], H["q"][i:i + 65536]
-                mf = m.float()
-                k = mf.sum(1, keepdim=True)
-                pc = (p := self.qnet(x)) - (p * mf).sum(1, keepdim=True) / k
-                tc = t - (t * mf).sum(1, keepdim=True) / k
+                sl = torch.arange(i, min(i + 65536, len(H["feat"])), device=self.dev)
+                x, mask, tgt, w = self._batch(H, sl)
+                mf, pc, tc = self._adv_terms(self.qnet(x), mask, tgt, w)
                 num += float((((pc - tc) ** 2) * mf).sum())
                 den += float(((tc ** 2) * mf).sum())
         self.qnet.train()
         return 1.0 - num / max(den, 1e-12)
 
-    def train_q(self, D: dict, H: dict | None = None) -> tuple[float, float, int]:
-        """Trains the Q net; with held-out states H, keeps the weights with the best
-        held-out advantage R^2 (checked every 200 steps). Returns (adv mse, R^2, step)."""
+    def train_q(self, D: dict, H: dict) -> tuple[float, float, int]:
+        """Trains the Q net, keeping the weights with the best held-out advantage R^2 (every 200 steps)."""
         cfg, n = self.cfg, len(D["feat"])
         losses = []
-        best = (self.adv_r2(H), 0, {k: v.detach().clone() for k, v in self.qnet.state_dict().items()}) if H else None
+        best = (self.adv_r2(H), 0, {k: v.detach().clone() for k, v in self.qnet.state_dict().items()})
         for step in range(cfg.q_steps):
             idx = torch.randint(0, n, (cfg.batch,), device=self.dev)
-            x, m, t = _unpack(D["feat"][idx], self.dim), D["mask"][idx], D["q"][idx]
+            x, mask, tgt, w = self._batch(D, idx)
             pred = self.q_fwd(x)
-            mf = m.float()
-            k = mf.sum(1, keepdim=True)
-            level = (((pred - t) ** 2) * mf).sum() / mf.sum()
-            pc = pred - (pred * mf).sum(1, keepdim=True) / k
-            tc = t - (t * mf).sum(1, keepdim=True) / k
+            mf, pc, tc = self._adv_terms(pred, mask, tgt, w)
+            level = (((pred - tgt) ** 2) * mf).sum() / mf.sum()
             adv = (((pc - tc) ** 2) * mf).sum() / mf.sum()
             loss = level + cfg.adv_weight * adv
             self.opt_q.zero_grad(set_to_none=True)
@@ -179,12 +246,10 @@ class Learner:
             self.opt_q.step()
             if step % 200 == 0:
                 losses.append(float(adv.detach()))
-            if H is not None and (step + 1) % 200 == 0:
+            if (step + 1) % 200 == 0:
                 r2 = self.adv_r2(H)
                 if r2 > best[0]:
                     best = (r2, step + 1, {k: v.detach().clone() for k, v in self.qnet.state_dict().items()})
-        if H is None:
-            return float(np.mean(losses[-3:])) / SCALE ** 2, float("nan"), cfg.q_steps
         self.qnet.load_state_dict(best[2])
         return float(np.mean(losses[-3:])) / SCALE ** 2, best[0], best[1]
 
@@ -192,11 +257,12 @@ class Learner:
         """argmax_a Q + margin * 1(a = pi_k) for every state of D, and diagnostics."""
         cfg, n = self.cfg, len(D["feat"])
         self.qnet.eval()
-        labels, changed, show_rows, show_rami_old, show_rami_new = [], 0, 0, 0, 0
         pk = self.policy.to(self.dev).eval()
+        labels, changed, show_rows, show_rami_old, show_rami_new = [], 0, 0, 0, 0
         with torch.no_grad():
             for i in range(0, n, 65536):
-                x, m = _unpack(D["feat"][i:i + 65536], self.dim), D["mask"][i:i + 65536]
+                sl = torch.arange(i, min(i + 65536, n), device=self.dev)
+                x, m, _, _ = self._batch(D, sl)
                 q = self.qnet(x).masked_fill(~m, float("-inf"))
                 old = pk(x).masked_fill(~m, float("-inf")).argmax(1)
                 q = q + (cfg.margin * SCALE) * torch.nn.functional.one_hot(old, native.NUM_ACTIONS)
@@ -218,15 +284,44 @@ class Learner:
         losses = []
         for step in range(cfg.pi_steps):
             idx = torch.randint(0, n, (cfg.batch,), device=self.dev)
-            x, m = _unpack(D["feat"][idx], self.dim), D["mask"][idx]
+            x, m, _, w = self._batch(D, idx)
             logits = self.p_fwd(x).masked_fill(~m, -1e9)
-            loss = torch.nn.functional.cross_entropy(logits, labels[idx])
+            ce = torch.nn.functional.cross_entropy(logits, labels[idx], reduction="none")
+            loss = (ce * w).sum() / w.sum()
             self.opt_p.zero_grad(set_to_none=True)
             loss.backward()
             self.opt_p.step()
             if step % 200 == 0:
                 losses.append(float(loss.detach()))
         return float(np.mean(losses[-3:]))
+
+    # ------------------------------------------------------------ run state
+    def save_state(self) -> None:
+        qmodel.save(self.policy, self.out / f"policy_{self.iteration:03d}.pt")
+        qmodel.save(self.qnet, self.out / "q_latest.pt")
+        torch.save({"q": self.opt_q.state_dict(), "p": self.opt_p.state_dict()}, self.out / "optim_latest.pt")
+        state = {"iteration": self.iteration, "class_mult": self.class_mult.tolist(), "rng": self.rng.value}
+        (self.out / "state.json").write_text(json.dumps(state))
+
+    def resume(self) -> None:
+        """Continue a run: the latest policy, Q net, optimisers, recording weights, rng and replay shards."""
+        state = json.loads((self.out / "state.json").read_text())
+        self.iteration = state["iteration"]
+        self.class_mult = np.array(state["class_mult"])
+        self.rng = C.c_uint64(state["rng"])
+        p = qmodel.load(self.out / f"policy_{self.iteration:03d}.pt", "cpu")
+        self.policy.load_state_dict(p.state_dict())
+        self.pnet.load_state_dict(p.state_dict())
+        self.qnet.load_state_dict(qmodel.load(self.out / "q_latest.pt", "cpu").state_dict())
+        opt = torch.load(self.out / "optim_latest.pt", map_location=self.dev, weights_only=False)
+        self.opt_q.load_state_dict(opt["q"])
+        self.opt_p.load_state_dict(opt["p"])
+        for it in range(max(1, self.iteration - self.cfg.replay_iters + 1), self.iteration + 1):
+            shard = self.out / "data" / f"iter_{it:03d}.npz"
+            if shard.exists():
+                d = self._to_dev(np.load(shard))
+                n_hold = len(d["feat"]) // 10
+                self.replay.append({key: t[n_hold:] for key, t in d.items()})
 
     # ----------------------------------------------------------------- loop
     def evaluate(self, a: native.Mlp, b: native.Mlp) -> tuple[float, float]:
@@ -243,7 +338,7 @@ class Learner:
         H = {key: v[:n_hold] for key, v in dev_data.items()}
         self.replay.append({key: v[n_hold:] for key, v in dev_data.items()})
         self.replay = self.replay[-cfg.replay_iters:]
-        D = {key: torch.cat([r[key] for r in self.replay]) for key in ("feat", "mask", "q")}
+        D = {key: torch.cat([r[key] for r in self.replay]) for key in ("feat", "ids", "q", "w")}
         t1 = time.perf_counter()
         adv_mse, r2, q_best_step = self.train_q(D, H)
         if r2 >= cfg.min_adv_r2:
@@ -257,10 +352,10 @@ class Learner:
         vs_clone = self.evaluate(mlp_next, self.clone)
         vs_prev = self.evaluate(mlp_next, mlp_k)
         self.iteration += 1
-        qmodel.save(self.policy, self.out / f"policy_{self.iteration:03d}.pt")
-        qmodel.save(self.qnet, self.out / "q_latest.pt")
+        self.save_state()
         row = {"iteration": self.iteration, "states": int(len(data["feat"])), "replay_states": int(len(D["feat"])),
-               "vs_clone": vs_clone, "vs_prev": vs_prev, "adv_mse": adv_mse, "adv_r2": r2, "q_best_step": q_best_step, "policy_ce": ce, **diag,
+               "vs_clone": vs_clone, "vs_prev": vs_prev, "adv_mse": adv_mse, "adv_r2": r2,
+               "q_best_step": q_best_step, "policy_ce": ce, **diag, "inert": data["inert"],
                "collect_s": round(data["seconds"], 1), "label_s": round(data["label_seconds"], 1),
                "train_s": round(t2 - t1, 1), "eval_s": round(time.perf_counter() - t2, 1),
                "total_s": round(time.perf_counter() - t0, 1)}
@@ -274,18 +369,24 @@ def main() -> None:
     p.add_argument("--name", required=True)
     p.add_argument("--hours", type=float, default=1.0)
     p.add_argument("--iterations", type=int, default=10_000)
+    p.add_argument("--resume", action="store_true")
     for field, default in asdict(Config()).items():
         kind = type(default)
         p.add_argument("--" + field.replace("_", "-"), type=(lambda s: s.lower() in ("1", "true")) if kind is bool
                        else kind, default=default)
     a = p.parse_args()
-    cfg = Config(**{f: getattr(a, f) for f in asdict(Config())})
     out = ROOT / "runs" / "selfplay" / a.name
-    out.mkdir(parents=True, exist_ok=True)
-    (out / "config.json").write_text(json.dumps(asdict(cfg), indent=1))
+    if a.resume:
+        cfg = Config(**json.loads((out / "config.json").read_text()))
+    else:
+        cfg = Config(**{f: getattr(a, f) for f in asdict(Config())})
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "config.json").write_text(json.dumps(asdict(cfg), indent=1))
     native.set_rollout_chunk(128)
     torch.set_num_threads(1)
     learner = Learner(cfg, out)
+    if a.resume:
+        learner.resume()
     t_end = time.time() + 3600 * a.hours
     while time.time() < t_end and learner.iteration < a.iterations:
         print(json.dumps(learner.iterate()), flush=True)
