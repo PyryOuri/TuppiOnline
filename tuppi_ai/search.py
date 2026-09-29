@@ -266,7 +266,7 @@ class SearchAgent:
                  search_showing=False, seed: int = 0, keep: float | None = None,
                  show_worlds: int | None = None, rami_bonus: float = 0.0, sooli: dict | None = None,
                  equiv: bool = False, adaptive: dict | None = None, reseed: bool = False,
-                 **belief):
+                 value: dict | None = None, **belief):
         """search_showing: False (blueprint shows), True/1 (search every legal show), or 2
         (search only the blueprint's preferred card for each contract, then keep
         the blueprint's card within the chosen contract).
@@ -279,7 +279,9 @@ class SearchAgent:
         reseed: seed each search from the information state (a hash of the
         observation), so that two agents draw the same worlds wherever their
         games have not diverged. For paired measurements; statistically the
-        same agent."""
+        same agent.
+        value: {"path", "leaf_bid", "leaf_play", "bot_bit"}: rollouts stop at a
+        value-net leaf (docs/VALUE_NET_PLAN.md); -1 disables a leaf kind."""
         self.seat = seat
         self.equiv = equiv
         self.adaptive = adaptive
@@ -297,6 +299,14 @@ class SearchAgent:
             self.show_searcher = Searcher(net, equity_table, worlds=show_worlds, dd_left=dd_left,
                                           seed=seed + seat + 17, **belief)
         self._feat = np.zeros((1, native.feature_dim(net.encoder)), dtype=np.uint8)
+        self.value = value
+        if value:
+            from . import value as vmod
+            self._vmlp = vmod.to_native(vmod.load(value["path"]))
+            for sr in (self.searcher, self.show_searcher):
+                if sr is not None:
+                    sr.env.set_value(self._vmlp, int(value.get("leaf_bid", 0)), int(value.get("leaf_play", -1)),
+                                     bool(value.get("bot_bit", False)))
         self.sooli = {**SOOLI_DEFAULTS, **(sooli or {})}
         #: The last decision's searched values, {action id: equity change for this
         #: seat's team}, or None when it was forced or taken by a heuristic. Read by

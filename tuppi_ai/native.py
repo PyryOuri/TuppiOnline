@@ -254,6 +254,11 @@ class Env:
         """Search options for sooli decisions (see tc_sample_world_sooli, resolve_sooli)."""
         lib.tc_env_set_sooli(self._h, belief, int(return_pi), int(play_heur), float(lam))
 
+    def set_value(self, vnet: "Mlp | None", leaf_bid: int = -1, leaf_play: int = -1, bot_bit: bool = False) -> None:
+        """Value leaf for searches in this environment (docs/VALUE_NET_PLAN.md); None switches it off."""
+        self._vnet = vnet  # keep the native weights alive
+        lib.tc_env_set_value(self._h, vnet._h if vnet is not None else None, leaf_bid, leaf_play, int(bot_bit))
+
     def set_equity(self, equity: np.ndarray) -> None:
         eq = np.ascontiguousarray(equity, dtype=np.float64).reshape(25, 2)
         lib.tc_env_set_equity(self._h, eq.ctypes.data_as(_P(C.c_double)))
@@ -321,8 +326,10 @@ class Env:
 class Mlp:
     """A QNet's weights in native memory, for rollouts without Python."""
 
-    def __init__(self, net):
+    def __init__(self, net, in_dim: int | None = None, out_dim: int | None = None, out_scale: float = 1.0):
+        """`in_dim`/`out_dim` default to the Q-network's; `out_scale` multiplies the outputs."""
         sd = {k: v.detach().cpu().float().numpy() for k, v in net.state_dict().items()}
+        sd["out.weight"], sd["out.bias"] = sd["out.weight"] * out_scale, sd["out.bias"] * out_scale
         cfg = net.config
         parts = [sd["inp.weight"], sd["inp.bias"]]
         for b in range(cfg["blocks"]):
@@ -332,8 +339,8 @@ class Mlp:
         flat = np.ascontiguousarray(np.concatenate([p.ravel() for p in parts]), dtype=np.float32)
         self.encoder = cfg.get("encoder", 1)
         self.width = cfg["width"]
-        self._h = lib.tc_mlp_new(feature_dim(self.encoder), cfg["width"], cfg["blocks"], NUM_ACTIONS,
-                                 self.encoder, flat.ctypes.data)
+        self._h = lib.tc_mlp_new(in_dim or feature_dim(self.encoder), cfg["width"], cfg["blocks"],
+                                 out_dim or NUM_ACTIONS, self.encoder, flat.ctypes.data)
         if not self._h:
             raise ValueError("unsupported network shape")
 
@@ -377,6 +384,47 @@ def search_values(env: "Env", mlp: Mlp, obs: TcObs, actions, worlds: int, dd_lef
     if rc != 0:
         raise RuntimeError(f"native search failed ({rc})")
     return out
+
+
+lib.tc_pi_feature_dim.restype = C.c_int
+lib.tc_encode_pi.argtypes = [_P(TcDeal), C.c_int, C.c_void_p]
+lib.tc_env_set_value.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int, C.c_int]
+lib.tc_value_rollouts.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int, C.c_int, _P(C.c_uint64), C.c_int,
+                                  C.c_void_p, C.c_void_p]
+lib.tc_value_rollouts.restype = C.c_int
+PI_DIM = lib.tc_pi_feature_dim()
+
+
+def encode_pi(deal: TcDeal, bot_side: bool = False) -> np.ndarray:
+    """Full-information value-net features of a trick-boundary position (side to move)."""
+    out = np.zeros(PI_DIM, dtype=np.uint8)
+    lib.tc_encode_pi(C.byref(deal), int(bot_side), out.ctypes.data)
+    return out
+
+
+def value_rollouts(env: "Env", mlp: "Mlp", games: int, ruleset: int, dd_left: int, rng_state: C.c_uint64,
+                   max_rows: int) -> tuple[np.ndarray, np.ndarray]:
+    """VN1 training rows: (features [rows, PI_DIM], target equity change for the side to move)."""
+    feat = np.zeros((max_rows, PI_DIM), dtype=np.uint8)
+    target = np.zeros(max_rows, dtype=np.float32)
+    rows = lib.tc_value_rollouts(env._h, mlp._h, games, ruleset, dd_left, C.byref(rng_state), max_rows,
+                                 feat.ctypes.data, target.ctypes.data)
+    if rows < 0:
+        raise RuntimeError(f"value rollouts failed ({rows})")
+    return feat[:rows], target[:rows]
+
+
+lib.tc_set_parallel.argtypes = [C.c_int]
+
+
+def set_parallel(on: bool) -> None:
+    """Spread each search over all cores (default) or run it on the calling thread
+    (same results; for batch jobs that already run one process per core)."""
+    lib.tc_set_parallel(int(on))
+
+
+if __import__("os").environ.get("TUPPI_AI_SERIAL") == "1":  # batch jobs: one process per core
+    set_parallel(False)
 
 
 def set_rollout_chunk(chunk: int) -> None:

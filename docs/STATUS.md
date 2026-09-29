@@ -7,6 +7,74 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## Value net VN1, world counts, serial mode, branch evaluation (2026-09-29)
+
+**Value net VN1** (`tuppi_ai/value.py`, `docs/VALUE_NET_PLAN.md`). A net from
+full-information positions to the deal's equity change.
+
+- **Training.** 4M rows of the search's own rollouts (clone play, sooli by
+  the heuristics, exact 6-trick tail), from trick boundaries and from the end
+  of bidding. The net is 512x3; validation R^2 0.745. Training runs on the
+  GPU, with the packed rows unpacked and the 24 suit relabellings applied on
+  the device.
+- **Use.** Rollouts stop at a leaf and add the net's value.
+
+Results:
+
+- **Bid leaf at the end of bidding.** On 120 fresh bid positions against a
+  4096-world full-rollout reference, the extra regret is +0.065e-3 ± 0.112
+  per bid (within noise), and the bid search is about 100x faster.
+  - Game test (512 deals, W=1024, against the live agent with E7):
+    **+0.00010 [-0.00067, +0.00088]**, non-inferior, but only **1.09x** less
+    CPU per deal. E7 had already removed most of the bid cost.
+  - **The pre-registered speed bar was 1.5x, so it is not adopted.**
+    Against fixed W=1024 without E7 it would have been 1.62x.
+- **Card-play leaf.** On 207 positions, with the leaf placed 0, 1 or 2
+  tricks after the decision's trick, the extra regret per decision is
+  +1.34e-3 ± 0.31, +0.59e-3 ± 0.15 and +0.30e-3 ± 0.10, with no speed gain.
+  A value net cannot resolve card-level differences; **dead.**
+- **VN2** (the bot's own value, learned from bot pair vs incumbent games):
+  data is being generated (`tools/gen_value_games.py`). Its gain is confined
+  to bids, whose whole search value over the clone's bids was about +0.003,
+  so the +0.002 kill criterion is a long shot.
+
+**World counts** (the same 512 fresh v3 deals, rs=1, paired; descriptive, not
+pre-registered):
+
+| Comparison | Difference in equity per deal | CPU |
+| --- | --- | ---: |
+| 1024 - 128 | **+0.00107 [+0.00016, +0.00197]** | 7.6x |
+| 1024 - 256 | **+0.00111 [+0.00018, +0.00203]** | 3.9x |
+| 256 - 128 | -0.00004 [-0.00102, +0.00094] | 2.0x |
+
+- 1024 worlds is measurably stronger, and on these deals 256 captures none of
+  that gain.
+- By the rule fixed with the owner before the 256 run, the live server stays
+  at 1024.
+
+**Serial search mode** (`TUPPI_AI_SERIAL=1`, `native.set_parallel`; every move
+identical). In the 12-worker evaluator on 96 deals:
+
+- CPU is -11% (1,795 to 1,599 s), but wall time is +12% (138 to 155 s) when
+  the evaluator is the only job, because parallel mode fills the spare cores
+  and the end-of-run tail.
+- With several jobs on the machine, the load drops from about 140 to about
+  20 and the rest of the machine stays usable.
+- Use it for background batch jobs; keep the default for a lone job.
+
+**Branch-point evaluation** (`tuppi_ai/branch_eval.py`) was meant as a
+lower-noise screen. It was validated on E6's 512 test deals and came out
+**noisier than the game test**: sd 0.0181 per base deal, against 0.0090, at
+the same CPU. A variant that deviates about 4.5 times per game adds each
+branch's divergence. It is not used.
+
+**Reproducibility note.** `evaluate.py` gives a worker a new chunk of 8 base
+deals whenever it is free, and a search agent's random stream carries across
+the deals it plays. So with more chunks than workers (for example 512 deals),
+a rerun gives statistically equivalent but not bit-identical games. With at
+most one chunk per worker (48 or 96 deals on 12 workers), reruns are
+identical.
+
 ## Exact speed-ups E0-E5: search 2.1-2.4x faster, same moves (2026-09-29)
 
 Tasks E0-E5 of `docs/EFFICIENCY_PLAN.md`, on branch `perf/e0-e5` (worktree

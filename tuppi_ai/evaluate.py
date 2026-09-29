@@ -59,7 +59,10 @@ def _make_candidate(spec: str) -> dict:
     efficiency options (docs/EFFICIENCY_PLAN.md): `eq=1` rank-equivalent cards
     searched once (E6); `adb=<batch>[:adz=<z>][:add=<delta>][:adp=1]` adaptive
     worlds for bids (and trick play with adp=1), `w` as the cap (E7); `rs=1`
-    worlds seeded from the information state (paired measurements)."""
+    worlds seeded from the information state (paired measurements);
+    `vn=<value net>[:vlb=<tricks>][:vlp=<tricks>][:vbb=1]` value-net leaves
+    for bid searches (vlb, default 0 = start of play; -1 off) and card-play
+    searches (vlp, default -1 = off) (docs/VALUE_NET_PLAN.md)."""
     if spec == "best":
         from .best import best_agents
         return best_agents()
@@ -92,6 +95,9 @@ def _make_candidate(spec: str) -> dict:
                                adaptive=({"batch": int(opts["adb"]), "z": float(opts.get("adz", 2.5)),
                                           "delta": float(opts.get("add", 0.0)),
                                           "play": bool(int(opts.get("adp", 0)))} if "adb" in opts else None),
+                               value=({"path": opts["vn"], "leaf_bid": int(opts.get("vlb", 0)),
+                                       "leaf_play": int(opts.get("vlp", -1)), "bot_bit": bool(int(opts.get("vbb", 0)))}
+                                      if "vn" in opts else None),
                                **belief) for s in range(4)}
     from .policies import PolicyAgent, from_spec
     policy = from_spec(spec, "cpu")

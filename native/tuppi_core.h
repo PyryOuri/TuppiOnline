@@ -117,6 +117,11 @@ int tc_sample_world_tilted(const TcObs *o, uint64_t *rng, TcDeal *out, double la
 void tc_finish_with_tricks(TcDeal *d, int team0_tricks);
 int tc_dd_team0_tricks(const TcDeal *d);
 
+// Full-information features of a trick-boundary position for the value net
+// (tuppi_env.c; docs/VALUE_NET_PLAN.md), from the side of the seat to move.
+int tc_pi_feature_dim(void);
+void tc_encode_pi(const TcDeal *d, int bot_side, uint8_t *out);
+
 void tc_observe(const TcDeal *d, int seat, TcObs *o);
 int tc_legal_obs(const TcObs *o, int *actions);
 int tc_feature_dim(void);
