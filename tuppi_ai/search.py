@@ -115,6 +115,51 @@ class Searcher:
         values = total.reshape(w, k).mean(axis=0)
         return values if me_team == 0 else -values
 
+    def adaptive_values(self, obs: native.TcObs, actions: list[int], batch: int, z: float,
+                        delta: float) -> tuple[np.ndarray, int, int]:
+        """Adaptive world allocation (docs/EFFICIENCY_PLAN.md, E7).
+
+        Worlds are drawn `batch` at a time, up to `self.worlds`, and every
+        action still in contention is priced on each batch (common worlds, so
+        differences are paired). After each batch the leader is the best mean;
+        an action is dropped when its paired gap to the leader exceeds `z`
+        standard errors, and the search stops early when no remaining action
+        can beat the leader by more than `delta` at `z` standard errors.
+        Returns (values, index of the chosen action, worlds drawn); a dropped
+        action's value is its mean over the worlds it saw."""
+        k = len(actions)
+        active = list(range(k))
+        cols: list[list[np.ndarray]] = [[] for _ in range(k)]
+        drawn = 0
+        while True:
+            per_world = native.search_world_values(self.env, self.mlp, obs, [actions[i] for i in active],
+                                                   batch, self.dd_left, self.rng)
+            for j, i in enumerate(active):
+                cols[i].append(per_world[:, j])
+            drawn += batch
+            x = {i: np.concatenate(cols[i]) for i in active}
+            means = {i: float(x[i].mean()) for i in active}
+            lead = max(active, key=lambda i: (means[i], -i))  # first maximum, as np.argmax
+            if len(active) == 1 or drawn >= self.worlds:
+                break
+            keep, settled = [], True
+            for i in active:
+                if i == lead:
+                    keep.append(i)
+                    continue
+                d = x[lead] - x[i]
+                gap, se = float(d.mean()), float(d.std(ddof=1) / np.sqrt(len(d)))
+                if gap - z * se > 0:
+                    continue  # confidently worse than the leader
+                keep.append(i)
+                if -gap + z * se >= delta:
+                    settled = False  # could still beat the leader by delta or more
+            active = keep
+            if settled:
+                break
+        values = np.array([float(np.concatenate(c).mean()) for c in cols])  # observer's sign already
+        return values, lead, drawn
+
     def _direct_belief_worlds(self, obs: native.TcObs, w: int) -> list:
         """Exact draws from the tempered product of the network's card marginals."""
         feat = native.encode(obs, encoder=self.belief_net.encoder)[None]
@@ -220,11 +265,25 @@ class SearchAgent:
     def __init__(self, net, equity_table, seat: int, worlds: int = 32, dd_left: int = 0,
                  search_showing=False, seed: int = 0, keep: float | None = None,
                  show_worlds: int | None = None, rami_bonus: float = 0.0, sooli: dict | None = None,
+                 equiv: bool = False, adaptive: dict | None = None, reseed: bool = False,
                  **belief):
         """search_showing: False (blueprint shows), True/1 (search every legal show), or 2
         (search only the blueprint's preferred card for each contract, then keep
-        the blueprint's card within the chosen contract)."""
+        the blueprint's card within the chosen contract).
+
+        equiv: in ordinary trick play, search one card per group of
+        rank-equivalent cards (the blueprint's choice within the group) and
+        skip the search when all legal cards are equivalent (E6).
+        adaptive: {"batch", "z", "delta", "play"} for adaptive world allocation
+        in showing (and in trick play if "play"), with `worlds` as the cap (E7).
+        reseed: seed each search from the information state (a hash of the
+        observation), so that two agents draw the same worlds wherever their
+        games have not diverged. For paired measurements; statistically the
+        same agent."""
         self.seat = seat
+        self.equiv = equiv
+        self.adaptive = adaptive
+        self.reseed = reseed
         self.net = net
         self.search_showing = search_showing
         self.keep = keep  # None: plain argmax; >= 0: keep the blueprint's action unless beaten by more
@@ -269,6 +328,32 @@ class SearchAgent:
         self.last_values = {a: float(x) for a, x in zip(order, v)}
         return order[int(np.argmax(v))]
 
+    def _blueprint_q(self, obs: native.TcObs) -> np.ndarray:
+        native.encode(obs, self._feat[0], self.net.encoder)
+        if self.searcher.mlp is not None:
+            return self.searcher.mlp.forward(self._feat)[0]
+        with torch.no_grad():
+            return self.net(torch.from_numpy(self._feat))[0].numpy()
+
+    def _reseed(self, obs: native.TcObs) -> None:
+        import hashlib
+
+        seed = int.from_bytes(hashlib.sha256(bytes(obs)).digest()[:8], "little")
+        for sr in (self.searcher, self.show_searcher):
+            if sr is not None:
+                sr.rng.value = seed
+
+    def _search(self, searcher: Searcher, obs: native.TcObs, ids: list[int]) -> tuple[np.ndarray, int]:
+        """Values of `ids` and the index of the best, fixed or adaptive."""
+        if (self.adaptive and searcher.mlp is not None
+                and (obs.phase == native.PH_SHOW or self.adaptive.get("play", False))):
+            a = self.adaptive
+            values, best, _ = searcher.adaptive_values(obs, ids, int(a.get("batch", 128)), float(a.get("z", 2.5)),
+                                                       float(a.get("delta", 0.0)))
+            return values, best
+        values = searcher.action_values(obs, ids)
+        return values, int(np.argmax(values))
+
     def choose_action(self, observation):
         legal = observation.legal_actions
         self.last_values = None
@@ -276,6 +361,20 @@ class SearchAgent:
             return legal[0]
         obs = obs_from_player_observation(observation)
         ids = [action_id(a) for a in legal]
+        if self.reseed:
+            self._reseed(obs)
+        if self.equiv and obs.phase == native.PH_PLAY:
+            from .equivalence import groups
+
+            gs = groups(obs, ids)
+            if len(gs) < len(ids):
+                q = self._blueprint_q(obs)
+                reps = [max(g, key=lambda a: (q[a], -a)) for g in gs]  # blueprint's card of each group
+                if len(reps) == 1:
+                    return legal[ids.index(reps[0])]  # all legal cards equivalent: no search
+                values, best = self._search(self.searcher, obs, reps)
+                self.last_values = {a: float(x) for a, x in zip(reps, values)}
+                return legal[ids.index(reps[best])]
         if obs.phase in native.SOOLI_PHASES:
             return legal[ids.index(self._sooli_action(obs, ids))]
         if obs.ruleset == 2:  # soolis inside the rollouts are played as at the offer
@@ -301,6 +400,11 @@ class SearchAgent:
             values = searcher.action_values(obs, reps)
             self.last_values = {a: float(x) for a, x in zip(reps, values)}
             return legal[ids.index(reps[int(np.argmax(values))])]
+        if self.adaptive and not self.rami_bonus and self.keep is None and (
+                obs.phase == native.PH_SHOW or self.adaptive.get("play", False)):
+            values, best = self._search(searcher, obs, ids)
+            self.last_values = {a: float(x) for a, x in zip(ids, values)}
+            return legal[best]
         values = searcher.action_values(obs, ids)
         self.last_values = {a: float(x) for a, x in zip(ids, values)}
         if self.rami_bonus and obs.phase == native.PH_SHOW:

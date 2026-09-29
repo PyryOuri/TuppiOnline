@@ -55,7 +55,11 @@ def _init(candidate: str, opponent: str, equity_path: str, ruleset: str = "v1") 
 
 def _make_candidate(spec: str) -> dict:
     """`profile:<key>`, a policy spec (see policies.py), or
-    `search:<ckpt>[:w=32][:dd=6][:show=1][:belief=4][:bt=1.0][:be=0.1]`."""
+    `search:<ckpt>[:w=32][:dd=6][:show=1][:belief=4][:bt=1.0][:be=0.1]`, plus the
+    efficiency options (docs/EFFICIENCY_PLAN.md): `eq=1` rank-equivalent cards
+    searched once (E6); `adb=<batch>[:adz=<z>][:add=<delta>][:adp=1]` adaptive
+    worlds for bids (and trick play with adp=1), `w` as the cap (E7); `rs=1`
+    worlds seeded from the information state (paired measurements)."""
     if spec == "best":
         from .best import best_agents
         return best_agents()
@@ -83,7 +87,12 @@ def _make_candidate(spec: str) -> dict:
                                search_showing=int(opts.get("show", "0")),
                                keep=float(opts["keep"]) if "keep" in opts else None,
                                rami_bonus=float(opts.get("rb", 0.0)),
-                               show_worlds=int(opts["sw"]) if "sw" in opts else None, **belief) for s in range(4)}
+                               show_worlds=int(opts["sw"]) if "sw" in opts else None,
+                               equiv=bool(int(opts.get("eq", 0))), reseed=bool(int(opts.get("rs", 0))),
+                               adaptive=({"batch": int(opts["adb"]), "z": float(opts.get("adz", 2.5)),
+                                          "delta": float(opts.get("add", 0.0)),
+                                          "play": bool(int(opts.get("adp", 0)))} if "adb" in opts else None),
+                               **belief) for s in range(4)}
     from .policies import PolicyAgent, from_spec
     policy = from_spec(spec, "cpu")
     return {s: PolicyAgent(policy, s) for s in range(4)}
