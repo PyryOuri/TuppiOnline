@@ -7,7 +7,7 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
-## Value net VN1, world counts, serial mode, branch evaluation (2026-09-29)
+## Value nets VN1 and VN2 (neither adopted), world counts, serial mode, branch evaluation (2026-09-29)
 
 **Value net VN1** (`tuppi_ai/value.py`, `docs/VALUE_NET_PLAN.md`). A net from
 full-information positions to the deal's equity change.
@@ -33,10 +33,11 @@ Results:
   tricks after the decision's trick, the extra regret per decision is
   +1.34e-3 ± 0.31, +0.59e-3 ± 0.15 and +0.30e-3 ± 0.10, with no speed gain.
   A value net cannot resolve card-level differences; **dead.**
-- **VN2** (the bot's own value, learned from bot pair vs incumbent games):
-  data is being generated (`tools/gen_value_games.py`). Its gain is confined
-  to bids, whose whole search value over the clone's bids was about +0.003,
-  so the +0.002 kill criterion is a long shot.
+- **VN2** (the bot's own value, learned from 30,000 bot pair vs incumbent
+  games): held-out R^2 0.481 vs VN1's 0.373 on the same games, but in play it
+  over-declares (RAMI in 54.6% vs 46.8% of deals; stolen 22.2% vs 20.0%).
+  Game test **-0.00039 [-0.00126, +0.00048]** against the +0.0020 kill
+  criterion: **killed**.
 
 **World counts** (the same 512 fresh v3 deals, rs=1, paired; descriptive, not
 pre-registered):

@@ -173,6 +173,7 @@ def main() -> None:
     t.add_argument("--device", default="mps" if torch.backends.mps.is_available() else "cpu")
     t.add_argument("--no-augment", action="store_true")
     t.add_argument("--init", type=Path, help="start from this value net (its width/blocks)")
+    t.add_argument("--log-every", type=int, default=1000)
     args = p.parse_args()
     if args.cmd == "gen":
         torch.set_num_threads(1)
@@ -185,7 +186,7 @@ def main() -> None:
                           "target_mean": float(target.mean()), "target_sd": float(target.std())}))
     else:
         train(args.data, args.val, args.out, args.width, args.blocks, args.steps, args.batch, args.lr,
-              args.device, not args.no_augment, init=args.init)
+              args.device, not args.no_augment, log_every=args.log_every, init=args.init)
 
 
 if __name__ == "__main__":
