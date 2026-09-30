@@ -75,3 +75,43 @@ authoritative engine. The screening protocol applies (W=128 first).
   3. No solver tail.
 
   Each is measured in deals per second on the same workload.
+
+## SP2 (pre-registered 2026-09-30, before its run)
+
+**What SP1's diagnostics showed** (`docs/SP1_MANIFEST.json`, `docs/STATUS.md`):
+- SP1 plateaued because its Q net stopped finding improvements beyond label
+  noise. At iteration 43, the composite policy's changed decisions gain
+  +0.0005 ± 0.0021 per change on fresh labels.
+- Distillation costs at most about 0.0005 (composite minus distilled, against
+  the incumbent: +0.00048 [-0.00001, +0.00096]).
+- Clean held-out R^2 on fresh deals is 0.051, the same as logged, so the leak
+  between rows of one deal was negligible.
+
+**SP2 therefore targets advantage estimation and label efficiency**, starting
+from SP1's final policy:
+- **The Q net:** 768x4 instead of 256x2, trained from scratch with a zero
+  head. It never runs in rollouts, so it costs GPU time only.
+- **Labels:** one rollout per run of rank-equivalent cards (95.7% identical
+  labels) and importance-weighted recording by measured non-inert rate.
+- **Held-out rows:** every 10th self-play batch (whole deals).
+- **Unchanged from SP1:** 2M states per iteration, replay of 3 iterations,
+  margin 0.006, gate R^2 >= 0.01, 2,000 Q steps and 1,000 policy steps per
+  iteration, no solver tail, fast sooli offers.
+
+**Criteria:**
+- **The result** is the final iteration's distilled policy. No checkpoint is
+  selected on evaluation data; the composite is reported alongside.
+- **Loop budget:** at most 8 h of wall time. Stop early after iteration 12 if
+  the native check against SP1's final policy has not exceeded its 95%
+  interval in any of the last 8 iterations.
+- **Primary test:** authoritative engine, no search, 1,024 fresh deals (seed
+  sp2-confirm-v1), paired against SP1's final policy on the same deals.
+  - **Improvement:** at least +0.0020 with the lower bound above 0.
+  - **Non-inferior:** the lower bound above -0.0010.
+  - **Otherwise:** worse.
+- **Product test**, only if it improves: search with SP2 rollouts against
+  search with SP1 rollouts, W=128, 1,024 fresh deals, the same
+  non-inferiority and gain rules.
+- **Attribution:** SP2 changes the Q size and the labelling efficiency
+  together. A gain is credited to the combination; separating them would be
+  a follow-up ablation.

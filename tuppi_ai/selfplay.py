@@ -52,6 +52,8 @@ PAD = native.NUM_ACTIONS  # padding action id in compact label rows
 class Config:
     init: str = str(ROOT.parent / "TuppiAI" / "runs" / "bc_small.pt")
     baseline: str = str(ROOT.parent / "TuppiAI" / "runs" / "bc_small.pt")  # the fixed opponent of the "vs_clone" check
+    reference: str = ""            # optional second fixed opponent ("vs_ref"), e.g. the previous run's final policy
+    holdout_every: int = 10        # every n-th self-play batch (whole deals) is held out from the Q net
     offer_model: str = str(ROOT / "models" / "offer_model_selfplay.pt")
     ruleset: int = 3
     states_per_iter: int = 2_000_000
@@ -112,6 +114,7 @@ class Learner:
         base = qmodel.load(cfg.init, "cpu")
         self.encoder, self.dim = base.encoder, native.feature_dim(base.encoder)
         self.clone = native.Mlp(qmodel.load(cfg.baseline, "cpu"))
+        self.ref = native.Mlp(qmodel.load(cfg.reference, "cpu")) if cfg.reference else None
         self.policy = qmodel.load(cfg.init, "cpu")            # pi_k (CPU copy for export)
         if cfg.q_width:  # a larger Q net, trained from scratch
             self.qnet = qmodel.QNet(cfg.q_width, cfg.q_blocks or 4, self.encoder).to(self.dev).train()
@@ -153,7 +156,8 @@ class Learner:
     def collect(self, mlp: native.Mlp) -> dict:
         cfg = self.cfg
         t0 = time.perf_counter()
-        feats, ids_all, qs, ws, classes, n_total, t_label = [], [], [], [], [], 0, 0.0
+        feats, ids_all, qs, ws, classes, holds, n_total, t_label = [], [], [], [], [], [], 0, 0.0
+        batch = 0
         mult = self.class_mult if cfg.importance else None
         while n_total < cfg.states_per_iter:
             states, n = native.selfplay_states(self.env_play, mlp, cfg.selfplay_games, cfg.ruleset, self.rng,
@@ -175,9 +179,11 @@ class Learner:
             feats.append(np.packbits(feat, axis=1))
             ws.append((1.0 / (mult[cls] if mult is not None else np.ones(n))).astype(np.float16))
             classes.append(cls)
+            holds.append(np.full(n, batch % cfg.holdout_every == 0, dtype=np.uint8))  # whole deals held out
+            batch += 1
             n_total += n
         data = {"feat": np.concatenate(feats), "ids": np.concatenate(ids_all), "q": np.concatenate(qs),
-                "w": np.concatenate(ws)}
+                "w": np.concatenate(ws), "hold": np.concatenate(holds)}
         inert = inert_rows(data["ids"], data["q"])
         self._update_class_mult(np.concatenate(classes), inert)
         data["w"] = (data["w"] / data["w"].astype(np.float32).mean()).astype(np.float16)
@@ -201,6 +207,13 @@ class Learner:
     def _to_dev(self, data) -> dict:
         return {key: torch.from_numpy(np.ascontiguousarray(data[key])).to(self.dev)
                 for key in ("feat", "ids", "q", "w")}
+
+    @staticmethod
+    def _split(dev: dict, hold: np.ndarray) -> tuple[dict, dict]:
+        """(held-out, training) rows; `hold` marks rows of held-out self-play batches."""
+        h = torch.from_numpy(np.flatnonzero(hold)).to(next(iter(dev.values())).device)
+        t = torch.from_numpy(np.flatnonzero(hold == 0)).to(h.device)
+        return {k: v[h] for k, v in dev.items()}, {k: v[t] for k, v in dev.items()}
 
     # ------------------------------------------------------------ training
     def _batch(self, D: dict, idx: torch.Tensor):
@@ -320,9 +333,10 @@ class Learner:
         for it in range(max(1, self.iteration - self.cfg.replay_iters + 1), self.iteration + 1):
             shard = self.out / "data" / f"iter_{it:03d}.npz"
             if shard.exists():
-                d = self._to_dev(np.load(shard))
-                n_hold = len(d["feat"]) // 10
-                self.replay.append({key: t[n_hold:] for key, t in d.items()})
+                raw = np.load(shard)
+                d = self._to_dev(raw)
+                hold = raw["hold"] if "hold" in raw.files else (np.arange(len(raw["feat"])) < len(raw["feat"]) // 10)
+                self.replay.append(self._split(d, hold.astype(np.uint8))[1])
 
     # ----------------------------------------------------------------- loop
     def evaluate(self, a: native.Mlp, b: native.Mlp) -> tuple[float, float]:
@@ -334,10 +348,8 @@ class Learner:
         t0 = time.perf_counter()
         mlp_k = native.Mlp(self.policy)
         data = self.collect(mlp_k)
-        dev_data = self._to_dev(data)
-        n_hold = len(dev_data["feat"]) // 10  # this iteration's first 10%: held out from the Q net
-        H = {key: v[:n_hold] for key, v in dev_data.items()}
-        self.replay.append({key: v[n_hold:] for key, v in dev_data.items()})
+        H, train = self._split(self._to_dev(data), data["hold"])  # held out by whole self-play batches
+        self.replay.append(train)
         self.replay = self.replay[-cfg.replay_iters:]
         D = {key: torch.cat([r[key] for r in self.replay]) for key in ("feat", "ids", "q", "w")}
         t1 = time.perf_counter()
@@ -352,10 +364,12 @@ class Learner:
         mlp_next = native.Mlp(self.policy)
         vs_clone = self.evaluate(mlp_next, self.clone)
         vs_prev = self.evaluate(mlp_next, mlp_k)
+        vs_ref = self.evaluate(mlp_next, self.ref) if self.ref is not None else None
         self.iteration += 1
         self.save_state()
         row = {"iteration": self.iteration, "states": int(len(data["feat"])), "replay_states": int(len(D["feat"])),
-               "vs_clone": vs_clone, "vs_prev": vs_prev, "adv_mse": adv_mse, "adv_r2": r2,
+               "vs_clone": vs_clone, "vs_prev": vs_prev, "vs_ref": vs_ref, "adv_mse": adv_mse, "adv_r2": r2,
+               "held_out_states": int(len(H["feat"])),
                "q_best_step": q_best_step, "policy_ce": ce, **diag, "inert": data["inert"],
                "collect_s": round(data["seconds"], 1), "label_s": round(data["label_seconds"], 1),
                "train_s": round(t2 - t1, 1), "eval_s": round(time.perf_counter() - t2, 1),
