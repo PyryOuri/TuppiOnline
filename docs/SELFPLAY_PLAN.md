@@ -133,3 +133,29 @@ from SP1's final policy:
     -0.00018; the gate chose 0.02 (+0.00021 ± 0.00010).
 - **SP2 restarts with this gate.** Every other setting, the criteria and the
   8 h budget are unchanged, counted from the restart.
+
+## SP2b (pre-registered 2026-09-30, before its run; used only if SP2 stops without improvement)
+
+**The problem SP2 showed.** A 768x4 Q net trained from scratch climbs
+slowly: held-out R^2 was 0.021, 0.023, 0.028, 0.029 and 0.029 over
+iterations 1-5. It overfits the noisy labels within about 200 steps per
+iteration, and its proposed changes lose on held-out deals at every margin,
+so the gate keeps SP1's policy.
+
+**The repair.** The same as SP2 except:
+- the 768x4 Q net is warm-started by distilling SP1's final Q net
+  (`runs/selfplay/sp1/q_latest.pt`, 3,000 steps on the first iteration's
+  replay). The smoke test reached held-out R^2 0.041 after 600 steps.
+- Q weight decay is 1e-4 instead of 1e-5.
+
+**Hypothesis.** Starting from SP1's advantage estimates, the larger net can
+learn beyond them as data accumulates, and open the gate.
+
+**Criteria:** those of SP2, with the same primary test (seed sp2-confirm-v1).
+- **Budget:** at most 6 h.
+- **Stop** after iteration 10 if the gate has not opened in any of the last
+  8 iterations.
+- If SP2b also plateaus at SP1's level, that is the conclusion: a larger Q
+  net with true-world labels does not break SP1's plateau. The next lever
+  then is lower-noise labels (averaged over sampled worlds, or search
+  distillation), not Q capacity.
