@@ -318,6 +318,8 @@ static int setup(const TcObs *o, const int others[3], const int hand_size[4], co
 static int sample_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, const int played_by[4], const int void_mask[4],
                         u64 played_all, const int others[3]);
 
+#include "showing_constraints.h"
+
 // Returns 0 on success, -1 if the constraints admit no world.
 int tc_sample_world(const TcObs *o, uint64_t *rng, TcDeal *out) {
   init_lfact();
@@ -341,7 +343,17 @@ int tc_sample_world(const TcObs *o, uint64_t *rng, TcDeal *out) {
   u64 hands[4] = {0, 0, 0, 0};
   hands[me] = o->hand;
   for (int s = 0; s < 4; s++) hands[s] |= known[s];
-  if (count_or_draw(others, cap, free_cards, void_mask, rng, hands, NULL) == -INFINITY) return -1;
+  u64 forbidden[4] = {0, 0, 0, 0};
+  if (showing_forbidden(o, forbidden)) {  // fallback shows restrict the original hands (B0-S1)
+    u64 original[4];
+    for (int s = 0; s < 4; s++) original[s] = hands[s];
+    for (int i = 0; i < o->n_played; i++) original[o->play_seat[i]] |= 1ULL << o->play_card[i];
+    for (int s = 0; s < 4; s++) {
+      if (original[s] & forbidden[s]) return -1;
+      for (int suit = 0; suit < 4; suit++) if (void_mask[s] >> suit & 1) forbidden[s] |= SUIT_MASK(suit);
+    }
+    if (tc_research_draw_constrained(others, cap, free_cards, forbidden, rng, hands) == 0) return -1;
+  } else if (count_or_draw(others, cap, free_cards, void_mask, rng, hands, NULL) == -INFINITY) return -1;
   for (int s = 0; s < 4; s++) out->hand[s] = hands[s];
   if (TC_LOCKED(o)) {
     // Locked bids: the earlier bids are unseen, and all were NOLO (a RAMI
