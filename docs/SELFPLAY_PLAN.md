@@ -159,3 +159,23 @@ learn beyond them as data accumulates, and open the gate.
   net with true-world labels does not break SP1's plateau. The next lever
   then is lower-noise labels (averaged over sampled worlds, or search
   distillation), not Q capacity.
+
+## Live rollout roles: confirmation at W=1024 (pre-registered 2026-09-30 11:00)
+
+**The candidate:** the live configuration (W=1024, E7 adaptive bids, 6-trick
+tail) with the SP1 policy (`models/sp1_policy_043.pt`) as the rollout model
+of the searching team's own seats, and the clone for the opponents.
+
+**The screen that motivated it:** W=128, 1,024 deals: +0.00132 [+0.00041,
++0.00222] against clone/clone rollouts.
+
+**The test:**
+- 512 deals, seed perf-e7-v1, rs=1, paired with the stored reference arm
+  (the same live configuration with clone rollouts,
+  `b_e7.json`: +0.01608).
+- Those deals were used for E7, VN1 and VN2 tests, never for anything
+  involving SP1.
+
+**Deploy if:** the lower 95% bound of variant minus reference is above
+-0.0010 **and** the point estimate is above 0. **Otherwise** it stays at
+W=128 evidence and is not deployed.
