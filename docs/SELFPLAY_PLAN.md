@@ -234,3 +234,55 @@ W=128 evidence and is not deployed.
   - **Otherwise:** worse.
 - **Product test**, only if it improves: search with VRPO own-team rollouts
   against search with SP1 own-team rollouts, W=128, 1,024 fresh deals.
+
+## SP3: search labels (pre-registered 2026-09-30 23:45, before its run)
+
+**Why.** SP2 and SP2b showed that single true-world labels limit SP1's
+policy iteration, not Q capacity. SP3 trains Q on search results instead.
+
+**Labels.** Each recorded state gets labels from 16 worlds with
+`tc_world_values`: the true world plus 15 worlds drawn by the search's
+sampler, which honours the showing-fallback restrictions (B0-S1) in
+self-play.
+- In each world, every legal action is played out with pi_k, and the last 6
+  tricks are solved exactly, as the live search does.
+- The label is the mean over the 16 worlds: a W=16 search value.
+- The true-world value is stored separately.
+
+**Measured before the run** (40k states, from SP1, not evaluation data):
+
+| Labels | Held-out advantage R^2 after 200 Q steps | Label rate |
+| --- | --- | --- |
+| 16 worlds, 6-trick tail | 0.18 | 990 states/s |
+| 16 worlds, no tail | 0.08 | 860 states/s |
+| SP1 (single true world) | about 0.05 at best | |
+
+**The gate stays on the true-world labels.** The sampler ignores what play
+reveals about the hidden cards, so a Q net fitted to sampled-world values
+can prefer moves that fail under the real distribution of hands. The
+composite's one-step gain is measured on the held-out states' true-world
+labels (which include the solver tail), as in SP2.
+
+**Settings:**
+- Start from SP1's final policy. The Q net has the policy's shape and is
+  warm-started from it, with a zero head.
+- 1M states per iteration. Every 5th self-play batch is held out (about
+  20%), for a sharper gate.
+- Margin grid 0.006, 0.01, 0.02, 0.04, gate z = 2, replay of 3 iterations.
+- 2,000 Q steps with early stopping, 1,000 policy steps.
+- Label sharing and importance weighting are on, as in SP2.
+
+**Criteria:**
+- **The result** is the final iteration's distilled policy. No checkpoint is
+  selected on evaluation data.
+- **Budget:** at most 6 h of wall time. VRPO1 runs at the same time on the
+  same machine.
+- **Stop** after iteration 8 if the gate has not opened in any of the last 6
+  iterations.
+- **Primary test:** authoritative engine, no search, 1,024 fresh deals (seed
+  sp3-confirm-v1), paired against SP1's final policy.
+  - **Improvement:** at least +0.0020 with the lower bound above 0.
+  - **Non-inferior:** the lower bound above -0.0010.
+- **Product test**, only if it improves: search with SP3 own-team rollouts
+  against search with SP1 own-team rollouts (the live setting), W=128, 1,024
+  fresh deals.
