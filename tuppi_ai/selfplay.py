@@ -67,6 +67,9 @@ class Config:
     q_width: int = 0               # 0: the policy net's shape, warm-started from it
     q_blocks: int = 0
     q_steps: int = 2000
+    q_teacher: str = ""            # warm start: distil this Q net (e.g. the previous run's) into the Q net first
+    q_distill_steps: int = 3000
+    wd_q: float = 1e-5             # AdamW weight decay of the Q net
     pi_steps: int = 1000
     batch: int = 16384
     lr_q: float = 1e-3
@@ -126,7 +129,7 @@ class Learner:
             self.qnet.out.weight.zero_()
             self.qnet.out.bias.zero_()
         self.pnet = qmodel.load(cfg.init, self.dev).train()
-        self.opt_q = torch.optim.AdamW(self.qnet.parameters(), lr=cfg.lr_q, weight_decay=1e-5,
+        self.opt_q = torch.optim.AdamW(self.qnet.parameters(), lr=cfg.lr_q, weight_decay=cfg.wd_q,
                                        fused=self.dev.type == "mps")
         self.opt_p = torch.optim.AdamW(self.pnet.parameters(), lr=cfg.lr_pi, weight_decay=1e-5,
                                        fused=self.dev.type == "mps")
@@ -243,6 +246,25 @@ class Learner:
                 den += float(((tc ** 2) * mf).sum())
         self.qnet.train()
         return 1.0 - num / max(den, 1e-12)
+
+    def distil_q(self, D: dict) -> float:
+        """Warm start: regress the Q net onto the teacher Q net's outputs (legal actions) on D."""
+        cfg, n = self.cfg, len(D["feat"])
+        teacher = qmodel.load(cfg.q_teacher, self.dev).eval()
+        losses = []
+        for step in range(cfg.q_distill_steps):
+            idx = torch.randint(0, n, (cfg.batch,), device=self.dev)
+            x, mask, _, _ = self._batch(D, idx)
+            with torch.no_grad():
+                t = teacher(x)
+            loss = (((self.q_fwd(x) - t) ** 2) * mask).sum() / mask.sum()
+            self.opt_q.zero_grad(set_to_none=True)
+            loss.backward()
+            self.opt_q.step()
+            if step % 500 == 0:
+                losses.append(float(loss.detach()))
+        del teacher
+        return float(np.mean(losses[-2:])) / SCALE ** 2
 
     def train_q(self, D: dict, H: dict) -> tuple[float, float, int]:
         """Trains the Q net, keeping the weights with the best held-out advantage R^2 (every 200 steps)."""
@@ -382,6 +404,10 @@ class Learner:
         self.replay = self.replay[-cfg.replay_iters:]
         D = {key: torch.cat([r[key] for r in self.replay]) for key in ("feat", "ids", "q", "w")}
         t1 = time.perf_counter()
+        distil = None
+        if cfg.q_teacher and self.iteration == 0:
+            distil = self.distil_q(D)
+            teacher_r2 = self.adv_r2(H)
         adv_mse, r2, q_best_step = self.train_q(D, H)
         # Improvement gate on held-out deals: the composite's one-step gain must be significantly
         # positive (for the best margin of the grid); otherwise the policy is kept.
@@ -408,6 +434,7 @@ class Learner:
         row = {"iteration": self.iteration, "states": int(len(data["feat"])), "replay_states": int(len(D["feat"])),
                "vs_clone": vs_clone, "vs_prev": vs_prev, "vs_ref": vs_ref, "adv_mse": adv_mse, "adv_r2": r2,
                "held_out_states": int(len(H["feat"])),
+               "distil_mse": distil, "after_distil_r2": teacher_r2 if distil is not None else None,
                "q_best_step": q_best_step, "policy_ce": ce, **diag, "inert": data["inert"],
                "collect_s": round(data["seconds"], 1), "label_s": round(data["label_seconds"], 1),
                "train_s": round(t2 - t1, 1), "eval_s": round(time.perf_counter() - t2, 1),
