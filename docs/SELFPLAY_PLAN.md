@@ -179,3 +179,58 @@ of the searching team's own seats, and the clone for the opponents.
 **Deploy if:** the lower 95% bound of variant minus reference is above
 -0.0010 **and** the point estimate is above 0. **Otherwise** it stays at
 W=128 evidence and is not deployed.
+
+## VRPO1 (pre-registered 2026-09-30 23:20, before its run)
+
+**Method** (`tuppi_ai/vrpo.py`; Fan and Farina 2026, arXiv 2605.19235):
+- PPO on the SP1 policy.
+- The advantages are Q-boosted and come from a privileged critic Q(s, a).
+  - The critic is a 512x4 network, trained from scratch.
+  - Its input is the actor's observation plus the three hidden hands.
+  - V(s) = sum_a pi(a|o) Q(s, a).
+- An Expected SARSA(lambda) trace runs over each deal, with the sign flipped
+  whenever the other team acts.
+  - Q_target = Q + G and A = Q - V + G.
+  - lambda = 0.95, gamma = 1.
+- Why it could beat SP1's approach: the critic sees the full state, so it
+  can learn what the hidden cards contribute, which the observation-only Q
+  net cannot. The noise that stopped SP2 and SP2b is then explained rather
+  than averaged away.
+
+**Settings:**
+- 16,384 sampled self-play deals per iteration (temperature 1); every
+  network decision of all four seats is a row, about 0.9M rows.
+- 4 critic epochs and 4 actor epochs per batch; minibatch 16,384; PPO clip
+  0.2.
+- The actor epochs stop early if the mean KL exceeds 0.02.
+- Entropy bonus 0.001; actor learning rate 3e-5, critic 3e-4.
+- The first 6 iterations train the critic only.
+- Sooli phases are played by the heuristics with the fast offer model.
+- Every 3rd iteration, a native duplicate check (8,192 base deals, greedy)
+  runs against SP1's final policy and the clone, plus a sampled-play check
+  against SP1.
+
+**Checked before the run:**
+- The trace equals a per-deal reference loop.
+- lambda = 1 with a zero critic gives the Monte Carlo return.
+- In the trajectories, the behaviour log-probabilities equal the network's
+  softmax, the legal masks contain the actions, and the hidden hands are
+  disjoint (`tests/test_vrpo.py`).
+- SP1's sampled play at temperature 1 has entropy 0.13 nats per decision.
+
+**Criteria:**
+- **The result** is the final iteration's actor, played greedily. No
+  checkpoint is selected on evaluation data; the best checkpoint is only
+  reported.
+- **Budget:** at most 5 h of wall time.
+- **Stop early** for divergence if three consecutive checks against SP1 have
+  an upper bound below 0.
+- **Stop early** for a plateau after iteration 60 if no check in the last 30
+  iterations had its lower bound above 0.
+- **Primary test:** authoritative engine, no search, 1,024 fresh deals (seed
+  vrpo-confirm-v1), paired against SP1's final policy on the same deals.
+  - **Improvement:** at least +0.0020 with the lower bound above 0.
+  - **Non-inferior:** the lower bound above -0.0010.
+  - **Otherwise:** worse.
+- **Product test**, only if it improves: search with VRPO own-team rollouts
+  against search with SP1 own-team rollouts, W=128, 1,024 fresh deals.
