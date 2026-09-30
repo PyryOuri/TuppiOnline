@@ -286,3 +286,21 @@ labels (which include the solver tail), as in SP2.
 - **Product test**, only if it improves: search with SP3 own-team rollouts
   against search with SP1 own-team rollouts (the live setting), W=128, 1,024
   fresh deals.
+
+## Sampler fix B0-S1: strength screen (pre-registered 2026-09-30 23:55)
+
+**The fix.** When a showing fallback is on record, the search's world
+sampler honours what it implies about the original hands (`sf=1`,
+`tc_set_showing_fix`). Before the fix, 69% of the worlds drawn at such
+decisions were illegal. Such decisions are 2.9% of card-play decisions.
+
+**The test** (W=128, the live rollout setting):
+- 1,024 deals, seed sp1-search-v2, rs=1, paired with the stored arm without
+  the fix (`fact_ownSP_oppCL.json`: +0.01643).
+- Those deals were used for the rollout-role grid, never for anything
+  involving the sampler.
+
+**Adopt if:** the lower bound of variant minus reference is above -0.0010.
+It is a correctness fix, so non-inferiority suffices at W=128, as for exact
+changes that alter moves. Adoption means the live default is switched on
+after this screen.
