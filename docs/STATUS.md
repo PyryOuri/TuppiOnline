@@ -7,6 +7,244 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## SP2 and SP2b: a larger Q net does not beat SP1 (2026-09-30)
+
+Pre-registered in `docs/SELFPLAY_PLAN.md` (SP2 and its deviation).
+- **The setup:** a 768x4 Q net from scratch, label sharing, importance-weighted
+  recording, a whole-deal holdout, starting from SP1's final policy.
+- **The first attempt regressed** at iteration 1 (-0.0083 against SP1): the
+  weak new Q net passed the R^2 gate and its noise changed 24.7% of
+  decisions.
+- **The repair is a held-out improvement gate.** The policy changes only if
+  the composite's one-step gain on held-out deals (true-world labels under
+  pi_k) exceeds 2 standard errors, for the best margin in 0.006, 0.01, 0.02,
+  0.04.
+- **The restarted SP2 ran 12 iterations and was stopped by its rule** (no
+  iteration beyond SP1's interval in the last 8).
+  - Held-out R^2 climbed only from 0.021 to 0.039. The best Q weights came
+    at 0-400 steps each iteration, so the large net overfits the noisy labels
+    almost at once.
+  - The proposed changes lost on held-out deals at every margin in every
+    iteration: -0.0011 to -0.0002 per state at margin 0.006, shrinking toward
+    0 at 0.04.
+  - **The policy never changed:** the final policy is bit-for-bit SP1's.
+    Every check against SP1 was within ±0.00006.
+
+The gate did its job: no regression. But capacity alone, without a warm
+start, does not reach SP1's own Q quality in 12 iterations.
+
+**SP2b** (the same, with the 768x4 Q net warm-started by distilling SP1's Q
+net, and weight decay 1e-4) **was stopped by its rule at iteration 10.**
+- After distillation, held-out R^2 was 0.0496: SP1's Q level from the start.
+- It then stayed at 0.048-0.053 for all 10 iterations (20M more labelled
+  states).
+- Held-out gains stayed within about ±0.0001 of zero at every margin, and
+  the gate never opened.
+- The final policy is bit-for-bit SP1's.
+
+**Conclusion, as pre-registered: a larger Q net trained on single true-world
+labels does not break SP1's plateau. The labels, not Q capacity, limit it.**
+Each label is one deal's outcome with its actual hidden cards. Only about 5%
+of the advantage variance is predictable from the observation, and SP1's Q
+net already extracts it.
+
+**Levers left:**
+- **Lower-noise labels.** Average each state's action values over W worlds
+  sampled from the actor's observation, i.e. search values. That is expert
+  iteration over the SP1 policy, which the search improves by about +0.003
+  (SP1 +0.0131 alone vs +0.0164 as own-team rollouts in search).
+- **A different estimator.** A critic with privileged information, as in the
+  VRPO/PPO packets.
+- **Targeted tactics.** The no-search policy loses about 0.007 per decision
+  against the robust double-dummy action in mid-deal NOLO.
+
+## SP1 frozen, diagnosed, and tested in search; the double-dummy structure of play (2026-09-30)
+
+**Freeze.** `docs/SP1_MANIFEST.json` records:
+- the code (f6463ce) and the reproducible library build (09d673d9);
+- the configuration and runtime flags (no label sharing or importance
+  weighting in SP1);
+- the assets and accounting: 43 iterations, 86.6M recorded decision states,
+  about 5e8 branch rollouts, 3.7 h;
+- the confirmations.
+
+The final policy is tracked in `models/sp1_policy_043.pt`.
+
+**Against the incumbent** (authoritative engine, v3, no search, 1,024 deals):
+**+0.01309 [+0.01192, +0.01425]**, 63.5% of deals won. The clone control
+scores -0.0001.
+
+**Diagnostics** (421,638 fresh positions labelled under policy 42):
+- **Clean held-out advantage R^2 is 0.051**, the same as logged, so the leak
+  between rows of one deal was negligible.
+- **By class:** bids 0.09, late RAMI 0.14, early NOLO 0.01.
+- **At the plateau the composite changes 2.8% of decisions,** at +0.0005 ±
+  0.0021 per change; the distilled network changes 4.3%, at -0.0008 ± 0.0011.
+  The Q net finds nothing more above label noise.
+- **In play against the incumbent:**
+
+| Comparison | Difference |
+| --- | --- |
+| composite (Q 43 + policy 42, margin) minus distilled 43 | +0.00048 [-0.00001, +0.00096] |
+| policy 43 minus policy 42 | -0.00029 [-0.00073, +0.00014] |
+
+Distillation costs at most about 0.0005, and the last iterations add nothing.
+
+**Search with SP1 rollouts (W=128), rollout-role grid.** Paired differences
+against clone/clone rollouts, same 1,024 deals (seed sp1-search-v2):
+
+| Own team | Opponents | Difference | RAMI declared |
+| --- | --- | --- | ---: |
+| SP1 | clone | **+0.00132 [+0.00041, +0.00222]** | 55% |
+| clone | SP1 | **-0.00285 [-0.00398, -0.00173]** | 28% |
+| SP1 | SP1 | +0.00077 [-0.00019, +0.00173] (pooled with the screen, 1,536 deals: +0.00093 [+0.00012, +0.00173]) | 40% |
+
+- Our own team is best modelled by the stronger policy and the opponents by a
+  model of their real play.
+- Modelling the incumbent as SP1 makes the search too cautious.
+- **Own-SP1/opponent-clone is the best search setting measured.** It is a
+  W=128 screen; confirm at W=1024 before live use.
+- Searcher(team_net=...) now runs natively (`tc_env_set_team_rollout`).
+
+**Exact solving of whole deals** (`tuppi_dd.c`, single thread, random
+positions). Median solve time:
+
+| Tricks left | 6 | 8 | 10 | 11 | 12 | 13 |
+| --- | --- | --- | --- | --- | --- | --- |
+| median | 0.16 ms | 2.4 ms | 50 ms | 126 ms | 1.1 s | 6.6 s |
+
+- NOLO is much harder than RAMI: 8.7 s vs 0.39 s median at 12 tricks left.
+- The table (2^18 entries) is likely too small beyond 11 tricks.
+
+**Double-dummy consensus of real positions** (`tools/dd_consensus.py`;
+2,000 SP1 card-play decisions with 2-9 tricks left, 48 consistent worlds
+each, every card solved exactly):
+- Mean consensus is 0.90-0.99, and no position falls below 0.5.
+- The clairvoyance gap is 0.0004-0.005 equity per decision and grows with
+  tricks left.
+- So at least in the last 9 tricks, play is mainly tactical and determinised
+  search is a sound fit.
+- SP1's action equals the robust double-dummy action (ties counted) in only
+  51-61% of mid-deal NOLO positions, losing 0.007-0.008 per decision against
+  it (RAMI: 70-94%, 0.001-0.003). The no-search policy is tactically weak in
+  mid-deal NOLO, where the search's rollouts and exact tail compensate.
+  - The double-dummy action ignores signalling, so it is a diagnostic, not a
+    target.
+
+## Self-play engine: fast sooli offers, about 30k real-game deals/s (2026-09-29)
+
+For large-scale self-play learning (the owner asked how long 100M games would
+take), the engine plays complete v3 deals with the network on all seats: the
+exact 6-trick tail, and sooli by the heuristics.
+
+**The problem.** At about 9-12k deals/s, 57% of the CPU was the sooli offer
+heuristic: up to 8 exact solves per offer that passes the prefilter, and only
+about 2% of those offers are accepted.
+
+**The fast offer model.** `tuppi_ai/offer_screen.py`, stored as
+`models/offer_model_selfplay.pt`, switched on with `native.set_offer_model`.
+It is off by default, and the move fingerprint is unchanged.
+- It is a 128x2 net from the defender's observation (encoder 1) to the
+  probability that the exact heuristic accepts. In self-play, a prefiltered
+  offer accepts with that probability.
+- Training: 3M self-play offers labelled by the exact heuristic
+  (`tools/gen_offer_data.py`), early-stopped on held-out log-loss, then Platt
+  scaling on a validation set.
+- On 100k fresh test offers: accept rate predicted 2.13% vs actual 2.09%;
+  log-loss 0.049 vs 0.101 for a constant.
+- Screening instead (decline fast, run the exact check otherwise) does not
+  work. The heuristic's own 8-world noise means that keeping 90% of its
+  accepts still needs the exact check on 42% of offers.
+
+**Self-play with the model** (393k deals per arm, same seeds):
+
+| | Exact heuristic | Fast model |
+| --- | ---: | ---: |
+| deals/s | 12,654 | **31,214 (2.5x)** |
+| sooli played | 1.039% ± 0.016% | 1.028% ± 0.016% |
+| soolaaja survived | 34.1% | 31.0% |
+
+Deal-value targets are identical to four decimals. The model accepts
+slightly weaker hands, which changes the outcome of about 0.03% of deals.
+
+**Where the time goes now.** Network 50% (about half of it the sparse first
+layer), endgame tail 42%, and 24% of core time idle between batched steps.
+100M deals take about 1 hour.
+
+**Left for when a training loop exists and has been profiled:**
+- incremental first-layer updates (inexact, fine for self-play);
+- two engine batches in parallel to fill the idle time;
+- the network playing all 13 tricks (27.9k deals/s).
+
+## Value nets VN1 and VN2 (neither adopted), world counts, serial mode, branch evaluation (2026-09-29)
+
+**Value net VN1** (`tuppi_ai/value.py`, `docs/VALUE_NET_PLAN.md`). A net from
+full-information positions to the deal's equity change.
+
+- **Training.** 4M rows of the search's own rollouts (clone play, sooli by
+  the heuristics, exact 6-trick tail), from trick boundaries and from the end
+  of bidding. The net is 512x3; validation R^2 0.745. Training runs on the
+  GPU, with the packed rows unpacked and the 24 suit relabellings applied on
+  the device.
+- **Use.** Rollouts stop at a leaf and add the net's value.
+
+Results:
+
+- **Bid leaf at the end of bidding.** On 120 fresh bid positions against a
+  4096-world full-rollout reference, the extra regret is +0.065e-3 ± 0.112
+  per bid (within noise), and the bid search is about 100x faster.
+  - Game test (512 deals, W=1024, against the live agent with E7):
+    **+0.00010 [-0.00067, +0.00088]**, non-inferior, but only **1.09x** less
+    CPU per deal. E7 had already removed most of the bid cost.
+  - **The pre-registered speed bar was 1.5x, so it is not adopted.**
+    Against fixed W=1024 without E7 it would have been 1.62x.
+- **Card-play leaf.** On 207 positions, with the leaf placed 0, 1 or 2
+  tricks after the decision's trick, the extra regret per decision is
+  +1.34e-3 ± 0.31, +0.59e-3 ± 0.15 and +0.30e-3 ± 0.10, with no speed gain.
+  A value net cannot resolve card-level differences; **dead.**
+- **VN2** (the bot's own value, learned from 30,000 bot pair vs incumbent
+  games): held-out R^2 0.481 vs VN1's 0.373 on the same games, but in play it
+  over-declares (RAMI in 54.6% vs 46.8% of deals; stolen 22.2% vs 20.0%).
+  Game test **-0.00039 [-0.00126, +0.00048]** against the +0.0020 kill
+  criterion: **killed**.
+
+**World counts** (the same 512 fresh v3 deals, rs=1, paired; descriptive, not
+pre-registered):
+
+| Comparison | Difference in equity per deal | CPU |
+| --- | --- | ---: |
+| 1024 - 128 | **+0.00107 [+0.00016, +0.00197]** | 7.6x |
+| 1024 - 256 | **+0.00111 [+0.00018, +0.00203]** | 3.9x |
+| 256 - 128 | -0.00004 [-0.00102, +0.00094] | 2.0x |
+
+- 1024 worlds is measurably stronger, and on these deals 256 captures none of
+  that gain.
+- By the rule fixed with the owner before the 256 run, the live server stays
+  at 1024.
+
+**Serial search mode** (`TUPPI_AI_SERIAL=1`, `native.set_parallel`; every move
+identical). In the 12-worker evaluator on 96 deals:
+
+- CPU is -11% (1,795 to 1,599 s), but wall time is +12% (138 to 155 s) when
+  the evaluator is the only job, because parallel mode fills the spare cores
+  and the end-of-run tail.
+- With several jobs on the machine, the load drops from about 140 to about
+  20 and the rest of the machine stays usable.
+- Use it for background batch jobs; keep the default for a lone job.
+
+**Branch-point evaluation** (`tuppi_ai/branch_eval.py`) was meant as a
+lower-noise screen. It was validated on E6's 512 test deals and came out
+**noisier than the game test**: sd 0.0181 per base deal, against 0.0090, at
+the same CPU. A variant that deviates about 4.5 times per game adds each
+branch's divergence. It is not used.
+
+**Reproducibility note.** `evaluate.py` gives a worker a new chunk of 8 base
+deals whenever it is free, and a search agent's random stream carries across
+the deals it plays. So with more chunks than workers (for example 512 deals),
+a rerun gives statistically equivalent but not bit-identical games. With at
+most one chunk per worker (48 or 96 deals on 12 workers), reruns are
+identical.
+
 ## Efficiency tasks E6, E7, E9: adaptive bids adopted for live play (2026-09-29)
 
 Paired tests on 512 fresh v3 base deals against the incumbent, with

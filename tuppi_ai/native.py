@@ -254,6 +254,20 @@ class Env:
         """Search options for sooli decisions (see tc_sample_world_sooli, resolve_sooli)."""
         lib.tc_env_set_sooli(self._h, belief, int(return_pi), int(play_heur), float(lam))
 
+    def set_value(self, vnet: "Mlp | None", leaf_bid: int = -1, leaf_play: int = -1, bot_bit: bool = False) -> None:
+        """Value leaf for searches in this environment (docs/VALUE_NET_PLAN.md); None switches it off."""
+        self._vnet = vnet  # keep the native weights alive
+        lib.tc_env_set_value(self._h, vnet._h if vnet is not None else None, leaf_bid, leaf_play, int(bot_bit))
+
+    def set_team_rollout(self, mlp: "Mlp | None") -> None:
+        """Search rollouts: the searching team's own seats play `mlp`, the others the search's net."""
+        self._team_mlp = mlp
+        lib.tc_env_set_team_rollout(self._h, mlp._h if mlp is not None else None)
+
+    def set_incremental(self, on: bool, width: int = 256) -> None:
+        """Self-play only: incremental first layer for networks of this width (not bitwise exact)."""
+        lib.tc_env_set_incremental(self._h, int(on), width)
+
     def set_equity(self, equity: np.ndarray) -> None:
         eq = np.ascontiguousarray(equity, dtype=np.float64).reshape(25, 2)
         lib.tc_env_set_equity(self._h, eq.ctypes.data_as(_P(C.c_double)))
@@ -321,8 +335,10 @@ class Env:
 class Mlp:
     """A QNet's weights in native memory, for rollouts without Python."""
 
-    def __init__(self, net):
+    def __init__(self, net, in_dim: int | None = None, out_dim: int | None = None, out_scale: float = 1.0):
+        """`in_dim`/`out_dim` default to the Q-network's; `out_scale` multiplies the outputs."""
         sd = {k: v.detach().cpu().float().numpy() for k, v in net.state_dict().items()}
+        sd["out.weight"], sd["out.bias"] = sd["out.weight"] * out_scale, sd["out.bias"] * out_scale
         cfg = net.config
         parts = [sd["inp.weight"], sd["inp.bias"]]
         for b in range(cfg["blocks"]):
@@ -332,8 +348,8 @@ class Mlp:
         flat = np.ascontiguousarray(np.concatenate([p.ravel() for p in parts]), dtype=np.float32)
         self.encoder = cfg.get("encoder", 1)
         self.width = cfg["width"]
-        self._h = lib.tc_mlp_new(feature_dim(self.encoder), cfg["width"], cfg["blocks"], NUM_ACTIONS,
-                                 self.encoder, flat.ctypes.data)
+        self._h = lib.tc_mlp_new(in_dim or feature_dim(self.encoder), cfg["width"], cfg["blocks"],
+                                 out_dim or NUM_ACTIONS, self.encoder, flat.ctypes.data)
         if not self._h:
             raise ValueError("unsupported network shape")
 
@@ -377,6 +393,202 @@ def search_values(env: "Env", mlp: Mlp, obs: TcObs, actions, worlds: int, dd_lef
     if rc != 0:
         raise RuntimeError(f"native search failed ({rc})")
     return out
+
+
+lib.tc_pi_feature_dim.restype = C.c_int
+lib.tc_encode_pi.argtypes = [_P(TcDeal), C.c_int, C.c_void_p]
+lib.tc_env_set_value.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int, C.c_int]
+lib.tc_value_rollouts.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int, C.c_int, _P(C.c_uint64), C.c_int,
+                                  C.c_void_p, C.c_void_p]
+lib.tc_value_rollouts.restype = C.c_int
+PI_DIM = lib.tc_pi_feature_dim()
+
+
+def encode_pi(deal: TcDeal, bot_side: bool = False) -> np.ndarray:
+    """Full-information value-net features of a trick-boundary position (side to move)."""
+    out = np.zeros(PI_DIM, dtype=np.uint8)
+    lib.tc_encode_pi(C.byref(deal), int(bot_side), out.ctypes.data)
+    return out
+
+
+def value_rollouts(env: "Env", mlp: "Mlp", games: int, ruleset: int, dd_left: int, rng_state: C.c_uint64,
+                   max_rows: int) -> tuple[np.ndarray, np.ndarray]:
+    """VN1 training rows: (features [rows, PI_DIM], target equity change for the side to move)."""
+    feat = np.zeros((max_rows, PI_DIM), dtype=np.uint8)
+    target = np.zeros(max_rows, dtype=np.float32)
+    rows = lib.tc_value_rollouts(env._h, mlp._h, games, ruleset, dd_left, C.byref(rng_state), max_rows,
+                                 feat.ctypes.data, target.ctypes.data)
+    if rows < 0:
+        raise RuntimeError(f"value rollouts failed ({rows})")
+    return feat[:rows], target[:rows]
+
+
+lib.tc_set_parallel.argtypes = [C.c_int]
+lib.tc_env_set_incremental.argtypes = [C.c_void_p, C.c_int, C.c_int]
+lib.tc_set_branch_share.argtypes = [C.c_int]
+lib.tc_env_set_team_rollout.argtypes = [C.c_void_p, C.c_void_p]
+
+
+def set_branch_share(on: bool) -> None:
+    """Branch labels: play out one card per run of rank-equivalent cards and copy its value."""
+    lib.tc_set_branch_share(int(on))
+lib.tc_set_offer_model.argtypes = [C.c_void_p]
+_offer_model = None
+
+
+def set_offer_model(mlp: "Mlp | None") -> None:
+    """Sooli offers by a fast acceptance model (tuppi_ai/offer_screen.py) instead of
+    the exact heuristic, process-wide; None restores the exact heuristic."""
+    global _offer_model
+    _offer_model = mlp  # keep the native weights alive
+    lib.tc_set_offer_model(mlp._h if mlp is not None else None)
+
+
+def set_parallel(on: bool) -> None:
+    """Spread each search over all cores (default) or run it on the calling thread
+    (same results; for batch jobs that already run one process per core)."""
+    lib.tc_set_parallel(int(on))
+
+
+if __import__("os").environ.get("TUPPI_AI_SERIAL") == "1":  # batch jobs: one process per core
+    set_parallel(False)
+
+
+lib.tc_selfplay_states.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int, _P(C.c_uint64), C.c_double,
+                                   C.c_double, C.c_int, C.c_void_p]
+lib.tc_selfplay_states.restype = C.c_int
+lib.tc_branch_values.argtypes = [C.c_void_p, C.c_void_p, C.c_void_p, C.c_int, C.c_int, C.c_int, _P(C.c_uint64),
+                                 C.c_void_p, C.c_void_p, C.c_void_p]
+lib.tc_branch_values.restype = C.c_int
+lib.tc_encode_states.argtypes = [C.c_void_p, C.c_int, C.c_int, C.c_void_p, C.c_void_p]
+MAX_K = 26  # at most 26 legal network actions (13 cards x 2 contracts in showing)
+
+
+lib.tc_selfplay_states_w.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int, _P(C.c_uint64), C.c_double,
+                                     C.c_double, C.c_void_p, C.c_int, C.c_void_p]
+lib.tc_selfplay_states_w.restype = C.c_int
+lib.tc_record_class.argtypes = [_P(TcDeal)]
+lib.tc_record_class.restype = C.c_int
+N_RECORD_CLASSES = 27  # 0 showing, 1 + trick NOLO play, 14 + trick RAMI play
+
+
+def record_classes(states, n: int) -> np.ndarray:
+    """Position class of each state (as tc_record_class), vectorised over the raw state buffer."""
+    raw = np.frombuffer(states, dtype=np.uint8).reshape(-1, C.sizeof(TcDeal))[:n]
+    phase = raw[:, TcDeal.phase.offset]
+    rami = raw[:, TcDeal.contract.offset].view(np.int8) == RAMI
+    trick = np.minimum(raw[:, TcDeal.n_played.offset] // 4, 12).astype(np.int8)
+    return np.where(phase == PH_SHOW, 0, np.where(rami, 14, 1) + trick).astype(np.int8)
+
+
+def selfplay_states(env: "Env", mlp: "Mlp", games: int, ruleset: int, rng_state: C.c_uint64, p_record: float,
+                    p_random: float, max_states: int, class_mult: np.ndarray | None = None):
+    """Full states recorded at random unforced decisions of policy self-play (docs/SELFPLAY_PLAN.md);
+    `class_mult` scales the recording probability per position class (importance sampling)."""
+    buf = (TcDeal * max_states)()
+    cm = None if class_mult is None else np.ascontiguousarray(class_mult, dtype=np.float64)
+    n = lib.tc_selfplay_states_w(env._h, mlp._h, games, ruleset, C.byref(rng_state), p_record, p_random,
+                                 None if cm is None else cm.ctypes.data, max_states, buf)
+    if n < 0:
+        raise RuntimeError(f"self-play failed ({n})")
+    return buf, n
+
+
+def branch_values(env: "Env", mlp: "Mlp", states, n: int, dd_left: int, rng_state: C.c_uint64,
+                  offset: int = 0):
+    """(actions [n, MAX_K], k [n], q [n, MAX_K]): every legal action of states[offset:offset+n] played
+    out by the policy; q is the acting team's equity change."""
+    actions = np.zeros((n, MAX_K), dtype=np.int32)
+    k = np.zeros(n, dtype=np.int32)
+    q = np.zeros((n, MAX_K), dtype=np.float32)
+    ptr = C.byref(states, offset * C.sizeof(TcDeal))
+    rc = lib.tc_branch_values(env._h, mlp._h, ptr, n, MAX_K, dd_left, C.byref(rng_state), actions.ctypes.data,
+                              k.ctypes.data, q.ctypes.data)
+    if rc != 0:
+        raise RuntimeError(f"branch values failed ({rc}); environment too small")
+    return actions, k, q
+
+
+lib.tc_world_values.argtypes = [C.c_void_p, C.c_void_p, C.c_void_p, C.c_int, C.c_int, C.c_int, C.c_int, C.c_int,
+                                _P(C.c_uint64), C.c_void_p, C.c_void_p, C.c_void_p, C.c_void_p]
+lib.tc_world_values.restype = C.c_int
+
+
+def world_values(env: "Env", mlp: "Mlp", states, n: int, worlds: int, include_true: bool, dd_left: int,
+                 rng_state: C.c_uint64, offset: int = 0):
+    """(actions [n, MAX_K], k [n], q [n, MAX_K] mean over worlds, q_true [n, MAX_K]) for
+    states[offset:offset+n]: every legal action played out by the policy in `worlds` worlds
+    (the true state first if include_true, the rest sampled from the acting seat's observation)."""
+    actions = np.zeros((n, MAX_K), dtype=np.int32)
+    k = np.zeros(n, dtype=np.int32)
+    q = np.zeros((n, MAX_K), dtype=np.float32)
+    qt = np.zeros((n, MAX_K), dtype=np.float32)
+    rc = lib.tc_world_values(env._h, mlp._h, C.byref(states, offset * C.sizeof(TcDeal)), n, MAX_K, worlds,
+                             int(include_true), dd_left, C.byref(rng_state), actions.ctypes.data, k.ctypes.data,
+                             q.ctypes.data, qt.ctypes.data)
+    if rc != 0:
+        raise RuntimeError(f"world values failed ({rc})")
+    return actions, k, q, qt
+
+
+lib.tc_ppo_rollouts.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int, _P(C.c_uint64), C.c_double, C.c_int] + \
+    [C.c_void_p] * 9
+lib.tc_ppo_rollouts.restype = C.c_int
+
+
+def ppo_rollouts(env: "Env", mlp: "Mlp", games: int, ruleset: int, rng_state: C.c_uint64, temperature: float = 1.0,
+                 max_rows: int | None = None) -> dict:
+    """On-policy sampled self-play trajectories for tuppi_ai/vrpo.py (see tc_ppo_rollouts)."""
+    max_rows = max_rows or games * 64
+    fb = (feature_dim(mlp.encoder) + 7) // 8
+    out = {"feat": np.zeros((max_rows, fb), np.uint8), "hidden": np.zeros((max_rows, 3), np.uint64),
+           "mask": np.zeros((max_rows, (NUM_ACTIONS + 7) // 8), np.uint8), "action": np.zeros(max_rows, np.uint8),
+           "logp": np.zeros(max_rows, np.float32), "team": np.zeros(max_rows, np.int8),
+           "deal": np.zeros(max_rows, np.int32), "step": np.zeros(max_rows, np.int16),
+           "reward": np.zeros(games, np.float32)}
+    n = lib.tc_ppo_rollouts(env._h, mlp._h, games, ruleset, C.byref(rng_state), temperature, max_rows,
+                            *(out[k].ctypes.data for k in ("feat", "hidden", "mask", "action", "logp", "team",
+                                                          "deal", "step", "reward")))
+    if n < 0:
+        raise RuntimeError(f"ppo rollouts failed ({n})")
+    return {k: (v if k == "reward" else v[:n]) for k, v in out.items()}
+
+
+def encode_states(states, n: int, encoder: int, offset: int = 0) -> tuple[np.ndarray, np.ndarray]:
+    feat = np.zeros((n, feature_dim(encoder)), dtype=np.uint8)
+    mask = np.zeros((n, NUM_ACTIONS), dtype=np.uint8)
+    lib.tc_encode_states(C.byref(states, offset * C.sizeof(TcDeal)), n, encoder, feat.ctypes.data, mask.ctypes.data)
+    return feat, mask
+
+
+lib.tc_duplicate_eval.argtypes = [C.c_void_p, C.c_void_p, C.c_void_p, C.c_int, C.c_int, C.c_int, C.c_int, C.c_int,
+                                  _P(C.c_uint64), C.c_void_p]
+lib.tc_duplicate_eval.restype = C.c_int
+
+
+lib.tc_set_eval_temperature.argtypes = [C.c_double]
+
+
+def duplicate_eval(env: "Env", mlp_a: "Mlp", mlp_b: "Mlp", base_deals: int, ruleset: int, rng_state: C.c_uint64,
+                   score=(0, 0), dd_left: int = 0, temperature: float = 0.0) -> np.ndarray:
+    """Per-base-deal mean equity change of the pair playing mlp_a (8 games per base deal); both sides
+    greedy, or sampling from softmax(logits / temperature) if temperature > 0."""
+    lib.tc_set_eval_temperature(temperature)
+    out = np.zeros(base_deals, dtype=np.float64)
+    rc = lib.tc_duplicate_eval(env._h, mlp_a._h, mlp_b._h, base_deals, ruleset, score[0], score[1], dd_left,
+                               C.byref(rng_state), out.ctypes.data)
+    lib.tc_set_eval_temperature(0.0)
+    if rc != 0:
+        raise RuntimeError(f"duplicate evaluation failed ({rc})")
+    return out
+
+
+lib.tc_set_showing_fix.argtypes = [C.c_int]
+
+
+def set_showing_fix(on: bool) -> None:
+    """Honour showing-fallback restrictions when sampling worlds (B0-S1; off by default)."""
+    lib.tc_set_showing_fix(int(bool(on)))
 
 
 def set_rollout_chunk(chunk: int) -> None:

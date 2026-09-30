@@ -18,6 +18,7 @@
 #include <string.h>
 
 #include "tuppi_core.h"
+#include "tuppi_mlp.h"
 
 typedef uint64_t u64;
 #define SM 0x1FFFULL
@@ -190,8 +191,24 @@ static int offer_world(TcDeal *w, uint64_t *rng) {
 // still open, the worlds that needed more, in full. All worlds are drawn
 // first, as before (the exchange and the solver draw nothing), so the rng
 // advances exactly as it always did and every decision is unchanged.
+// Fast offer model for self-play (tuppi_ai/offer_screen.py): NULL = the exact
+// heuristic below (the default). Set, a defender whose hand passes the
+// prefilter accepts with the model's predicted probability of the exact
+// heuristic accepting (encoder-1 observation, one logit), drawn from the
+// rollout's rng: the same acceptance distribution at a fraction of the cost.
+static const TcMlp *offer_model = NULL;
+void tc_set_offer_model(const TcMlp *m) { offer_model = m; }
+
 static int offer(const TcObs *o, uint64_t *rng) {
   if (!offer_prefilter(o->hand)) return TC_ACT_SOOLI_DECLINE;
+  if (offer_model) {
+    uint8_t f[2048];
+    float logit;
+    tc_encode(o, f);
+    tc_mlp_forward(offer_model, f, 1, &logit);
+    double u = (splitmix_(rng) >> 11) * (1.0 / 9007199254740992.0);
+    return u < 1.0 / (1.0 + exp(-(double)logit)) ? TC_ACT_SOOLI_ACCEPT : TC_ACT_SOOLI_DECLINE;
+  }
   const int need = (OFFER_WORLDS + 1) / 2;
   TcDeal w[OFFER_WORLDS];
   int state[OFFER_WORLDS];  // 1 survives, 0 does not, -2 undecided
