@@ -7,6 +7,79 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## SP1 frozen, diagnosed, and tested in search; the double-dummy structure of play (2026-09-30)
+
+**Freeze.** `docs/SP1_MANIFEST.json` records:
+- the code (f6463ce) and the reproducible library build (09d673d9);
+- the configuration and runtime flags (no label sharing or importance
+  weighting in SP1);
+- the assets and accounting: 43 iterations, 86.6M recorded decision states,
+  about 5e8 branch rollouts, 3.7 h;
+- the confirmations.
+
+The final policy is tracked in `models/sp1_policy_043.pt`.
+
+**Against the incumbent** (authoritative engine, v3, no search, 1,024 deals):
+**+0.01309 [+0.01192, +0.01425]**, 63.5% of deals won. The clone control
+scores -0.0001.
+
+**Diagnostics** (421,638 fresh positions labelled under policy 42):
+- **Clean held-out advantage R^2 is 0.051**, the same as logged, so the leak
+  between rows of one deal was negligible.
+- **By class:** bids 0.09, late RAMI 0.14, early NOLO 0.01.
+- **At the plateau the composite changes 2.8% of decisions,** at +0.0005 ±
+  0.0021 per change; the distilled network changes 4.3%, at -0.0008 ± 0.0011.
+  The Q net finds nothing more above label noise.
+- **In play against the incumbent:**
+
+| Comparison | Difference |
+| --- | --- |
+| composite (Q 43 + policy 42, margin) minus distilled 43 | +0.00048 [-0.00001, +0.00096] |
+| policy 43 minus policy 42 | -0.00029 [-0.00073, +0.00014] |
+
+Distillation costs at most about 0.0005, and the last iterations add nothing.
+
+**Search with SP1 rollouts (W=128), rollout-role grid.** Paired differences
+against clone/clone rollouts, same 1,024 deals (seed sp1-search-v2):
+
+| Own team | Opponents | Difference | RAMI declared |
+| --- | --- | --- | ---: |
+| SP1 | clone | **+0.00132 [+0.00041, +0.00222]** | 55% |
+| clone | SP1 | **-0.00285 [-0.00398, -0.00173]** | 28% |
+| SP1 | SP1 | +0.00077 [-0.00019, +0.00173] (pooled with the screen, 1,536 deals: +0.00093 [+0.00012, +0.00173]) | 40% |
+
+- Our own team is best modelled by the stronger policy and the opponents by a
+  model of their real play.
+- Modelling the incumbent as SP1 makes the search too cautious.
+- **Own-SP1/opponent-clone is the best search setting measured.** It is a
+  W=128 screen; confirm at W=1024 before live use.
+- Searcher(team_net=...) now runs natively (`tc_env_set_team_rollout`).
+
+**Exact solving of whole deals** (`tuppi_dd.c`, single thread, random
+positions). Median solve time:
+
+| Tricks left | 6 | 8 | 10 | 11 | 12 | 13 |
+| --- | --- | --- | --- | --- | --- | --- |
+| median | 0.16 ms | 2.4 ms | 50 ms | 126 ms | 1.1 s | 6.6 s |
+
+- NOLO is much harder than RAMI: 8.7 s vs 0.39 s median at 12 tricks left.
+- The table (2^18 entries) is likely too small beyond 11 tricks.
+
+**Double-dummy consensus of real positions** (`tools/dd_consensus.py`;
+2,000 SP1 card-play decisions with 2-9 tricks left, 48 consistent worlds
+each, every card solved exactly):
+- Mean consensus is 0.90-0.99, and no position falls below 0.5.
+- The clairvoyance gap is 0.0004-0.005 equity per decision and grows with
+  tricks left.
+- So at least in the last 9 tricks, play is mainly tactical and determinised
+  search is a sound fit.
+- SP1's action equals the robust double-dummy action (ties counted) in only
+  51-61% of mid-deal NOLO positions, losing 0.007-0.008 per decision against
+  it (RAMI: 70-94%, 0.001-0.003). The no-search policy is tactically weak in
+  mid-deal NOLO, where the search's rollouts and exact tail compensate.
+  - The double-dummy action ignores signalling, so it is a diagnostic, not a
+    target.
+
 ## Self-play engine: fast sooli offers, about 30k real-game deals/s (2026-09-29)
 
 For large-scale self-play learning (the owner asked how long 100M games would
