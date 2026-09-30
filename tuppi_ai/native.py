@@ -60,6 +60,26 @@ class TcObs(C.Structure):
 
 
 _P = C.POINTER
+class _Absent:
+    """Stands in for a symbol that an older library build lacks (the research
+    comparator builds of native/research); declaring its types is a no-op and
+    calling it raises."""
+
+    def __init__(self, name: str):
+        object.__setattr__(self, "name", name)
+
+    def __setattr__(self, key, value):
+        pass
+
+    def __call__(self, *args):
+        raise AttributeError(f"{self.name} is not in {lib._name}")
+
+
+def _sym(name: str):
+    """A library function whose types are declared only if this build has it (later additions)."""
+    return getattr(lib, name) if hasattr(lib, name) else _Absent(name)
+
+
 lib.tc_deal_init.argtypes = [_P(TcDeal), _P(C.c_uint64), C.c_int, C.c_int, C.c_int]
 lib.tc_deal_init_v.argtypes = [_P(TcDeal), _P(C.c_uint64), C.c_int, C.c_int, C.c_int, C.c_int]
 lib.tc_struct_sizes.argtypes = [_P(C.c_int)]
@@ -395,13 +415,13 @@ def search_values(env: "Env", mlp: Mlp, obs: TcObs, actions, worlds: int, dd_lef
     return out
 
 
-lib.tc_pi_feature_dim.restype = C.c_int
-lib.tc_encode_pi.argtypes = [_P(TcDeal), C.c_int, C.c_void_p]
-lib.tc_env_set_value.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int, C.c_int]
-lib.tc_value_rollouts.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int, C.c_int, _P(C.c_uint64), C.c_int,
+_sym("tc_pi_feature_dim").restype = C.c_int
+_sym("tc_encode_pi").argtypes = [_P(TcDeal), C.c_int, C.c_void_p]
+_sym("tc_env_set_value").argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int, C.c_int]
+_sym("tc_value_rollouts").argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int, C.c_int, _P(C.c_uint64), C.c_int,
                                   C.c_void_p, C.c_void_p]
-lib.tc_value_rollouts.restype = C.c_int
-PI_DIM = lib.tc_pi_feature_dim()
+_sym("tc_value_rollouts").restype = C.c_int
+PI_DIM = lib.tc_pi_feature_dim() if hasattr(lib, "tc_pi_feature_dim") else 0
 
 
 def encode_pi(deal: TcDeal, bot_side: bool = False) -> np.ndarray:
@@ -423,16 +443,16 @@ def value_rollouts(env: "Env", mlp: "Mlp", games: int, ruleset: int, dd_left: in
     return feat[:rows], target[:rows]
 
 
-lib.tc_set_parallel.argtypes = [C.c_int]
-lib.tc_env_set_incremental.argtypes = [C.c_void_p, C.c_int, C.c_int]
-lib.tc_set_branch_share.argtypes = [C.c_int]
-lib.tc_env_set_team_rollout.argtypes = [C.c_void_p, C.c_void_p]
+_sym("tc_set_parallel").argtypes = [C.c_int]
+_sym("tc_env_set_incremental").argtypes = [C.c_void_p, C.c_int, C.c_int]
+_sym("tc_set_branch_share").argtypes = [C.c_int]
+_sym("tc_env_set_team_rollout").argtypes = [C.c_void_p, C.c_void_p]
 
 
 def set_branch_share(on: bool) -> None:
     """Branch labels: play out one card per run of rank-equivalent cards and copy its value."""
     lib.tc_set_branch_share(int(on))
-lib.tc_set_offer_model.argtypes = [C.c_void_p]
+_sym("tc_set_offer_model").argtypes = [C.c_void_p]
 _offer_model = None
 
 
@@ -454,21 +474,21 @@ if __import__("os").environ.get("TUPPI_AI_SERIAL") == "1":  # batch jobs: one pr
     set_parallel(False)
 
 
-lib.tc_selfplay_states.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int, _P(C.c_uint64), C.c_double,
+_sym("tc_selfplay_states").argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int, _P(C.c_uint64), C.c_double,
                                    C.c_double, C.c_int, C.c_void_p]
-lib.tc_selfplay_states.restype = C.c_int
-lib.tc_branch_values.argtypes = [C.c_void_p, C.c_void_p, C.c_void_p, C.c_int, C.c_int, C.c_int, _P(C.c_uint64),
+_sym("tc_selfplay_states").restype = C.c_int
+_sym("tc_branch_values").argtypes = [C.c_void_p, C.c_void_p, C.c_void_p, C.c_int, C.c_int, C.c_int, _P(C.c_uint64),
                                  C.c_void_p, C.c_void_p, C.c_void_p]
-lib.tc_branch_values.restype = C.c_int
-lib.tc_encode_states.argtypes = [C.c_void_p, C.c_int, C.c_int, C.c_void_p, C.c_void_p]
+_sym("tc_branch_values").restype = C.c_int
+_sym("tc_encode_states").argtypes = [C.c_void_p, C.c_int, C.c_int, C.c_void_p, C.c_void_p]
 MAX_K = 26  # at most 26 legal network actions (13 cards x 2 contracts in showing)
 
 
-lib.tc_selfplay_states_w.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int, _P(C.c_uint64), C.c_double,
+_sym("tc_selfplay_states_w").argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int, _P(C.c_uint64), C.c_double,
                                      C.c_double, C.c_void_p, C.c_int, C.c_void_p]
-lib.tc_selfplay_states_w.restype = C.c_int
-lib.tc_record_class.argtypes = [_P(TcDeal)]
-lib.tc_record_class.restype = C.c_int
+_sym("tc_selfplay_states_w").restype = C.c_int
+_sym("tc_record_class").argtypes = [_P(TcDeal)]
+_sym("tc_record_class").restype = C.c_int
 N_RECORD_CLASSES = 27  # 0 showing, 1 + trick NOLO play, 14 + trick RAMI play
 
 
@@ -509,9 +529,9 @@ def branch_values(env: "Env", mlp: "Mlp", states, n: int, dd_left: int, rng_stat
     return actions, k, q
 
 
-lib.tc_world_values.argtypes = [C.c_void_p, C.c_void_p, C.c_void_p, C.c_int, C.c_int, C.c_int, C.c_int, C.c_int,
+_sym("tc_world_values").argtypes = [C.c_void_p, C.c_void_p, C.c_void_p, C.c_int, C.c_int, C.c_int, C.c_int, C.c_int,
                                 _P(C.c_uint64), C.c_void_p, C.c_void_p, C.c_void_p, C.c_void_p]
-lib.tc_world_values.restype = C.c_int
+_sym("tc_world_values").restype = C.c_int
 
 
 def world_values(env: "Env", mlp: "Mlp", states, n: int, worlds: int, include_true: bool, dd_left: int,
@@ -531,9 +551,9 @@ def world_values(env: "Env", mlp: "Mlp", states, n: int, worlds: int, include_tr
     return actions, k, q, qt
 
 
-lib.tc_ppo_rollouts.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int, _P(C.c_uint64), C.c_double, C.c_int] + \
+_sym("tc_ppo_rollouts").argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int, _P(C.c_uint64), C.c_double, C.c_int] + \
     [C.c_void_p] * 9
-lib.tc_ppo_rollouts.restype = C.c_int
+_sym("tc_ppo_rollouts").restype = C.c_int
 
 
 def ppo_rollouts(env: "Env", mlp: "Mlp", games: int, ruleset: int, rng_state: C.c_uint64, temperature: float = 1.0,
@@ -561,12 +581,12 @@ def encode_states(states, n: int, encoder: int, offset: int = 0) -> tuple[np.nda
     return feat, mask
 
 
-lib.tc_duplicate_eval.argtypes = [C.c_void_p, C.c_void_p, C.c_void_p, C.c_int, C.c_int, C.c_int, C.c_int, C.c_int,
+_sym("tc_duplicate_eval").argtypes = [C.c_void_p, C.c_void_p, C.c_void_p, C.c_int, C.c_int, C.c_int, C.c_int, C.c_int,
                                   _P(C.c_uint64), C.c_void_p]
-lib.tc_duplicate_eval.restype = C.c_int
+_sym("tc_duplicate_eval").restype = C.c_int
 
 
-lib.tc_set_eval_temperature.argtypes = [C.c_double]
+_sym("tc_set_eval_temperature").argtypes = [C.c_double]
 
 
 def duplicate_eval(env: "Env", mlp_a: "Mlp", mlp_b: "Mlp", base_deals: int, ruleset: int, rng_state: C.c_uint64,
@@ -583,7 +603,7 @@ def duplicate_eval(env: "Env", mlp_a: "Mlp", mlp_b: "Mlp", base_deals: int, rule
     return out
 
 
-lib.tc_set_showing_fix.argtypes = [C.c_int]
+_sym("tc_set_showing_fix").argtypes = [C.c_int]
 
 
 def set_showing_fix(on: bool) -> None:
