@@ -7,6 +7,33 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## SP2: a larger Q net from scratch does not beat SP1 (2026-09-30)
+
+Pre-registered in `docs/SELFPLAY_PLAN.md` (SP2 and its deviation).
+- **The setup:** a 768x4 Q net from scratch, label sharing, importance-weighted
+  recording, a whole-deal holdout, starting from SP1's final policy.
+- **The first attempt regressed** at iteration 1 (-0.0083 against SP1): the
+  weak new Q net passed the R^2 gate and its noise changed 24.7% of
+  decisions.
+- **The repair is a held-out improvement gate.** The policy changes only if
+  the composite's one-step gain on held-out deals (true-world labels under
+  pi_k) exceeds 2 standard errors, for the best margin in 0.006, 0.01, 0.02,
+  0.04.
+- **The restarted SP2 ran 12 iterations and was stopped by its rule** (no
+  iteration beyond SP1's interval in the last 8).
+  - Held-out R^2 climbed only from 0.021 to 0.039. The best Q weights came
+    at 0-400 steps each iteration, so the large net overfits the noisy labels
+    almost at once.
+  - The proposed changes lost on held-out deals at every margin in every
+    iteration: -0.0011 to -0.0002 per state at margin 0.006, shrinking toward
+    0 at 0.04.
+  - **The policy never changed:** the final policy is bit-for-bit SP1's.
+    Every check against SP1 was within ±0.00006.
+
+The gate did its job: no regression. But capacity alone, without a warm
+start, does not reach SP1's own Q quality in 12 iterations. SP2b (a 768x4 Q
+warm-started by distilling SP1's Q net, weight decay 1e-4) started at 09:34.
+
 ## SP1 frozen, diagnosed, and tested in search; the double-dummy structure of play (2026-09-30)
 
 **Freeze.** `docs/SP1_MANIFEST.json` records:
