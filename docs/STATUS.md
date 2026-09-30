@@ -7,7 +7,7 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
-## SP2: a larger Q net from scratch does not beat SP1 (2026-09-30)
+## SP2 and SP2b: a larger Q net does not beat SP1 (2026-09-30)
 
 Pre-registered in `docs/SELFPLAY_PLAN.md` (SP2 and its deviation).
 - **The setup:** a 768x4 Q net from scratch, label sharing, importance-weighted
@@ -31,8 +31,32 @@ Pre-registered in `docs/SELFPLAY_PLAN.md` (SP2 and its deviation).
     Every check against SP1 was within ±0.00006.
 
 The gate did its job: no regression. But capacity alone, without a warm
-start, does not reach SP1's own Q quality in 12 iterations. SP2b (a 768x4 Q
-warm-started by distilling SP1's Q net, weight decay 1e-4) started at 09:34.
+start, does not reach SP1's own Q quality in 12 iterations.
+
+**SP2b** (the same, with the 768x4 Q net warm-started by distilling SP1's Q
+net, and weight decay 1e-4) **was stopped by its rule at iteration 10.**
+- After distillation, held-out R^2 was 0.0496: SP1's Q level from the start.
+- It then stayed at 0.048-0.053 for all 10 iterations (20M more labelled
+  states).
+- Held-out gains stayed within about ±0.0001 of zero at every margin, and
+  the gate never opened.
+- The final policy is bit-for-bit SP1's.
+
+**Conclusion, as pre-registered: a larger Q net trained on single true-world
+labels does not break SP1's plateau. The labels, not Q capacity, limit it.**
+Each label is one deal's outcome with its actual hidden cards. Only about 5%
+of the advantage variance is predictable from the observation, and SP1's Q
+net already extracts it.
+
+**Levers left:**
+- **Lower-noise labels.** Average each state's action values over W worlds
+  sampled from the actor's observation, i.e. search values. That is expert
+  iteration over the SP1 policy, which the search improves by about +0.003
+  (SP1 +0.0131 alone vs +0.0164 as own-team rollouts in search).
+- **A different estimator.** A critic with privileged information, as in the
+  VRPO/PPO packets.
+- **Targeted tactics.** The no-search policy loses about 0.007 per decision
+  against the robust double-dummy action in mid-deal NOLO.
 
 ## SP1 frozen, diagnosed, and tested in search; the double-dummy structure of play (2026-09-30)
 
