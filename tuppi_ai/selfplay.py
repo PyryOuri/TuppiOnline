@@ -61,6 +61,8 @@ class Config:
     p_random: float = 0.03
     margin: float = 0.006          # equity: how much better than pi_k's action a new one must look
     min_adv_r2: float = 0.01       # the policy only changes once Q explains this much held-out advantage variance
+    gate_z: float = 2.0            # ... and the composite's held-out one-step gain exceeds gate_z standard errors
+    margins: str = ""              # margin grid chosen on held-out gain, e.g. "0.006,0.01,0.02,0.04" ("" = margin only)
     replay_iters: int = 3
     q_width: int = 0               # 0: the policy net's shape, warm-started from it
     q_blocks: int = 0
@@ -267,9 +269,36 @@ class Learner:
         self.qnet.load_state_dict(best[2])
         return float(np.mean(losses[-3:])) / SCALE ** 2, best[0], best[1]
 
-    def composite_labels(self, D: dict) -> tuple[torch.Tensor, dict]:
+    def heldout_gain(self, H: dict, margin: float) -> tuple[float, float, float]:
+        """One-step gain of the composite policy on held-out states: mean over states of
+        label[composite action] - label[pi_k action] (labels are pi_k continuations, so this
+        estimates the improvement of changing only this decision), importance-weighted.
+        Returns (mean gain per state in equity, its standard error, share of states changed)."""
+        self.qnet.eval()
+        pk = self.policy.to(self.dev).eval()
+        gains, ws, changed = [], [], 0
+        with torch.no_grad():
+            for i in range(0, len(H["feat"]), 65536):
+                sl = torch.arange(i, min(i + 65536, len(H["feat"])), device=self.dev)
+                x, m, tgt, w = self._batch(H, sl)
+                q = self.qnet(x).masked_fill(~m, float("-inf"))
+                old = pk(x).masked_fill(~m, float("-inf")).argmax(1)
+                new = (q + (margin * SCALE) * torch.nn.functional.one_hot(old, native.NUM_ACTIONS)).argmax(1)
+                r = torch.arange(len(sl), device=self.dev)
+                gains.append(((tgt[r, new] - tgt[r, old]) / SCALE).cpu().numpy())
+                ws.append(w.cpu().numpy())
+                changed += int((new != old).sum())
+        self.policy.cpu()
+        self.qnet.train()
+        g, w = np.concatenate(gains).astype(np.float64), np.concatenate(ws).astype(np.float64)
+        mean = float((g * w).sum() / w.sum())
+        se = float(np.sqrt(((w * (g - mean)) ** 2).sum()) / w.sum())
+        return mean, se, changed / len(g)
+
+    def composite_labels(self, D: dict, margin: float | None = None) -> tuple[torch.Tensor, dict]:
         """argmax_a Q + margin * 1(a = pi_k) for every state of D, and diagnostics."""
         cfg, n = self.cfg, len(D["feat"])
+        margin = cfg.margin if margin is None else margin
         self.qnet.eval()
         pk = self.policy.to(self.dev).eval()
         labels, changed, show_rows, show_rami_old, show_rami_new = [], 0, 0, 0, 0
@@ -279,7 +308,7 @@ class Learner:
                 x, m, _, _ = self._batch(D, sl)
                 q = self.qnet(x).masked_fill(~m, float("-inf"))
                 old = pk(x).masked_fill(~m, float("-inf")).argmax(1)
-                q = q + (cfg.margin * SCALE) * torch.nn.functional.one_hot(old, native.NUM_ACTIONS)
+                q = q + (margin * SCALE) * torch.nn.functional.one_hot(old, native.NUM_ACTIONS)
                 new = q.argmax(1)
                 labels.append(new)
                 changed += int((new != old).sum())
@@ -354,11 +383,20 @@ class Learner:
         D = {key: torch.cat([r[key] for r in self.replay]) for key in ("feat", "ids", "q", "w")}
         t1 = time.perf_counter()
         adv_mse, r2, q_best_step = self.train_q(D, H)
-        if r2 >= cfg.min_adv_r2:
-            labels, diag = self.composite_labels(D)
+        # Improvement gate on held-out deals: the composite's one-step gain must be significantly
+        # positive (for the best margin of the grid); otherwise the policy is kept.
+        grid = [float(x) for x in cfg.margins.split(",")] if cfg.margins else [cfg.margin]
+        trials = {mg: self.heldout_gain(H, mg) for mg in grid}
+        ok = {mg: t for mg, t in trials.items() if t[0] > cfg.gate_z * t[1]}
+        margin = max(ok, key=lambda mg: ok[mg][0]) if ok else None
+        gate = {"heldout_gain": {str(mg): [round(t[0], 7), round(t[1], 7), round(t[2], 4)] for mg, t in trials.items()},
+                "margin_used": margin}
+        if r2 >= cfg.min_adv_r2 and margin is not None:
+            labels, diag = self.composite_labels(D, margin)
             ce = self.train_policy(D, labels)
-        else:  # Q has not learned enough yet: keep the policy
+        else:  # no significant held-out improvement: keep the policy
             diag, ce = {"changed": 0.0, "show_states": 0, "rami_old": None, "rami_new": None}, None
+        diag.update(gate)
         t2 = time.perf_counter()
         self.policy.load_state_dict({k: v.detach().cpu() for k, v in self.pnet.state_dict().items()})
         mlp_next = native.Mlp(self.policy)

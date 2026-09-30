@@ -115,3 +115,21 @@ from SP1's final policy:
 - **Attribution:** SP2 changes the Q size and the labelling efficiency
   together. A gain is credited to the combination; separating them would be
   a follow-up ablation.
+
+**Deviation (recorded 2026-09-30 08:10, before the restarted run).**
+- **Failure.** SP2's first iteration regressed badly: -0.0083 against SP1's
+  final policy (vs the clone +0.0031, from +0.0126). The fresh 768x4 Q net
+  (held-out R^2 0.022) passed the R^2 gate (0.01), and its noise beat the
+  0.006 margin on 24.7% of decisions. That was harmless from the clone in SP1
+  but harmful from a strong policy. The failed run is kept in
+  `runs/selfplay/sp2_failed_iter1`.
+- **Repair: a held-out improvement gate.** On the held-out deals, measure the
+  composite's one-step gain: label of its action minus label of pi_k's
+  action, under pi_k continuations, importance-weighted. The policy changes
+  only if that gain exceeds 2 standard errors, for the best margin of the
+  grid 0.006, 0.01, 0.02, 0.04 (chosen on the held-out deals, never on
+  evaluation data).
+  - Checked from the clone: margin 0.003 changed 45% of decisions for
+    -0.00018; the gate chose 0.02 (+0.00021 ± 0.00010).
+- **SP2 restarts with this gate.** Every other setting, the criteria and the
+  8 h budget are unchanged, counted from the restart.
