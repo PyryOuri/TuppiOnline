@@ -7,6 +7,34 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## Live: own-team SP1 rollouts (2026-09-30)
+
+Pre-registered in `docs/SELFPLAY_PLAN.md` (live rollout roles).
+
+**The W=1024 confirmation** (512 deals, seed perf-e7-v1, rs=1, paired with
+the live configuration):
+
+| | Result |
+| --- | --- |
+| Live, clone rollouts on all seats | +0.01608 |
+| Own-team SP1 rollouts, opponents clone | +0.01666 |
+| Paired difference | **+0.00058 [-0.00077, +0.00192]** |
+
+- It is non-inferior, and the point estimate is positive, so it is deployed.
+- The candidate declares RAMI more often (declared 0.557 against 0.468,
+  stolen 0.223 against 0.200) and uses about 10% more CPU per deal.
+- Together with the W=128 screen (+0.00132 [+0.00041, +0.00222]), own-team
+  SP1 rollouts are the best search setting measured.
+
+**Installed:**
+- `best_agents` uses `models/sp1_policy_043.pt` for the searching team's
+  rollouts, at every world count (TuppiAI main ca1dad9).
+- The library is rebuilt with the sp/selfplay merge. With the new switches
+  off, its move fingerprint equals the previous library's (617 decisions).
+- The live server was restarted.
+- `best_agents(team_rollout=False)` is the earlier configuration. The C0-C5
+  research code pins it as its B0.
+
 ## SP2 and SP2b: a larger Q net does not beat SP1 (2026-09-30)
 
 Pre-registered in `docs/SELFPLAY_PLAN.md` (SP2 and its deviation).
