@@ -142,6 +142,7 @@ class Learner:
             om, _ = load_offer(cfg.offer_model)
             self._offer = native.Mlp(om, in_dim=om.config["in_dim"], out_dim=1)
             native.set_offer_model(self._offer)
+        native.set_showing_fix(True)  # labels from worlds that respect showing fallbacks (B0-S1)
         native.set_branch_share(cfg.share_labels)
         from .best import EQUITY
         from .equity import Equity

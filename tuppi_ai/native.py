@@ -583,6 +583,14 @@ def duplicate_eval(env: "Env", mlp_a: "Mlp", mlp_b: "Mlp", base_deals: int, rule
     return out
 
 
+lib.tc_set_showing_fix.argtypes = [C.c_int]
+
+
+def set_showing_fix(on: bool) -> None:
+    """Honour showing-fallback restrictions when sampling worlds (B0-S1; off by default)."""
+    lib.tc_set_showing_fix(int(bool(on)))
+
+
 def set_rollout_chunk(chunk: int) -> None:
     """Rollouts per network batch in the search (same moves; 32 = lowest latency,
     128 = least total work, for batch jobs running several processes)."""
