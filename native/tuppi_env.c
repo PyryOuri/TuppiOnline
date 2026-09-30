@@ -929,6 +929,9 @@ void tc_encode_states(const TcDeal *states, int n, int encoder, uint8_t *feat, u
 // team A play mA, the others mB; sooli phases by the heuristics; the solver
 // tail for the last dd_left tricks if > 0. value[b] is team A's mean
 // match-equity change over base deal b's 8 games. e must hold 8 * n_base games.
+static double dup_temperature = 0.0;  // > 0: both sides sample from softmax(logits / T) (tc_set_eval_temperature)
+void tc_set_eval_temperature(double t) { dup_temperature = t; }
+
 int tc_duplicate_eval(TcEnv *e, const TcMlp *mA, const TcMlp *mB, int n_base, int ruleset, int score0,
                       int score1, int dd_left, uint64_t *rng, double *value) {
   const int n = 8 * n_base;
@@ -999,7 +1002,16 @@ int tc_duplicate_eval(TcEnv *e, const TcMlp *mA, const TcMlp *mB, int n_base, in
         TcDeal *d = &e->g[i].d;
         const float *qr = ((d->cur & 1) == a_team[i] ? qa : qb) + (size_t)r * TC_NUM_ACTIONS;
         int nl = tc_legal(d, legal), best = legal[0];
-        for (int t = 1; t < nl; t++) if (qr[legal[t]] > qr[best]) best = legal[t];
+        if (dup_temperature > 0.0 && nl > 1) {
+          double mx = -1e300, z = 0.0, p[TC_NUM_ACTIONS];
+          for (int t = 0; t < nl; t++) if (qr[legal[t]] > mx) mx = qr[legal[t]];
+          for (int t = 0; t < nl; t++) { p[t] = exp((qr[legal[t]] - mx) / dup_temperature); z += p[t]; }
+          double u = unit(&e->g[i].rng) * z, acc = 0.0;
+          best = legal[nl - 1];
+          for (int t = 0; t < nl; t++) { acc += p[t]; if (u < acc) { best = legal[t]; break; } }
+        } else {
+          for (int t = 1; t < nl; t++) if (qr[legal[t]] > qr[best]) best = legal[t];
+        }
         tc_apply(d, best);
         record_if_done(e, i, total);
       }

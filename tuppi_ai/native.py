@@ -566,12 +566,18 @@ lib.tc_duplicate_eval.argtypes = [C.c_void_p, C.c_void_p, C.c_void_p, C.c_int, C
 lib.tc_duplicate_eval.restype = C.c_int
 
 
+lib.tc_set_eval_temperature.argtypes = [C.c_double]
+
+
 def duplicate_eval(env: "Env", mlp_a: "Mlp", mlp_b: "Mlp", base_deals: int, ruleset: int, rng_state: C.c_uint64,
-                   score=(0, 0), dd_left: int = 0) -> np.ndarray:
-    """Per-base-deal mean equity change of the pair playing mlp_a (8 games per base deal)."""
+                   score=(0, 0), dd_left: int = 0, temperature: float = 0.0) -> np.ndarray:
+    """Per-base-deal mean equity change of the pair playing mlp_a (8 games per base deal); both sides
+    greedy, or sampling from softmax(logits / temperature) if temperature > 0."""
+    lib.tc_set_eval_temperature(temperature)
     out = np.zeros(base_deals, dtype=np.float64)
     rc = lib.tc_duplicate_eval(env._h, mlp_a._h, mlp_b._h, base_deals, ruleset, score[0], score[1], dd_left,
                                C.byref(rng_state), out.ctypes.data)
+    lib.tc_set_eval_temperature(0.0)
     if rc != 0:
         raise RuntimeError(f"duplicate evaluation failed ({rc})")
     return out
