@@ -304,3 +304,25 @@ decisions were illegal. Such decisions are 2.9% of card-play decisions.
 It is a correctness fix, so non-inferiority suffices at W=128, as for exact
 changes that alter moves. Adoption means the live default is switched on
 after this screen.
+
+## VRPO2: continuation (pre-registered 2026-10-01 02:05, before VRPO1 ended; run only if VRPO1 passes its improvement test)
+
+**Why.** VRPO1's native check against SP1 was still climbing near the end of
+its budget (+0.0039 at iteration 276), with a stable KL and entropy.
+
+**The change.** The same settings as VRPO1, starting from VRPO1's final
+actor and its critic (`critic_init`), with no critic-only warm-up.
+- The KL, clip and learning rates are unchanged.
+- The reference of the native checks stays SP1.
+
+**Criteria:**
+- **The result** is the final actor.
+- **Budget:** at most 6 h.
+- **Stop early** for divergence (three consecutive checks below VRPO1's
+  final result, measured as vs SP1 upper bound below VRPO1's final vs SP1
+  point) or for a plateau: after iteration 150, no check in the last 90
+  iterations beyond the best earlier check by more than its interval.
+- **Primary test:** authoritative engine, no search, 1,024 fresh deals (seed
+  vrpo2-confirm-v1), paired against VRPO1's final actor.
+  - **Improvement:** at least +0.0010 with the lower bound above 0. The bar
+    is lower than SP2's +0.0020, because this is a continuation.
