@@ -59,7 +59,8 @@ def _make_candidate(spec: str) -> dict:
     efficiency options (docs/EFFICIENCY_PLAN.md): `eq=1` rank-equivalent cards
     searched once (E6); `adb=<batch>[:adz=<z>][:add=<delta>][:adp=1]` adaptive
     worlds for bids (and trick play with adp=1), `w` as the cap (E7); `rs=1`
-    worlds seeded from the information state (paired measurements);
+    worlds seeded from the information state (paired measurements); `sf=1`
+    worlds honour showing-fallback restrictions (B0-S1);
     `vn=<value net>[:vlb=<tricks>][:vlp=<tricks>][:vbb=1]` value-net leaves
     for bid searches (vlb, default 0 = start of play; -1 off) and card-play
     searches (vlp, default -1 = off) (docs/VALUE_NET_PLAN.md)."""
@@ -82,6 +83,9 @@ def _make_candidate(spec: str) -> dict:
             belief["opp_temp"] = float(opts["ot"])
         if "team" in opts:
             belief["team_net"] = qmodel.load(opts["team"], "cpu")
+        if int(opts.get("sf", 0)):  # B0-S1 sampler fix (process-wide; the incumbent does not search)
+            from . import native
+            native.set_showing_fix(True)
         if "bn" in opts:
             from .belief import load as load_belief
             belief.update(belief_net=load_belief(opts["bn"]), belief_n=int(opts.get("bN", 1024)),
