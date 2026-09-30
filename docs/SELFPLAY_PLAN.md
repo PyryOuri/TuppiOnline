@@ -180,7 +180,7 @@ of the searching team's own seats, and the clone for the opponents.
 -0.0010 **and** the point estimate is above 0. **Otherwise** it stays at
 W=128 evidence and is not deployed.
 
-## VRPO1 (pre-registered 2026-09-30 23:20, before its run)
+## VRPO1 (pre-registered 2026-09-30 23:15, before its run)
 
 **Method** (`tuppi_ai/vrpo.py`; Fan and Farina 2026, arXiv 2605.19235):
 - PPO on the SP1 policy.
@@ -235,7 +235,7 @@ W=128 evidence and is not deployed.
 - **Product test**, only if it improves: search with VRPO own-team rollouts
   against search with SP1 own-team rollouts, W=128, 1,024 fresh deals.
 
-## SP3: search labels (pre-registered 2026-09-30 23:45, before its run)
+## SP3: search labels (pre-registered 2026-09-30 23:31, before its run)
 
 **Why.** SP2 and SP2b showed that single true-world labels limit SP1's
 policy iteration, not Q capacity. SP3 trains Q on search results instead.
@@ -287,7 +287,7 @@ labels (which include the solver tail), as in SP2.
   against search with SP1 own-team rollouts (the live setting), W=128, 1,024
   fresh deals.
 
-## Sampler fix B0-S1: strength screen (pre-registered 2026-09-30 23:55)
+## Sampler fix B0-S1: strength screen (pre-registered 2026-09-30 23:33)
 
 **The fix.** When a showing fallback is on record, the search's world
 sampler honours what it implies about the original hands (`sf=1`,
