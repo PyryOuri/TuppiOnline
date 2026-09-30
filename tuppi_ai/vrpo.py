@@ -68,6 +68,7 @@ class Config:
     lr_critic: float = 3e-4
     critic_width: int = 512
     critic_blocks: int = 4
+    critic_init: str = ""            # warm start: a critic_latest.pt of an earlier run (same shape)
     warmup_iters: int = 6            # critic-only iterations before the actor moves
     max_kl: float = 0.02             # stop the actor epochs early above this mean KL
     eval_every: int = 3
@@ -136,6 +137,11 @@ class VRPO:
         self.actor = qmodel.load(cfg.init, self.dev).train()
         self.encoder, self.dim = self.actor.encoder, native.feature_dim(self.actor.encoder)
         self.critic = Critic(self.dim + HIDDEN_BITS, cfg.critic_width, cfg.critic_blocks).to(self.dev)
+        if cfg.critic_init:
+            ck = torch.load(cfg.critic_init, map_location="cpu")
+            if ck["config"] != self.critic.config:
+                raise ValueError(f"critic shape {ck['config']} != {self.critic.config}")
+            self.critic.load_state_dict(ck["state"])
         self.opt_a = torch.optim.AdamW(self.actor.parameters(), lr=cfg.lr_actor, weight_decay=0.0,
                                        fused=self.dev.type == "mps")
         self.opt_c = torch.optim.AdamW(self.critic.parameters(), lr=cfg.lr_critic, weight_decay=1e-5,
