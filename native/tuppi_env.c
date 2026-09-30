@@ -2,6 +2,7 @@
 // Every live game always has exactly one actor waiting, so one call observes N
 // decisions and one call applies N actions.
 #include <dispatch/dispatch.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -1012,4 +1013,162 @@ int tc_duplicate_eval(TcEnv *e, const TcMlp *mA, const TcMlp *mB, int n_base, in
   }
   free(total); free(idx); free(a_team);
   return 0;
+}
+
+// Search-value labels (SP3): for each state, every legal action (network ids,
+// at most max_k) is played out with the policy on all seats in W worlds: the
+// true state (if include_true) and worlds sampled from the acting seat's
+// observation (tc_sample_world, with the showing-fallback restrictions),
+// finishing the last dd_left tricks exactly. q[s * max_k + j] is the acting
+// team's mean match-equity change over the worlds; q_true the value in the
+// true world alone (0 if include_true is off). e must hold the sum over states
+// of W * k[s] games (with label sharing, fewer). Returns 0, -1 if some state
+// admits no world, -2 if e is too small.
+int tc_world_values(TcEnv *e, const TcMlp *m, const TcDeal *states, int n_states, int max_k, int W, int include_true,
+                    int dd_left, uint64_t *rng, int32_t *actions, int32_t *k, float *q, float *q_true) {
+  int legal[TC_NUM_ACTIONS_V2];
+  for (int s = 0; s < n_states; s++) {
+    int nl = tc_legal(&states[s], legal), kk = 0;
+    for (int j = 0; j < nl && kk < max_k; j++) if (legal[j] < TC_NUM_ACTIONS) actions[s * max_k + kk++] = legal[j];
+    k[s] = kk;
+  }
+  // Worlds first (sampling draws from rng, sequentially, so labels are reproducible).
+  TcDeal *worlds = malloc(sizeof(TcDeal) * (size_t)n_states * W);
+  for (int s = 0; s < n_states; s++) {
+    TcObs ob;
+    tc_observe(&states[s], states[s].cur, &ob);
+    for (int w = 0; w < W; w++) {
+      TcDeal *dst = &worlds[(size_t)s * W + w];
+      if (include_true && w == 0) { *dst = states[s]; continue; }
+      if (tc_sample_world(&ob, rng, dst) != 0) { free(worlds); return -1; }
+    }
+  }
+  int total_games = 0;
+  for (int s = 0; s < n_states; s++)
+    for (int w = 0; w < W; w++)
+      for (int j = 0; j < k[s]; j++) {
+        const TcDeal *d = &worlds[(size_t)s * W + w];
+        total_games += share_rep(d, actions[s * max_k + j]) == actions[s * max_k + j];
+      }
+  if (total_games > e->n) { free(worlds); return -2; }
+  double *total = calloc((size_t)total_games, sizeof(double));
+  int *idx = malloc(sizeof(int) * (size_t)total_games);
+  int *slot = malloc(sizeof(int) * (size_t)n_states * W * max_k);
+  int g = 0;
+  for (int s = 0; s < n_states; s++)
+    for (int w = 0; w < W; w++) {
+      const TcDeal *d = &worlds[(size_t)s * W + w];
+      int *sl = slot + ((size_t)s * W + w) * max_k;
+      for (int j = 0; j < k[s]; j++) {
+        int a = actions[s * max_k + j];
+        if (share_rep(d, a) != a) continue;
+        sl[j] = g;
+        e->g[g].d = *d;
+        e->g[g].live = 1;
+        tc_apply(&e->g[g].d, a);
+        record_if_done(e, g, total);
+        g++;
+      }
+      for (int j = 0; j < k[s]; j++) {
+        int a = actions[s * max_k + j], rep = share_rep(d, a);
+        if (rep == a) continue;
+        for (int r = 0; r < k[s]; r++) if (actions[s * max_k + r] == rep) { sl[j] = sl[r]; break; }
+      }
+    }
+  play_out(e, m, total_games, dd_left, rng, total, idx, NULL, NULL);
+  for (int s = 0; s < n_states; s++) {
+    const double sign = (states[s].cur & 1) == 0 ? 1.0 : -1.0;
+    for (int j = 0; j < k[s]; j++) {
+      double sum = 0.0;
+      for (int w = 0; w < W; w++) sum += total[slot[((size_t)s * W + w) * max_k + j]];
+      q[s * max_k + j] = (float)(sign * sum / W);
+      q_true[s * max_k + j] = include_true ? (float)(sign * total[slot[(size_t)s * W * max_k + j]]) : 0.0f;
+    }
+  }
+  free(worlds); free(total); free(idx); free(slot);
+  return 0;
+}
+
+// ------------------------------------------------------------- VRPO data
+// On-policy trajectories for policy-gradient self-play (tuppi_ai/vrpo.py): n
+// random deals, every network decision (showing and trick play) of all four
+// seats sampled from softmax(logits / temperature) over the legal actions;
+// sooli phases by the heuristics; no solver tail. Per recorded decision:
+// packed actor features (big-endian bits, as numpy.packbits), the other three
+// hands (relative seats 1..3, for the training-only critic), the packed legal
+// mask, the action, its log-probability under the behaviour policy, the acting
+// team, the deal index and the decision's step within its deal. reward[i] is
+// deal i's team-0 match-equity change. Returns the number of rows.
+int tc_ppo_rollouts(TcEnv *e, const TcMlp *m, int n, int ruleset, uint64_t *rng, double temperature, int max_rows,
+                    uint8_t *feat_packed, uint64_t *hidden, uint8_t *mask_packed, uint8_t *action, float *logp,
+                    int8_t *team, int32_t *deal, int16_t *step, float *reward) {
+  if (n > e->n) return -2;
+  random_deals(e, n, ruleset, rng);
+  inc_reset(e, n);
+  double *total = calloc((size_t)n, sizeof(double));
+  int *idx = malloc(sizeof(int) * (size_t)n);
+  int16_t *steps = calloc((size_t)n, sizeof(int16_t));
+  const int enc = tc_mlp_encoder(m), dim = tc_feature_dim_v(enc), fb = (dim + 7) / 8, mb = (TC_NUM_ACTIONS + 7) / 8;
+  __block int rows = 0;
+  int *counter = &rows;
+  for (;;) {
+    int ns = 0;
+    for (int i = 0; i < n; i++)
+      if (e->g[i].d.phase >= TC_PH_SOOLI_OFFER) idx[ns++] = i;
+    if (ns) par_apply((size_t)ns, ^(size_t j) { resolve_sooli(e, idx[j], &e->g[idx[j]].rng, total); });
+    int live = 0;
+    for (int i = 0; i < n; i++) if (e->g[i].d.phase != TC_PH_DONE) idx[live++] = i;
+    if (!live) break;
+    const int chunk = rollout_chunk;
+    par_apply((size_t)(live + chunk - 1) / chunk, ^(size_t c) {
+      int lo = (int)c * chunk, hi = lo + chunk < live ? lo + chunk : live, nrow = hi - lo;
+      uint8_t *feat = malloc((size_t)nrow * dim);
+      float *q = malloc(sizeof(float) * (size_t)nrow * TC_NUM_ACTIONS);
+      int legal[TC_NUM_ACTIONS_V2];
+      double p[TC_NUM_ACTIONS];
+      TcObs ob;
+      for (int r = 0; r < nrow; r++) {
+        TcDeal *d = &e->g[idx[lo + r]].d;
+        tc_observe(d, d->cur, &ob);
+        tc_encode_v(&ob, feat + (size_t)r * dim, enc);
+      }
+      forward_games(e, m, idx + lo, nrow, feat, dim, q);
+      for (int r = 0; r < nrow; r++) {
+        const int i = idx[lo + r];
+        TcGame *g = &e->g[i];
+        TcDeal *d = &g->d;
+        const float *qr = q + (size_t)r * TC_NUM_ACTIONS;
+        int nl = tc_legal(d, legal);
+        double mx = -1e300, z = 0.0;
+        for (int t = 0; t < nl; t++) if (qr[legal[t]] > mx) mx = qr[legal[t]];
+        for (int t = 0; t < nl; t++) { p[t] = exp((qr[legal[t]] - mx) / temperature); z += p[t]; }
+        double u = unit(&g->rng) * z, acc = 0.0;
+        int pick = nl - 1;
+        for (int t = 0; t < nl; t++) { acc += p[t]; if (u < acc) { pick = t; break; } }
+        const int slot = __atomic_fetch_add(counter, 1, __ATOMIC_RELAXED);
+        if (slot < max_rows) {
+          uint8_t *fp = feat_packed + (size_t)slot * fb, *mp = mask_packed + (size_t)slot * mb;
+          memset(fp, 0, (size_t)fb);
+          memset(mp, 0, (size_t)mb);
+          const uint8_t *fr = feat + (size_t)r * dim;
+          for (int j = 0; j < dim; j++) if (fr[j]) fp[j >> 3] |= (uint8_t)(0x80 >> (j & 7));
+          for (int t = 0; t < nl; t++) mp[legal[t] >> 3] |= (uint8_t)(0x80 >> (legal[t] & 7));
+          for (int k = 1; k < 4; k++) hidden[(size_t)slot * 3 + k - 1] = d->hand[(d->cur + k) & 3];
+          action[slot] = (uint8_t)legal[pick];
+          logp[slot] = (float)log(p[pick] / z);
+          team[slot] = (int8_t)(d->cur & 1);
+          deal[slot] = i;
+          step[slot] = steps[i];
+        }
+        steps[i]++;
+        tc_apply(d, legal[pick]);
+        record_if_done(e, i, total);
+      }
+      free(feat);
+      free(q);
+    });
+  }
+  for (int i = 0; i < n; i++) reward[i] = (float)total[i];
+  free(total); free(idx); free(steps);
+  return rows < max_rows ? rows : max_rows;
 }

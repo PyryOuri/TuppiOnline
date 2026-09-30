@@ -509,6 +509,51 @@ def branch_values(env: "Env", mlp: "Mlp", states, n: int, dd_left: int, rng_stat
     return actions, k, q
 
 
+lib.tc_world_values.argtypes = [C.c_void_p, C.c_void_p, C.c_void_p, C.c_int, C.c_int, C.c_int, C.c_int, C.c_int,
+                                _P(C.c_uint64), C.c_void_p, C.c_void_p, C.c_void_p, C.c_void_p]
+lib.tc_world_values.restype = C.c_int
+
+
+def world_values(env: "Env", mlp: "Mlp", states, n: int, worlds: int, include_true: bool, dd_left: int,
+                 rng_state: C.c_uint64, offset: int = 0):
+    """(actions [n, MAX_K], k [n], q [n, MAX_K] mean over worlds, q_true [n, MAX_K]) for
+    states[offset:offset+n]: every legal action played out by the policy in `worlds` worlds
+    (the true state first if include_true, the rest sampled from the acting seat's observation)."""
+    actions = np.zeros((n, MAX_K), dtype=np.int32)
+    k = np.zeros(n, dtype=np.int32)
+    q = np.zeros((n, MAX_K), dtype=np.float32)
+    qt = np.zeros((n, MAX_K), dtype=np.float32)
+    rc = lib.tc_world_values(env._h, mlp._h, C.byref(states, offset * C.sizeof(TcDeal)), n, MAX_K, worlds,
+                             int(include_true), dd_left, C.byref(rng_state), actions.ctypes.data, k.ctypes.data,
+                             q.ctypes.data, qt.ctypes.data)
+    if rc != 0:
+        raise RuntimeError(f"world values failed ({rc})")
+    return actions, k, q, qt
+
+
+lib.tc_ppo_rollouts.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int, _P(C.c_uint64), C.c_double, C.c_int] + \
+    [C.c_void_p] * 9
+lib.tc_ppo_rollouts.restype = C.c_int
+
+
+def ppo_rollouts(env: "Env", mlp: "Mlp", games: int, ruleset: int, rng_state: C.c_uint64, temperature: float = 1.0,
+                 max_rows: int | None = None) -> dict:
+    """On-policy sampled self-play trajectories for tuppi_ai/vrpo.py (see tc_ppo_rollouts)."""
+    max_rows = max_rows or games * 64
+    fb = (feature_dim(mlp.encoder) + 7) // 8
+    out = {"feat": np.zeros((max_rows, fb), np.uint8), "hidden": np.zeros((max_rows, 3), np.uint64),
+           "mask": np.zeros((max_rows, (NUM_ACTIONS + 7) // 8), np.uint8), "action": np.zeros(max_rows, np.uint8),
+           "logp": np.zeros(max_rows, np.float32), "team": np.zeros(max_rows, np.int8),
+           "deal": np.zeros(max_rows, np.int32), "step": np.zeros(max_rows, np.int16),
+           "reward": np.zeros(games, np.float32)}
+    n = lib.tc_ppo_rollouts(env._h, mlp._h, games, ruleset, C.byref(rng_state), temperature, max_rows,
+                            *(out[k].ctypes.data for k in ("feat", "hidden", "mask", "action", "logp", "team",
+                                                          "deal", "step", "reward")))
+    if n < 0:
+        raise RuntimeError(f"ppo rollouts failed ({n})")
+    return {k: (v if k == "reward" else v[:n]) for k, v in out.items()}
+
+
 def encode_states(states, n: int, encoder: int, offset: int = 0) -> tuple[np.ndarray, np.ndarray]:
     feat = np.zeros((n, feature_dim(encoder)), dtype=np.uint8)
     mask = np.zeros((n, NUM_ACTIONS), dtype=np.uint8)

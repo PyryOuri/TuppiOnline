@@ -78,6 +78,8 @@ class Config:
     eval_base: int = 8192
     selfplay_games: int = 16384
     label_games: int = 32768
+    label_worlds: int = 1          # >1: labels averaged over the true world and label_worlds-1 sampled worlds (SP3)
+    label_dd: int = 0              # exact tail (tricks) in label rollouts
     incremental: bool = True       # incremental first layer (labels identical in tests)
     share_labels: bool = True      # one rollout per run of rank-equivalent cards (95.7% identical labels)
     importance: bool = True        # record per position class by its measured non-inert rate
@@ -161,7 +163,8 @@ class Learner:
     def collect(self, mlp: native.Mlp) -> dict:
         cfg = self.cfg
         t0 = time.perf_counter()
-        feats, ids_all, qs, ws, classes, holds, n_total, t_label = [], [], [], [], [], [], 0, 0.0
+        feats, ids_all, qs, qts, ws, classes, holds, n_total, t_label = [], [], [], [], [], [], [], 0, 0.0
+        per_state = max(1, cfg.label_worlds)
         batch = 0
         mult = self.class_mult if cfg.importance else None
         while n_total < cfg.states_per_iter:
@@ -173,9 +176,16 @@ class Learner:
             tl = time.perf_counter()
             start = 0
             while start < n:  # label in chunks that fit the labelling environment
-                stop = start + int(np.searchsorted(np.cumsum(k[start:]), cfg.label_games, side="right"))
-                acts, kk, qv = native.branch_values(self.env_label, mlp, states, stop - start, 0, self.rng,
-                                                    offset=start)
+                stop = start + max(1, int(np.searchsorted(np.cumsum(k[start:] * per_state), cfg.label_games,
+                                                          side="right")))
+                if cfg.label_worlds > 1:
+                    acts, kk, qv, qt = native.world_values(self.env_label, mlp, states, stop - start,
+                                                           cfg.label_worlds, True, cfg.label_dd, self.rng,
+                                                           offset=start)
+                    qts.append(compact_labels(acts, kk, qt)[1])
+                else:
+                    acts, kk, qv = native.branch_values(self.env_label, mlp, states, stop - start, cfg.label_dd,
+                                                        self.rng, offset=start)
                 ids, q16 = compact_labels(acts, kk, qv)
                 ids_all.append(ids)
                 qs.append(q16)
@@ -189,6 +199,10 @@ class Learner:
             n_total += n
         data = {"feat": np.concatenate(feats), "ids": np.concatenate(ids_all), "q": np.concatenate(qs),
                 "w": np.concatenate(ws), "hold": np.concatenate(holds)}
+        if qts:
+            data["qt"] = np.concatenate(qts)  # true-world labels: the gate's unbiased check
+        if data["hold"].all() or not data["hold"].any():  # too few batches for a whole-batch split
+            data["hold"] = (np.arange(len(data["hold"])) < len(data["hold"]) // 10).astype(np.uint8)
         inert = inert_rows(data["ids"], data["q"])
         self._update_class_mult(np.concatenate(classes), inert)
         data["w"] = (data["w"] / data["w"].astype(np.float32).mean()).astype(np.float16)
@@ -210,8 +224,9 @@ class Learner:
         self.class_mult = np.clip(0.5 * self.class_mult + 0.5 * target, self.cfg.mult_lo, self.cfg.mult_hi)
 
     def _to_dev(self, data) -> dict:
-        return {key: torch.from_numpy(np.ascontiguousarray(data[key])).to(self.dev)
-                for key in ("feat", "ids", "q", "w")}
+        keys = ("feat", "ids", "q", "w", "qt") if "qt" in (data.files if hasattr(data, "files") else data) else \
+            ("feat", "ids", "q", "w")
+        return {key: torch.from_numpy(np.ascontiguousarray(data[key])).to(self.dev) for key in keys}
 
     @staticmethod
     def _split(dev: dict, hold: np.ndarray) -> tuple[dict, dict]:
@@ -303,6 +318,8 @@ class Learner:
             for i in range(0, len(H["feat"]), 65536):
                 sl = torch.arange(i, min(i + 65536, len(H["feat"])), device=self.dev)
                 x, m, tgt, w = self._batch(H, sl)
+                if "qt" in H:  # judge changes on the true-world labels (unbiased), not the averaged ones
+                    tgt = dense(H["ids"][sl], H["qt"][sl])[1]
                 q = self.qnet(x).masked_fill(~m, float("-inf"))
                 old = pk(x).masked_fill(~m, float("-inf")).argmax(1)
                 new = (q + (margin * SCALE) * torch.nn.functional.one_hot(old, native.NUM_ACTIONS)).argmax(1)
@@ -402,7 +419,7 @@ class Learner:
         H, train = self._split(self._to_dev(data), data["hold"])  # held out by whole self-play batches
         self.replay.append(train)
         self.replay = self.replay[-cfg.replay_iters:]
-        D = {key: torch.cat([r[key] for r in self.replay]) for key in ("feat", "ids", "q", "w")}
+        D = {key: torch.cat([r[key] for r in self.replay]) for key in ("feat", "ids", "q", "w")}  # training labels
         t1 = time.perf_counter()
         distil = None
         if cfg.q_teacher and self.iteration == 0:
