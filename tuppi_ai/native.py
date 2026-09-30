@@ -259,6 +259,11 @@ class Env:
         self._vnet = vnet  # keep the native weights alive
         lib.tc_env_set_value(self._h, vnet._h if vnet is not None else None, leaf_bid, leaf_play, int(bot_bit))
 
+    def set_team_rollout(self, mlp: "Mlp | None") -> None:
+        """Search rollouts: the searching team's own seats play `mlp`, the others the search's net."""
+        self._team_mlp = mlp
+        lib.tc_env_set_team_rollout(self._h, mlp._h if mlp is not None else None)
+
     def set_incremental(self, on: bool, width: int = 256) -> None:
         """Self-play only: incremental first layer for networks of this width (not bitwise exact)."""
         lib.tc_env_set_incremental(self._h, int(on), width)
@@ -421,6 +426,7 @@ def value_rollouts(env: "Env", mlp: "Mlp", games: int, ruleset: int, dd_left: in
 lib.tc_set_parallel.argtypes = [C.c_int]
 lib.tc_env_set_incremental.argtypes = [C.c_void_p, C.c_int, C.c_int]
 lib.tc_set_branch_share.argtypes = [C.c_int]
+lib.tc_env_set_team_rollout.argtypes = [C.c_void_p, C.c_void_p]
 
 
 def set_branch_share(on: bool) -> None:

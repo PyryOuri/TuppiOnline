@@ -37,6 +37,11 @@ typedef struct {
   // Incremental first layer for self-play (tc_env_set_incremental; off by
   // default): per game and seat, the first-layer pre-activation and the sorted
   // list of active features it was built from (inc_len -1 = rebuild).
+  // Rollout roles (tc_env_set_team_rollout): if set, the searching team's own
+  // seats play team_net in rollouts and the other seats the search's network.
+  // team_side is the searching team, set by search_core for each search.
+  const struct TcMlpS *team_net;
+  int team_side;
   int inc_on, inc_width;
   float *inc_acc;
   uint16_t *inc_list;
@@ -119,6 +124,8 @@ TcEnv *tc_env_new(int n, uint64_t seed) {
 }
 
 void tc_env_free(TcEnv *e) { free(e->inc_acc); free(e->inc_list); free(e->inc_len); free(e->g); free(e); }
+
+void tc_env_set_team_rollout(TcEnv *e, const struct TcMlpS *team_net) { e->team_net = team_net; e->team_side = -1; }
 
 // Self-play rollouts only: networks of first-layer width `width` update each
 // seat's first layer by the features that changed since its last decision
@@ -606,7 +613,28 @@ static void play_out(TcEnv *e, const TcMlp *m, int n, int dd_left, uint64_t *rng
         tc_observe(d, d->cur, &ob);
         tc_encode_v(&ob, feat + (size_t)r * dim, enc);
       }
-      forward_games(e, m, idx + lo, rows, feat, dim, q);
+      if (e->team_net && e->team_side >= 0) {
+        // Rows of the searching team's seats go to team_net, the rest to m.
+        uint8_t *ft = malloc((size_t)rows * dim), *fo = malloc((size_t)rows * dim);
+        float *qt = malloc(sizeof(float) * (size_t)rows * TC_NUM_ACTIONS);
+        float *qo = malloc(sizeof(float) * (size_t)rows * TC_NUM_ACTIONS);
+        int *which = malloc(sizeof(int) * (size_t)rows), nt = 0, no = 0;
+        for (int r = 0; r < rows; r++) {
+          int own = (e->g[idx[lo + r]].d.cur & 1) == e->team_side;
+          memcpy((own ? ft + (size_t)nt * dim : fo + (size_t)no * dim), feat + (size_t)r * dim, (size_t)dim);
+          which[r] = own ? nt++ : -1 - no++;
+        }
+        if (nt) tc_mlp_forward(e->team_net, ft, nt, qt);
+        if (no) tc_mlp_forward(m, fo, no, qo);
+        for (int r = 0; r < rows; r++) {
+          const float *src = which[r] >= 0 ? qt + (size_t)which[r] * TC_NUM_ACTIONS
+                                           : qo + (size_t)(-1 - which[r]) * TC_NUM_ACTIONS;
+          memcpy(q + (size_t)r * TC_NUM_ACTIONS, src, sizeof(float) * TC_NUM_ACTIONS);
+        }
+        free(ft); free(fo); free(qt); free(qo); free(which);
+      } else {
+        forward_games(e, m, idx + lo, rows, feat, dim, q);
+      }
       for (int r = 0; r < rows; r++) {
         int i = idx[lo + r];
         TcDeal *d = &e->g[i].d;
@@ -639,6 +667,7 @@ static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *
     if (tc_apply(&e->g[i].d, actions[i % k]) != 0) { free(total); free(idx); return -3; }
     record_if_done(e, i, total);
   }
+  e->team_side = e->team_net ? (o->seat & 1) : -1;
   Leaf leaf = {e->vnet, 0, e->value_bot_bit ? (o->seat & 1) : -1};
   int use_leaf = 0;
   if (e->vnet && o->phase == TC_PH_SHOW && e->leaf_bid >= 0) { use_leaf = 1; leaf.min_completed = e->leaf_bid; }

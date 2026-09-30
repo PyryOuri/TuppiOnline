@@ -21,7 +21,7 @@ import time
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
-from .evaluate import _init as _init_worker, _W
+from .evaluate import RULESETS, _init as _init_worker, _W
 
 DEFAULT_CAP = 400
 
@@ -33,7 +33,16 @@ def _leg(pair: int, seed: str, candidate_team: int, cap: int) -> dict:
     from tuppi_rules.cards import FULL_DECK
 
     cand, opp = _W["candidate"], _W["opponent"]
-    state = create_match(initial_score=MatchScore(0, 0), initial_dealer=0, match_ref="tuppi-ai-match")
+    ruleset = _W.get("ruleset", "v1")
+    if ruleset == "v1":
+        state = create_match(initial_score=MatchScore(0, 0), initial_dealer=0, match_ref="tuppi-ai-match")
+        active = (EnginePhase.SHOWING, EnginePhase.TRICK_PLAY)
+    else:
+        from tuppi_engine.state import ACTIVE_PHASES
+        from tuppi_rules import RulesetId
+        state = create_match(initial_score=MatchScore(0, 0), initial_dealer=0, match_ref="tuppi-ai-match",
+                             ruleset_id=RulesetId(RULESETS[ruleset]))
+        active = ACTIVE_PHASES
     deals = 0
     while not state.terminal and deals < cap:
         rng = random.Random(f"{seed}|pair|{pair}|deal|{deals}")
@@ -41,7 +50,7 @@ def _leg(pair: int, seed: str, candidate_team: int, cap: int) -> dict:
         rng.shuffle(cards)
         hands = tuple(tuple(cards[s * 13:(s + 1) * 13]) for s in range(4))
         state = begin_explicit_deal(state, ExplicitDeal(dealer=state.dealer, hands=hands))
-        while state.phase in (EnginePhase.SHOWING, EnginePhase.TRICK_PLAY):
+        while state.phase in active:
             seat = state.current_actor
             actor = cand[seat] if seat % 2 == candidate_team else opp[seat]
             state = apply_match_action(state, actor.choose_action(match_observation_for(state, seat)))
@@ -64,17 +73,18 @@ def measure_pair(pair: int, seed: str, cap: int) -> dict:
 
 def evaluate_matches(candidate: str, pairs: int, seed: str = "tuppi-ai-match-v1",
                      opponent: str = "partner_aware_lead_v2", workers: int = 12,
-                     cap: int = DEFAULT_CAP, equity_path: str | None = None) -> dict:
+                     cap: int = DEFAULT_CAP, equity_path: str | None = None, ruleset: str = "v1") -> dict:
     from .evaluate import ROOT
     equity_path = equity_path or str(ROOT / "models" / "equity_incumbent.json")
     t0 = time.time()
     with ProcessPoolExecutor(workers, initializer=_init_worker,
-                             initargs=(candidate, opponent, equity_path)) as pool:
+                             initargs=(candidate, opponent, equity_path, ruleset)) as pool:
         rows = list(pool.map(measure_pair, range(pairs), [seed] * pairs, [cap] * pairs, chunksize=1))
     scores = [r["score"] for r in rows]
     mean = statistics.fmean(scores)
     se = statistics.stdev(scores) / math.sqrt(len(scores)) if len(scores) > 1 else float("nan")
-    return {"candidate": candidate, "opponent": opponent, "pairs": pairs, "seed": seed,
+    return {"candidate": candidate, "opponent": opponent, "pairs": pairs, "seed": seed, "ruleset": RULESETS[ruleset],
+            "scores": scores,
             "p_win": mean, "ci95": [mean - 1.96 * se, mean + 1.96 * se],
             "pair_wins": sum(s == 1.0 for s in scores), "pair_ties": sum(s == 0.5 for s in scores),
             "pair_losses": sum(s == 0.0 for s in scores),
@@ -91,11 +101,13 @@ def main() -> None:
     parser.add_argument("--opponent", default="partner_aware_lead_v2")
     parser.add_argument("--workers", type=int, default=12)
     parser.add_argument("--cap", type=int, default=DEFAULT_CAP)
+    parser.add_argument("--ruleset", choices=tuple(RULESETS), default="v1",
+                        help="v1; v3 = the real game (sooli and locked bids)")
     parser.add_argument("--out", type=Path)
     args = parser.parse_args()
     summary = evaluate_matches(args.checkpoint, args.pairs, args.seed, args.opponent,
-                               args.workers, args.cap)
-    print(json.dumps(summary, indent=1))
+                               args.workers, args.cap, ruleset=args.ruleset)
+    print(json.dumps({k: v for k, v in summary.items() if k != "scores"}, indent=1))
     if args.out:
         args.out.write_text(json.dumps(summary, indent=1))
 

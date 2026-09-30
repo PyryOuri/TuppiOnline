@@ -54,8 +54,8 @@ class Searcher:
         # The whole search in C (same steps and rounding; the network's float
         # arithmetic differs from PyTorch only in the last digits). Used when no
         # Python-only option is active.
-        self.native_loop = (native_loop and belief <= 1 and belief_net is None and team_net is None
-                            and not opp_temp)
+        # The native loop also runs a separate own-team rollout net (tc_env_set_team_rollout).
+        self.native_loop = native_loop and belief <= 1 and belief_net is None and not opp_temp
         self.mlp = native.Mlp(net) if self.native_loop else None
         self.np_rng = np.random.default_rng(seed)
         self._hf = np.zeros((64, native.feature_dim(net.encoder)), dtype=np.uint8)
@@ -63,6 +63,10 @@ class Searcher:
         self._ha = np.zeros(64, dtype=np.int32)
         self.env = native.Env(worlds * max_actions, seed, equity_table, single_deal=True,
                               encoder=net.encoder)
+        if self.native_loop and team_net is not None:
+            if team_net.encoder != net.encoder:
+                raise ValueError("the own-team rollout net must use the same encoder")
+            self.env.set_team_rollout(native.Mlp(team_net))
         self.rng = C.c_uint64(seed * 2654435761 + 1)
 
     def action_values(self, obs: native.TcObs, actions: list[int]) -> np.ndarray:
