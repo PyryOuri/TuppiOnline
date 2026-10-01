@@ -7,6 +7,24 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## VRPO2: continuation gives a small, unconfirmed gain (2026-10-01)
+
+Pre-registered in `docs/SELFPLAY_PLAN.md` (VRPO2).
+- **The run:** VRPO1's actor and critic, trained for 447 more iterations
+  (about 5 h; the Mac slept for an hour of its 6 h budget).
+- **The native check against SP1** rose from VRPO1's +0.0049 to +0.0062
+  (best +0.0063 at iteration 444).
+
+**Primary test** (no search, 1,024 fresh deals, seed vrpo2-confirm-v1,
+actor_0447 against VRPO1): **+0.00066 [-0.00018, +0.00150]**.
+- Non-inferior, but below the pre-registered improvement bar (+0.0010 with
+  the lower bound above 0).
+- **VRPO1 stays the official result.** VRPO2 is kept as
+  `models/vrpo2_actor_0447.pt` and used as the teacher for a larger actor.
+
+Both arms beat the incumbent by +0.0185 and +0.0191. The 256x2 actor shows
+diminishing returns, so actor size is the next lever.
+
 ## Mid-deal NOLO (item 4): diagnosis and a failed search fix (2026-10-01)
 
 **Diagnosis** (`tools/dd_consensus.py`, 2,000 card-play decisions per
