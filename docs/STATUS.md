@@ -20,7 +20,14 @@ Pre-registered in `docs/SELFPLAY_PLAN.md`. W=128, the live configuration,
 | 0.012 | | **+0.00116 [+0.00017, +0.00214]** |
 
 - Strength rises steadily with the margin, at CPU +5% or less.
-- keep=0.012 is adopted by the rule; its W=1024 confirmation is running.
+- keep=0.012 was adopted by the W=128 rule.
+- **At W=1024 it failed:** +0.00019 [-0.00120, +0.00158] against keep 0.003
+  (512 deals, seed perf-e7-v1), with 13% more CPU. The lower bound is below
+  -0.0010, so it is not deployed, and live stays at keep 0.003.
+- **Likely reason:** at 1,024 worlds the searched values are much less
+  noisy than at 128, so the search deserves more trust and the best margin
+  is smaller. The anchor margin is sensitive to the world count, so margins
+  must be chosen at the live world count.
 - The keep=0.003 arm replicated on both fresh seeds (+0.0201 against the
   incumbent).
 
