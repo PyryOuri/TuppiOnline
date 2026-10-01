@@ -26,6 +26,12 @@ the incumbent opponents really play.
   seats.
 - At W=1024 with E7: +0.00058 [-0.00077, +0.00192], non-inferior.
 
+Since 2026-10-01 the own-team rollout model is VRPO1
+(`models/vrpo1_actor_0504.pt`, privileged-critic PPO from SP1; +0.00605 over
+SP1 without search).
+- Against SP1 own-team rollouts at W=128: +0.00065 [-0.00009, +0.00138].
+- At W=1024 with E7: +0.00041 [-0.00044, +0.00126], same CPU.
+
 Sampler fix B0-S1 (2026-10-01): when a showing fallback is on record, the
 worlds honour what it implies about the original hands. Before the fix, 69%
 of the worlds drawn at such decisions were illegal.
@@ -40,7 +46,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ROLLOUT = ROOT / "models" / "rollout_clone_small.pt"
 #: Rollout policy of the searching team's own seats.
-TEAM_ROLLOUT = ROOT / "models" / "sp1_policy_043.pt"
+TEAM_ROLLOUT = ROOT / "models" / "vrpo1_actor_0504.pt"
 EQUITY = ROOT / "models" / "equity_incumbent.json"
 WORLDS = 128
 SOLVER_TAIL = 6
