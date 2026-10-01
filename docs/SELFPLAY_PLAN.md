@@ -370,3 +370,25 @@ claimed.
 **Deploy if:** the lower bound is above -0.0010 and the point estimate is
 above 0 (the same rule as SP1's rollouts). It would be deployed together
 with the sampler fix, which is already live.
+
+## Policy-anchored search (pre-registered 2026-10-01 09:25)
+
+**What motivated it.** On the deals of seed vrpo1-search-v1, VRPO1 without
+search scored +0.01756. Search (W=128, VRPO1 own-team rollouts) scored
++0.01689: search minus policy -0.00067 [-0.00195, +0.00062]. At W=128 the
+determinised search no longer improves on the policy.
+
+**The candidate.** The same search, but the agent keeps VRPO1's action unless
+the searched value of another action exceeds it by more than 0.003 equity
+(`keep=0.003:bp=models/vrpo1_actor_0504.pt`). It applies at every searched
+decision (bids and card play).
+
+**The test:** W=128, the same 1,024 deals (seed vrpo1-search-v1, rs=1).
+- **Primary:** against the plain search arm (`s_vrpo1.json`).
+- **Secondary:** against VRPO1 without search (`n_vrpo1.json`).
+- The margin was chosen before any hybrid result. It is not tuned on these
+  deals; a second margin would need fresh deals.
+
+**Pass:** the primary lower bound is above -0.0010 and the point estimate is
+above 0. A gain is claimed only if the lower bound is above 0. A pass goes
+to W=1024 before live use.

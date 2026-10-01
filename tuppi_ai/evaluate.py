@@ -60,7 +60,8 @@ def _make_candidate(spec: str) -> dict:
     searched once (E6); `adb=<batch>[:adz=<z>][:add=<delta>][:adp=1]` adaptive
     worlds for bids (and trick play with adp=1), `w` as the cap (E7); `rs=1`
     worlds seeded from the information state (paired measurements); `sf=1`
-    worlds honour showing-fallback restrictions (B0-S1); `ddn=<k>` k extra
+    worlds honour showing-fallback restrictions (B0-S1); `bp=<policy>` the
+    policy that `keep=<margin>` keeps (default the rollout net); `ddn=<k>` k extra
     solver-tail tricks in NOLO;
     `vn=<value net>[:vlb=<tricks>][:vlp=<tricks>][:vbb=1]` value-net leaves
     for bid searches (vlb, default 0 = start of play; -1 off) and card-play
@@ -97,6 +98,7 @@ def _make_candidate(spec: str) -> dict:
         return {s: SearchAgent(net, table, s, worlds=int(opts.get("w", 32)), dd_left=int(opts.get("dd", 0)),
                                search_showing=int(opts.get("show", "0")),
                                keep=float(opts["keep"]) if "keep" in opts else None,
+                               blueprint_net=qmodel.load(opts["bp"], "cpu") if "bp" in opts else None,
                                rami_bonus=float(opts.get("rb", 0.0)),
                                show_worlds=int(opts["sw"]) if "sw" in opts else None,
                                equiv=bool(int(opts.get("eq", 0))), reseed=bool(int(opts.get("rs", 0))),

@@ -270,7 +270,7 @@ class SearchAgent:
                  search_showing=False, seed: int = 0, keep: float | None = None,
                  show_worlds: int | None = None, rami_bonus: float = 0.0, sooli: dict | None = None,
                  equiv: bool = False, adaptive: dict | None = None, reseed: bool = False,
-                 value: dict | None = None, **belief):
+                 value: dict | None = None, blueprint_net=None, **belief):
         """search_showing: False (blueprint shows), True/1 (search every legal show), or 2
         (search only the blueprint's preferred card for each contract, then keep
         the blueprint's card within the chosen contract).
@@ -285,7 +285,9 @@ class SearchAgent:
         games have not diverged. For paired measurements; statistically the
         same agent.
         value: {"path", "leaf_bid", "leaf_play", "bot_bit"}: rollouts stop at a
-        value-net leaf (docs/VALUE_NET_PLAN.md); -1 disables a leaf kind."""
+        value-net leaf (docs/VALUE_NET_PLAN.md); -1 disables a leaf kind.
+        blueprint_net: the policy whose action `keep` keeps (default: the
+        rollout net), e.g. a stronger no-search policy."""
         self.seat = seat
         self.equiv = equiv
         self.adaptive = adaptive
@@ -293,6 +295,7 @@ class SearchAgent:
         self.net = net
         self.search_showing = search_showing
         self.keep = keep  # None: plain argmax; >= 0: keep the blueprint's action unless beaten by more
+        self.blueprint_net = blueprint_net if blueprint_net is not None else net
         # Added to the value of declaring RAMI (RETURN_SCALE units): the rollouts
         # play the rest of the deal with the clone, which undervalues contracts
         # this agent's own (better) play would make.
@@ -425,9 +428,9 @@ class SearchAgent:
             values = values + self.rami_bonus * np.array([1.0 if i >= 104 else 0.0 for i in ids])
         best = int(np.argmax(values))
         if self.keep is not None:
-            native.encode(obs, self._feat[0], self.net.encoder)
+            native.encode(obs, self._feat[0], self.blueprint_net.encoder)
             with torch.no_grad():
-                q = self.net(torch.from_numpy(self._feat))[0].numpy()
+                q = self.blueprint_net(torch.from_numpy(self._feat))[0].numpy()
             bp = int(np.argmax([q[i] for i in ids]))
             if values[bp] >= values[best] - self.keep:
                 best = bp
