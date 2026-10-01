@@ -424,3 +424,29 @@ near its capacity. The critic already explains 0.87-0.88 of the variance.
 - **Attribution:** a gain is credited to the larger actor plus continued
   training. VRPO2's own continuation rate (about +0.0013 native per 450
   iterations) is the comparison point.
+
+## Policy-anchored search: W=1024 confirmation (pre-registered 2026-10-01 11:55)
+
+**The W=128 result** (the pre-registered screen above, seed vrpo1-search-v1):
+- against plain search: **+0.00305 [+0.00234, +0.00377]**;
+- against VRPO1 without search: +0.00239 [+0.00121, +0.00357].
+
+It passes, with a gain claimed (the lower bound is above 0).
+
+**A code change for W=1024.**
+- `keep` used to bypass E7's adaptive bid search; now it is applied after
+  it. When a dropped action is the policy's, its value is its mean over the
+  worlds it saw.
+- At W=128 nothing changes, because adaptive allocation is off at 128
+  worlds or fewer.
+
+**The test:**
+- The live configuration (W=1024, E7, VRPO1 own-team rollouts) with
+  `keep=0.003:bp=models/vrpo1_actor_0504.pt`.
+- 512 deals, seed perf-e7-v1, rs=1, paired with the stored live arm without
+  keep (`b_teamvrpo1.json`, +0.01707).
+- Neither arm uses the sampler fix.
+- CPU per deal is reported.
+
+**Deploy if:** the lower bound is above -0.0010 and the point estimate is
+above 0.

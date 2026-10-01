@@ -417,21 +417,24 @@ class SearchAgent:
             values = searcher.action_values(obs, reps)
             self.last_values = {a: float(x) for a, x in zip(reps, values)}
             return legal[ids.index(reps[int(np.argmax(values))])]
-        if self.adaptive and not self.rami_bonus and self.keep is None and (
+        if self.adaptive and not self.rami_bonus and (
                 obs.phase == native.PH_SHOW or self.adaptive.get("play", False)):
             values, best = self._search(searcher, obs, ids)
             self.last_values = {a: float(x) for a, x in zip(ids, values)}
-            return legal[best]
+            return legal[self._keep_blueprint(obs, ids, values, best)]
         values = searcher.action_values(obs, ids)
         self.last_values = {a: float(x) for a, x in zip(ids, values)}
         if self.rami_bonus and obs.phase == native.PH_SHOW:
             values = values + self.rami_bonus * np.array([1.0 if i >= 104 else 0.0 for i in ids])
         best = int(np.argmax(values))
-        if self.keep is not None:
-            native.encode(obs, self._feat[0], self.blueprint_net.encoder)
-            with torch.no_grad():
-                q = self.blueprint_net(torch.from_numpy(self._feat))[0].numpy()
-            bp = int(np.argmax([q[i] for i in ids]))
-            if values[bp] >= values[best] - self.keep:
-                best = bp
-        return legal[best]
+        return legal[self._keep_blueprint(obs, ids, values, best)]
+
+    def _keep_blueprint(self, obs: native.TcObs, ids: list[int], values: np.ndarray, best: int) -> int:
+        """With `keep`, the blueprint's action unless the searched best beats it by more than keep."""
+        if self.keep is None:
+            return best
+        native.encode(obs, self._feat[0], self.blueprint_net.encoder)
+        with torch.no_grad():
+            q = self.blueprint_net(torch.from_numpy(self._feat))[0].numpy()
+        bp = int(np.argmax([q[i] for i in ids]))
+        return bp if values[bp] >= values[best] - self.keep else best
