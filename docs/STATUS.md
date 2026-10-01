@@ -7,6 +7,24 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## Live: VRPO1 own-team rollouts (2026-10-01)
+
+Pre-registered in `docs/SELFPLAY_PLAN.md`.
+
+| Test | Paired against SP1 own-team rollouts |
+| --- | --- |
+| W=128 screen (1,024 deals, seed vrpo1-search-v1) | +0.00065 [-0.00009, +0.00138] |
+| W=1024 confirmation (512 deals, seed perf-e7-v1, E7) | **+0.00041 [-0.00044, +0.00126]**, same CPU |
+
+- **Deployed:** `best.TEAM_ROLLOUT` = `models/vrpo1_actor_0504.pt` (TuppiAI
+  f7a488e); the live server was restarted (pid 72803).
+- **Search versus the policy.** On the W=128 screen's deals, VRPO1 without
+  search scored +0.01756 against the incumbent. Search with VRPO1 rollouts
+  scored +0.01689: search minus policy **-0.00067 [-0.00195, +0.00062]**.
+  At W=128 the determinised search no longer adds to the policy.
+  Policy-anchored search (keep the policy's action unless search beats it by
+  0.003) is being screened.
+
 ## VRPO2: continuation gives a small, unconfirmed gain (2026-10-01)
 
 Pre-registered in `docs/SELFPLAY_PLAN.md` (VRPO2).
