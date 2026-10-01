@@ -16,9 +16,9 @@ Pre-registered in `docs/SELFPLAY_PLAN.md` (SP3).
 - **Scale:** 15 iterations in 7 h 40 min, about 15M labelled states.
   - Iteration 1 shared the CPU with the paused sampler screen for its first
     30 minutes.
-  - The last iteration (started before the budget ended) took about 85
-    minutes instead of about 24. A stack sample showed the exact-tail solver
-    busy; the slowdown was not explained.
+  - The last iteration started before the budget ended. It ran 26 minutes,
+    but the Mac was in clamshell sleep from 05:20 to 06:24, which froze
+    every job.
 
 **Primary test** (no search, 1,024 fresh deals, seed sp3-confirm-v1,
 policy_015 against SP1): **-0.00094 [-0.00208, +0.00020]: worse** by the
