@@ -536,3 +536,11 @@ sampler fix; 1,024 fresh deals, seed final-v1, rs=1):
 - **Deploy if:** the lower bound is above -0.0010 and the point estimate is
   above 0.
 - If nothing counts, the live configuration stays.
+
+**Clarification (2026-10-01 18:15, before any final-round result).**
+keep 0.012 failed at W=1024, so the live margin stays 0.003. If an arm
+counts at W=128, its W=1024 confirmation uses the live margin 0.003:
+- for C, keep 0.003 with the VRPO3 anchor against `b_keep.json` (keep 0.003,
+  VRPO1 anchor);
+- B (a margin change) would need a W=1024 test of keep 0.024 against
+  `b_keep.json`, but given 0.012's result it is not expected to help.
