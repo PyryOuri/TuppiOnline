@@ -7,6 +7,19 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## Live: sampler fix B0-S1 (2026-10-01)
+
+Pre-registered in `docs/SELFPLAY_PLAN.md`.
+- **The fix:** when a showing fallback is on record, the search's worlds
+  honour what it implies about the original hands. Before, 69% of the worlds
+  drawn at such decisions were illegal.
+- **W=128 screen** (live rollout setting, 1,024 deals, seed sp1-search-v2,
+  paired): **+0.00014 [-0.00002, +0.00030]**, with 931 of 1,024 deals
+  identical and the same CPU. It is non-inferior, so it is adopted.
+- **Installed:** `best_agents` switches it on (TuppiAI 450726c, dylib
+  285d186e...); `team_rollout=False` keeps the original sampler for the
+  research B0. The live server was restarted (pid 64596).
+
 ## SP3: search labels do not improve on SP1 (2026-10-01)
 
 Pre-registered in `docs/SELFPLAY_PLAN.md` (SP3).
