@@ -7,6 +7,35 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## Policy-anchored search: the strongest agent so far (2026-10-01)
+
+Pre-registered in `docs/SELFPLAY_PLAN.md`.
+- **The agent:** search (W=128, VRPO1 own-team rollouts) that keeps VRPO1's
+  action unless another action's searched value beats it by more than
+  0.003 equity (`keep=0.003:bp=models/vrpo1_actor_0504.pt`).
+- **The deals:** 1,024 (seed vrpo1-search-v1, rs=1), shared with the arms
+  below.
+
+| Agent | Against the incumbent |
+| --- | --- |
+| VRPO1, no search | +0.01756 |
+| Search, VRPO1 rollouts | +0.01689 |
+| **Policy-anchored search** | **+0.01995** |
+
+| Paired comparison | Difference |
+| --- | --- |
+| Anchored minus plain search | **+0.00305 [+0.00234, +0.00377]** |
+| Anchored minus VRPO1 | **+0.00239 [+0.00121, +0.00357]** |
+
+- CPU per deal is about plain search's (+3%).
+- **Interpretation:** each component adds what the other lacks.
+  - The policy carries the inference about hidden cards that a uniform-world
+    search ignores.
+  - The search catches the tactical errors the policy still makes, when its
+    margin is clear.
+- The margin was fixed before the run, never tuned. A W=1024 confirmation
+  is running.
+
 ## Live: VRPO1 own-team rollouts (2026-10-01)
 
 Pre-registered in `docs/SELFPLAY_PLAN.md`.
