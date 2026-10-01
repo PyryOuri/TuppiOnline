@@ -7,6 +7,35 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## Final round: VRPO3 (512x4 actor) and the VRPO3 anchor (2026-10-01)
+
+Pre-registered in `docs/SELFPLAY_PLAN.md` (VRPO3, final round).
+
+**VRPO3.**
+- **The run:** a 512x4 actor (3.2M parameters) distilled from VRPO2 (at
+  parity: +0.00028 +- 0.00023), then 393 VRPO iterations in 8 h, with
+  VRPO2's critic as a warm start.
+- **Native check against VRPO2:** +0.0020 at the end (best +0.0024). VRPO2's
+  own continuation gained about +0.0013 in 447 iterations.
+- **Primary test** (no search, 1,024 deals, seed vrpo3-confirm-v1, against
+  VRPO2): **+0.00118 [+0.00022, +0.00215]**, an improvement by the rule.
+  Against the incumbent, VRPO3 alone scores +0.01897.
+- **Saved as** `models/vrpo3_final.pt` (actor_0393).
+- The larger actor helps: the 256x2 actor was near capacity.
+
+**Final W=128 round** (1,024 fresh deals, seed final-v1; A = keep 0.012 with
+the VRPO1 anchor, +0.02114):
+
+| Arm | Against A |
+| --- | --- |
+| B: keep 0.024, VRPO1 anchor | -0.00172 [-0.00237, -0.00108] |
+| **C: keep 0.012, VRPO3 anchor** | **+0.00176 [+0.00083, +0.00269]**, +0.02290 against the incumbent, about 10% less CPU |
+
+- The margin grid is closed: live stays at 0.003.
+- The VRPO3 anchor counts, so its W=1024 confirmation at keep 0.003 is
+  running. The rollouts stay VRPO1: a 512x4 rollout net would cost about 8x
+  per rollout step.
+
 ## Anchor margin grids (2026-10-01)
 
 Pre-registered in `docs/SELFPLAY_PLAN.md`. W=128, the live configuration,
