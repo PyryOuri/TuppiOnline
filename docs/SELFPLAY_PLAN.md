@@ -513,3 +513,26 @@ above 0.
 **Note.** The grid is still monotone at 0.012. Pure policy (an infinite
 margin) was worse than keep=0.003 by 0.0024, so an optimum lies somewhere
 above 0.012. A further grid (0.012 against 0.024) on fresh deals may follow.
+
+## Final round: margin 0.024 and VRPO3 anchor (pre-registered 2026-10-01 17:10)
+
+The owner decided to park strength work after this round.
+
+**Arms** (W=128, live configuration otherwise: VRPO1 own-team rollouts,
+sampler fix; 1,024 fresh deals, seed final-v1, rs=1):
+- **A, the reference:** keep 0.012, anchor VRPO1.
+- **B:** keep 0.024, anchor VRPO1.
+- **C:** keep 0.012, anchor = VRPO3's final actor (512x4). Run only if VRPO3
+  passes its primary test (improvement over VRPO2).
+
+**Decision:**
+- B and C are each compared with A. A variant counts if its lower bound is
+  above 0.
+- If both count, they are combined (keep 0.024, anchor VRPO3) without a
+  further W=128 test.
+- The chosen configuration gets one W=1024 confirmation (512 deals, seed
+  perf-e7-v1, paired with the live configuration's arm at keep 0.012, or
+  at 0.003 if 0.012 fails its own W=1024 test).
+- **Deploy if:** the lower bound is above -0.0010 and the point estimate is
+  above 0.
+- If nothing counts, the live configuration stays.
