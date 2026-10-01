@@ -351,3 +351,22 @@ switch off, the move fingerprint is unchanged.
 - A pass goes on to a W=1024 confirmation before live use (same rule as the
   rollout roles).
 - A gain is claimed only if the lower bound is above 0.
+
+## VRPO1 own-team rollouts: W=1024 confirmation (pre-registered 2026-10-01 09:10)
+
+**The screen** (W=128, 1,024 deals, seed vrpo1-search-v1): search with VRPO1
+own-team rollouts against search with SP1 own-team rollouts:
++0.00065 [-0.00009, +0.00138], with equal CPU. Non-inferior; no gain
+claimed.
+
+**The test:**
+- The live configuration (W=1024, E7, 6-trick tail) with VRPO1
+  (`models/vrpo1_actor_0504.pt`) as the own-team rollout model.
+- 512 deals, seed perf-e7-v1, rs=1, paired with the stored arm with SP1
+  own-team rollouts (`b_teamsp1.json`, +0.01666).
+- Neither arm uses the sampler fix, so they differ only in the rollout model.
+- Those deals were never used for anything involving VRPO.
+
+**Deploy if:** the lower bound is above -0.0010 and the point estimate is
+above 0 (the same rule as SP1's rollouts). It would be deployed together
+with the sampler fix, which is already live.
