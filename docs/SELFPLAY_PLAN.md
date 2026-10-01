@@ -450,3 +450,18 @@ It passes, with a gain claimed (the lower bound is above 0).
 
 **Deploy if:** the lower bound is above -0.0010 and the point estimate is
 above 0.
+
+## Anchor margin grid (pre-registered 2026-10-01 13:35)
+
+**The question.** Whether a different `keep` margin than the live 0.003 is
+better. 0.003 was fixed without tuning.
+
+**The test** (W=128, the live configuration otherwise: VRPO1 own-team
+rollouts, sampler fix, anchor on VRPO1):
+- Three arms: keep = 0.0015, 0.003 (the reference) and 0.006.
+- 1,024 fresh deals, seed keep-grid-v1, rs=1.
+
+**Adopt another margin only if** its paired difference against 0.003 has
+its lower bound above 0. This is two comparisons, so no Holm correction is
+applied, but the bar is a full gain, not non-inferiority. A change would be
+confirmed at W=1024 before going live.
