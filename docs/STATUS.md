@@ -7,6 +7,56 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## VRPO1: privileged-critic PPO breaks SP1's plateau (2026-10-01)
+
+Pre-registered in `docs/SELFPLAY_PLAN.md` (VRPO1); the method is
+`tuppi_ai/vrpo.py`.
+- **The method:** PPO on SP1's policy with Q-boosted advantages from a full-state
+  critic (a 512x4 net that sees the three hidden hands), an Expected SARSA(lambda)
+  trace with team sign flips, and lambda 0.95.
+- **Scale:** 504 iterations in 5 h: 8.3M sampled self-play deals, 447M
+  decisions.
+
+**Primary test** (authoritative engine, no search, 1,024 fresh deals, seed
+vrpo-confirm-v1, final actor `models/vrpo1_actor_0504.pt`, sha256 6043921643e4...):
+
+| Policy (no search) | Against the incumbent | Won | Points |
+| --- | --- | --- | --- |
+| SP1 | +0.01194 [+0.01072, +0.01316] | 61.2% | 3.70 |
+| VRPO1 | **+0.01799** | 67.0% | 5.52 |
+| **Paired VRPO1 - SP1** | **+0.00605 [+0.00505, +0.00705]** | | |
+
+- **IMPROVEMENT** by the pre-registered rule (at least +0.0020, lower bound
+  above 0).
+- VRPO1 without search scores higher against the incumbent than the live
+  search bot (about +0.0161-0.0167 on its own test deals; a different
+  instrument run, so not a paired claim).
+- RAMI declarations are about unchanged (39.4% against 38.2%), so the gain
+  is mostly in card play.
+
+**Learning curve** (native duplicate check against SP1, 8,192 base deals,
+greedy):
+
+| Iteration | 30 | 60 | 120 | 198 | 276 | 378 | 504 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Gain | +0.0010 | +0.0014 | +0.0025 | +0.0034 | +0.0039 | +0.0043 | +0.0049 |
+
+- The best check was +0.0051 at iteration 462; the final actor is used.
+- The critic explains 0.75 of the target variance after 3 iterations and
+  0.87-0.88 at the end.
+- The policy entropy fell slowly from 0.128 to 0.107 nats per decision.
+- The KL per batch stayed about 0.0025, and the clip fraction about 0.021.
+
+**Why this works where SP2/SP2b/SP3 stalled.** Those methods regressed an
+observation-only Q net on outcomes whose variance is mostly the hidden
+cards (held-out R^2 0.05). The full-state critic explains most of that
+variance (0.87), so the advantages carry far less noise. The policy also
+learns on-policy from every decision of every deal (about 54 per deal),
+rather than from a sampled 4% of states.
+
+**VRPO2**, a pre-registered continuation from this actor and critic, started
+on 2026-10-01 at 04:17.
+
 ## Live: own-team SP1 rollouts (2026-09-30)
 
 Pre-registered in `docs/SELFPLAY_PLAN.md` (live rollout roles).
