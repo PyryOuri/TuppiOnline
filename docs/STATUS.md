@@ -32,9 +32,38 @@ the VRPO1 anchor, +0.02114):
 | **C: keep 0.012, VRPO3 anchor** | **+0.00176 [+0.00083, +0.00269]**, +0.02290 against the incumbent, about 10% less CPU |
 
 - The margin grid is closed: live stays at 0.003.
-- The VRPO3 anchor counts, so its W=1024 confirmation at keep 0.003 is
-  running. The rollouts stay VRPO1: a 512x4 rollout net would cost about 8x
-  per rollout step.
+- The VRPO3 anchor counted at W=128. The rollouts stay VRPO1: a 512x4
+  rollout net would cost about 8x per rollout step.
+
+**W=1024 confirmation of the VRPO3 anchor** (keep 0.003, 512 deals, seed
+perf-e7-v1, against the VRPO1 anchor): **+0.00005 [-0.00083, +0.00092]**,
+with 2% less CPU.
+- It meets the deploy rule but is neutral at live strength. At 1,024 worlds
+  the search does most of the work.
+- **Deployed:** `best.ANCHOR` = `models/vrpo3_final.pt` (TuppiAI c2c14b4);
+  the live server was restarted (pid 395).
+
+## Strength work parked (2026-10-01, owner's decision)
+
+**The live bot now** (W=1024):
+- E7 adaptive bids and the 6-trick exact tail;
+- rollouts with VRPO1 for its own team and the clone for the opponents;
+- the sampler fix B0-S1;
+- the policy anchor (keep 0.003) on VRPO3.
+
+Against the incumbent it measures about **+0.0197 per deal**, against
++0.0161 on 2026-09-29. That is roughly +11 percentage points of match-win
+probability between otherwise equal teams (from the calibration of about 30
+times the per-deal equity).
+
+**Open leads, if this resumes:**
+- More VRPO scale: a larger actor, longer runs. Each 8 h run gave about
+  +0.001-0.002 without search.
+- Choosing the anchor margin at W=1024, since margins do not transfer from
+  W=128.
+- A policy-informed world sampler.
+- A new benchmark: the incumbent is near saturation. Head-to-head matches
+  against earlier live bots, or human play.
 
 ## Anchor margin grids (2026-10-01)
 
