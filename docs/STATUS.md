@@ -7,6 +7,31 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## Mid-deal NOLO (item 4): diagnosis and a failed search fix (2026-10-01)
+
+**Diagnosis** (`tools/dd_consensus.py`, 2,000 card-play decisions per
+policy, 48 worlds): the no-search policy's loss per decision against the
+robust double-dummy action.
+
+| NOLO, tricks left | 4 | 5 | 6 |
+| --- | --- | --- | --- |
+| SP1 | 0.0070 | 0.0070 | 0.0079 |
+| VRPO1 | 0.0052 | 0.0046 | 0.0058 |
+
+- VRPO1 reduces the gap by about a third but does not close it.
+- Each policy is measured on its own self-play positions, about 50
+  positions per cell, so the cells are noisy.
+
+**Search fix: a 7-trick exact tail in NOLO** (`ddn=1`; pre-registered).
+- The screen (W=128, live rollout setting, 1,024 deals, seed
+  vrpo1-search-v1) gave **-0.00018 [-0.00053, +0.00018]**, with 17% more
+  CPU. It fails the pass rule (point above 0), so it is not adopted. The
+  switch stays in the code, off.
+- So in the search, solving NOLO exactly one trick earlier does not help. The
+  double-dummy diagnostic's gap does not turn into a loss once the search's
+  rollouts and tail play the position out. For the live bot, the mid-NOLO
+  weakness is a no-search-policy matter.
+
 ## Live: sampler fix B0-S1 (2026-10-01)
 
 Pre-registered in `docs/SELFPLAY_PLAN.md`.
