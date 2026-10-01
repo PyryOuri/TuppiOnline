@@ -488,3 +488,28 @@ deals (seed keep-grid-v2), otherwise as grid 1.
 - Among the margins whose lower bound is above 0, the one with the highest
   point estimate is adopted.
 - A change is confirmed at W=1024 before going live.
+
+**Grid 2 result (seed keep-grid-v2), against keep 0.003 (+0.02011):**
+
+| keep | Difference |
+| --- | --- |
+| 0.006 | +0.00076 [+0.00008, +0.00143] |
+| 0.006, pooled with grid 1 (2,048 deals) | +0.00066 [+0.00019, +0.00113] |
+| 0.012 | **+0.00116 [+0.00017, +0.00214]** (CPU +5%) |
+
+By the rule, 0.012 is adopted, pending W=1024.
+
+## keep 0.012 at W=1024 (pre-registered 2026-10-01 16:40)
+
+**The test:**
+- The live configuration (W=1024, E7, VRPO1 own-team rollouts) with
+  keep=0.012.
+- 512 deals, seed perf-e7-v1, rs=1, paired with the stored keep=0.003 arm
+  (`b_keep.json`, +0.01974). Neither arm uses the sampler fix.
+
+**Deploy if:** the lower bound is above -0.0010 and the point estimate is
+above 0.
+
+**Note.** The grid is still monotone at 0.012. Pure policy (an infinite
+margin) was worse than keep=0.003 by 0.0024, so an optimum lies somewhere
+above 0.012. A further grid (0.012 against 0.024) on fresh deals may follow.
