@@ -38,6 +38,13 @@ E7's adaptive bids).
 - At W=128: +0.00305 [+0.00234, +0.00377] against plain search.
 - At W=1024: +0.00267 [+0.00160, +0.00374], with 3% more CPU.
 
+Since 2026-10-01 evening the anchor is VRPO3 (`models/vrpo3_final.pt`,
+512x4; +0.00118 over VRPO2 without search).
+- At W=128 (keep 0.012): +0.00176 [+0.00083, +0.00269] against the VRPO1
+  anchor.
+- At W=1024 (keep 0.003): +0.00005 [-0.00083, +0.00092], neutral, with 2%
+  less CPU.
+
 Sampler fix B0-S1 (2026-10-01): when a showing fallback is on record, the
 worlds honour what it implies about the original hands. Before the fix, 69%
 of the worlds drawn at such decisions were illegal.
@@ -59,7 +66,9 @@ SOLVER_TAIL = 6
 #: Policy-anchored search: keep the own-team policy's action unless the
 #: searched best beats it by more than this (equity).
 KEEP = 0.003
-SPEC = f"search:{ROLLOUT}:w={WORLDS}:dd={SOLVER_TAIL}:show=1:team={TEAM_ROLLOUT}:sf=1:keep={KEEP}:bp={TEAM_ROLLOUT}"
+#: The anchor policy (a 512x4 VRPO actor; the rollouts keep the faster VRPO1).
+ANCHOR = ROOT / "models" / "vrpo3_final.pt"
+SPEC = f"search:{ROLLOUT}:w={WORLDS}:dd={SOLVER_TAIL}:show=1:team={TEAM_ROLLOUT}:sf=1:keep={KEEP}:bp={ANCHOR}"
 #: E7 adaptive worlds for bids, used when the world count exceeds one batch.
 ADAPTIVE_BIDS = {"batch": 128, "z": 2.5, "delta": 0.005}
 
@@ -83,9 +92,10 @@ def best_agents(seats=range(4), worlds: int = WORLDS, seed: int = 0, team_rollou
 
     net = qmodel.load(ROLLOUT, "cpu")
     team_net = qmodel.load(TEAM_ROLLOUT, "cpu") if team_rollout else None
+    anchor = qmodel.load(ANCHOR, "cpu") if team_rollout else None
     table = Equity.load(EQUITY).table
     adaptive = ADAPTIVE_BIDS if worlds > ADAPTIVE_BIDS["batch"] else None
     return {s: SearchAgent(net, table, s, worlds=worlds, dd_left=SOLVER_TAIL, search_showing=1, seed=seed + s,
                            adaptive=adaptive, team_net=team_net,
-                           keep=KEEP if team_rollout else None, blueprint_net=team_net)
+                           keep=KEEP if team_rollout else None, blueprint_net=anchor)
             for s in seats}
