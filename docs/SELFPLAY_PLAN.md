@@ -465,3 +465,26 @@ rollouts, sampler fix, anchor on VRPO1):
 its lower bound above 0. This is two comparisons, so no Holm correction is
 applied, but the bar is a full gain, not non-inferiority. A change would be
 confirmed at W=1024 before going live.
+
+**Grid 1 result (seed keep-grid-v1), against keep 0.003 (+0.02007):**
+
+| keep | Difference |
+| --- | --- |
+| 0.0015 | -0.00093 [-0.00154, -0.00032] |
+| 0.006 | +0.00057 [-0.00010, +0.00123] |
+
+Neither margin is adopted: 0.006's lower bound is not above 0.
+
+## Anchor margin grid 2 (pre-registered 2026-10-01 14:55)
+
+**Why.** Grid 1 is monotone, and the larger margin looks better.
+
+**The test:** keep = 0.003 (the reference), 0.006 and 0.012, on 1,024 fresh
+deals (seed keep-grid-v2), otherwise as grid 1.
+
+**Decision:**
+- 0.006 against 0.003 is pooled over grids 1 and 2 (2,048 deals);
+  0.012 against 0.003 uses grid 2 only.
+- Among the margins whose lower bound is above 0, the one with the highest
+  point estimate is adopted.
+- A change is confirmed at W=1024 before going live.
