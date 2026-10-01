@@ -7,6 +7,41 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## SP3: search labels do not improve on SP1 (2026-10-01)
+
+Pre-registered in `docs/SELFPLAY_PLAN.md` (SP3).
+- **The labels:** a W=16 search value per action (the true world plus 15
+  sampled worlds, pi_k rollouts, a 6-trick exact tail).
+- **The gate:** the true-world labels.
+- **Scale:** 15 iterations in 7 h 40 min, about 15M labelled states.
+  - Iteration 1 shared the CPU with the paused sampler screen for its first
+    30 minutes.
+  - The last iteration (started before the budget ended) took about 85
+    minutes instead of about 24. A stack sample showed the exact-tail solver
+    busy; the slowdown was not explained.
+
+**Primary test** (no search, 1,024 fresh deals, seed sp3-confirm-v1,
+policy_015 against SP1): **-0.00094 [-0.00208, +0.00020]: worse** by the
+pre-registered rule (not shown non-inferior).
+
+**What happened:**
+- The labels were much cleaner: held-out advantage R^2 0.40 at iteration 1
+  and 0.46 by iteration 8, against SP1's 0.05.
+- The gate opened in 12 of 15 iterations (margin mostly 0.006, about 5-9%
+  of decisions changed).
+- Yet the native check against SP1 drifted from -0.0002 to -0.0009.
+- The one-step gains the gate measured (+0.0001 to +0.0002 per state) did
+  not carry over to play.
+
+**Likely cause.** The labels and the gate share two biases:
+- the exact tail rewards positions that are good under perfect play, which
+  pi_k cannot follow through;
+- the sampler ignores what play reveals about the hidden cards.
+
+A cleaner observation-level target does not help if it is the wrong target.
+VRPO1's full-state critic instead learns the value under the policy's own
+play.
+
 ## VRPO1: privileged-critic PPO breaks SP1's plateau (2026-10-01)
 
 Pre-registered in `docs/SELFPLAY_PLAN.md` (VRPO1); the method is
