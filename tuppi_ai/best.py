@@ -25,6 +25,12 @@ the incumbent opponents really play.
 - At W=128: +0.00132 [+0.00041, +0.00222] against clone rollouts on all
   seats.
 - At W=1024 with E7: +0.00058 [-0.00077, +0.00192], non-inferior.
+
+Sampler fix B0-S1 (2026-10-01): when a showing fallback is on record, the
+worlds honour what it implies about the original hands. Before the fix, 69%
+of the worlds drawn at such decisions were illegal.
+- W=128 screen: +0.00014 [-0.00002, +0.00030], 931 of 1,024 deals
+  identical.
 """
 
 from __future__ import annotations
@@ -43,10 +49,20 @@ SPEC = f"search:{ROLLOUT}:w={WORLDS}:dd={SOLVER_TAIL}:show=1:team={TEAM_ROLLOUT}
 ADAPTIVE_BIDS = {"batch": 128, "z": 2.5, "delta": 0.005}
 
 
-def best_agents(seats=range(4), worlds: int = WORLDS, seed: int = 0, team_rollout: bool = True) -> dict:
+def best_agents(seats=range(4), worlds: int = WORLDS, seed: int = 0, team_rollout: bool = True,
+                showing_fix: bool | None = None) -> dict:
     """team_rollout=False: the clone on all rollout seats (the configuration
-    before 2026-09-30, the research programme's pinned B0)."""
+    before 2026-09-30, the research programme's pinned B0).
+    showing_fix: worlds honour showing-fallback restrictions (B0-S1); a
+    process-wide native setting, following team_rollout unless given, so the
+    pinned B0 keeps the original sampler."""
     from . import model as qmodel
+    from . import native
+
+    if showing_fix is None:
+        showing_fix = team_rollout
+    if showing_fix:
+        native.set_showing_fix(True)
     from .equity import Equity
     from .search import SearchAgent
 
