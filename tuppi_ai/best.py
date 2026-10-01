@@ -44,7 +44,7 @@ TEAM_ROLLOUT = ROOT / "models" / "sp1_policy_043.pt"
 EQUITY = ROOT / "models" / "equity_incumbent.json"
 WORLDS = 128
 SOLVER_TAIL = 6
-SPEC = f"search:{ROLLOUT}:w={WORLDS}:dd={SOLVER_TAIL}:show=1:team={TEAM_ROLLOUT}"
+SPEC = f"search:{ROLLOUT}:w={WORLDS}:dd={SOLVER_TAIL}:show=1:team={TEAM_ROLLOUT}:sf=1"
 #: E7 adaptive worlds for bids, used when the world count exceeds one batch.
 ADAPTIVE_BIDS = {"batch": 128, "z": 2.5, "delta": 0.005}
 
