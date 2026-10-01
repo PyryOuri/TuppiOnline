@@ -72,6 +72,9 @@ def _make_candidate(spec: str) -> dict:
     if spec.startswith("profile:"):
         from .incumbent import incumbent_agents
         return incumbent_agents(spec.split(":", 1)[1])
+    if spec.startswith("heur:"):  # incumbent variant with profile parameters overridden
+        from .heuristic_variants import parse_spec, variant_agents
+        return variant_agents(parse_spec(spec))
     if spec.startswith("search:"):
         from . import model as qmodel
         from .search import SearchAgent
