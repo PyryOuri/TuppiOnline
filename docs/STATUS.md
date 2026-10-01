@@ -7,6 +7,23 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+## Anchor margin grids (2026-10-01)
+
+Pre-registered in `docs/SELFPLAY_PLAN.md`. W=128, the live configuration,
+1,024 fresh deals per grid, paired against keep=0.003:
+
+| keep | Grid 1 (keep-grid-v1) | Grid 2 (keep-grid-v2) |
+| --- | --- | --- |
+| 0.0015 | -0.00093 [-0.00154, -0.00032] | |
+| 0.003 (reference) | +0.02007 against the incumbent | +0.02011 against the incumbent |
+| 0.006 | +0.00057 [-0.00010, +0.00123] | +0.00076 [+0.00008, +0.00143]; pooled +0.00066 [+0.00019, +0.00113] |
+| 0.012 | | **+0.00116 [+0.00017, +0.00214]** |
+
+- Strength rises steadily with the margin, at CPU +5% or less.
+- keep=0.012 is adopted by the rule; its W=1024 confirmation is running.
+- The keep=0.003 arm replicated on both fresh seeds (+0.0201 against the
+  incumbent).
+
 ## Policy-anchored search: the strongest agent so far (2026-10-01)
 
 Pre-registered in `docs/SELFPLAY_PLAN.md`.
