@@ -33,8 +33,28 @@ Pre-registered in `docs/SELFPLAY_PLAN.md`.
     search ignores.
   - The search catches the tactical errors the policy still makes, when its
     margin is clear.
-- The margin was fixed before the run, never tuned. A W=1024 confirmation
-  is running.
+- The margin was fixed before the run, never tuned.
+
+**W=1024 confirmation** (live configuration with E7, 512 deals, seed
+perf-e7-v1, paired with VRPO1 own-team rollouts without the anchor):
+**+0.00267 [+0.00160, +0.00374]**, with 3% more CPU.
+- Against the incumbent: +0.01974 against +0.01707.
+- Deals won: 71.5% against 68.8%.
+- **Deployed** on 2026-10-01: `best.KEEP = 0.003`, with the VRPO1 policy as
+  the anchor. `keep` now applies after E7's adaptive bids too.
+  `best_agents(team_rollout=False)` (the research B0) has no anchor.
+
+**Live progress since 2026-09-29 (W=1024, against the incumbent, each step
+paired on its own test deals):**
+
+| Step | Gain |
+| --- | --- |
+| E7 adaptive bids | about 1.5x less CPU, same strength (+0.01608) |
+| SP1 own-team rollouts | +0.00058 |
+| Sampler fix | +0.00014 (W=128) |
+| VRPO1 own-team rollouts | +0.00041 |
+| Policy anchor | **+0.00267** |
+| **Sum of point estimates** | about **+0.0038** (from about +0.0161 to about +0.0197) |
 
 ## Live: VRPO1 own-team rollouts (2026-10-01)
 
