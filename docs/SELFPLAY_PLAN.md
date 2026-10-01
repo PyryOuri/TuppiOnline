@@ -392,3 +392,35 @@ decision (bids and card play).
 **Pass:** the primary lower bound is above -0.0010 and the point estimate is
 above 0. A gain is claimed only if the lower bound is above 0. A pass goes
 to W=1024 before live use.
+
+## VRPO3: a 512x4 actor (pre-registered 2026-10-01 10:47)
+
+**Why.** VRPO2 added only +0.00066 over VRPO1 (not confirmed), although
+its native check kept creeping up. The 256x2 actor (0.8M parameters) looks
+near its capacity. The critic already explains 0.87-0.88 of the variance.
+
+**The start.**
+- VRPO2's actor (`models/vrpo2_actor_0447.pt`) is distilled into a 512x4
+  net (3.2M parameters) with `tools/distil_policy.py`: 24 rounds of 16,384
+  self-play deals, KL to the teacher's softmax.
+- **Condition:** the native duplicate check of student against teacher
+  (8,192 base deals) must have its lower bound above -0.0010. Otherwise the
+  distillation is extended (same tool, more rounds) before VRPO3 starts.
+
+**The run.**
+- VRPO with the student as the actor and VRPO2's critic as a warm start,
+  with 2 critic-only warm-up iterations.
+- Every other setting as in VRPO1; the reference of the native checks is
+  VRPO2's actor.
+
+**Criteria:**
+- **The result** is the final actor.
+- **Budget:** at most 8 h.
+- **Stop early** for a plateau: after iteration 150, no check in the last 90
+  iterations beyond the best earlier check by more than its interval.
+- **Primary test:** no search, 1,024 fresh deals (seed vrpo3-confirm-v1),
+  paired against VRPO2's actor.
+  - **Improvement:** at least +0.0010 with the lower bound above 0.
+- **Attribution:** a gain is credited to the larger actor plus continued
+  training. VRPO2's own continuation rate (about +0.0013 native per 450
+  iterations) is the comparison point.
