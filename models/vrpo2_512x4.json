@@ -1,0 +1,187 @@
+{
+ "log": [
+  {
+   "round": 1,
+   "rows": 888685,
+   "ce": 0.547444012761116,
+   "greedy_agreement": 0.8698809146881104,
+   "seconds": 23.1
+  },
+  {
+   "round": 2,
+   "rows": 889282,
+   "ce": 0.43121094107627866,
+   "greedy_agreement": 0.9076833128929138,
+   "seconds": 18.8
+  },
+  {
+   "round": 3,
+   "rows": 888916,
+   "ce": 0.3887820065021515,
+   "greedy_agreement": 0.9175379276275635,
+   "seconds": 17.9
+  },
+  {
+   "round": 4,
+   "rows": 887949,
+   "ce": 0.3622738614678383,
+   "greedy_agreement": 0.9302662014961243,
+   "seconds": 17.7
+  },
+  {
+   "round": 5,
+   "rows": 888418,
+   "ce": 0.34091029316186905,
+   "greedy_agreement": 0.9277375340461731,
+   "seconds": 19.2
+  },
+  {
+   "round": 6,
+   "rows": 889133,
+   "ce": 0.3293650135397911,
+   "greedy_agreement": 0.9303927421569824,
+   "seconds": 19.2
+  },
+  {
+   "round": 7,
+   "rows": 888008,
+   "ce": 0.32067468762397766,
+   "greedy_agreement": 0.9342162609100342,
+   "seconds": 16.3
+  },
+  {
+   "round": 8,
+   "rows": 888946,
+   "ce": 0.3142328545451164,
+   "greedy_agreement": 0.9324204921722412,
+   "seconds": 17.2
+  },
+  {
+   "round": 9,
+   "rows": 889260,
+   "ce": 0.3028589114546776,
+   "greedy_agreement": 0.9369581341743469,
+   "seconds": 15.2
+  },
+  {
+   "round": 10,
+   "rows": 887063,
+   "ce": 0.29824251532554624,
+   "greedy_agreement": 0.9351413249969482,
+   "seconds": 16.9
+  },
+  {
+   "round": 11,
+   "rows": 885944,
+   "ce": 0.2938420489430428,
+   "greedy_agreement": 0.9414395093917847,
+   "seconds": 15.6
+  },
+  {
+   "round": 12,
+   "rows": 889913,
+   "ce": 0.290873122215271,
+   "greedy_agreement": 0.9404621124267578,
+   "seconds": 14.0
+  },
+  {
+   "round": 13,
+   "rows": 888272,
+   "ce": 0.2858324393630028,
+   "greedy_agreement": 0.9344474673271179,
+   "seconds": 12.9
+  },
+  {
+   "round": 14,
+   "rows": 887757,
+   "ce": 0.2832780256867409,
+   "greedy_agreement": 0.9395668506622314,
+   "seconds": 13.2
+  },
+  {
+   "round": 15,
+   "rows": 888478,
+   "ce": 0.27720567137002944,
+   "greedy_agreement": 0.9354077577590942,
+   "seconds": 12.8
+  },
+  {
+   "round": 16,
+   "rows": 889239,
+   "ce": 0.2753665566444397,
+   "greedy_agreement": 0.9271858930587769,
+   "seconds": 13.1
+  },
+  {
+   "round": 17,
+   "rows": 888646,
+   "ce": 0.27473751455545425,
+   "greedy_agreement": 0.934440553188324,
+   "seconds": 13.0
+  },
+  {
+   "round": 18,
+   "rows": 888048,
+   "ce": 0.2743792191147804,
+   "greedy_agreement": 0.926914632320404,
+   "seconds": 12.6
+  },
+  {
+   "round": 19,
+   "rows": 889023,
+   "ce": 0.27069645524024966,
+   "greedy_agreement": 0.924843430519104,
+   "seconds": 12.9
+  },
+  {
+   "round": 20,
+   "rows": 887855,
+   "ce": 0.2747181534767151,
+   "greedy_agreement": 0.9189662933349609,
+   "seconds": 13.3
+  },
+  {
+   "round": 21,
+   "rows": 888855,
+   "ce": 0.2750849947333336,
+   "greedy_agreement": 0.9163089990615845,
+   "seconds": 12.7
+  },
+  {
+   "round": 22,
+   "rows": 888908,
+   "ce": 0.27600140273571017,
+   "greedy_agreement": 0.909795343875885,
+   "seconds": 13.2
+  },
+  {
+   "round": 23,
+   "rows": 889552,
+   "ce": 0.2797404289245605,
+   "greedy_agreement": 0.904796838760376,
+   "seconds": 13.1
+  },
+  {
+   "round": 24,
+   "rows": 890055,
+   "ce": 0.28248157501220705,
+   "greedy_agreement": 0.9121412634849548,
+   "seconds": 12.8
+  }
+ ],
+ "student_vs_teacher": [
+  0.0002789085108076961,
+  0.00022822645357534703
+ ],
+ "teacher": "models/vrpo2_actor_0447.pt",
+ "width": 512,
+ "blocks": 4,
+ "rounds": 24,
+ "games": 16384,
+ "epochs": 2,
+ "batch": 8192,
+ "lr": 0.0005,
+ "eval_base": 8192,
+ "seed": 7,
+ "out": "models/vrpo2_512x4.pt"
+}
