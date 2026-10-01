@@ -390,6 +390,10 @@ static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *
 // most cores (lowest latency, for live play); 128 does about 7% less work in
 // total (larger matrix products), for batch jobs that already run several
 // processes. The moves are the same either way.
+// Extra solver-tail tricks in NOLO contracts for the rollouts (play_out; 0 =
+// the same tail as RAMI, the default). NOLO solves fast enough at 7 tricks.
+static int dd_extra_nolo = 0;
+void tc_set_dd_extra_nolo(int extra) { dd_extra_nolo = extra; }
 static int rollout_chunk = 32;
 void tc_set_rollout_chunk(int chunk) { rollout_chunk = chunk < 8 ? 8 : chunk > 512 ? 512 : chunk; }
 
@@ -586,7 +590,8 @@ static void play_out(TcEnv *e, const TcMlp *m, int n, int dd_left, uint64_t *rng
       int todo = 0;
       for (int i = 0; i < n; i++) {
         TcDeal *d = &e->g[i].d;
-        if (d->phase == TC_PH_PLAY && 13 - (d->n_played >> 2) <= dd_left) idx[todo++] = i;
+        if (d->phase == TC_PH_PLAY && 13 - (d->n_played >> 2) <= dd_left + (d->contract == TC_NOLO ? dd_extra_nolo : 0))
+          idx[todo++] = i;
       }
       if (todo) {
         par_apply((size_t)(todo + 31) / 32, ^(size_t c) {

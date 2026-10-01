@@ -326,3 +326,28 @@ actor and its critic (`critic_init`), with no critic-only warm-up.
   vrpo2-confirm-v1), paired against VRPO1's final actor.
   - **Improvement:** at least +0.0010 with the lower bound above 0. The bar
     is lower than SP2's +0.0020, because this is a continuation.
+
+## NOLO solver tail of 7 tricks (pre-registered 2026-10-01 05:35; item 4)
+
+**Why.** The no-search policies lose 0.005-0.008 per decision against the
+robust double-dummy action in NOLO with 4-6 tricks left; SP1 and VRPO1 both
+do (`tools/dd_consensus.py`). In the search, those tricks are reached by the
+rollout policy before the 6-trick exact tail. NOLO solves are fast at 7
+tricks (median 0.94 ms).
+
+**The candidate.** The rollouts' exact tail starts one trick earlier in NOLO
+contracts (`ddn=1`, `tc_set_dd_extra_nolo`). RAMI is unchanged. With the
+switch off, the move fingerprint is unchanged.
+
+**The screen** (W=128, live rollout setting: own team SP1, opponents clone):
+- 1,024 deals, seed vrpo1-search-v1, rs=1, paired with that seed's arm
+  without the switch.
+- That arm is the SP1 reference of the VRPO1 product test, so the two
+  variants share their reference.
+
+**Criteria:**
+- **Pass:** the point estimate is above 0, the lower bound is above -0.0010,
+  and the CPU per deal is at most 1.5x.
+- A pass goes on to a W=1024 confirmation before live use (same rule as the
+  rollout roles).
+- A gain is claimed only if the lower bound is above 0.

@@ -611,6 +611,14 @@ def set_showing_fix(on: bool) -> None:
     lib.tc_set_showing_fix(int(bool(on)))
 
 
+_sym("tc_set_dd_extra_nolo").argtypes = [C.c_int]
+
+
+def set_dd_extra_nolo(extra: int) -> None:
+    """Extra solver-tail tricks for NOLO contracts in search rollouts (0 = off, the default)."""
+    lib.tc_set_dd_extra_nolo(int(extra))
+
+
 def set_rollout_chunk(chunk: int) -> None:
     """Rollouts per network batch in the search (same moves; 32 = lowest latency,
     128 = least total work, for batch jobs running several processes)."""
