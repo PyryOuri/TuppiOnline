@@ -10,7 +10,8 @@ from pathlib import Path
 from .experiment_io import canonical, read_json, write_json
 
 RESULT_SCHEMA = "tuppi.duplicate_eval.v2"
-CONTEXT_SCHEMA = "tuppi.frozen_eval_context.v1"
+CONTEXT_SCHEMA = "tuppi.frozen_eval_context.v2"
+SHARED_CONTEXT = ("schema", "inputs_sha256", "workers", "design", "chunksize", "controller_state")
 META = ("seed", "ruleset", "scores", "opponent")
 
 
@@ -65,9 +66,10 @@ def validate_result(result: dict, *, allow_legacy: bool = False) -> dict:
     if context is not None:
         if not isinstance(context, dict) or context.get("schema") != CONTEXT_SCHEMA:
             raise ValueError("invalid frozen evaluation context")
-        fingerprint = context.get("inputs_sha256")
-        if not isinstance(fingerprint, str) or len(fingerprint) != 64 or any(c not in "0123456789abcdef" for c in fingerprint):
-            raise ValueError("invalid frozen-input fingerprint")
+        for key in ("inputs_sha256", "candidate_inputs_sha256", "inventory_sha256"):
+            fingerprint = context.get(key)
+            if not isinstance(fingerprint, str) or len(fingerprint) != 64 or any(c not in "0123456789abcdef" for c in fingerprint):
+                raise ValueError(f"invalid frozen-input fingerprint: {key}")
         if type(context.get("workers")) is not int or context["workers"] < 1:
             raise ValueError("invalid worker count")
         if context.get("design") != "4_rotations_2_teams" or context.get("chunksize") != 8:
@@ -91,7 +93,7 @@ def compare(candidate: dict, reference: dict, *, allow_legacy: bool = False) -> 
     if candidate["base_deals"] != reference["base_deals"]:
         raise ValueError("unequal sample counts; prefix truncation is not permitted")
     contexts = [r.get("evaluation_context") for r in (candidate, reference)]
-    if all(c is not None for c in contexts) and canonical(contexts[0]) != canonical(contexts[1]):
+    if all(c is not None for c in contexts) and any(contexts[0][key] != contexts[1][key] for key in SHARED_CONTEXT):
         raise ValueError("frozen inputs or execution design differ")
     records = [r.get("deal_records") for r in (candidate, reference)]
     warnings = []
@@ -125,6 +127,7 @@ def compare(candidate: dict, reference: dict, *, allow_legacy: bool = False) -> 
             "standard_error": se, "positive_delta_deals": sum(v > 0 for v in deltas),
             "zero_delta_deals": sum(v == 0 for v in deltas), "paired_deltas": deltas,
             "candidate_seconds": candidate.get("seconds"), "reference_seconds": reference.get("seconds"),
+            "candidate_context": contexts[0], "reference_context": contexts[1],
             "qualification": "Candidate minus reference against the same opponent. Normal-approximation interval over base deals; persistent controllers can introduce dependence. No correction for tuning or multiple comparisons."}
 
 

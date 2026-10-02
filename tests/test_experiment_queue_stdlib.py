@@ -131,6 +131,40 @@ class QueueTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             queue.inspect(self.directory)
 
+    def test_separate_candidate_queues_share_context_without_sharing_inventory(self):
+        checkpoints = [self.checkout / "models" / f"actor-{i}.pt" for i in range(2)]
+        for i, path in enumerate(checkpoints):
+            path.write_bytes(f"fixture checkpoint {i}".encode())
+        contexts = []
+        for i, checkpoint in enumerate(checkpoints):
+            self.plan["jobs"] = [dict(self.plan["jobs"][0], candidate=str(checkpoint))]
+            write_json(self.plan_path, self.plan)
+            frozen = queue.prepare(self.plan_path, self.checkout / "runs" / f"queue-{i}")
+            contexts.append(queue._evaluation_context(frozen["plan"]["jobs"][0], frozen))
+        self.assertEqual(contexts[0]["inputs_sha256"], contexts[1]["inputs_sha256"])
+        self.assertNotEqual(contexts[0]["candidate_inputs_sha256"], contexts[1]["candidate_inputs_sha256"])
+        self.assertNotEqual(contexts[0]["inventory_sha256"], contexts[1]["inventory_sha256"])
+        a, b = result(), result(candidate="reference")
+        a["evaluation_context"], b["evaluation_context"] = contexts
+        self.assertEqual(compare(a, b)["validation_level"], "deal_ids_and_frozen_inputs")
+
+    def test_opponent_equity_and_explicit_extra_inputs_are_shared_context(self):
+        opponent = self.checkout / "models" / "opponent.pt"
+        extra = self.checkout / "models" / "common.json"
+        opponent.write_bytes(b"opponent fixture")
+        extra.write_text("{}")
+        self.plan["jobs"] = [dict(self.plan["jobs"][0], opponent=f"search:{opponent}:w=128")]
+        self.plan["extra_inputs"] = [str(extra)]
+        contexts = []
+        for i, changed in enumerate((None, opponent, self.checkout / "models" / "equity.json", extra)):
+            if changed:
+                changed.write_bytes(changed.read_bytes() + b" ")
+            write_json(self.plan_path, self.plan)
+            frozen = queue.prepare(self.plan_path, self.checkout / "runs" / f"queue-{i}")
+            self.assertEqual(frozen["plan"]["extra_inputs"], [str(extra)])
+            contexts.append(queue._evaluation_context(frozen["plan"]["jobs"][0], frozen))
+        self.assertEqual(len({c["inputs_sha256"] for c in contexts}), 4)
+
     def test_incompatible_paired_jobs_fail_before_freezing(self):
         for key, value in (("seed", "different"), ("ruleset", "v2"), ("scores", "zero"), ("samples", 4)):
             plan = copy.deepcopy(self.plan)

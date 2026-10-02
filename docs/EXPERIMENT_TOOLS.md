@@ -30,8 +30,13 @@ affect persistent controller state. Evaluation now
 requires at least two base deals; the CLI also accepts `--equity-path`.
 
 Strict comparison requires a frozen-input context on both files, normally
-provided by the queue. It checks identical source/model/native/equity input
-fingerprints and execution design, including workers. Standalone evaluator
+provided by the queue. It checks identical source/native/equity/opponent input
+fingerprints and execution design, including workers. Candidate assets and the
+full queue inventory have separate fingerprints preserved in the comparison
+report. Thus compatible baselines from separate queues can be reused when
+only candidate assets or unrelated jobs change. Explicit `extra_inputs` are
+treated as shared inputs; changing them invalidates baseline compatibility.
+The context schema is `tuppi.frozen_eval_context.v2`. Standalone evaluator
 outputs have deal IDs but cannot attest frozen inputs by themselves.
 
 For historical outputs, explicit weaker analysis is available:

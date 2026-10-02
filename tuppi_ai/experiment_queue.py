@@ -236,9 +236,11 @@ def normalize(plan: dict, base: Path) -> tuple[dict, list[Path]]:
     extra = plan.get("extra_inputs", [])
     if not isinstance(extra, list):
         raise ValueError("extra_inputs must be a list")
-    inputs.extend(_input(_path(p, checkout), roots) for p in extra)
+    extra = sorted(set(_input(_path(p, checkout), roots) for p in extra))
+    inputs.extend(extra)
     normalized = {"schema": PLAN_SCHEMA, "checkout": str(checkout), "engine": str(engine), "python": python,
-                  "equity": str(equity), "budget_wall_seconds": budget, "max_workers": workers, "jobs": jobs}
+                  "equity": str(equity), "budget_wall_seconds": budget, "max_workers": workers, "jobs": jobs,
+                  "extra_inputs": [str(p) for p in extra]}
     return normalized, sorted(set(inputs))
 
 
@@ -402,6 +404,24 @@ def _check_completed(state, directory):
                 raise ValueError("completed result is missing or changed; refusing reuse")
 
 
+def _evaluation_context(job, frozen):
+    """Attest shared inputs separately from the intentionally changed candidate."""
+    plan = frozen["plan"]
+    checkout, engine = Path(plan["checkout"]), Path(plan["engine"])
+    _, candidate = _spec(job["candidate"], checkout, engine)
+    _, opponent = _spec(job["opponent"], checkout, engine, opponent=True)
+    common = _source_inputs(plan) + opponent + [Path(plan["equity"])]
+    common += [Path(p) for p in plan["extra_inputs"]]
+
+    def fingerprint(paths):
+        return digest({str(p): frozen["inputs"][str(p)] for p in sorted(set(paths))})
+
+    return {"schema": CONTEXT_SCHEMA, "inputs_sha256": fingerprint(common),
+            "candidate_inputs_sha256": fingerprint(candidate), "inventory_sha256": digest(frozen["inputs"]),
+            "workers": job["workers"], "design": "4_rotations_2_teams",
+            "chunksize": 8, "controller_state": "persistent_per_worker"}
+
+
 def _validate_output(result, job, frozen, state, directory):
     if job["kind"] == "deal_eval":
         validate_result(result, allow_legacy=True)
@@ -409,9 +429,7 @@ def _validate_output(result, job, frozen, state, directory):
                     "scores": job["scores"], "ruleset": f"project_target_{job['ruleset']}", "base_deals": job["samples"]}
         if result.get("schema") != RESULT_SCHEMA or any(result.get(k) != v for k, v in expected.items()):
             raise ValueError("worker result does not match its frozen job")
-        result["evaluation_context"] = {"schema": CONTEXT_SCHEMA, "inputs_sha256": digest(frozen["inputs"]),
-                                        "workers": job["workers"], "design": "4_rotations_2_teams",
-                                        "chunksize": 8, "controller_state": "persistent_per_worker"}
+        result["evaluation_context"] = _evaluation_context(job, frozen)
         validate_result(result)
     else:
         a, b = (read_json(directory / state["jobs"][job[k]]["result"]) for k in ("candidate_result", "reference_result"))

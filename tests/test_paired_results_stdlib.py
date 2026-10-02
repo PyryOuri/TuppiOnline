@@ -13,6 +13,7 @@ def result(values=(0.001, 0.002, -0.003), candidate="candidate"):
             "seed": "paired-test", "ruleset": "project_target_v3", "scores": "uniform",
             "base_deals": len(values), "values": list(values), "deal_records": rows, "seconds": 10,
             "evaluation_context": {"schema": CONTEXT_SCHEMA, "inputs_sha256": digest({"source": "fixture"}),
+                                   "candidate_inputs_sha256": digest(candidate), "inventory_sha256": digest("inventory"),
                                    "workers": 1, "design": "4_rotations_2_teams", "chunksize": 8,
                                    "controller_state": "persistent_per_worker"}}
 
@@ -80,6 +81,22 @@ class PairedResultTests(unittest.TestCase):
         report = compare(a, b, allow_legacy=True)
         self.assertEqual(report["validation_level"], "legacy_metadata_only")
         self.assertEqual(len(report["warnings"]), 2)
+
+    def test_different_candidate_assets_and_queue_inventories_are_attested_not_rejected(self):
+        a, b = result(), result(candidate="reference")
+        b["evaluation_context"]["inventory_sha256"] = digest("another queue")
+        report = compare(a, b)
+        self.assertNotEqual(report["candidate_context"]["candidate_inputs_sha256"],
+                            report["reference_context"]["candidate_inputs_sha256"])
+        self.assertNotEqual(report["candidate_context"]["inventory_sha256"],
+                            report["reference_context"]["inventory_sha256"])
+
+    def test_candidate_provenance_must_be_present_and_valid(self):
+        for key in ("candidate_inputs_sha256", "inventory_sha256"):
+            b = result()
+            b["evaluation_context"][key] = "unknown"
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                compare(result(), b, allow_legacy=True)
 
     def test_legacy_opt_in_does_not_override_known_mismatches(self):
         b = result()
