@@ -172,3 +172,33 @@ unchanged (move fingerprint identical at W=1024).
 **Reading:** a candidate for deployment if the lower bound is above -0.0010
 and the point estimate is above 0. **Deployment is the owner's decision**,
 since it changes how often the live bot bids RAMI.
+
+**C-R1 result:** **-0.00116 [-0.00204, -0.00028]** against the live arm
+(W=1024, v2 defending, score 0-0).
+- RAMI declared: 31.6% against 52.2%.
+- CPU: 65,752 s against 59,398 s.
+- **It fails the pass rule and is not deployed**; `best.RAMI_MARGIN` stays 0.
+
+## Conclusion so far
+
+| Test | Setting | Cautious minus normal |
+| --- | --- | --- |
+| E-R1 | W=128, bot defenders, uniform scores | +0.00214 [+0.00062, +0.00366] |
+| E-R1b | W=128, v3 heuristic defenders, uniform scores | +0.00170 [-0.00002, +0.00343] |
+| C-R1 | W=1024, v2 heuristic defenders, 0-0 | -0.00116 [-0.00204, -0.00028] |
+
+- The right amount of RAMI depends on how well the opponents defend:
+  against weak heuristic defence from 0-0, aggressive RAMI pays, and against
+  bot-strength defence it over-reaches.
+- A fixed margin is not right everywhere.
+- **Against good human defence** the live bot probably bids RAMI somewhat
+  too often. That cannot be measured without human games.
+
+**Options:**
+- the owner's own games (bot RAMIs made or stolen against humans);
+- a bid search whose opponent model defends well, for example VRPO for the
+  opponents in bid searches only, tested against both heuristic and bot
+  defenders.
+
+The earlier grid showed the cost of modelling the opponents as SP1 against
+the incumbent (-0.0029), which is the same trade-off.
