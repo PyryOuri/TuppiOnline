@@ -45,6 +45,17 @@ Since 2026-10-01 evening the anchor is VRPO3 (`models/vrpo3_final.pt`,
 - At W=1024 (keep 0.003): +0.00005 [-0.00083, +0.00092], neutral, with 2%
   less CPU.
 
+Bid-only anchor margin (2026-10-02, owner's decision): bids keep the VRPO3
+policy's bid unless the search beats it by more than 0.03. Card play keeps
+0.003. The live bot bid RAMI on about 40% of hands, tuned to the
+heuristic's weak defence; VRPO3, which learned against strong defence, bids
+on about 25%.
+- Against bot-strength defence (W=128, 2,048 deals): +0.00251 [+0.00125,
+  +0.00377].
+- Harmless against the heuristic in the screen.
+- The 0-0 heuristic check and the W=1024 confirmation were still running
+  when it was deployed.
+
 Sampler fix B0-S1 (2026-10-01): when a showing fallback is on record, the
 worlds honour what it implies about the original hands. Before the fix, 69%
 of the worlds drawn at such decisions were illegal.
@@ -68,10 +79,12 @@ SOLVER_TAIL = 6
 KEEP = 0.003
 #: The anchor policy (a 512x4 VRPO actor; the rollouts keep the faster VRPO1).
 ANCHOR = ROOT / "models" / "vrpo3_final.pt"
-SPEC = f"search:{ROLLOUT}:w={WORLDS}:dd={SOLVER_TAIL}:show=1:team={TEAM_ROLLOUT}:sf=1:keep={KEEP}:bp={ANCHOR}"
 #: Bid-only anchor margin (docs/RAMI_ANALYSIS.md, option 1): keep the anchor policy's bid
 #: unless the searched best beats it by more than this; None = KEEP for bids too.
-KEEP_SHOW = None
+#: 0.03 deployed 2026-10-02 by the owner's decision (against strong play the bot bid RAMI a
+#: little too often): +0.00251 [+0.00125, +0.00377] against bot-strength defence at W=128.
+KEEP_SHOW = 0.03
+SPEC = f"search:{ROLLOUT}:w={WORLDS}:dd={SOLVER_TAIL}:show=1:team={TEAM_ROLLOUT}:sf=1:keep={KEEP}:bp={ANCHOR}:ks={KEEP_SHOW}"
 #: Cautious RAMI bidding (docs/RAMI_ANALYSIS.md): a RAMI bid must beat the best NOLO
 #: bid's searched value by this much (equity). 0 = the bidding tested before
 #: 2026-10-02; a positive value is deployed only by the owner's decision.
