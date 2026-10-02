@@ -91,3 +91,36 @@ live use.
 
 **The bias it tests:** A removes the heuristic from the bot's view of its
 opponents entirely; B keeps it, matched to the new benchmark.
+
+**P1 result** (W=128, 512 base deals per opponent, uniform scores; candidate
+minus reference):
+
+| Candidate | vs live bot | vs VRPO3 | Strong-panel mean | Guard: v3 heuristic |
+| --- | --- | --- | --- | --- |
+| A, VRPO1 opponent model | +0.00401 ± 0.00360 | +0.01001 ± 0.00406 | **+0.00701 ± 0.00271** | -0.00092 ± 0.00402 |
+| B, v3-clone opponent model | -0.00235 ± 0.00294 | +0.00069 ± 0.00344 | -0.00083 ± 0.00226 | +0.00395 ± 0.00308 |
+
+- **This quantifies the concern.** Modelling the opponents as the
+  heuristic (B) helps against the heuristic (+0.004) but not against
+  strong players. Modelling them as a strong policy (A) gains +0.007
+  against strong players and is about neutral against the heuristic.
+- **A fails by the rule only through the guard's width.** The strong
+  panel's lower bound is +0.0043, but the guard's is -0.0049 against a
+  required -0.0015.
+
+### P1b and P1c (pre-registered 2026-10-02 20:55)
+
+**P1b, the guard with power:**
+- A against `partner_aware_lead_v3`, 2,048 base deals (seed
+  panel-p1b|heur, uniform scores), paired with the reference on the same
+  deals.
+- It passes if the lower bound is above -0.0015.
+
+**P1c, live strength against strong opposition:**
+- A at W=1024 (with E7) against the live configuration at W=1024,
+  bot-vs-bot, 512 base deals, uniform scores, seed p1c-bvb.
+- It passes if the lower bound is above 0.
+
+**Deployment** (if both pass) is put to the owner. The owner's stated goal
+(the strongest bot against strong opponents) favours it, but it changes how
+the bot models every opponent.
