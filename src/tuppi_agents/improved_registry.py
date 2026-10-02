@@ -199,6 +199,43 @@ _EXACT_DUCKING_DISCARD = PolicyLayer(
 )
 
 
+_CASH_SINGLETON_WINNER_LATE = PolicyLayer(
+    layer_id="tuppi.agents.cash_singleton_winner_late.v1",
+    supersedes=None,
+    introduces=("cash_singleton_winner_preference",),
+    parameters=(
+        ("contract", "RAMI"),
+        ("max_tricks_left", 5),
+        ("position", "lead"),
+        ("choice", "highest_certain_winner_singleton"),
+    ),
+)
+
+_UNDERLEAD_UNSUPPORTED_HONOUR = PolicyLayer(
+    layer_id="tuppi.agents.underlead_unsupported_honour.v1",
+    supersedes=None,
+    introduces=("underlead_unsupported_honour_preference",),
+    parameters=(
+        ("contract", "RAMI"),
+        ("position", "lead"),
+        ("trigger", "inherited_top_card_not_certain_winner"),
+        ("choice", "lowest_of_same_suit"),
+    ),
+)
+
+_SECOND_HAND_LOW = PolicyLayer(
+    layer_id="tuppi.agents.second_hand_low.v1",
+    supersedes=None,
+    introduces=("second_hand_low_preference",),
+    parameters=(
+        ("contract", "RAMI"),
+        ("position", "second"),
+        ("trigger", "inherited_card_wins_now_not_certain_winner"),
+        ("choice", "lowest_of_led_suit"),
+    ),
+)
+
+
 _IMPROVED_POLICIES: tuple[ImprovedPolicy, ...] = (
     ImprovedPolicy(
         profile_key="partner_aware_lead_v2",
@@ -232,6 +269,28 @@ _IMPROVED_POLICIES: tuple[ImprovedPolicy, ...] = (
             "conditioned ducking law instead of the uncalibrated legacy rank "
             "table. Measured paired on forced-NOLO deals only, not shipped to "
             "the live runtime, and not a Phase 4 profile."
+        ),
+    ),
+    ImprovedPolicy(
+        profile_key="partner_aware_lead_v3",
+        base_profile_key="partner_aware_v1",
+        base_improved_key="partner_aware_lead_v2",
+        agent_family="partner_aware_refined_rami_play",
+        implementation_reference="tuppi_agents.refined_play:partner_aware_lead_v3",
+        policy_schema_version="tuppi.agents.refined_rami_play.v1",
+        layers=(
+            _VOID_SEEKING_NOLO_LEAD,
+            _ESTABLISHMENT_RAMI_LEAD,
+            _CASH_SINGLETON_WINNER_LATE,
+            _UNDERLEAD_UNSUPPORTED_HONOUR,
+            _SECOND_HAND_LOW,
+        ),
+        description=(
+            "partner_aware_lead_v2 with three RAMI card-play corrections found "
+            "against a self-play teacher: cash a certain-winner singleton late, "
+            "underlead an unsupported honour, and second hand low. Measured "
+            "paired against partner_aware_lead_v2 (+0.005 match equity per deal "
+            "from 0-0), not expert-validated, and not a Phase 4 profile."
         ),
     ),
 )
@@ -395,6 +454,10 @@ def _policy_class(profile_key: str):
         from .nolo_discard import LiabilityDiscardPolicy
 
         return LiabilityDiscardPolicy
+    if profile_key == "partner_aware_lead_v3":
+        from .refined_play import RefinedPartnerAwarePolicy
+
+        return RefinedPartnerAwarePolicy
     raise AgentsValidationError(f"unknown improved profile {profile_key!r}")
 
 

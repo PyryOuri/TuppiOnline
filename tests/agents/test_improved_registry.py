@@ -56,6 +56,10 @@ FROZEN_IMPROVED_AGENT_IDS = {
     "partner_aware_discard_v3": (
         "agent:sha256:4b52fd908698de131ab1c9c4562b37da8da4733b8005b0e935fbd15339a17634"
     ),
+    # Added with the policy (2026-10-02); the two identities above are unchanged.
+    "partner_aware_lead_v3": (
+        "agent:sha256:0b7b8f939ea1cafcb0df5e89089e3431fbf50e181ce16347ba90376e62412000"
+    ),
 }
 
 # ``partner_aware_v1`` is the base of both improved policies and the reference
@@ -281,6 +285,9 @@ def test_memoising_did_not_change_a_single_improved_identity() -> None:
             "agent:sha256:4b52fd908698de131ab1c9c4562b37da8da4733b8005b0e935fbd15339a17634",
         "partner_aware_lead_v2":
             "agent:sha256:252fe227b01900e3c1d94822179adee07a64e3a3eb761a529a425f39b95d435d",
+        # Added with the policy (2026-10-02), after the memoisation.
+        "partner_aware_lead_v3":
+            "agent:sha256:0b7b8f939ea1cafcb0df5e89089e3431fbf50e181ce16347ba90376e62412000",
     }
     specifications = improved_specifications_by_profile_key()
     assert set(specifications) == set(frozen)
