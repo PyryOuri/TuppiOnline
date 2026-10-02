@@ -242,3 +242,31 @@ v2 at 0-0, paired with `b_keep_v3.json` (512 deals, seed perf-e7-v1).
   is at least 0.
 - A W=1024 bot-vs-bot check follows if time allows.
 - **Deployment remains the owner's decision.**
+
+**Screen O1 result** (paired differences against the live arm, 512 base
+deals each):
+
+| ks | S1 bot defenders | S2 v3 heuristic, uniform | S3 v3 heuristic, 0-0 |
+| --- | --- | --- | --- |
+| 0.01 | -0.00034 [-0.00227, +0.00160] | -0.00041 [-0.00216, +0.00135] | +0.00044 [-0.00017, +0.00106] |
+| 0.03 | +0.00222 [-0.00052, +0.00495] | +0.00039 [-0.00183, +0.00261] | +0.00042 [-0.00042, +0.00125] |
+
+- **O1 fails by its rule:** no arm has S1's lower bound above 0.
+- ks=0.03 has the point estimate of the earlier caution gain (+0.002 against
+  bot defence; RAMI declared 40.7% against 53.4%) and positive estimates
+  against the heuristic in both conditions.
+- Bot-vs-bot pairs are noisier than expected (about ±0.0027 at 512 deals).
+
+### O2: ks=0.03, powered (pre-registered 2026-10-02 13:50, after O1)
+
+**The test:**
+- S1: ks=0.03 against the live bot at W=128, uniform scores, **2,048 base
+  deals**, fresh seed o2-bvb.
+- S3: against `partner_aware_lead_v3` at 0-0, 1,024 base deals, seed
+  o2-heur-z, paired with the live arm.
+
+**Pass:** S1's lower bound above 0, and S3's lower bound above -0.0010.
+
+**Then:** the W=1024 confirmations of C-R1's form (against v2 at 0-0 paired
+with `b_keep_v3.json`: non-inferior, with the point estimate at least 0),
+and, if time allows, a W=1024 bot-vs-bot check.
