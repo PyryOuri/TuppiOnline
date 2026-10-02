@@ -14,6 +14,13 @@ so a cost of 0.01 is one percentage point of the chance to win the match.
 Not flagged, by design: forced decisions; the sooli return (the bot plays the
 heuristic there, search measured no better); near-ties.
 
+Since 2026-10-02 the review prices moves exactly as the live bot does
+(`DealReviewer.best`): the searching team's own seats are rolled out by the
+live own-team policy (`best.TEAM_ROLLOUT`), the opponents by the clone, and
+worlds honour showing-fallback restrictions (B0-S1). The live bot's policy
+anchor (`best.KEEP`, 0.003) needs no counterpart: a flagged gap is at least
+`min_cost` (0.01), so the bot itself would also leave the played action.
+
 Calibration (`tools/review_calibrate.py`, docs/STATUS.md): at the defaults
 (0.01, 2.5 SE, 1024 confirming worlds) the bot reviewing its own play flags
 0.06 decisions per seat-deal and the incumbent 1.2. The estimated costs are
@@ -71,11 +78,11 @@ def decision_kind(observation) -> tuple[str, int | None]:
 class DealReviewer:
     """Prices a seat's decisions with the best agent's search."""
 
-    reviewer_id = "tuppi_ai.best_search_review.v1"
+    reviewer_id = "tuppi_ai.best_search_review.v2"
 
     def __init__(self, net, equity_table, *, worlds: int = 256, confirm_worlds: int = 1024,
                  dd_left: int = 6, min_cost: float = 0.01, z: float = 2.5, seed: int = 0,
-                 sooli: dict | None = None):
+                 sooli: dict | None = None, team_net=None):
         from .search import SOOLI_DEFAULTS
 
         self.mlp = native.Mlp(net)
@@ -84,14 +91,23 @@ class DealReviewer:
         self.sooli = {**SOOLI_DEFAULTS, **(sooli or {})}
         self.env = native.Env(max(worlds, confirm_worlds) * 26, seed, equity_table, single_deal=True,
                               encoder=net.encoder)
+        self._team_mlp = None
+        if team_net is not None:  # the reviewed seat's team rolls out with this policy
+            if team_net.encoder != net.encoder:
+                raise ValueError("the own-team rollout net must use the same encoder")
+            self._team_mlp = native.Mlp(team_net)
+            self.env.set_team_rollout(self._team_mlp)
         self.rng = C.c_uint64(seed * 7919 + 17)
 
     @classmethod
     def best(cls, **kwargs) -> "DealReviewer":
+        """The live bot's pricing: clone opponents, own-team policy rollouts, the sampler fix."""
         from . import model as qmodel
-        from .best import EQUITY, ROLLOUT, SOLVER_TAIL
+        from .best import EQUITY, ROLLOUT, SOLVER_TAIL, TEAM_ROLLOUT
         from .equity import Equity
 
+        native.set_showing_fix(True)  # process-wide, as best_agents sets it
+        kwargs.setdefault("team_net", qmodel.load(TEAM_ROLLOUT, "cpu"))
         return cls(qmodel.load(ROLLOUT, "cpu"), Equity.load(EQUITY).table, dd_left=SOLVER_TAIL, **kwargs)
 
     def _values(self, obs: native.TcObs, ids: list[int], worlds: int) -> np.ndarray:
