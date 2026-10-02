@@ -300,3 +300,19 @@ profile:partner_aware_lead_v3`.
 - v2 remains the benchmark and the live server's reference.
 - Merging the branch, and switching the benchmark or any live use to v3,
   is the owner's decision.
+
+## A clone of partner_aware_lead_v3 (2026-10-02)
+
+- **Data:** `tools/gen_bc.py --ruleset v3 --profile partner_aware_lead_v3`,
+  150,000 deals (seed tuppi-ai-bc-v3, 3% deviations), 6.49M decisions.
+- **Training:** `tuppi_ai.bc` 256x2, 10 epochs.
+- **Result** (`models/clone_v3_small.pt`):
+  - held-out agreement 97.66% (the v2 clone `runs/bc_small.pt`: 97.9%);
+  - against v3 without search, 1,024 base deals: -0.00024 [-0.00068,
+    +0.00019], at parity. The v2 clone scores -0.0051 against v3.
+- **Uses:**
+  - the continuation for the next mining round with v3 as the base
+    (`heuristic_mining.py --base partner_aware_lead_v3 --clone
+    models/clone_v3_small.pt`);
+  - a candidate model of the opponents in the bot's rollouts. Not changed;
+    that would alter the live bot.
