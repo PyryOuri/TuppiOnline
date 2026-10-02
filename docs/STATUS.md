@@ -50,6 +50,44 @@ with 2% less CPU.
 - **Deployed:** `best.ANCHOR` = `models/vrpo3_final.pt` (TuppiAI c2c14b4);
   the live server was restarted (pid 395).
 
+## RAMI frequency and cautious bidding (2026-10-02)
+
+The owner observed RAMI in about 5/6 of deals against the bot, against about
+1/3 at human tables. Full analysis in `docs/RAMI_ANALYSIS.md`.
+
+**Bid rates per hand:**
+- humans about 9-10%;
+- `partner_aware_lead_v3` 22.5%, with 78% RAMI deals;
+- the live bot 39-41%, with about 97%;
+- VRPO3 without search 24-27%.
+
+**Reasons:**
+- with a strong hand NOLO loses: at RAMI score 18-21, RAMI wins 76% and
+  NOLO 39%;
+- the rising score makes the doubled stolen penalty irrelevant whenever we
+  lead;
+- the bot's strong card play.
+
+**Defence:**
+- the bot defends by equity search and steals 45% of the heuristic's RAMIs;
+- the heuristic defends weakly;
+- the bot's own RAMIs are made 86% against the heuristic but 70% against
+  bots, because its bid search imagines heuristic-strength defenders.
+
+**Cautious bidding** (evaluate now accepts `--opponent search:...`):
+
+| Test | Result |
+| --- | --- |
+| rb=-0.02, bot defence, W=128 | +0.00214 [+0.00062, +0.00366] |
+| rb=-0.02 vs v3 heuristic, W=128 | +0.00170 [-0.00002, +0.00343] |
+| rb=-0.02 vs v2, W=1024, 0-0 | -0.00116 [-0.00204, -0.00028], not deployed |
+| bid-only anchor margin ks=0.03, bot defence, W=128 | +0.00222 [-0.00052, +0.00495]; harmless vs the heuristic |
+
+- O2, a powered retest of ks=0.03, is running; it is followed by a W=1024
+  confirmation.
+- `best.RAMI_MARGIN` stays 0, and no live change is made without the
+  owner's decision.
+
 ## Strength work parked (2026-10-01, owner's decision)
 
 **The live bot now** (W=1024):
