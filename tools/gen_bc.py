@@ -8,6 +8,11 @@ scores and dealers are random, because the network sees the score.
 
 Features are native encoder v2, bit-packed; shards go to runs/bc/<name>/.
 
+`--profile` names the heuristic (default: the benchmark, tuppi_ai.incumbent.INCUMBENT)
+and `--ruleset` the rules (default v1, as `runs/bc_small.pt` was made: that clone is of
+partner_aware_lead_v2 under project_target_v1). Under v3 the sooli phases are played by
+TuppiProject's sooli fallback and are not recorded.
+
     python tools/gen_bc.py --name v1 --deals 100000 --workers 12
 """
 
@@ -26,7 +31,7 @@ _A = None
 
 
 def _shard(args) -> tuple[str, int]:
-    index, deals, deviate, out, encoder, seed = args
+    index, deals, deviate, out, encoder, seed, profile, ruleset = args
     global _A
     from tuppi_engine import (EnginePhase, ExplicitDeal, apply_match_action,
                               begin_explicit_deal, create_match, match_observation_for)
@@ -39,7 +44,10 @@ def _shard(args) -> tuple[str, int]:
     from tuppi_ai.incumbent import incumbent_agents
 
     if _A is None:
-        _A = incumbent_agents()
+        _A = incumbent_agents(profile)
+        if ruleset == "v3":
+            from tuppi_agents.sooli import SooliFallbackAgent
+            _A = {s: SooliFallbackAgent(a) for s, a in _A.items()}
     rng = random.Random(f"{seed}|shard|{index}")
     dim = native.feature_dim(encoder)
     feats, acts, masks = [], [], []
@@ -52,14 +60,24 @@ def _shard(args) -> tuple[str, int]:
             dealer = rng.randrange(4)
             level = rng.randrange(13) if rng.random() < 0.5 else 0
             score = (0, 0) if level == 0 else ((4 * level, 0) if rng.random() < 0.5 else (0, 4 * level))
-            state = begin_explicit_deal(
-                create_match(initial_score=MatchScore(*score), initial_dealer=dealer, match_ref="bc-gen"),
-                ExplicitDeal(dealer=dealer, hands=hands))
-            while state.phase in (EnginePhase.SHOWING, EnginePhase.TRICK_PLAY):
+            if ruleset == "v3":
+                from tuppi_engine.state import ACTIVE_PHASES
+                from tuppi_rules import RulesetId
+                match = create_match(initial_score=MatchScore(*score), initial_dealer=dealer, match_ref="bc-gen",
+                                     ruleset_id=RulesetId.PROJECT_TARGET_V3)
+                active = ACTIVE_PHASES
+            else:
+                match = create_match(initial_score=MatchScore(*score), initial_dealer=dealer, match_ref="bc-gen")
+                active = (EnginePhase.SHOWING, EnginePhase.TRICK_PLAY)
+            state = begin_explicit_deal(match, ExplicitDeal(dealer=dealer, hands=hands))
+            while state.phase in active:
                 seat = state.current_actor
                 observation = match_observation_for(state, seat)
                 label = _A[seat].choose_action(observation)
                 legal = observation.legal_actions
+                if state.phase not in (EnginePhase.SHOWING, EnginePhase.TRICK_PLAY):
+                    state = apply_match_action(state, label)  # sooli phases: played, not recorded
+                    continue
                 if len(legal) > 1:
                     native.encode(obs_from_player_observation(observation), buf, encoder)
                     feats.append(np.packbits(buf))
@@ -83,10 +101,16 @@ def main() -> None:
     p.add_argument("--encoder", type=int, default=2)
     p.add_argument("--workers", type=int, default=12)
     p.add_argument("--seed", default="tuppi-ai-bc-v1")
+    p.add_argument("--profile", default=None, help="heuristic profile (default: the benchmark)")
+    p.add_argument("--ruleset", choices=("v1", "v3"), default="v1")
     args = p.parse_args()
+    if args.profile is None:
+        from tuppi_ai.incumbent import INCUMBENT
+        args.profile = INCUMBENT
     out = ROOT / "runs" / "bc" / args.name
     out.mkdir(parents=True, exist_ok=True)
-    jobs = [(i, args.per_shard, args.deviate, str(out), args.encoder, args.seed)
+    (out / "args.txt").write_text(repr(vars(args)))
+    jobs = [(i, args.per_shard, args.deviate, str(out), args.encoder, args.seed, args.profile, args.ruleset)
             for i in range(args.deals // args.per_shard)]
     t0 = time.time()
     total = 0
