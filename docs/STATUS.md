@@ -7,6 +7,13 @@ normal-approximation 95% interval over base deals. For scale: the incumbent's
 own margin over its predecessor `partner_aware_v1` is +0.0054 [+0.0043, +0.0066]
 on this instrument (TuppiProject's T4/T5 report +0.0057..+0.0064).
 
+**Benchmark change, 2026-10-02 (owner's decision).** New results are against
+`partner_aware_lead_v3`, which is v2 plus three RAMI card-play rules,
++0.0050 per deal over v2 from 0-0 (docs/HEURISTIC_PLAN.md). Every entry
+below dated before 2026-10-02 is against `partner_aware_lead_v2`; reproduce
+one with `--opponent partner_aware_lead_v2`. The live bot's opponent model in
+rollouts is still the clone of v2.
+
 ## Final round: VRPO3 (512x4 actor) and the VRPO3 anchor (2026-10-01)
 
 Pre-registered in `docs/SELFPLAY_PLAN.md` (VRPO3, final round).
