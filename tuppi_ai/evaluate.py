@@ -21,6 +21,9 @@ import time
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
+from .experiment_io import digest
+from .paired_results import RESULT_SCHEMA
+
 ROOT = Path(__file__).resolve().parents[1]
 DEALER = 0
 _W: dict = {}
@@ -196,7 +199,7 @@ def _play(hands, score, candidate_team):
 
 def measure(index: int, seed: str, scores: str) -> dict:
     from tuppi_engine.trusted import trusted_transitions
-    from tuppi_rules.cards import FULL_DECK
+    from tuppi_rules.cards import FULL_DECK, card_to_code
 
     rng = random.Random(f"{seed}|deal|{index}")
     cards = list(FULL_DECK)
@@ -209,7 +212,10 @@ def measure(index: int, seed: str, scores: str) -> dict:
             hands = tuple(base[(seat + rotation) % 4] for seat in range(4))
             for team in (0, 1):
                 games.append(_play(hands, score, team))
-    out = {"index": index, "score": score, "value": statistics.fmean(g["value"] for g in games),
+    identity = digest({"index": index, "dealer": DEALER, "score": score,
+                       "hands": [[card_to_code(c) for c in hand] for hand in base]})
+    out = {"index": index, "score": score, "deal_id": identity,
+           "value": statistics.fmean(g["value"] for g in games),
            "games": games}
     for key in STAT_KEYS:
         out[key] = statistics.fmean(float(g[key]) for g in games)
@@ -236,15 +242,18 @@ def summarise(rows: list[dict]) -> dict:
 def evaluate(candidate: str, deals: int, seed: str = "tuppi-ai-eval-v1", scores: str = "zero",
              opponent: str = "partner_aware_lead_v2", workers: int = 12,
              equity_path: str = str(ROOT / "models" / "equity_incumbent.json"), ruleset: str = "v1") -> dict:
+    if deals < 2 or workers < 1:
+        raise ValueError("at least two deals and a positive worker count are required")
     t0 = time.time()
     with ProcessPoolExecutor(workers, initializer=_init,
                              initargs=(candidate, opponent, equity_path, ruleset)) as pool:
         rows = list(pool.map(measure, range(deals), [seed] * deals, [scores] * deals, chunksize=8))
     summary = summarise(rows)
-    summary.update({"candidate": candidate, "opponent": opponent, "seed": seed, "scores": scores,
+    summary.update({"schema": RESULT_SCHEMA, "candidate": candidate, "opponent": opponent, "seed": seed, "scores": scores,
                     "ruleset": RULESETS[ruleset],
                     "seconds": round(time.time() - t0, 1),
                     "values": [r["value"] for r in rows],
+                    "deal_records": [{key: r[key] for key in ("index", "deal_id", "score", "value")} for r in rows],
                     "games": [g for r in rows for g in r["games"]]})
     return summary
 
@@ -261,10 +270,11 @@ def main() -> None:
     parser.add_argument("--ruleset", choices=tuple(RULESETS), default="v1",
                         help="v1; v2 = + sooli; v3 = + sooli and locked bids (the real game)")
     parser.add_argument("--out", type=Path)
+    parser.add_argument("--equity-path", type=Path, default=ROOT / "models" / "equity_incumbent.json")
     args = parser.parse_args()
     summary = evaluate(args.checkpoint, args.deals, args.seed, args.scores, args.opponent, args.workers,
-                       ruleset=args.ruleset)
-    print(json.dumps({k: v for k, v in summary.items() if k not in ("values", "games")}, indent=1))
+                       equity_path=str(args.equity_path), ruleset=args.ruleset)
+    print(json.dumps({k: v for k, v in summary.items() if k not in ("values", "games", "deal_records")}, indent=1))
     if args.out:
         args.out.write_text(json.dumps(summary, indent=1))
 

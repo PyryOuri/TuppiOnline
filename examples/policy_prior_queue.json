@@ -1,0 +1,67 @@
+{
+  "schema": "tuppi.experiment_plan.v1",
+  "checkout": "..",
+  "engine": "../../TuppiProject-current",
+  "equity": "models/equity_incumbent.json",
+  "budget_wall_seconds": 3000,
+  "max_workers": 1,
+  "jobs": [
+    {
+      "id": "legacy",
+      "kind": "deal_eval",
+      "candidate": "search:models/rollout_clone_small.pt:w=128:dd=6:show=1:team=models/vrpo1_actor_0504.pt:sf=1:bp=models/vrpo3_final.pt:keep=0.003:rs=1",
+      "opponent": "partner_aware_lead_v2",
+      "seed": "prior-queue-development-20261002",
+      "ruleset": "v3",
+      "scores": "uniform",
+      "samples": 32,
+      "workers": 1,
+      "wall_seconds": 900
+    },
+    {
+      "id": "hard",
+      "kind": "deal_eval",
+      "candidate": "search:models/rollout_clone_small.pt:w=128:dd=6:show=1:team=models/vrpo1_actor_0504.pt:sf=1:bp=models/vrpo3_final.pt:keep=0.003:keep_adaptive=1:rs=1",
+      "opponent": "partner_aware_lead_v2",
+      "seed": "prior-queue-development-20261002",
+      "ruleset": "v3",
+      "scores": "uniform",
+      "samples": 32,
+      "workers": 1,
+      "wall_seconds": 900
+    },
+    {
+      "id": "soft",
+      "kind": "deal_eval",
+      "candidate": "search:models/rollout_clone_small.pt:w=128:dd=6:show=1:team=models/vrpo1_actor_0504.pt:sf=1:bp=models/vrpo3_final.pt:prior=0.001:rs=1",
+      "opponent": "partner_aware_lead_v2",
+      "seed": "prior-queue-development-20261002",
+      "ruleset": "v3",
+      "scores": "uniform",
+      "samples": 32,
+      "workers": 1,
+      "wall_seconds": 900
+    },
+    {
+      "id": "hard_vs_legacy",
+      "kind": "paired_analysis",
+      "candidate_result": "hard",
+      "reference_result": "legacy",
+      "wall_seconds": 30
+    },
+    {
+      "id": "soft_vs_legacy",
+      "kind": "paired_analysis",
+      "candidate_result": "soft",
+      "reference_result": "legacy",
+      "wall_seconds": 30
+    },
+    {
+      "id": "soft_vs_hard",
+      "kind": "paired_analysis",
+      "candidate_result": "soft",
+      "reference_result": "hard",
+      "wall_seconds": 30
+    }
+  ]
+}
