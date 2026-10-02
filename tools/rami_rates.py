@@ -85,7 +85,17 @@ def run(job) -> list[dict]:
                 action = agent.choose_action(obs)
                 rami = isinstance(action, ShowAction) and action.declared_contract is Contract.RAMI
                 own, opp = (score[seat % 2], score[1 - seat % 2])
-                bids.append({"k": k, "seat": seat, "rami": rami, "own": own, "opp": opp})
+                bid = {"k": k, "seat": seat, "rami": rami, "own": own, "opp": opp}
+                lv = getattr(agent, "last_values", None)
+                if lv:  # the search's own values: best RAMI show vs best NOLO show
+                    r_ = [v for a, v in lv.items() if a >= 104]
+                    n_ = [v for a, v in lv.items() if 52 <= a < 104]
+                    if r_ and n_:
+                        bid["v_rami"], bid["v_nolo"] = max(r_), max(n_)
+                from tuppi_ai.bridge import mask_of
+                from tuppi_ai.heuristic_rules import hand_scores
+                bid["rami_score"], bid["nolo_score"] = hand_scores(mask_of(obs.own_hand))
+                bids.append(bid)
                 if k < 3:  # the next seat is asked only after a NOLO; any NOLO card (bids are unseen)
                     nolo = [a for a in obs.legal_actions
                             if isinstance(a, ShowAction) and a.declared_contract is Contract.NOLO]

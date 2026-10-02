@@ -51,7 +51,9 @@ def _init(candidate: str, opponent: str, equity_path: str, ruleset: str = "v1") 
 
     _W["equity"] = Equity.load(Path(equity_path))
     _W["ruleset"] = ruleset
-    _W["opponent"] = _with_sooli(incumbent_agents(opponent), ruleset)
+    # The opponent is a heuristic profile key, or any candidate spec (e.g. `search:...`) for bot-vs-bot tests.
+    opp = _make_candidate(opponent) if (":" in opponent or opponent == "best") else incumbent_agents(opponent)
+    _W["opponent"] = _with_sooli(opp, ruleset)
     _W["candidate"] = _with_sooli(_make_candidate(candidate), ruleset)
 
 
