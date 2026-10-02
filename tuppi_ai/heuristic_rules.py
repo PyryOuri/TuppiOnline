@@ -106,10 +106,39 @@ RULES = {
 }
 
 
+# ---------------------------------------------------------------- showing
+def hand_scores(hand: int) -> tuple[float, float]:
+    """v2's simple_rami_score and simple_nolo_score of a 13-card hand (tuppi_agents.showing)."""
+    ranks = [[c % 13 + 2 for c in range(13 * s, 13 * s + 13) if (hand >> c) & 1] for s in range(4)]
+    allr = [r for x in ranks for r in x]
+    lengths = [len(x) for x in ranks]
+    hcp = sum({14: 4, 13: 3, 12: 2, 11: 1}.get(r, 0) for r in allr)
+    aces, kings = allr.count(14), allr.count(13)
+    rami = hcp + 0.5 * aces + 0.25 * (aces + kings) + 0.5 * max(0, max(lengths) - 4)
+    nolo = (1.5 * sum(r <= 4 for r in allr) + 3.0 * lengths.count(0) + 2.0 * lengths.count(1)
+            + 1.0 * lengths.count(2) - 1.0 * sum(r >= 10 for r in allr) - 0.5 * sum(r >= 11 for r in allr))
+    return rami, nolo
+
+
+def race_threshold(v: dict):
+    """Showing: in a race (we are at 28 or more, or they are at 40 or more) declare RAMI from a RAMI
+    score of 12 instead of 15 (v2's own RAMI card; the NOLO-suitability veto still applies)."""
+    if v.get("phase") != "show" or v["heur"] >= 104 or v.get("rami_alt") is None:
+        return None
+    if not (v["score_own"] >= 28 or v["score_opp"] >= 40):
+        return None
+    rami, nolo = hand_scores(v["hand"])
+    return v["rami_alt"] if 12 <= rami < 15 and nolo <= 2 else None
+
+
+SHOW_RULES = {"race_threshold": race_threshold}
+
+
 def apply_layers(layers: list[str], v: dict):
     """The first layer that changes the action wins; None if no layer fires."""
     for name in layers:
-        a = RULES[name](v)
+        rule = RULES.get(name) or SHOW_RULES[name]
+        a = rule(v)
         if a is not None and a != v["heur"]:
             return a
     return None

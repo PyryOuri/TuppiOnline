@@ -183,3 +183,68 @@ the led suit instead.
 
 **Confirmation:** the same pairing on 4,096 fresh base deals (seed
 heur-h4-confirm). It **passes** if the lower bound is above 0.
+
+**H4 screen (seed heur-h4-screen):** H4 minus H3 **+0.00107 [+0.00083,
++0.00131]**, with 3,486 of 4,096 deals identical. It passes.
+- The script's automatic check misread its output (it parsed the wrong
+  line) and skipped the confirmation; the confirmation was then run as
+  pre-registered.
+
+**H4 confirmation (seed heur-h4-confirm):** H4 minus H3 **+0.00099 [+0.00076,
++0.00122]**. **H4 passes.**
+
+## The showing puzzle, solved (2026-10-02)
+
+**The test:** `tools/show_true_price.py` prices show decisions with the real
+v2 playing out both branches in the authoritative engine, including
+TuppiProject's sooli fallback (40,000 deals).
+
+**The result:** even so, thresholds 12-14 looked positive over all scores
+but negative in the games. The games were played at 0-0 only:
+
+| Threshold | 0-0 deals, true continuation | Games (0-0) | Other scores |
+| --- | --- | --- | --- |
+| 11 | -0.0047 | -0.0038 | -0.0012 |
+| 12 | -0.0024 | -0.0020 | +0.0024 |
+| 13 | -0.0014 | -0.0009 | +0.0037 |
+| 14 | -0.0004 | -0.0001 | +0.0031 |
+
+- **At 0-0 the true-continuation prices match the games.** The best RAMI
+  threshold depends on the match score.
+- The native clone continuation leans further towards RAMI (about +0.002 at
+  0-0), so showing rules are priced only with the true continuation.
+
+**By match state:**
+- Hands scoring 12-15 that v2 bids NOLO gain from RAMI when we are at 28 or
+  more (+0.005 to +0.03) or they are at 40 or more (+0.013 to +0.048).
+- The same hands lose from RAMI when they lead at 4-36 (-0.007 to -0.027).
+- v2's RAMI bids above 15 are right in every state.
+- In race states, hands scoring 12-15 gain from RAMI; 10-11.5 do not.
+
+**Consequence:** showing rules must be tested over realistic starting
+scores (`evaluate --scores uniform`, the mining's 25-state distribution),
+not only at 0-0.
+
+## H5: race threshold (pre-registered 2026-10-02)
+
+**The rule** (`race_threshold`): in a race (our score at 28 or more, or
+theirs at 40 or more), declare RAMI from a RAMI score of 12 instead of 15,
+with v2's own RAMI card. The NOLO-suitability veto is unchanged. Outside a
+race nothing changes; at 0-0 the arm is identical to v2 (checked: exactly 0).
+
+**The screen:** against v2, 4,096 base deals, `--scores uniform`, seed
+heur-h5-screen. It passes if the lower bound is above 0.
+
+**Confirmation:** 4,096 fresh base deals (seed heur-h5-confirm), uniform
+scores. It **passes** if the lower bound is above 0.
+
+## Final package test (pre-registered 2026-10-02, after H5)
+
+**The candidate** `partner_aware_lead_v3`: the H4 layers (cash_singleton_late,
+underlead, second_hand_low) plus race_threshold if H5 passes.
+
+**The test:** against v2 on 4,096 fresh base deals each at 0-0 (seed
+heur-final-zero) and with uniform scores (seed heur-final-uniform).
+
+**The record:** both results are recorded. The package is adopted for
+implementation in TuppiProject if both lower bounds are above 0.

@@ -30,6 +30,9 @@ def design(rows, names):
     return np.hstack([np.ones((len(rows), 1)), X, pos])
 
 
+QR, QN = "q_rami", "q_nolo"  # set to the *_own prices by --own (v2's own show card per contract)
+
+
 def score(rows, choose_rami, deals: int) -> tuple[float, float, float]:
     """(gain per deal against the heuristic's contract, its 95% half-width, share of decisions changed)."""
     per_deal: dict[int, float] = {}
@@ -39,7 +42,7 @@ def score(rows, choose_rami, deals: int) -> tuple[float, float, float]:
         if rami == heur_rami:
             continue
         changed += 1
-        g = (r["q_rami"] - r["q_nolo"]) * (1 if rami else -1)
+        g = (r[QR] - r[QN]) * (1 if rami else -1)
         per_deal[r["deal"]] = per_deal.get(r["deal"], 0.0) + g
     vals = np.array(list(per_deal.values()) + [0.0] * (deals - len(per_deal)))
     m = vals.mean()
@@ -49,18 +52,25 @@ def score(rows, choose_rami, deals: int) -> tuple[float, float, float]:
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("data", type=Path)
+    p.add_argument("--own", action="store_true", help="price each contract by v2's own show card (unbiased)")
     a = p.parse_args()
+    global QR, QN
+    if a.own:
+        QR, QN = "q_rami_own", "q_nolo_own"
     blob = pickle.load(gzip.open(a.data))
     deals = blob["args"]["deals"]
-    rows = [r for r in blob["rows"] if r["phase"] == "show" and r.get("q_rami") is not None
-            and r.get("q_nolo") is not None]
+    rows = [r for r in blob["rows"] if r["phase"] == "show" and r.get(QR) is not None and r.get(QN) is not None]
     train = [r for r in rows if r["deal"] % 2 == 0]
     test = [r for r in rows if r["deal"] % 2 == 1]
     print(f"{len(rows)} show decisions with both contracts priced; train {len(train)}, test {len(test)}")
     # consistency: the logged scores reproduce the heuristic's choice (threshold 15, veto 2)
     agree = np.mean([(r["rami_score"] >= 15 and r["nolo_score"] <= 2) == (r["heur_contract"] == "RAMI") for r in rows])
     print(f"logged scores reproduce the heuristic's contract on {agree:.1%} of decisions")
-    y_tr = np.array([r["q_rami"] - r["q_nolo"] for r in train])
+    print("H1 thresholds scored offline on the held-out half (games: 11 -0.00376, 12 -0.00195, 13 -0.00085, 14 -0.00013):")
+    for t in (11, 12, 13, 14, 16, 17):
+        m, ci, ch = score(test, [r["rami_score"] >= t and r["nolo_score"] <= 2 for r in test], deals // 2)
+        print(f"  threshold {t}: {m:+.5f} ± {ci:.5f} (changes {ch:.1%})")
+    y_tr = np.array([r[QR] - r[QN] for r in train])
     names = BASE + ["own_score", "opp_score"]
     X_tr, X_te = design(train, names), design(test, names)
     w, *_ = np.linalg.lstsq(X_tr, y_tr, rcond=None)
@@ -75,13 +85,14 @@ def main() -> None:
     heur_rule = [r["heur_contract"] == "RAMI" for r in test]
     print(f"  (heuristic itself     {score(test, heur_rule, deals // 2)[0]:+.5f})")
     # oracle bound: the better contract on every decision
-    print(f"  oracle (best contract each time) {score(test, [r['q_rami'] > r['q_nolo'] for r in test], deals // 2)[0]:+.5f}")
+    print(f"  oracle (best contract each time) {score(test, [r[QR] > r[QN] for r in test], deals // 2)[0]:+.5f}")
     # a readable rule: rescale to HCP units and round
     hcp_w = w[cols.index("hcp")]
     print(f"\nin HCP units (divide by the hcp weight {hcp_w:+.5f}):")
     for c, v in zip(cols, w):
         print(f"  {c:14s} {v / hcp_w:+.2f}")
     np.save(a.data.with_suffix(".showing_w.npy"), w)
+    return w
 
 
 if __name__ == "__main__":

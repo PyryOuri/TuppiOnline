@@ -39,6 +39,22 @@ def variant_agents(overrides: dict) -> dict[int, object]:
     return out
 
 
+_SUIT_LETTER = {"H": 0, "D": 1, "C": 2, "S": 3}
+_RANK = {"T": 10, "J": 11, "Q": 12, "K": 13, "A": 14}
+
+
+def _show_id(action: dict) -> int:
+    card = action["shown_card"]
+    rank = _RANK.get(card[:-1]) or int(card[:-1])
+    return 52 + 52 * (action["declared_contract"] == "RAMI") + 13 * _SUIT_LETTER[card[-1]] + rank - 2
+
+
+def _best_show(decision, contract: str):
+    """v2's own preferred show of `contract` (its best-scored candidate), as a native action id."""
+    cands = [c for c in decision.diagnostics.candidates if c.action["declared_contract"] == contract]
+    return _show_id(max(cands, key=lambda c: tuple(c.score_vector)).action) if cands else None
+
+
 class LayeredAgent:
     """The incumbent's choice, overridden in trick play by the first rule layer that fires
     (tuppi_ai/heuristic_rules.py). Everything else is the base agent's."""
@@ -48,15 +64,29 @@ class LayeredAgent:
         self.fired = 0
 
     def choose_action(self, observation):
-        action = self.base.choose_action(observation)
-        if not self.layers or observation.phase.value != "TRICK_PLAY" or len(observation.legal_actions) < 2:
-            return action
+        phase = observation.phase.value
+        if not self.layers or phase not in ("TRICK_PLAY", "SHOWING") or len(observation.legal_actions) < 2:
+            return self.base.choose_action(observation)
         from .bridge import action_id, engine_action, obs_from_player_observation
-        from .heuristic_rules import apply_layers, view_from_tcobs
+        from .heuristic_rules import SHOW_RULES, apply_layers, view_from_tcobs
 
         obs = obs_from_player_observation(observation)
         legal = [action_id(a) for a in observation.legal_actions]
-        new = apply_layers(self.layers, view_from_tcobs(obs, legal, action_id(action)))
+        if phase == "SHOWING":
+            layers = [x for x in self.layers if x in SHOW_RULES]
+            if not layers:
+                return self.base.choose_action(observation)
+            dec = self.base.decide(observation, diagnostics=True)
+            action = dec.action
+            team = int(obs.seat) % 2
+            v = {"phase": "show", "hand": int(obs.hand), "heur": action_id(action), "legal": legal,
+                 "score_own": int(obs.score[team]), "score_opp": int(obs.score[1 - team]),
+                 "rami_alt": _best_show(dec, "RAMI")}
+            new = apply_layers(layers, v)
+        else:
+            action = self.base.choose_action(observation)
+            layers = [x for x in self.layers if x not in SHOW_RULES]
+            new = apply_layers(layers, view_from_tcobs(obs, legal, action_id(action))) if layers else None
         if new is None:
             return action
         if new not in legal:
