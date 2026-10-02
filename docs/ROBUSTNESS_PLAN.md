@@ -124,3 +124,29 @@ minus reference):
 **Deployment** (if both pass) is put to the owner. The owner's stated goal
 (the strongest bot against strong opponents) favours it, but it changes how
 the bot models every opponent.
+
+**P1b result** (A against `partner_aware_lead_v3`, 2,048 base deals, paired):
+**-0.00224 ± 0.00196**. The lower bound, -0.0042, is below -0.0015, so the
+guard fails: a real cost against the heuristic, the expected price of no
+longer fitting it.
+
+**P1c** (W=1024 bot-vs-bot) was **stopped by the owner** after 35 minutes,
+before any result.
+
+**Deployed 2026-10-02 (owner's decision: "the improvement against strong
+players is something we want right now"):**
+- `best.OPPONENT_ROLLOUT = models/vrpo1_actor_0504.pt` (TuppiAI 14a5e25):
+  the live bot's searches now imagine strong opponents.
+- The review prices with the same model.
+- `best_agents(team_rollout=False)` (the research B0) keeps the clone.
+- The live server was restarted (pid 69333).
+
+**Expected effect:** about +0.007 per deal against strong opponents (W=128
+evidence) and about -0.002 against the heuristic. The W=1024 strength
+against strong opposition is unconfirmed.
+
+**Next leads:**
+- a mixture opponent model (some worlds with strong opponents, some with
+  the clone), to win back the heuristic loss;
+- re-checking the rollout-role and anchor choices on the panel;
+- P1c at a quiet time, to record the W=1024 effect.
