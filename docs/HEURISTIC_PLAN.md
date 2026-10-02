@@ -248,3 +248,26 @@ heur-final-zero) and with uniform scores (seed heur-final-uniform).
 
 **The record:** both results are recorded. The package is adopted for
 implementation in TuppiProject if both lower bounds are above 0.
+
+**H5 result (seed heur-h5-screen, uniform scores):** +0.00035 [-0.00074,
++0.00144]. The screen is not passed, so **H5 fails** and no confirmation
+was run.
+- The true-continuation data predicts +0.00026 ± 0.00044 per deal for one
+  team (the rule fires about 0.1 times per deal per team).
+- So the effect is real but too small to matter, and race_threshold is left
+  out of the package.
+- The score dependence of showing remains a lead: larger per-case gains in
+  extreme states, but rare.
+
+**Final package result** (cash_singleton_late + underlead + second_hand_low,
+against v2, 4,096 base deals each):
+
+| Starting scores | Difference | Won | Points per deal |
+| --- | --- | --- | --- |
+| 0-0 (seed heur-final-zero) | **+0.00502 [+0.00456, +0.00549]** | 54.7% | +1.59 |
+| Uniform (seed heur-final-uniform) | **+0.01225 [+0.01075, +0.01374]** | 54.5% | +1.62 |
+
+- Both lower bounds are above 0, so the package is **adopted** for
+  implementation as `partner_aware_lead_v3` in TuppiProject.
+- The equity gain is larger with realistic scores. The card-play gain is
+  the same, but mid-match deals move the match more than deals from 0-0.
