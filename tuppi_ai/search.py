@@ -23,6 +23,7 @@ import torch
 from . import model as qmodel
 from . import native
 from .bridge import action_id, obs_from_player_observation
+from .policy_prior import action_scores, hard_offsets, select_action, soft_offsets
 
 
 class Searcher:
@@ -46,6 +47,7 @@ class Searcher:
         # product of the network's per-card probabilities, tempered by alpha.
         self.belief_net, self.belief_n, self.belief_alpha = belief_net, belief_n, belief_alpha
         self.last_ess = None
+        self.last_action_worlds: list[int] | None = None
         # Optional different rollout policy for the searching seat's own team.
         self.team_net = team_net
         # If > 0, opponents' rollout moves are sampled from softmax(logits / opp_temp)
@@ -70,6 +72,7 @@ class Searcher:
         self.rng = C.c_uint64(seed * 2654435761 + 1)
 
     def action_values(self, obs: native.TcObs, actions: list[int]) -> np.ndarray:
+        self.last_action_worlds = [self.worlds] * len(actions)
         if self.mlp is not None:
             return native.search_values(self.env, self.mlp, obs, actions, self.worlds, self.dd_left, self.rng)
         k, w = len(actions), self.worlds
@@ -120,18 +123,25 @@ class Searcher:
         return values if me_team == 0 else -values
 
     def adaptive_values(self, obs: native.TcObs, actions: list[int], batch: int, z: float,
-                        delta: float) -> tuple[np.ndarray, int, int]:
+                        delta: float, offsets: list[float] | None = None,
+                        preferred: int | None = None) -> tuple[np.ndarray, int, int]:
         """Adaptive world allocation (docs/EFFICIENCY_PLAN.md, E7).
 
         Worlds are drawn `batch` at a time, up to `self.worlds`, and every
         action still in contention is priced on each batch (common worlds, so
-        differences are paired). After each batch the leader is the best mean;
+        differences are paired). Optional root-prior offsets are included in
+        the leader, elimination and stopping decisions; sampling errors remain
+        those of the paired raw values. After each batch the leader is the best score;
         an action is dropped when its paired gap to the leader exceeds `z`
         standard errors, and the search stops early when no remaining action
         can beat the leader by more than `delta` at `z` standard errors.
         Returns (values, index of the chosen action, worlds drawn); a dropped
         action's value is its mean over the worlds it saw."""
         k = len(actions)
+        if offsets is not None:
+            action_scores([0.0] * k, offsets)  # reject malformed priors before sampling
+        if preferred is not None and not 0 <= preferred < k:
+            raise ValueError("preferred action index is outside the legal action list")
         active = list(range(k))
         cols: list[list[np.ndarray]] = [[] for _ in range(k)]
         drawn = 0
@@ -143,7 +153,8 @@ class Searcher:
             drawn += batch
             x = {i: np.concatenate(cols[i]) for i in active}
             means = {i: float(x[i].mean()) for i in active}
-            lead = max(active, key=lambda i: (means[i], -i))  # first maximum, as np.argmax
+            lead = max(active, key=lambda i: (means[i] + (offsets[i] if offsets is not None else 0.0),
+                                              i == preferred, -i))
             if len(active) == 1 or drawn >= self.worlds:
                 break
             keep, settled = [], True
@@ -153,6 +164,8 @@ class Searcher:
                     continue
                 d = x[lead] - x[i]
                 gap, se = float(d.mean()), float(d.std(ddof=1) / np.sqrt(len(d)))
+                if offsets is not None:
+                    gap += offsets[lead] - offsets[i]
                 if gap - z * se > 0:
                     continue  # confidently worse than the leader
                 keep.append(i)
@@ -162,6 +175,7 @@ class Searcher:
             if settled:
                 break
         values = np.array([float(np.concatenate(c).mean()) for c in cols])  # observer's sign already
+        self.last_action_worlds = [sum(len(batch_values) for batch_values in c) for c in cols]
         return values, lead, drawn
 
     def _direct_belief_worlds(self, obs: native.TcObs, w: int) -> list:
@@ -270,7 +284,9 @@ class SearchAgent:
                  search_showing=False, seed: int = 0, keep: float | None = None,
                  show_worlds: int | None = None, rami_bonus: float = 0.0, sooli: dict | None = None,
                  equiv: bool = False, adaptive: dict | None = None, reseed: bool = False,
-                 value: dict | None = None, blueprint_net=None, **belief):
+                 value: dict | None = None, blueprint_net=None,
+                 policy_prior: float | None = None, keep_adaptive: bool = False,
+                 record_prior: bool = False, **belief):
         """search_showing: False (blueprint shows), True/1 (search every legal show), or 2
         (search only the blueprint's preferred card for each contract, then keep
         the blueprint's card within the chosen contract).
@@ -287,7 +303,22 @@ class SearchAgent:
         value: {"path", "leaf_bid", "leaf_play", "bot_bit"}: rollouts stop at a
         value-net leaf (docs/VALUE_NET_PLAN.md); -1 disables a leaf kind.
         blueprint_net: the policy whose action `keep` keeps (default: the
-        rollout net), e.g. a stronger no-search policy."""
+        rollout net), e.g. a stronger no-search policy.
+        policy_prior: optional tau in Q + tau log pi, for ordinary play and bids.
+        keep_adaptive: include the fixed keep bonus during allocation, as a
+        separate control. Both are opt-in; legacy keep remains unchanged."""
+        if policy_prior is not None:
+            soft_offsets([0.0], policy_prior)
+            if keep is not None or keep_adaptive:
+                raise ValueError("soft policy prior and fixed keep anchor are separate arms")
+        if keep_adaptive:
+            if keep is None:
+                raise ValueError("keep_adaptive requires a keep margin")
+            hard_offsets([0.0], keep)
+        if (policy_prior is not None or keep_adaptive) and (equiv or rami_bonus or search_showing == 2):
+            raise ValueError("root-prior arms require all legal candidates and no RAMI bonus")
+        if blueprint_net is not None and blueprint_net.encoder != net.encoder:
+            raise ValueError("the anchor policy must use the rollout encoder")
         self.seat = seat
         self.equiv = equiv
         self.adaptive = adaptive
@@ -295,6 +326,8 @@ class SearchAgent:
         self.net = net
         self.search_showing = search_showing
         self.keep = keep  # None: plain argmax; >= 0: keep the blueprint's action unless beaten by more
+        self.policy_prior, self.keep_adaptive = policy_prior, keep_adaptive
+        self.record_prior = record_prior
         self.blueprint_net = blueprint_net if blueprint_net is not None else net
         # Added to the value of declaring RAMI (RETURN_SCALE units): the rollouts
         # play the rest of the deal with the clone, which undervalues contracts
@@ -319,6 +352,24 @@ class SearchAgent:
         #: seat's team}, or None when it was forced or taken by a heuristic. Read by
         #: the game database (tools/gen_game_db.py); never affects the choice.
         self.last_values: dict[int, float] | None = None
+        self.last_score_offsets: dict[int, float] | None = None
+        self.last_blueprint_logits: dict[int, float] | None = None
+        self.last_world_counts: dict[int, int] | None = None
+
+    def _root_prior(self, obs: native.TcObs, ids: list[int]) -> tuple[list[float] | None, int | None]:
+        if self.policy_prior is None and not self.keep_adaptive and not self.record_prior:
+            return None, None
+        if self.policy_prior == 0 and not self.record_prior:
+            return None, None
+        native.encode(obs, self._feat[0], self.blueprint_net.encoder)
+        with torch.no_grad():
+            logits = self.blueprint_net(torch.from_numpy(self._feat))[0].numpy()
+        legal_logits = [logits[i] for i in ids]
+        if self.record_prior:
+            self.last_blueprint_logits = {i: float(v) for i, v in zip(ids, legal_logits)}
+        if self.keep_adaptive:
+            return hard_offsets(legal_logits, self.keep)
+        return (soft_offsets(legal_logits, self.policy_prior) if self.policy_prior is not None else None), None
 
     def _sooli_action(self, obs: native.TcObs, ids: list[int]) -> int:
         cfg, phase = self.sooli, obs.phase
@@ -362,18 +413,25 @@ class SearchAgent:
 
     def _search(self, searcher: Searcher, obs: native.TcObs, ids: list[int]) -> tuple[np.ndarray, int]:
         """Values of `ids` and the index of the best, fixed or adaptive."""
+        offsets, preferred = self._root_prior(obs, ids)
+        self.last_score_offsets = None if offsets is None else dict(zip(ids, offsets))
         if (self.adaptive and searcher.mlp is not None
                 and (obs.phase == native.PH_SHOW or self.adaptive.get("play", False))):
             a = self.adaptive
             values, best, _ = searcher.adaptive_values(obs, ids, int(a.get("batch", 128)), float(a.get("z", 2.5)),
-                                                       float(a.get("delta", 0.0)))
+                                                       float(a.get("delta", 0.0)), offsets, preferred)
+            self.last_world_counts = dict(zip(ids, searcher.last_action_worlds))
             return values, best
         values = searcher.action_values(obs, ids)
-        return values, int(np.argmax(values))
+        self.last_world_counts = dict(zip(ids, searcher.last_action_worlds))
+        return values, (int(np.argmax(values)) if offsets is None else select_action(values, offsets, preferred))
 
     def choose_action(self, observation):
         legal = observation.legal_actions
         self.last_values = None
+        self.last_score_offsets = None
+        self.last_blueprint_logits = None
+        self.last_world_counts = None
         if len(legal) == 1:
             return legal[0]
         obs = obs_from_player_observation(observation)
@@ -422,17 +480,24 @@ class SearchAgent:
             values, best = self._search(searcher, obs, ids)
             self.last_values = {a: float(x) for a, x in zip(ids, values)}
             return legal[self._keep_blueprint(obs, ids, values, best)]
-        values = searcher.action_values(obs, ids)
+        if self.rami_bonus:
+            values = searcher.action_values(obs, ids)
+            best = int(np.argmax(values))
+        else:
+            values, best = self._search(searcher, obs, ids)
         self.last_values = {a: float(x) for a, x in zip(ids, values)}
         if self.rami_bonus and obs.phase == native.PH_SHOW:
             values = values + self.rami_bonus * np.array([1.0 if i >= 104 else 0.0 for i in ids])
-        best = int(np.argmax(values))
+            best = int(np.argmax(values))
         return legal[self._keep_blueprint(obs, ids, values, best)]
 
     def _keep_blueprint(self, obs: native.TcObs, ids: list[int], values: np.ndarray, best: int) -> int:
         """With `keep`, the blueprint's action unless the searched best beats it by more than keep."""
-        if self.keep is None:
+        if self.keep is None or self.keep_adaptive:
             return best
+        if self.last_blueprint_logits is not None:
+            bp = int(np.argmax([self.last_blueprint_logits[i] for i in ids]))
+            return bp if values[bp] >= values[best] - self.keep else best
         native.encode(obs, self._feat[0], self.blueprint_net.encoder)
         with torch.no_grad():
             q = self.blueprint_net(torch.from_numpy(self._feat))[0].numpy()

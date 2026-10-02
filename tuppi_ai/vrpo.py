@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import ctypes as C
 import json
+import shutil
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -73,8 +74,24 @@ class Config:
     max_kl: float = 0.02             # stop the actor epochs early above this mean KL
     eval_every: int = 3
     eval_base: int = 8192
+    final_eval_base: int = 0        # 0: use eval_base; final evaluation is never skipped
+    isolate_eval_rng: bool = False # opt-in; historical runs used the rollout RNG for checks too
     seed: int = 1
+    torch_seed: int = -1           # -1 retains historical unseeded Torch initialisation
     compile: bool = True
+
+    def __post_init__(self):
+        if self.eval_every < 0 or self.eval_base < 2 or self.final_eval_base < 0:
+            raise ValueError("eval_every must be >= 0; evaluation sizes must be >= 2 (final 0 inherits)")
+        if self.final_eval_base == 1:
+            raise ValueError("final_eval_base must be 0 or >= 2")
+        if min(self.games_per_iter, self.minibatch, self.actor_epochs, self.critic_epochs) < 1:
+            raise ValueError("batch sizes and update epoch counts must be positive")
+
+
+def _host_stats(values: list[torch.Tensor]) -> np.ndarray:
+    """One device-to-host read per group, with the old float64 host reduction."""
+    return torch.stack(values).detach().cpu().numpy().astype(np.float64)
 
 
 class Critic(nn.Module):
@@ -133,6 +150,8 @@ def trace(qa: torch.Tensor, v: torch.Tensor, team: torch.Tensor, reward_team0: t
 class VRPO:
     def __init__(self, cfg: Config, out: Path):
         self.cfg, self.out = cfg, out
+        if cfg.torch_seed >= 0:
+            torch.manual_seed(cfg.torch_seed)
         self.dev = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
         self.actor = qmodel.load(cfg.init, self.dev).train()
         self.encoder, self.dim = self.actor.encoder, native.feature_dim(self.actor.encoder)
@@ -156,6 +175,7 @@ class VRPO:
         from .best import EQUITY
         from .equity import Equity
         table = Equity.load(EQUITY).table
+        self.equity_table = table
         self.env = native.Env(cfg.games_per_iter, cfg.seed, table, single_deal=True, encoder=self.encoder)
         self.env_eval = native.Env(8 * cfg.eval_base, cfg.seed + 2, table, single_deal=True, encoder=self.encoder)
         for env in (self.env, self.env_eval):
@@ -164,10 +184,19 @@ class VRPO:
         self.baseline = native.Mlp(qmodel.load(cfg.baseline, "cpu"))
         self.reference = native.Mlp(qmodel.load(cfg.reference, "cpu"))
         self.rng = C.c_uint64(cfg.seed * 0x9E3779B97F4A7C15 % 2**64 + 11)
+        self.eval_rng = (C.c_uint64((cfg.seed ^ 0xD1B54A32D192ED03) % 2**64)
+                         if cfg.isolate_eval_rng else self.rng)
         self.iteration = 0
+        self._last_check = None
 
     def _actor_cpu(self) -> qmodel.QNet:
-        net = qmodel.QNet(**self.actor.config)
+        if self.cfg.isolate_eval_rng:
+            # Exporting a snapshot initialises then overwrites CPU weights.
+            # Monitoring cadence must not advance the CPU training RNG.
+            with torch.random.fork_rng(devices=[]):
+                net = qmodel.QNet(**self.actor.config)
+        else:
+            net = qmodel.QNet(**self.actor.config)
         net.load_state_dict({k: v.detach().cpu() for k, v in self.actor.state_dict().items()})
         return net.eval()
 
@@ -197,24 +226,30 @@ class VRPO:
         index[torch.from_numpy(d["deal"].astype(np.int64)).to(dev), torch.from_numpy(d["step"].astype(np.int64)).to(dev)] = \
             torch.arange(n, device=dev)
 
-        def batch(idx):
+        def actor_batch(idx):
             x = _unpack(feat[idx], self.dim)
-            xc = torch.cat([x, _unpack(hid[idx], HIDDEN_BITS)], 1)
             m = _unpack(maskp[idx], native.NUM_ACTIONS).bool()
-            return x, xc, m
+            return x, m
+
+        def critic_batch(idx, x=None):
+            if x is None:
+                x = _unpack(feat[idx], self.dim)
+            xc = torch.cat([x, _unpack(hid[idx], HIDDEN_BITS)], 1)
+            return xc
 
         # advantages and critic targets from the current critic and actor (fixed for this batch)
         with torch.no_grad():
             qa, v = torch.zeros(n, device=dev), torch.zeros(n, device=dev)
-            ent_sum = 0.0
+            ent_sums = []
             for i in range(0, n, 65536):
                 sl = torch.arange(i, min(i + 65536, n), device=dev)
-                x, xc, m = batch(sl)
+                x, m = actor_batch(sl)
+                xc = critic_batch(sl, x)
                 q = self.critic(xc)
                 pi = torch.softmax(self.actor(x).masked_fill(~m, -1e9) / cfg.temperature, 1)
                 qa[sl] = q.gather(1, action[sl, None])[:, 0]
                 v[sl] = (pi * q.masked_fill(~m, 0.0)).sum(1)
-                ent_sum += float(-(pi * torch.log(pi.clamp(min=1e-12))).sum())
+                ent_sums.append(-(pi * torch.log(pi.clamp(min=1e-12))).sum().detach())
             G, delta = trace(qa, v, team, reward, index, cfg.lam)
             q_target = qa + G
             adv = qa - v + G
@@ -230,14 +265,14 @@ class VRPO:
             perm = torch.randperm(n, device=dev)
             for i in range(0, n, cfg.minibatch):
                 idx = perm[i:i + cfg.minibatch]
-                _, xc, _ = batch(idx)
+                xc = critic_batch(idx)
                 pred = self.c_fwd(xc).gather(1, action[idx, None])[:, 0]
                 loss = 0.5 * ((pred - q_target[idx]) ** 2).mean()
                 self.opt_c.zero_grad(set_to_none=True)
                 loss.backward()
                 nn.utils.clip_grad_norm_(self.critic.parameters(), 1.0)
                 self.opt_c.step()
-                closs.append(float(loss.detach()))
+                closs.append(loss.detach())
         # actor (after the critic warm-up)
         stats = {"kl": None, "clip_frac": None, "epochs": 0}
         if self.iteration >= cfg.warmup_iters:
@@ -247,7 +282,7 @@ class VRPO:
                 kls, clips = [], []
                 for i in range(0, n, cfg.minibatch):
                     idx = perm[i:i + cfg.minibatch]
-                    x, _, m = batch(idx)
+                    x, m = actor_batch(idx)
                     logits = self._logits(x, m)
                     logp_all = torch.log_softmax(logits, 1)
                     logp = logp_all.gather(1, action[idx, None])[:, 0]
@@ -261,32 +296,64 @@ class VRPO:
                     loss.backward()
                     nn.utils.clip_grad_norm_(self.actor.parameters(), 1.0)
                     self.opt_a.step()
-                    kls.append(float((logp_b[idx] - logp).mean().detach()))
-                    clips.append(float(((ratio - 1).abs() > cfg.clip).float().mean().detach()))
-                stats = {"kl": float(np.mean(kls)), "clip_frac": float(np.mean(clips)), "epochs": epoch + 1}
+                    kls.append((logp_b[idx] - logp).mean().detach())
+                    clips.append(((ratio - 1).abs() > cfg.clip).float().mean().detach())
+                stats = {"kl": float(_host_stats(kls).mean()), "clip_frac": float(_host_stats(clips).mean()),
+                         "epochs": epoch + 1}
                 if stats["kl"] > cfg.max_kl:
                     break
         self.iteration += 1
         row = {"iteration": self.iteration, "rows": n, "deals": cfg.games_per_iter,
-               "critic_loss": float(np.mean(closs[-10:])) / SCALE ** 2,
+               "critic_loss": float(_host_stats(closs[-10:]).mean()) / SCALE ** 2,
                "mean_abs_delta": float(delta.abs().mean()) / SCALE, "adv_std": float(adv.std()) / SCALE,
                "critic_ev": ev, "choice_share": float(choice.float().mean()),
-               "entropy": ent_sum / n, **stats, "rollout_s": round(t_roll, 1)}
-        if self.iteration % cfg.eval_every == 0:
-            nxt = native.Mlp(self._actor_cpu())
-            for name, other in (("vs_ref", self.reference), ("vs_clone", self.baseline)):
-                vals = native.duplicate_eval(self.env_eval, nxt, other, cfg.eval_base, cfg.ruleset, self.rng)
-                row[name] = [float(vals.mean()), float(1.96 * vals.std(ddof=1) / np.sqrt(len(vals)))]
-            vals = native.duplicate_eval(self.env_eval, nxt, self.reference, cfg.eval_base, cfg.ruleset, self.rng,
-                                         temperature=cfg.temperature)
-            row["vs_ref_sampled"] = [float(vals.mean()), float(1.96 * vals.std(ddof=1) / np.sqrt(len(vals)))]
-            qmodel.save(self._actor_cpu(), self.out / f"actor_{self.iteration:04d}.pt")
-            torch.save({"config": self.critic.config, "state": {k: v.cpu() for k, v in self.critic.state_dict().items()}},
-                       self.out / "critic_latest.pt")
+               "entropy": float(_host_stats(ent_sums).sum()) / n, **stats, "rollout_s": round(t_roll, 1)}
+        row["training_s"] = round(time.perf_counter() - t0, 1)
+        e0 = time.perf_counter()
+        if cfg.eval_every and self.iteration % cfg.eval_every == 0:
+            row.update(self._evaluate_and_save(cfg.eval_base))
+        row["evaluation_s"] = round(time.perf_counter() - e0, 1)
         row["total_s"] = round(time.perf_counter() - t0, 1)
         with open(self.out / "log.jsonl", "a") as f:
             f.write(json.dumps(row) + "\n")
         return row
+
+    def _evaluate_and_save(self, base: int) -> dict:
+        """Frozen-actor native monitoring; not the authoritative strength endpoint."""
+        env = self.env_eval
+        if base != self.cfg.eval_base:
+            env = native.Env(8 * base, self.cfg.seed + 2, self.equity_table,
+                             single_deal=True, encoder=self.encoder)
+            env.set_sooli(0, False, False, 0.0)
+        nxt = native.Mlp(self._actor_cpu())
+        metrics = {}
+        for name, other in (("vs_ref", self.reference), ("vs_clone", self.baseline)):
+            vals = native.duplicate_eval(env, nxt, other, base, self.cfg.ruleset, self.eval_rng)
+            metrics[name] = [float(vals.mean()), float(1.96 * vals.std(ddof=1) / np.sqrt(len(vals)))]
+        vals = native.duplicate_eval(env, nxt, self.reference, base, self.cfg.ruleset, self.eval_rng,
+                                     temperature=self.cfg.temperature)
+        metrics["vs_ref_sampled"] = [float(vals.mean()), float(1.96 * vals.std(ddof=1) / np.sqrt(len(vals)))]
+        qmodel.save(self._actor_cpu(), self.out / f"actor_{self.iteration:04d}.pt")
+        torch.save({"config": self.critic.config, "state": {k: v.cpu() for k, v in self.critic.state_dict().items()}},
+                   self.out / "critic_latest.pt")
+        self._last_check = (self.iteration, base, metrics)
+        return metrics
+
+    def finalize(self) -> dict:
+        """Always check/save the actual final actor, even between periodic checks."""
+        if self.iteration == 0:
+            raise RuntimeError("cannot finalize a run with no training iterations")
+        t0 = time.perf_counter()
+        base = self.cfg.final_eval_base or self.cfg.eval_base
+        reused = self._last_check is not None and self._last_check[:2] == (self.iteration, base)
+        metrics = self._last_check[2] if reused else self._evaluate_and_save(base)
+        shutil.copyfile(self.out / f"actor_{self.iteration:04d}.pt", self.out / "actor_final.pt")
+        shutil.copyfile(self.out / "critic_latest.pt", self.out / "critic_final.pt")
+        result = {"iteration": self.iteration, "eval_base": base, "reused_periodic_check": reused,
+                  "isolate_eval_rng": self.cfg.isolate_eval_rng, **metrics,
+                  "finalize_s": round(time.perf_counter() - t0, 1)}
+        (self.out / "final.json").write_text(json.dumps(result, indent=1))
+        return result
 
 
 def main() -> None:
@@ -300,7 +367,11 @@ def main() -> None:
                        else kind, default=default)
     a = p.parse_args()
     cfg = Config(**{f: getattr(a, f) for f in asdict(Config())})
+    if not np.isfinite(a.hours) or a.hours <= 0 or a.iterations < 1:
+        p.error("hours and iterations must be positive")
     out = ROOT / "runs" / "vrpo" / a.name
+    if out.exists() and any(out.iterdir()):
+        p.error("run output is nonempty; use a fresh --name to preserve its evidence")
     out.mkdir(parents=True, exist_ok=True)
     (out / "config.json").write_text(json.dumps(asdict(cfg), indent=1))
     native.set_rollout_chunk(128)
@@ -309,6 +380,8 @@ def main() -> None:
     t_end = time.time() + 3600 * a.hours
     while time.time() < t_end and learner.iteration < a.iterations:
         print(json.dumps(learner.iterate()), flush=True)
+    # Final checking is additional to --hours; its cost is recorded separately.
+    print(json.dumps({"final": learner.finalize()}), flush=True)
 
 
 if __name__ == "__main__":

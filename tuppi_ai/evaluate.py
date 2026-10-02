@@ -49,8 +49,26 @@ def _init(candidate: str, opponent: str, equity_path: str, ruleset: str = "v1") 
 
     _W["equity"] = Equity.load(Path(equity_path))
     _W["ruleset"] = ruleset
-    _W["opponent"] = _with_sooli(incumbent_agents(opponent), ruleset)
+    candidate_settings, opponent_settings = _search_global_settings(candidate), _search_global_settings(opponent)
+    if candidate_settings is not None and opponent_settings is not None and candidate_settings != opponent_settings:
+        raise ValueError("searched opponents must share process-wide sampler and NOLO-tail settings")
+    settings = candidate_settings if candidate_settings is not None else opponent_settings
+    if settings is not None:
+        native.set_showing_fix(settings[0])
+        native.set_dd_extra_nolo(settings[1])
+    _W["opponent"] = _with_sooli(_make_candidate(opponent) if opponent_settings is not None
+                                 else incumbent_agents(opponent), ruleset)
     _W["candidate"] = _with_sooli(_make_candidate(candidate), ruleset)
+
+
+def _search_global_settings(spec: str) -> tuple[bool, int] | None:
+    """Native settings cannot differ between two searchers in one process."""
+    if spec == "best":
+        return True, 0
+    if spec.startswith("search:"):
+        opts = dict(p.split("=") for p in spec.split(":")[2:])
+        return bool(int(opts.get("sf", 0))), int(opts.get("ddn", 0))
+    return None
 
 
 def _make_candidate(spec: str) -> dict:
@@ -63,6 +81,9 @@ def _make_candidate(spec: str) -> dict:
     worlds honour showing-fallback restrictions (B0-S1); `bp=<policy>` the
     policy that `keep=<margin>` keeps (default the rollout net); `ddn=<k>` k extra
     solver-tail tricks in NOLO;
+    `prior=<tau>` full actor-logit prior inside action choice and allocation;
+    `keep_adaptive=1` fixed-margin anchor inside allocation (separate control);
+    `record_prior=1` records legal logits and per-action sample counts;
     `vn=<value net>[:vlb=<tricks>][:vlp=<tricks>][:vbb=1]` value-net leaves
     for bid searches (vlb, default 0 = start of play; -1 off) and card-play
     searches (vlp, default -1 = off) (docs/VALUE_NET_PLAN.md)."""
@@ -101,6 +122,9 @@ def _make_candidate(spec: str) -> dict:
         return {s: SearchAgent(net, table, s, worlds=int(opts.get("w", 32)), dd_left=int(opts.get("dd", 0)),
                                search_showing=int(opts.get("show", "0")),
                                keep=float(opts["keep"]) if "keep" in opts else None,
+                               policy_prior=float(opts["prior"]) if "prior" in opts else None,
+                               keep_adaptive=bool(int(opts.get("keep_adaptive", 0))),
+                               record_prior=bool(int(opts.get("record_prior", 0))),
                                blueprint_net=qmodel.load(opts["bp"], "cpu") if "bp" in opts else None,
                                rami_bonus=float(opts.get("rb", 0.0)),
                                show_worlds=int(opts["sw"]) if "sw" in opts else None,
