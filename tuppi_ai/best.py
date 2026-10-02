@@ -45,6 +45,14 @@ Since 2026-10-01 evening the anchor is VRPO3 (`models/vrpo3_final.pt`,
 - At W=1024 (keep 0.003): +0.00005 [-0.00083, +0.00092], neutral, with 2%
   less CPU.
 
+Strong opponent model (2026-10-02, owner's decision): the opponents in the
+rollouts are played by VRPO1 instead of the clone of the benchmark
+heuristic. The bot imagines strong opponents, not heuristic ones.
+- At W=128 (docs/ROBUSTNESS_PLAN.md, P1): strong-panel mean +0.0070 ±
+  0.0027 (against the live bot +0.0040, against VRPO3 +0.0100).
+- Against the heuristic: -0.0022 ± 0.0020 (P1b).
+- The W=1024 bot-vs-bot check was stopped by the owner to deploy now.
+
 Bid-only anchor margin (2026-10-02, owner's decision): bids keep the VRPO3
 policy's bid unless the search beats it by more than 0.03. Card play keeps
 0.003. The live bot bid RAMI on about 40% of hands, tuned to the
@@ -69,6 +77,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ROLLOUT = ROOT / "models" / "rollout_clone_small.pt"
+#: Rollout policy of the opponents' seats in the live bot's searches: a strong
+#: self-play policy instead of the clone of the benchmark heuristic (docs/ROBUSTNESS_PLAN.md,
+#: P1; owner's decision 2026-10-02). `ROLLOUT` (the clone) stays the research B0's model.
+OPPONENT_ROLLOUT = ROOT / "models" / "vrpo1_actor_0504.pt"
 #: Rollout policy of the searching team's own seats.
 TEAM_ROLLOUT = ROOT / "models" / "vrpo1_actor_0504.pt"
 EQUITY = ROOT / "models" / "equity_incumbent.json"
@@ -84,7 +96,7 @@ ANCHOR = ROOT / "models" / "vrpo3_final.pt"
 #: 0.03 deployed 2026-10-02 by the owner's decision (against strong play the bot bid RAMI a
 #: little too often): +0.00251 [+0.00125, +0.00377] against bot-strength defence at W=128.
 KEEP_SHOW = 0.03
-SPEC = f"search:{ROLLOUT}:w={WORLDS}:dd={SOLVER_TAIL}:show=1:team={TEAM_ROLLOUT}:sf=1:keep={KEEP}:bp={ANCHOR}:ks={KEEP_SHOW}"
+SPEC = f"search:{OPPONENT_ROLLOUT}:w={WORLDS}:dd={SOLVER_TAIL}:show=1:team={TEAM_ROLLOUT}:sf=1:keep={KEEP}:bp={ANCHOR}:ks={KEEP_SHOW}"
 #: Cautious RAMI bidding (docs/RAMI_ANALYSIS.md): a RAMI bid must beat the best NOLO
 #: bid's searched value by this much (equity). 0 = the bidding tested before
 #: 2026-10-02; a positive value is deployed only by the owner's decision.
@@ -96,7 +108,8 @@ ADAPTIVE_BIDS = {"batch": 128, "z": 2.5, "delta": 0.005}
 def best_agents(seats=range(4), worlds: int = WORLDS, seed: int = 0, team_rollout: bool = True,
                 showing_fix: bool | None = None) -> dict:
     """team_rollout=False: the clone on all rollout seats and no policy anchor
-    (the configuration before 2026-09-30, the research programme's pinned B0).
+    (the configuration before 2026-09-30, the research programme's pinned B0);
+    otherwise the live configuration (strong opponent model, own-team policy, anchors).
     showing_fix: worlds honour showing-fallback restrictions (B0-S1); a
     process-wide native setting, following team_rollout unless given, so the
     pinned B0 keeps the original sampler."""
@@ -110,7 +123,7 @@ def best_agents(seats=range(4), worlds: int = WORLDS, seed: int = 0, team_rollou
     from .equity import Equity
     from .search import SearchAgent
 
-    net = qmodel.load(ROLLOUT, "cpu")
+    net = qmodel.load(OPPONENT_ROLLOUT if team_rollout else ROLLOUT, "cpu")
     team_net = qmodel.load(TEAM_ROLLOUT, "cpu") if team_rollout else None
     anchor = qmodel.load(ANCHOR, "cpu") if team_rollout else None
     table = Equity.load(EQUITY).table

@@ -31,3 +31,14 @@ def test_review_bid_threshold_follows_keep_show(monkeypatch):
     assert r._min_cost(KIND_BID) == r.min_cost
     monkeypatch.setattr(best, "KEEP_SHOW", 0.03)
     assert r._min_cost(KIND_BID) == 0.03 and r._min_cost("lead") == r.min_cost
+
+
+def test_live_opponent_model_is_the_strong_policy():
+    from pathlib import Path
+    assert Path(best.OPPONENT_ROLLOUT).name == "vrpo1_actor_0504.pt"
+    live = best.best_agents([1], worlds=128)[1]
+    b0 = best.best_agents([1], worlds=128, team_rollout=False)[1]
+    import torch
+    live_w = next(iter(live.net.state_dict().values()))
+    b0_w = next(iter(b0.net.state_dict().values()))
+    assert not torch.equal(live_w, b0_w)  # B0 keeps the clone

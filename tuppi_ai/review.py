@@ -16,7 +16,8 @@ heuristic there, search measured no better); near-ties.
 
 Since 2026-10-02 the review prices moves exactly as the live bot does
 (`DealReviewer.best`): the searching team's own seats are rolled out by the
-live own-team policy (`best.TEAM_ROLLOUT`), the opponents by the clone, and
+live own-team policy (`best.TEAM_ROLLOUT`), the opponents by the live opponent model
+(`best.OPPONENT_ROLLOUT`), and
 worlds honour showing-fallback restrictions (B0-S1). The live bot's policy
 anchor (`best.KEEP`, 0.003) needs no counterpart: a flagged gap is at least
 `min_cost` (0.01), so the bot itself would also leave the played action.
@@ -103,14 +104,14 @@ class DealReviewer:
 
     @classmethod
     def best(cls, **kwargs) -> "DealReviewer":
-        """The live bot's pricing: clone opponents, own-team policy rollouts, the sampler fix."""
+        """The live bot's pricing: its opponent and own-team rollout policies, the sampler fix."""
         from . import model as qmodel
-        from .best import EQUITY, ROLLOUT, SOLVER_TAIL, TEAM_ROLLOUT
+        from .best import EQUITY, OPPONENT_ROLLOUT, SOLVER_TAIL, TEAM_ROLLOUT
         from .equity import Equity
 
         native.set_showing_fix(True)  # process-wide, as best_agents sets it
         kwargs.setdefault("team_net", qmodel.load(TEAM_ROLLOUT, "cpu"))
-        return cls(qmodel.load(ROLLOUT, "cpu"), Equity.load(EQUITY).table, dd_left=SOLVER_TAIL, **kwargs)
+        return cls(qmodel.load(OPPONENT_ROLLOUT, "cpu"), Equity.load(EQUITY).table, dd_left=SOLVER_TAIL, **kwargs)
 
     def _values(self, obs: native.TcObs, ids: list[int], worlds: int) -> np.ndarray:
         # The same rollout settings as SearchAgent: sooli play inside rollouts
