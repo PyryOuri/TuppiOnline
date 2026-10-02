@@ -69,6 +69,9 @@ KEEP = 0.003
 #: The anchor policy (a 512x4 VRPO actor; the rollouts keep the faster VRPO1).
 ANCHOR = ROOT / "models" / "vrpo3_final.pt"
 SPEC = f"search:{ROLLOUT}:w={WORLDS}:dd={SOLVER_TAIL}:show=1:team={TEAM_ROLLOUT}:sf=1:keep={KEEP}:bp={ANCHOR}"
+#: Bid-only anchor margin (docs/RAMI_ANALYSIS.md, option 1): keep the anchor policy's bid
+#: unless the searched best beats it by more than this; None = KEEP for bids too.
+KEEP_SHOW = None
 #: Cautious RAMI bidding (docs/RAMI_ANALYSIS.md): a RAMI bid must beat the best NOLO
 #: bid's searched value by this much (equity). 0 = the bidding tested before
 #: 2026-10-02; a positive value is deployed only by the owner's decision.
@@ -102,5 +105,6 @@ def best_agents(seats=range(4), worlds: int = WORLDS, seed: int = 0, team_rollou
     return {s: SearchAgent(net, table, s, worlds=worlds, dd_left=SOLVER_TAIL, search_showing=1, seed=seed + s,
                            adaptive=adaptive, team_net=team_net,
                            keep=KEEP if team_rollout else None, blueprint_net=anchor,
-                           rami_bonus=-RAMI_MARGIN if team_rollout else 0.0)
+                           rami_bonus=-RAMI_MARGIN if team_rollout else 0.0,
+                           keep_show=KEEP_SHOW if team_rollout else None)
             for s in seats}

@@ -139,7 +139,8 @@ class DealReviewer:
         played = action_id(action)
         best, gap, se = self._gap(self._values(obs, ids, self.worlds), ids, played)
         recommended = ids[best]
-        clear = kind != "sooli_return" and recommended != played and gap >= self.min_cost and gap >= self.z * se
+        min_cost = self._min_cost(kind)
+        clear = kind != "sooli_return" and recommended != played and gap >= min_cost and gap >= self.z * se
         if clear:
             # Confirm on fresh, larger worlds with the recommendation held fixed:
             # choosing the best of many noisy means inflates the first gap, so
@@ -149,8 +150,17 @@ class DealReviewer:
             diff = per_world[:, 0] - per_world[:, 1]
             gap = float(diff.mean())
             se = float(diff.std(ddof=1) / np.sqrt(len(diff)))
-            clear = gap >= self.min_cost and gap >= self.z * se
+            clear = gap >= min_cost and gap >= self.z * se
         return ReviewedDecision(index, kind, trick, played, recommended, gap, se, clear)
+
+    def _min_cost(self, kind: str) -> float:
+        """Bids are judged no stricter than the live bot bids: it keeps its policy's bid unless the
+        search beats it by `best.KEEP_SHOW`, so a smaller gap is not a clear mistake."""
+        if kind == KIND_BID:
+            from .best import KEEP_SHOW
+            if KEEP_SHOW is not None:
+                return max(self.min_cost, KEEP_SHOW)
+        return self.min_cost
 
     def review(self, decisions) -> list[ReviewedDecision]:
         """`decisions`: (engine observation, engine action) pairs of one seat, in order."""
