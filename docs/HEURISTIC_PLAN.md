@@ -275,7 +275,7 @@ against v2, 4,096 base deals each):
 ## Implemented: partner_aware_lead_v3 (2026-10-02)
 
 **Where:** TuppiProject branch `heur/partner-aware-lead-v3`, worktree
-`~/Developer/TuppiProject-heur`, commit ee5d1e5, not merged.
+`~/Developer/TuppiProject-heur`, commit dc554c4, not merged.
 
 **The implementation:**
 - `src/tuppi_agents/refined_play.py`: `RefinedPartnerAwarePolicy`
