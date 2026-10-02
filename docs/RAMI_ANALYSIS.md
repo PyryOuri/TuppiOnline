@@ -202,3 +202,43 @@ since it changes how often the live bot bids RAMI.
 
 The earlier grid showed the cost of modelling the opponents as SP1 against
 the incumbent (-0.0029), which is the same trade-off.
+
+## Option 1: let the VRPO policy decide more bids (owner-approved 2026-10-02)
+
+**VRPO3's own bidding** (greedy, no search; `tools/rami_rates.py --agent
+policy:models/vrpo3_final.pt`, 4,000 deals):
+- one hand bids RAMI 24.1% of the time from 0-0 and 27.4% with uniform
+  scores;
+- by position: forehand 19-21%, 2nd 19-22%, 3rd 23-28%, dealer 36-39%;
+- RAMI is played in 81-86% of deals;
+- it learned to bid against its own strong defence. The live bot bids RAMI
+  on 39-41% of hands.
+
+**The lever:** `keep_show` (evaluate `ks=`), a separate anchor margin for bids.
+The live bot keeps VRPO3's bid unless the search beats it by more than that
+margin; card play keeps 0.003. Unset, moves are unchanged (fingerprint
+identical at W=128).
+
+### Screen O1 (pre-registered 2026-10-02, before its run)
+
+**Arms:** ks = 0.01 and 0.03, otherwise the live configuration at W=128
+(VRPO1 own-team rollouts, keep 0.003, VRPO3 anchor, sampler fix).
+
+**Conditions** (512 base deals each, rs=1; fresh seeds):
+
+| Condition | Opponent | Scores | Seed | Pairing |
+| --- | --- | --- | --- | --- |
+| S1 | the live bot itself, W=128 (bot-strength defence) | uniform | o1-bvb | the value is the difference |
+| S2 | `partner_aware_lead_v3` | uniform | o1-heur-u | against the live arm on the same deals |
+| S3 | `partner_aware_lead_v3` | 0-0 | o1-heur-z | against the live arm on the same deals |
+
+**Selection:** among the arms with S1 lower bound above 0 and S2 and S3
+lower bounds above -0.0010, the one with the highest S1 point estimate. If
+none qualifies, option 1 fails at this margin grid.
+
+**Confirmation** (separate, pre-registered with this screen): W=1024 against
+v2 at 0-0, paired with `b_keep_v3.json` (512 deals, seed perf-e7-v1).
+- **Non-inferior:** the lower bound is above -0.0010 and the point estimate
+  is at least 0.
+- A W=1024 bot-vs-bot check follows if time allows.
+- **Deployment remains the owner's decision.**

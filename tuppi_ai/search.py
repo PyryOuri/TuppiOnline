@@ -270,7 +270,7 @@ class SearchAgent:
                  search_showing=False, seed: int = 0, keep: float | None = None,
                  show_worlds: int | None = None, rami_bonus: float = 0.0, sooli: dict | None = None,
                  equiv: bool = False, adaptive: dict | None = None, reseed: bool = False,
-                 value: dict | None = None, blueprint_net=None, **belief):
+                 value: dict | None = None, blueprint_net=None, keep_show: float | None = None, **belief):
         """search_showing: False (blueprint shows), True/1 (search every legal show), or 2
         (search only the blueprint's preferred card for each contract, then keep
         the blueprint's card within the chosen contract).
@@ -287,7 +287,8 @@ class SearchAgent:
         value: {"path", "leaf_bid", "leaf_play", "bot_bit"}: rollouts stop at a
         value-net leaf (docs/VALUE_NET_PLAN.md); -1 disables a leaf kind.
         blueprint_net: the policy whose action `keep` keeps (default: the
-        rollout net), e.g. a stronger no-search policy."""
+        rollout net), e.g. a stronger no-search policy.
+        keep_show: the keep margin for bids (showing) only; None = `keep`."""
         self.seat = seat
         self.equiv = equiv
         self.adaptive = adaptive
@@ -296,6 +297,7 @@ class SearchAgent:
         self.search_showing = search_showing
         self.keep = keep  # None: plain argmax; >= 0: keep the blueprint's action unless beaten by more
         self.blueprint_net = blueprint_net if blueprint_net is not None else net
+        self.keep_show = keep_show
         # Added to the value of declaring RAMI (RETURN_SCALE units): the rollouts
         # play the rest of the deal with the clone, which undervalues contracts
         # this agent's own (better) play would make.
@@ -433,10 +435,11 @@ class SearchAgent:
 
     def _keep_blueprint(self, obs: native.TcObs, ids: list[int], values: np.ndarray, best: int) -> int:
         """With `keep`, the blueprint's action unless the searched best beats it by more than keep."""
-        if self.keep is None:
+        margin = self.keep_show if (obs.phase == native.PH_SHOW and self.keep_show is not None) else self.keep
+        if margin is None:
             return best
         native.encode(obs, self._feat[0], self.blueprint_net.encoder)
         with torch.no_grad():
             q = self.blueprint_net(torch.from_numpy(self._feat))[0].numpy()
         bp = int(np.argmax([q[i] for i in ids]))
-        return bp if values[bp] >= values[best] - self.keep else best
+        return bp if values[bp] >= values[best] - margin else best

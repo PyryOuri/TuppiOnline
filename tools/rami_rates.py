@@ -35,6 +35,10 @@ def _init(agent: str) -> None:
     if agent == "live":
         from tuppi_ai.best import best_agents
         _W["agents"] = best_agents(worlds=1024)
+    elif agent.startswith("policy:"):  # a network policy without search (greedy)
+        from tuppi_ai.policies import PolicyAgent, from_spec
+        pol = from_spec(agent.split(":", 1)[1], "cpu")
+        _W["agents"] = {s: PolicyAgent(pol, s) for s in range(4)}
     elif agent.startswith("search128"):
         from tuppi_ai.best import best_agents
         _W["agents"] = best_agents(worlds=128)
