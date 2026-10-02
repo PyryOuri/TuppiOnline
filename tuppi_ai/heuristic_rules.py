@@ -52,10 +52,57 @@ def cash_singleton_winner_late(v: dict):
     return cash_singleton_winner(v, max_tricks_left=5)
 
 
+def _trick(v: dict) -> list[int]:
+    n = len(v["played"])
+    return v["played"][n - v["pos"]:] if v["pos"] else []
+
+
+def nolo_unload_under_partner(v: dict):
+    """NOLO, third or fourth hand, following suit while partner's card is winning the trick:
+    play the highest card of the led suit that still loses to it."""
+    if v["contract"] != "NOLO" or v["pos"] < 2:
+        return None
+    trick = _trick(v)
+    led = suit(trick[0])
+    win_i = max((i for i, c in enumerate(trick) if suit(c) == led), key=lambda i: trick[i])
+    if win_i != v["pos"] - 2:  # partner played two seats before us
+        return None
+    under = [c for c in v["legal"] if suit(c) == led and c < trick[win_i]]
+    if not under or any(suit(c) != led for c in v["legal"]):
+        return None
+    return max(under)
+
+
+def nolo_lead_highest_singleton(v: dict):
+    """NOLO, leading a singleton: of the singletons held, lead the highest."""
+    if v["contract"] != "NOLO" or v["pos"] != 0:
+        return None
+    singles = [c for c in v["legal"] if len(suit_cards(v["hand"], suit(c))) == 1]
+    if v["heur"] not in singles or len(singles) < 2:
+        return None
+    return max(singles, key=lambda c: c % 13)
+
+
+def second_hand_low(v: dict):
+    """RAMI, second hand, following suit: if the heuristic plays a card that would win the
+    trick now but is not a certain winner, play the lowest card of the led suit instead."""
+    if v["contract"] != "RAMI" or v["pos"] != 1:
+        return None
+    lead = _trick(v)[0]
+    h = v["heur"]
+    if suit(h) != suit(lead) or h < lead or certain_winner(h, v["hand"], set(v["played"])):
+        return None
+    low = min(c for c in v["legal"] if suit(c) == suit(lead))
+    return low if low != h else None
+
+
 RULES = {
     "underlead": underlead_unsupported_honour,
     "cash_singleton": cash_singleton_winner,
     "cash_singleton_late": cash_singleton_winner_late,
+    "nolo_unload": nolo_unload_under_partner,
+    "nolo_high_singleton": nolo_lead_highest_singleton,
+    "second_hand_low": second_hand_low,
 }
 
 

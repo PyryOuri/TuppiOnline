@@ -27,7 +27,8 @@ from tuppi_ai.heuristic_rules import RULES as _R  # noqa: E402
 
 RULES = {"underlead": _R["underlead"], "cash_singleton": _R["cash_singleton"],
          "cash_singleton_late": _R["cash_singleton_late"],
-         "underlead+cash_singleton_late": lambda r: _R["cash_singleton_late"](r) or _R["underlead"](r)}
+         "underlead+cash_singleton_late": lambda r: _R["cash_singleton_late"](r) or _R["underlead"](r),
+         "second_hand_low": _R["second_hand_low"]}
 
 
 def check(rows: list[dict], deals: int, rule, split=None) -> dict:

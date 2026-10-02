@@ -46,7 +46,8 @@ CLONE = ROOT.parent / "TuppiAI" / "runs" / "bc_small.pt"
 _W: dict = {}
 
 
-def _init(teacher: str, clone: str, control: float, seed: str, price_all: bool = False) -> None:
+def _init(teacher: str, clone: str, control: float, seed: str, price_all: bool = False,
+          shows_only: bool = False) -> None:
     import torch
 
     torch.set_num_threads(1)
@@ -73,7 +74,7 @@ def _init(teacher: str, clone: str, control: float, seed: str, price_all: bool =
     native.set_offer_model(_W["offer"])
     _W["env"] = native.Env(4096, 11, Equity.load(EQUITY).table, single_deal=True, encoder=c.encoder)
     _W["env"].set_sooli(0, False, False, 0.0)
-    _W["control"], _W["seed"], _W["price_all"] = control, seed, price_all
+    _W["control"], _W["seed"], _W["price_all"], _W["shows_only"] = control, seed, price_all, shows_only
 
 
 def _score(rng: random.Random) -> tuple[int, int]:
@@ -84,6 +85,18 @@ def _score(rng: random.Random) -> tuple[int, int]:
 
 
 SUITS = ("hearts", "diamonds", "clubs", "spades")
+
+
+_SUIT_LETTER = {"H": 0, "D": 1, "C": 2, "S": 3}
+_RANK = {"T": 10, "J": 11, "Q": 12, "K": 13, "A": 14}
+
+
+def _show_id(action: dict) -> int:
+    """Native action id of a diagnostics show candidate ({'declared_contract', 'shown_card': '9C'})."""
+    card = action["shown_card"]
+    rank = _RANK.get(card[:-1]) or int(card[:-1])
+    c = 13 * _SUIT_LETTER[card[-1]] + rank - 2
+    return 52 + 52 * (action["declared_contract"] == "RAMI") + c
 
 
 def _hand_features(hand: int) -> dict:
@@ -205,10 +218,26 @@ def mine(indices: list[int]) -> list[dict]:
                     qt, qc = _W["teacher"].forward(feat)[0], _W["clone"].forward(feat)[0]
                     a_t, a_c = max(legal, key=lambda a: qt[a]), max(legal, key=lambda a: qc[a])
                     sel = next(c for c in dec.diagnostics.candidates if c.selected)
+                    if state.phase is EnginePhase.SHOWING:  # v2's own card for the contract it did not choose
+                        other = [c for c in dec.diagnostics.candidates
+                                 if c.action["declared_contract"] != sel.action["declared_contract"]]
+                        alt = _show_id(max(other, key=lambda c: tuple(c.score_vector)).action) if other else None
+                        if _show_id(sel.action) != a_h:
+                            raise RuntimeError("show candidate parsing disagrees with the chosen action")
+                    elif _W["shows_only"]:
+                        action = dec.action
+                        a_h = action_id(action)
+                        if native.lib.tc_apply(C.byref(deal), a_h) != 0:
+                            raise RuntimeError(f"native engine rejected {a_h}")
+                        state = apply_match_action(state, action)
+                        step += 1
+                        continue
                     row = {"deal": index, "step": step, "seat": seat, "k": len(legal), "heur": a_h, "teacher": a_t,
                            "clone": a_c, "reasons": "|".join(sorted(sel.reason_codes)),
                            "rules": "|".join(sorted(r for r in sel.rule_ids if not r.startswith("common."))),
                            **_situation(deal, seat, legal, a_h, a_t)}
+                    if state.phase is EnginePhase.SHOWING:
+                        row["heur_alt"] = alt
                     row["priced"] = (_W["price_all"] or a_h != a_t or row["phase"] == "show"
                                      or rng.random() < _W["control"])
                     if _W["price_all"]:  # the decision's own view, for offline rule checks
@@ -258,6 +287,11 @@ def _price(rows: list[dict], blobs: list[bytes]) -> None:
             if r["phase"] == "show":
                 r["q_rami"] = max((v for a, v in qa.items() if a >= 104), default=None)
                 r["q_nolo"] = max((v for a, v in qa.items() if 52 <= a < 104), default=None)
+                # v2's own card for each contract (no clairvoyant choice of card)
+                own = {r["heur"] >= 104: qa[r["heur"]]}
+                if r.get("heur_alt") is not None:
+                    own[r["heur_alt"] >= 104] = qa[r["heur_alt"]]
+                r["q_rami_own"], r["q_nolo_own"] = own.get(True), own.get(False)
         start = stop
 
 
@@ -269,6 +303,7 @@ def main() -> None:
     p.add_argument("--chunk", type=int, default=50)
     p.add_argument("--control", type=float, default=0.1, help="share of agreements priced as a control")
     p.add_argument("--seed", default="mine-v1")
+    p.add_argument("--shows-only", action="store_true", help="record and price showing decisions only")
     p.add_argument("--price-all", action="store_true",
                    help="price every decision and keep every action's value and the decision's view")
     p.add_argument("--teacher", default=str(TEACHER))
@@ -278,7 +313,7 @@ def main() -> None:
     chunks = [list(range(i, min(i + a.chunk, a.start + a.deals))) for i in range(a.start, a.start + a.deals, a.chunk)]
     t0 = time.time()
     rows: list[dict] = []
-    with ProcessPoolExecutor(a.workers, initializer=_init, initargs=(a.teacher, a.clone, a.control, a.seed, a.price_all)) as pool:
+    with ProcessPoolExecutor(a.workers, initializer=_init, initargs=(a.teacher, a.clone, a.control, a.seed, a.price_all, a.shows_only)) as pool:
         for i, part in enumerate(pool.map(mine, chunks)):
             rows.extend(part)
             if (i + 1) % 20 == 0:

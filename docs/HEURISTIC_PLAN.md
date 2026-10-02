@@ -130,3 +130,56 @@ heur-h3-confirm). It **passes** if the lower bound is above 0.
 **Calibration:** the screen's results are also compared with the offline
 estimates, to judge whether the offline screen is usable for card-play
 rules.
+
+**H3 screen result (seed heur-h3-screen, 2,048 base deals per arm), against
+v2:**
+
+| Arm | Difference |
+| --- | --- |
+| A, underlead | +0.00353 [+0.00287, +0.00420] |
+| B, cash_singleton_late | +0.00092 [+0.00066, +0.00117] |
+| **C, both** | **+0.00417 [+0.00350, +0.00484]** |
+
+**Selected: C.** Its confirmation (4,096 base deals, seed heur-h3-confirm) is
+running.
+
+**Calibration.** The offline screen ranked the rules correctly and got the
+signs right, but over-estimates their size by about 4-5x:
+- underlead: +0.0162 offline, +0.0035 in games;
+- cash_singleton_late: about +0.0051 offline, +0.0009 in games.
+
+About 2x of that is expected: the offline sum counts both teams' decisions,
+while in the games only the candidate team uses the rule. For card-play
+rules the screen is usable for ranking; the game test gives the size.
+
+**H3 confirmation (seed heur-h3-confirm, 4,096 base deals):**
+**+0.00416 [+0.00370, +0.00462]** against v2, with 54.0% of deals won.
+**H3 passes.**
+- The two RAMI lead rules (cash_singleton_late, then underlead) form a
+  confirmed successor candidate.
+- For scale: v2's own margin over its predecessor `partner_aware_v1` is
+  +0.0054.
+
+**Offline rejects (2026-10-02, mining run 4), not game-tested:**
+- nolo_unload (NOLO, partner winning: play the highest card that still
+  loses): -0.0020 ± 0.0005 per deal;
+- nolo_high_singleton (NOLO, of several singletons lead the highest):
+  -0.0001 ± 0.0004.
+
+## H4: second hand low (pre-registered 2026-10-02)
+
+**The rule:** in RAMI, second hand, following suit, if v2 plays a card that
+would win the trick now but is not a certain winner, play the lowest card of
+the led suit instead.
+- Offline: +0.0058 ± 0.0005 per deal, positive in every phase and role.
+
+**The screen:**
+- Arm H3 = cash_singleton_late + underlead.
+- Arm H4 = H3 + second_hand_low.
+- Each is played against v2 on the same 4,096 base deals (seed
+  heur-h4-screen), and the arms are paired, H4 minus H3, per base deal.
+
+**Pass the screen:** the paired lower bound is above 0.
+
+**Confirmation:** the same pairing on 4,096 fresh base deals (seed
+heur-h4-confirm). It **passes** if the lower bound is above 0.
