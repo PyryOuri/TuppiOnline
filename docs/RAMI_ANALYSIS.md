@@ -270,3 +270,12 @@ deals each):
 **Then:** the W=1024 confirmations of C-R1's form (against v2 at 0-0 paired
 with `b_keep_v3.json`: non-inferior, with the point estimate at least 0),
 and, if time allows, a W=1024 bot-vs-bot check.
+
+**O2 S1 result:** ks=0.03 against the live bot with bots defending, 2,048
+base deals: **+0.00251 [+0.00125, +0.00377]**. RAMI declared 41.4% against
+52.6%. S1 passes.
+
+**Owner's decision (2026-10-02 16:20):** if O2 S3 and the W=1024
+confirmation both pass, deploy without asking; otherwise the owner decides.
+The deployment is `best.KEEP_SHOW = 0.03`. The review then flags a bid only
+if it is worse by more than 0.03, consistent with the bot's own bidding.
