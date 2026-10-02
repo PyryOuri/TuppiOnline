@@ -271,3 +271,32 @@ against v2, 4,096 base deals each):
   implementation as `partner_aware_lead_v3` in TuppiProject.
 - The equity gain is larger with realistic scores. The card-play gain is
   the same, but mid-match deals move the match more than deals from 0-0.
+
+## Implemented: partner_aware_lead_v3 (2026-10-02)
+
+**Where:** TuppiProject branch `heur/partner-aware-lead-v3`, worktree
+`~/Developer/TuppiProject-heur`, commit ee5d1e5, not merged.
+
+**The implementation:**
+- `src/tuppi_agents/refined_play.py`: `RefinedPartnerAwarePolicy`
+  subclasses v2's policy class and re-ranks with v2's own `_prefer`, so the
+  diagnostics carry the new reason codes and keep the inherited ranking.
+- `improved_registry.py` declares three new layers and the profile, with
+  identity `agent:sha256:0b7b8f939ea1...`. The v2 and discard_v3 identities
+  are unchanged.
+
+**Checks:**
+- Against the TuppiAI rule layers it is identical on all 1,024 deals (8,192
+  games) at 0-0 and with uniform scores.
+- TuppiProject agent tests: 334 pass.
+- Full suite: 1,850 pass and 6 fail, the same 6 pre-existing failures as on
+  the base branch.
+
+**Use:** with `PYTHONPATH=~/Developer/TuppiProject-heur/src`,
+`evaluate --opponent partner_aware_lead_v3` or `--checkpoint
+profile:partner_aware_lead_v3`.
+
+**Not changed:**
+- v2 remains the benchmark and the live server's reference.
+- Merging the branch, and switching the benchmark or any live use to v3,
+  is the owner's decision.
