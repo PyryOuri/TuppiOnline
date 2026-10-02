@@ -23,7 +23,9 @@ anchor (`best.KEEP`, 0.003) needs no counterpart: a flagged gap is at least
 
 Calibration (`tools/review_calibrate.py`, docs/STATUS.md): at the defaults
 (0.01, 2.5 SE, 1024 confirming worlds) the bot reviewing its own play flags
-0.06 decisions per seat-deal and the incumbent 1.2. The estimated costs are
+0.06 decisions per seat-deal and the incumbent 1.2. Re-run for reviewer v2
+(2026-10-02, 48 v3 deals, runs/review_calib_v2.json): bot 0.052 and the
+benchmark heuristic (now partner_aware_lead_v3) 0.93, so the defaults hold. The estimated costs are
 the search's: the incumbent's flagged costs add up to about six times its
 measured deficit, so they rank mistakes better than they measure them.
 """
