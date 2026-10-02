@@ -279,3 +279,8 @@ base deals: **+0.00251 [+0.00125, +0.00377]**. RAMI declared 41.4% against
 confirmation both pass, deploy without asking; otherwise the owner decides.
 The deployment is `best.KEEP_SHOW = 0.03`. The review then flags a bid only
 if it is worse by more than 0.03, consistent with the bot's own bidding.
+
+**Deployed 2026-10-02 (owner's decision, before O2 S3 and the W=1024 check
+finished):** `best.KEEP_SHOW = 0.03` (TuppiAI ce2b937); the live server was
+restarted (pid 50967). O2 S3 and the W=1024 confirmation still run and are
+recorded below when done.
