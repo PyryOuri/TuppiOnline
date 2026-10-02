@@ -46,7 +46,7 @@ CLONE = ROOT.parent / "TuppiAI" / "runs" / "bc_small.pt"
 _W: dict = {}
 
 
-def _init(teacher: str, clone: str, control: float, seed: str) -> None:
+def _init(teacher: str, clone: str, control: float, seed: str, price_all: bool = False) -> None:
     import torch
 
     torch.set_num_threads(1)
@@ -73,7 +73,7 @@ def _init(teacher: str, clone: str, control: float, seed: str) -> None:
     native.set_offer_model(_W["offer"])
     _W["env"] = native.Env(4096, 11, Equity.load(EQUITY).table, single_deal=True, encoder=c.encoder)
     _W["env"].set_sooli(0, False, False, 0.0)
-    _W["control"], _W["seed"] = control, seed
+    _W["control"], _W["seed"], _W["price_all"] = control, seed, price_all
 
 
 def _score(rng: random.Random) -> tuple[int, int]:
@@ -86,12 +86,43 @@ def _score(rng: random.Random) -> tuple[int, int]:
 SUITS = ("hearts", "diamonds", "clubs", "spades")
 
 
+def _hand_features(hand: int) -> dict:
+    """The heuristic's own hand descriptors and scores (tuppi_agents.features.describe_hand,
+    tuppi_agents.showing.simple_rami_score / simple_nolo_score), plus extra candidate features."""
+    ranks = [[c % 13 + 2 for c in range(13 * s, 13 * s + 13) if (hand >> c) & 1] for s in range(4)]
+    allr = [r for suit in ranks for r in suit]
+    lengths = [len(x) for x in ranks]
+    f = {"hcp": sum({14: 4, 13: 3, 12: 2, 11: 1}.get(r, 0) for r in allr),
+         "aces": allr.count(14), "kings": allr.count(13), "queens": allr.count(12), "jacks": allr.count(11),
+         "tens": allr.count(10), "low4": sum(r <= 4 for r in allr), "top_five": sum(r >= 10 for r in allr),
+         "honours": sum(r >= 11 for r in allr), "voids": lengths.count(0), "singletons": lengths.count(1),
+         "doubletons": lengths.count(2)}
+    srt = sorted(lengths, reverse=True)
+    for i in range(4):
+        f[f"len{i + 1}"] = srt[i]
+    top_seq = 0
+    for suit in ranks:
+        r = 14
+        while r in suit:
+            top_seq += 1
+            r -= 1
+    f["top_seq"] = top_seq  # cards in unbroken runs from the ace (sure winners)
+    f["long_honours"] = sum(sum(r >= 11 for r in suit) for suit in ranks if len(suit) >= 5)
+    f["rami_score"] = f["hcp"] + 0.5 * f["aces"] + 0.25 * (f["aces"] + f["kings"]) + 0.5 * max(0, srt[0] - 4)
+    f["nolo_score"] = (1.5 * f["low4"] + 3.0 * f["voids"] + 2.0 * f["singletons"] + 1.0 * f["doubletons"]
+                       - 1.0 * f["top_five"] - 0.5 * f["honours"])
+    return f
+
+
 def _situation(d, seat: int, legal: list[int], a_h: int, a_t: int) -> dict:
     """Visible situation features of a decision (native deal before the action)."""
     out = {"phase": "show" if d.phase == 0 else "play", "n_shows": int(d.n_shows)}
     if d.phase == 0:
         out["heur_contract"] = "RAMI" if a_h >= 104 else "NOLO"
         out["teacher_contract"] = "RAMI" if a_t >= 104 else "NOLO"
+        out.update(_hand_features(int(d.hand[seat])))
+        out["own_score"], out["opp_score"] = int(d.score[seat % 2]), int(d.score[1 - seat % 2])
+        out["seat_from_dealer"] = (seat - int(d.dealer)) % 4
         return out
     n = int(d.n_played)
     pos = n % 4
@@ -178,7 +209,12 @@ def mine(indices: list[int]) -> list[dict]:
                            "clone": a_c, "reasons": "|".join(sorted(sel.reason_codes)),
                            "rules": "|".join(sorted(r for r in sel.rule_ids if not r.startswith("common."))),
                            **_situation(deal, seat, legal, a_h, a_t)}
-                    row["priced"] = a_h != a_t or rng.random() < _W["control"]
+                    row["priced"] = (_W["price_all"] or a_h != a_t or row["phase"] == "show"
+                                     or rng.random() < _W["control"])
+                    if _W["price_all"]:  # the decision's own view, for offline rule checks
+                        row["hand"] = int(deal.hand[seat])
+                        row["played"] = [int(deal.play_card[i]) for i in range(int(deal.n_played))]
+                        row["legal"] = legal
                     if row["priced"]:
                         row["state"] = len(states)
                         states.append(bytes(deal))
@@ -217,6 +253,11 @@ def _price(rows: list[dict], blobs: list[bytes]) -> None:
             qa = {int(acts[j, i]): float(q[j, i]) for i in range(kk[j])}
             r["q_heur"], r["q_teacher"], r["q_clone"] = qa[r["heur"]], qa[r["teacher"]], qa[r["clone"]]
             r["q_best"] = max(qa.values())
+            if _W["price_all"]:
+                r["qa"] = qa
+            if r["phase"] == "show":
+                r["q_rami"] = max((v for a, v in qa.items() if a >= 104), default=None)
+                r["q_nolo"] = max((v for a, v in qa.items() if 52 <= a < 104), default=None)
         start = stop
 
 
@@ -228,6 +269,8 @@ def main() -> None:
     p.add_argument("--chunk", type=int, default=50)
     p.add_argument("--control", type=float, default=0.1, help="share of agreements priced as a control")
     p.add_argument("--seed", default="mine-v1")
+    p.add_argument("--price-all", action="store_true",
+                   help="price every decision and keep every action's value and the decision's view")
     p.add_argument("--teacher", default=str(TEACHER))
     p.add_argument("--clone", default=str(CLONE))
     p.add_argument("--out", type=Path, required=True)
@@ -235,7 +278,7 @@ def main() -> None:
     chunks = [list(range(i, min(i + a.chunk, a.start + a.deals))) for i in range(a.start, a.start + a.deals, a.chunk)]
     t0 = time.time()
     rows: list[dict] = []
-    with ProcessPoolExecutor(a.workers, initializer=_init, initargs=(a.teacher, a.clone, a.control, a.seed)) as pool:
+    with ProcessPoolExecutor(a.workers, initializer=_init, initargs=(a.teacher, a.clone, a.control, a.seed, a.price_all)) as pool:
         for i, part in enumerate(pool.map(mine, chunks)):
             rows.extend(part)
             if (i + 1) % 20 == 0:
