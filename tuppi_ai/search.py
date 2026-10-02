@@ -417,10 +417,12 @@ class SearchAgent:
             values = searcher.action_values(obs, reps)
             self.last_values = {a: float(x) for a, x in zip(reps, values)}
             return legal[ids.index(reps[int(np.argmax(values))])]
-        if self.adaptive and not self.rami_bonus and (
-                obs.phase == native.PH_SHOW or self.adaptive.get("play", False)):
+        if self.adaptive and (obs.phase == native.PH_SHOW or self.adaptive.get("play", False)):
             values, best = self._search(searcher, obs, ids)
             self.last_values = {a: float(x) for a, x in zip(ids, values)}
+            if self.rami_bonus and obs.phase == native.PH_SHOW:  # applied after the adaptive search
+                values = values + self.rami_bonus * np.array([1.0 if i >= 104 else 0.0 for i in ids])
+                best = int(np.argmax(values))
             return legal[self._keep_blueprint(obs, ids, values, best)]
         values = searcher.action_values(obs, ids)
         self.last_values = {a: float(x) for a, x in zip(ids, values)}
