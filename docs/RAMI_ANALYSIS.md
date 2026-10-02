@@ -284,3 +284,21 @@ if it is worse by more than 0.03, consistent with the bot's own bidding.
 finished):** `best.KEEP_SHOW = 0.03` (TuppiAI ce2b937); the live server was
 restarted (pid 50967). O2 S3 and the W=1024 confirmation still run and are
 recorded below when done.
+
+**O2 S3 result** (against `partner_aware_lead_v3` at 0-0, W=128, 1,024
+paired deals): **+0.00093 [+0.00034, +0.00153]**, so S3 passes.
+
+**W=1024 confirmation** (against v2 at 0-0, 512 deals paired with
+`b_keep_v3.json`): **-0.00017 [-0.00086, +0.00053]**.
+- Non-inferior, but the point estimate is below 0, so it misses the
+  pre-registered rule narrowly.
+- RAMI declared: 39.5% against 52.2%.
+- CPU: 63,016 s against 59,398 s.
+
+**Reading:**
+- A clear gain against bot-strength defence (+0.0025).
+- Against the weak heuristic: a gain at W=128 (+0.0009) and neutral at
+  W=1024.
+
+The owner had already deployed it on the strength of the strong-opponent
+result, which is the trade-off this change is meant to make.
