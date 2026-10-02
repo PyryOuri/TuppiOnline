@@ -21,6 +21,8 @@ import time
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
+from .incumbent import INCUMBENT
+
 from .evaluate import RULESETS, _init as _init_worker, _W
 
 DEFAULT_CAP = 400
@@ -72,7 +74,7 @@ def measure_pair(pair: int, seed: str, cap: int) -> dict:
 
 
 def evaluate_matches(candidate: str, pairs: int, seed: str = "tuppi-ai-match-v1",
-                     opponent: str = "partner_aware_lead_v2", workers: int = 12,
+                     opponent: str = INCUMBENT, workers: int = 12,
                      cap: int = DEFAULT_CAP, equity_path: str | None = None, ruleset: str = "v1") -> dict:
     from .evaluate import ROOT
     equity_path = equity_path or str(ROOT / "models" / "equity_incumbent.json")
@@ -98,7 +100,7 @@ def main() -> None:
     parser.add_argument("--checkpoint", required=True, help="checkpoint path or profile:<key>")
     parser.add_argument("--pairs", type=int, default=128)
     parser.add_argument("--seed", default="tuppi-ai-match-v1")
-    parser.add_argument("--opponent", default="partner_aware_lead_v2")
+    parser.add_argument("--opponent", default=INCUMBENT)
     parser.add_argument("--workers", type=int, default=12)
     parser.add_argument("--cap", type=int, default=DEFAULT_CAP)
     parser.add_argument("--ruleset", choices=tuple(RULESETS), default="v1",

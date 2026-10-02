@@ -29,14 +29,14 @@ sys.path.insert(0, str(ROOT / "tools"))
 _W: dict = {}
 
 
-def _init(seed: str) -> None:
+def _init(seed: str, base: str) -> None:
     from tuppi_agents.sooli import SooliFallbackAgent
 
     from tuppi_ai.best import EQUITY
     from tuppi_ai.equity import Equity
     from tuppi_ai.incumbent import incumbent_agents
 
-    agents = incumbent_agents()
+    agents = incumbent_agents(base)
     _W["agents"], _W["wrapped"] = agents, {s: SooliFallbackAgent(a) for s, a in agents.items()}
     _W["equity"], _W["seed"] = Equity.load(EQUITY), seed
 
@@ -107,11 +107,15 @@ def main() -> None:
     p.add_argument("--workers", type=int, default=4)
     p.add_argument("--chunk", type=int, default=50)
     p.add_argument("--seed", default="show-true-v1")
+    p.add_argument("--base", default=None, help="heuristic profile (default: the benchmark; run 1 used v2)")
     p.add_argument("--out", type=Path, required=True)
     a = p.parse_args()
+    if a.base is None:
+        from tuppi_ai.incumbent import INCUMBENT
+        a.base = INCUMBENT
     chunks = [list(range(i, min(i + a.chunk, a.deals))) for i in range(0, a.deals, a.chunk)]
     t0, rows = time.time(), []
-    with ProcessPoolExecutor(a.workers, initializer=_init, initargs=(a.seed,)) as pool:
+    with ProcessPoolExecutor(a.workers, initializer=_init, initargs=(a.seed, a.base)) as pool:
         for i, part in enumerate(pool.map(price, chunks)):
             rows.extend(part)
             if (i + 1) % 40 == 0:

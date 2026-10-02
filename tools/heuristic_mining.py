@@ -1,4 +1,4 @@
-"""Where does the heuristic lose? Disagreement mining of partner_aware_lead_v2 against VRPO3.
+"""Where does the heuristic lose? Disagreement mining of a heuristic (the benchmark by default) against VRPO3.
 
 The heuristic plays all four seats in the authoritative engine (project_target_v3,
 random dealer and starting score). A native deal is kept in lockstep with the
@@ -47,7 +47,7 @@ _W: dict = {}
 
 
 def _init(teacher: str, clone: str, control: float, seed: str, price_all: bool = False,
-          shows_only: bool = False) -> None:
+          shows_only: bool = False, base: str = "partner_aware_lead_v3") -> None:
     import torch
 
     torch.set_num_threads(1)
@@ -61,7 +61,7 @@ def _init(teacher: str, clone: str, control: float, seed: str, price_all: bool =
     from tuppi_ai.offer_screen import load as load_offer
 
     native.set_parallel(False)  # one core per worker process
-    agents = incumbent_agents()
+    agents = incumbent_agents(base)
     _W["agents"] = agents
     _W["wrapped"] = {s: SooliFallbackAgent(a) for s, a in agents.items()}
     t, c = qmodel.load(teacher, "cpu"), qmodel.load(clone, "cpu")
@@ -303,6 +303,8 @@ def main() -> None:
     p.add_argument("--chunk", type=int, default=50)
     p.add_argument("--control", type=float, default=0.1, help="share of agreements priced as a control")
     p.add_argument("--seed", default="mine-v1")
+    p.add_argument("--base", default=None, help="heuristic profile to mine (default: the benchmark, "
+                   "tuppi_ai.incumbent.INCUMBENT; runs 1-5 used partner_aware_lead_v2)")
     p.add_argument("--shows-only", action="store_true", help="record and price showing decisions only")
     p.add_argument("--price-all", action="store_true",
                    help="price every decision and keep every action's value and the decision's view")
@@ -310,10 +312,13 @@ def main() -> None:
     p.add_argument("--clone", default=str(CLONE))
     p.add_argument("--out", type=Path, required=True)
     a = p.parse_args()
+    if a.base is None:
+        from tuppi_ai.incumbent import INCUMBENT
+        a.base = INCUMBENT
     chunks = [list(range(i, min(i + a.chunk, a.start + a.deals))) for i in range(a.start, a.start + a.deals, a.chunk)]
     t0 = time.time()
     rows: list[dict] = []
-    with ProcessPoolExecutor(a.workers, initializer=_init, initargs=(a.teacher, a.clone, a.control, a.seed, a.price_all, a.shows_only)) as pool:
+    with ProcessPoolExecutor(a.workers, initializer=_init, initargs=(a.teacher, a.clone, a.control, a.seed, a.price_all, a.shows_only, a.base)) as pool:
         for i, part in enumerate(pool.map(mine, chunks)):
             rows.extend(part)
             if (i + 1) % 20 == 0:

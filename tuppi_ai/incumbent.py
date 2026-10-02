@@ -1,8 +1,17 @@
-"""The incumbent `partner_aware_lead_v2`, constructed exactly as TuppiProject does."""
+"""The benchmark heuristic opponent, constructed exactly as TuppiProject does.
+
+Since 2026-10-02 (owner's decision) the benchmark is `partner_aware_lead_v3`
+(docs/HEURISTIC_PLAN.md). Every result recorded before then is against
+`partner_aware_lead_v2` (`PREVIOUS`); reproduce one with
+`--opponent partner_aware_lead_v2` (and `heur:base=v2,...` for heuristic
+variants).
+"""
 
 from __future__ import annotations
 
-INCUMBENT = "partner_aware_lead_v2"
+INCUMBENT = "partner_aware_lead_v3"
+#: The benchmark until 2026-10-02.
+PREVIOUS = "partner_aware_lead_v2"
 
 
 def incumbent_agents(profile_key: str = INCUMBENT) -> dict[int, object]:

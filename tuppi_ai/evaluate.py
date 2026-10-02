@@ -21,6 +21,8 @@ import time
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
+from .incumbent import INCUMBENT
+
 ROOT = Path(__file__).resolve().parents[1]
 DEALER = 0
 _W: dict = {}
@@ -210,7 +212,7 @@ def summarise(rows: list[dict]) -> dict:
 
 
 def evaluate(candidate: str, deals: int, seed: str = "tuppi-ai-eval-v1", scores: str = "zero",
-             opponent: str = "partner_aware_lead_v2", workers: int = 12,
+             opponent: str = INCUMBENT, workers: int = 12,
              equity_path: str = str(ROOT / "models" / "equity_incumbent.json"), ruleset: str = "v1") -> dict:
     t0 = time.time()
     with ProcessPoolExecutor(workers, initializer=_init,
@@ -232,7 +234,7 @@ def main() -> None:
     parser.add_argument("--deals", type=int, default=1000)
     parser.add_argument("--seed", default="tuppi-ai-eval-v1")
     parser.add_argument("--scores", choices=("zero", "uniform"), default="zero")
-    parser.add_argument("--opponent", default="partner_aware_lead_v2")
+    parser.add_argument("--opponent", default=INCUMBENT)
     parser.add_argument("--workers", type=int, default=12)
     parser.add_argument("--ruleset", choices=tuple(RULESETS), default="v1",
                         help="v1; v2 = + sooli; v3 = + sooli and locked bids (the real game)")

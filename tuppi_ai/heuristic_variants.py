@@ -1,4 +1,8 @@
-"""Experimental variants of the incumbent heuristic (partner_aware_lead_v2), built from TuppiAI.
+"""Experimental variants of the benchmark heuristic, built from TuppiAI.
+
+The base is the benchmark (`incumbent.INCUMBENT`, partner_aware_lead_v3 since
+2026-10-02) unless the spec names one: `heur:base=v2,...` rebuilds
+partner_aware_lead_v2, the base of every H1-H5 result in docs/HEURISTIC_PLAN.md.
 
 TuppiProject is not modified: a variant is the incumbent's own policy class
 with its profile rebuilt with some parameters overridden. A variant that
@@ -14,6 +18,8 @@ from __future__ import annotations
 
 from .incumbent import INCUMBENT, incumbent_agents
 
+BASES = {"v2": "partner_aware_lead_v2", "v3": "partner_aware_lead_v3"}
+
 
 def variant_profile(base, overrides: dict):
     from tuppi_agents.profiles import HeuristicProfile
@@ -27,15 +33,15 @@ def variant_profile(base, overrides: dict):
         disabled_rule_ids=tuple(base.disabled_rule_ids), description=base.description)
 
 
-def variant_agents(overrides: dict) -> dict[int, object]:
-    """The incumbent on four seats with its profile parameters overridden."""
-    base_agents = incumbent_agents(INCUMBENT)
+def variant_agents(overrides: dict, base: str = INCUMBENT) -> dict[int, object]:
+    """The base heuristic on four seats with its profile parameters overridden."""
+    base_agents = incumbent_agents(base)
     if not overrides:
         return base_agents
     out = {}
     for seat, agent in base_agents.items():
         profile = variant_profile(agent.profile, overrides)
-        out[seat] = type(agent)(agent_id=f"{INCUMBENT}-variant-seat{seat}", profile=profile)
+        out[seat] = type(agent)(agent_id=f"{base}-variant-seat{seat}", profile=profile)
     return out
 
 
@@ -98,20 +104,22 @@ class LayeredAgent:
         return getattr(self.base, name)
 
 
-def parse_spec(spec: str) -> tuple[dict, list[str]]:
-    """'heur:a=1.5,b=2,layers=underlead+cash_singleton_late' -> ({'a': 1.5, 'b': 2.0}, [layers])."""
+def parse_spec(spec: str) -> tuple[dict, list[str], str]:
+    """'heur:base=v2,a=1.5,layers=underlead+cash_singleton_late' -> ({'a': 1.5}, [layers], base key)."""
     body = spec.split(":", 1)[1] if ":" in spec else ""
-    out, layers = {}, []
+    out, layers, base = {}, [], INCUMBENT
     for part in filter(None, body.split(",")):
         name, value = part.split("=")
         if name == "layers":
             layers = [x for x in value.split("+") if x]
+        elif name == "base":
+            base = BASES[value]
         else:
             out[name] = float(value)
-    return out, layers
+    return out, layers, base
 
 
 def spec_agents(spec: str) -> dict[int, object]:
-    overrides, layers = parse_spec(spec)
-    agents = variant_agents(overrides)
+    overrides, layers, base = parse_spec(spec)
+    agents = variant_agents(overrides, base)
     return {s: LayeredAgent(a, layers) for s, a in agents.items()} if layers else agents

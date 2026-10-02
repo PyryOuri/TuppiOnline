@@ -44,6 +44,8 @@ import time
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
+from .incumbent import INCUMBENT
+
 from .evaluate import DEALER, RULESETS, ROOT, _make_candidate, _score_for, _W, _with_sooli
 
 
@@ -145,7 +147,7 @@ def measure(index: int, seed: str, scores: str) -> dict:
 
 
 def evaluate(ref: str, variant: str, deals: int, seed: str, scores: str = "zero",
-             opponent: str = "partner_aware_lead_v2", workers: int = 12,
+             opponent: str = INCUMBENT, workers: int = 12,
              equity_path: str = str(ROOT / "models" / "equity_incumbent.json"), ruleset: str = "v3") -> dict:
     t0 = time.time()
     with ProcessPoolExecutor(workers, initializer=_init,
