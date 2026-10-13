@@ -252,6 +252,12 @@ def new_deal(hands_masks, dealer: int, score0: int = 0, score1: int = 0, ruleset
 class Env:
     """N parallel matches in native code, observed and stepped as numpy arrays."""
 
+    _BUFFER_DTYPES = {
+        "feat": np.uint8, "mask": np.uint8, "seat": np.int32,
+        "phase": np.int32, "done": np.int32, "delta0": np.float32,
+        "info": np.int32,
+    }
+
     def __init__(self, n: int, seed: int, equity: np.ndarray | None = None,
                  p_random_start: float = 0.0, single_deal: bool = False, encoder: int = 1):
         self.n = n
@@ -261,13 +267,18 @@ class Env:
         if equity is not None:
             self.set_equity(equity)
         lib.tc_env_set_options(self._h, float(p_random_start), int(single_deal))
-        self.feat = np.zeros((n, feature_dim(encoder)), dtype=np.uint8)
-        self.mask = np.zeros((n, NUM_ACTIONS), dtype=np.uint8)
-        self.seat = np.zeros(n, dtype=np.int32)
-        self.phase = np.zeros(n, dtype=np.int32)
-        self.done = np.zeros(n, dtype=np.int32)
-        self.delta0 = np.zeros(n, dtype=np.float32)
-        self.info = np.zeros((n, 8), dtype=np.int32)
+
+    def __getattr__(self, name):
+        # Native root search never uses the Python stepping buffers. Preserve
+        # their public array API, allocating each buffer only when requested.
+        dtype = self._BUFFER_DTYPES.get(name)
+        if dtype is None:
+            raise AttributeError(name)
+        width = {"feat": feature_dim(self.encoder), "mask": NUM_ACTIONS, "info": 8}.get(name)
+        shape = (self.n,) if width is None else (self.n, width)
+        value = np.zeros(shape, dtype=dtype)
+        setattr(self, name, value)
+        return value
 
     def set_sooli(self, belief: int = 0, return_pi: bool = False, play_heur: bool = False,
                   lam: float = 0.0) -> None:
