@@ -39,7 +39,7 @@ def test_runner_stops_at_human_turn_and_projects_only_authorized_state() -> None
     assert runner.ai_profile_key == DEFAULT_AI_PROFILE_KEY
     assert {
         agent.identity for agent in runner._ai_agents.values()
-    } == {"agent:sha256:d8b426f1263c7ce32bdef82e4971dc2e494950f155e15db9b69fc6334a2ac929"}
+    } == {"partner_aware_lead_v2:agent:sha256:d8b426f1263c7ce32bdef82e4971dc2e494950f155e15db9b69fc6334a2ac929"}
 
     assert "initial_hands" not in observation
     assert "hands" not in observation

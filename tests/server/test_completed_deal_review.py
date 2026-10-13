@@ -63,6 +63,8 @@ def _played_runner(*, match_ref: str, until_terminal: bool) -> LiveMatchRunner:
         runner = LiveMatchRunner(
             match_ref=match_ref,
             ai_seats=frozenset({1, 2, 3}),
+            # Preserve the recorded scoring cases independently of live policy.
+            ai_profile_key="partner_aware_v1",
         )
         action_index = 0
         while not runner.terminal and (

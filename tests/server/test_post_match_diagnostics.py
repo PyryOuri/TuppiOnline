@@ -49,6 +49,9 @@ def _terminal_runner() -> LiveMatchRunner:
         runner = LiveMatchRunner(
             match_ref="post-match-diagnostics-test",
             ai_seats=frozenset({1, 2, 3}),
+            # This evidence-variety fixture predates the live default change.
+            # Pin its actors so upgrading the default cannot erase its cases.
+            ai_profile_key="partner_aware_v1",
         )
         human_action_index = 0
         while not runner.terminal:
