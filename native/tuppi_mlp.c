@@ -4,8 +4,7 @@
 // out = W_out relu(LN(h)) + b_out. Inputs are 0/1 features, so the first layer
 // is a sum of weight columns over active features. Dense layers use
 // Accelerate's sgemm. Results match PyTorch to float rounding, not bitwise.
-#define ACCELERATE_NEW_LAPACK
-#include <Accelerate/Accelerate.h>
+#include "tuppi_matrix.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,6 +29,18 @@ static float *copy_floats(const float *src, size_t n) {
   return d;
 }
 
+static float *copy_matrix(const float *src, int rows, int cols) {
+#ifdef TC_PORTABLE
+  /* Pack output columns contiguously for scalar and four-lane SIMD kernels. */
+  float *out = malloc(sizeof(float) * (size_t)rows * cols);
+  for (int r = 0; r < rows; ++r)
+    for (int c = 0; c < cols; ++c) out[(size_t)c * rows + r] = src[(size_t)r * cols + c];
+  return out;
+#else
+  return copy_floats(src, (size_t)rows * cols);
+#endif
+}
+
 // `params` holds, in order: W_in [width][in_dim], b_in, then per block
 // LN gamma, LN beta, W1 [width][width], b1, W2, b2, then final LN gamma, beta,
 // W_out [out_dim][width], b_out - exactly the PyTorch state_dict layout.
@@ -46,14 +57,14 @@ TcMlp *tc_mlp_new(int in_dim, int width, int blocks, int out_dim, int encoder, c
   for (int b = 0; b < blocks; b++) {
     m->ln_g[b] = copy_floats(p, width); p += width;
     m->ln_b[b] = copy_floats(p, width); p += width;
-    m->w1[b] = copy_floats(p, (size_t)width * width); p += (size_t)width * width;
+    m->w1[b] = copy_matrix(p, width, width); p += (size_t)width * width;
     m->b1[b] = copy_floats(p, width); p += width;
-    m->w2[b] = copy_floats(p, (size_t)width * width); p += (size_t)width * width;
+    m->w2[b] = copy_matrix(p, width, width); p += (size_t)width * width;
     m->b2[b] = copy_floats(p, width); p += width;
   }
   m->lnf_g = copy_floats(p, width); p += width;
   m->lnf_b = copy_floats(p, width); p += width;
-  m->w_out = copy_floats(p, (size_t)out_dim * width); p += (size_t)out_dim * width;
+  m->w_out = copy_matrix(p, out_dim, width); p += (size_t)out_dim * width;
   m->b_out = copy_floats(p, out_dim);
   return m;
 }

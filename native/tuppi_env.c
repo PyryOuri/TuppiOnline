@@ -1,7 +1,7 @@
 // Batched self-play environment: N independent matches stepped in lockstep.
 // Every live game always has exactly one actor waiting, so one call observes N
 // decisions and one call applies N actions.
-#include <dispatch/dispatch.h>
+#include "tuppi_parallel.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -56,6 +56,7 @@ typedef struct {
 // machine with each process's worker threads.
 static int parallel_loops = 1;
 void tc_set_parallel(int on) { parallel_loops = on != 0; }
+#ifndef TC_PORTABLE
 static void par_apply(size_t n, void (^block)(size_t)) {
   if (!parallel_loops) {
     for (size_t i = 0; i < n; i++) block(i);
@@ -63,6 +64,8 @@ static void par_apply(size_t n, void (^block)(size_t)) {
   }
   dispatch_apply(n, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), block);
 }
+
+#endif
 
 static inline u64 splitmix(u64 *x) {
   u64 z = (*x += 0x9E3779B97F4A7C15ULL);
@@ -244,7 +247,7 @@ int tc_env_dd_finish(TcEnv *e, int dd_left, int32_t *done, float *delta0) {
   if (k) {
     // Solves are independent and each game is touched by one worker only.
     const size_t chunk = 64, chunks = ((size_t)k + chunk - 1) / chunk;
-    par_apply(chunks, ^(size_t c) {
+    TC_PARALLEL_BEGIN(chunks, c)
       size_t lo = c * chunk, hi = lo + chunk < (size_t)k ? lo + chunk : (size_t)k;
       for (size_t j = lo; j < hi; j++) {
         int i = todo[j];
@@ -255,7 +258,7 @@ int tc_env_dd_finish(TcEnv *e, int dd_left, int32_t *done, float *delta0) {
         done[i] = 1;
         delta0[i] = (float)(equity0(e, after[0], after[1], d->dealer + 1) - equity0(e, d->score[0], d->score[1], d->dealer));
       }
-    });
+    TC_PARALLEL_END
   }
   free(todo);
   return k;
@@ -551,7 +554,7 @@ static void play_out(TcEnv *e, const TcMlp *m, int n, int dd_left, uint64_t *rng
         if (at_leaf_point(&e->g[i].d, dd_left, leaf->min_completed)) idx[todo++] = i;
       if (todo) {
         const int chunk = 256;
-        par_apply((size_t)(todo + chunk - 1) / chunk, ^(size_t c) {
+        TC_PARALLEL_BEGIN((size_t)(todo + chunk - 1) / chunk, c)
           int lo = (int)c * chunk, hi = lo + chunk < todo ? lo + chunk : todo, rows = hi - lo;
           uint8_t *feat = malloc((size_t)rows * P_DIM);
           float *v = malloc(sizeof(float) * (size_t)rows);
@@ -568,7 +571,7 @@ static void play_out(TcEnv *e, const TcMlp *m, int n, int dd_left, uint64_t *rng
           }
           free(feat);
           free(v);
-        });
+        TC_PARALLEL_END
       }
     }
     // Rollouts that reached a sooli (most RAMI rollouts of a bid search pass
@@ -580,11 +583,11 @@ static void play_out(TcEnv *e, const TcMlp *m, int n, int dd_left, uint64_t *rng
       if (e->g[i].d.phase >= TC_PH_SOOLI_OFFER) idx[ns++] = i;
     if (ns) {
       const u64 base = splitmix(rng);
-      par_apply((size_t)ns, ^(size_t j) {
+      TC_PARALLEL_BEGIN((size_t)ns, j)
         u64 local = base ^ (0x9E3779B97F4A7C15ULL * (u64)(idx[j] + 1));
         splitmix(&local);
         resolve_sooli(e, idx[j], &local, total);
-      });
+      TC_PARALLEL_END
     }
     if (dd_left > 0) {
       int todo = 0;
@@ -594,21 +597,21 @@ static void play_out(TcEnv *e, const TcMlp *m, int n, int dd_left, uint64_t *rng
           idx[todo++] = i;
       }
       if (todo) {
-        par_apply((size_t)(todo + 31) / 32, ^(size_t c) {
+        TC_PARALLEL_BEGIN((size_t)(todo + 31) / 32, c)
           int lo = (int)c * 32, hi = lo + 32 < todo ? lo + 32 : todo;
           for (int j = lo; j < hi; j++) {
             TcDeal *d = &e->g[idx[j]].d;
             tc_finish_with_tricks(d, tc_dd_team0_tricks(d));
             record_if_done(e, idx[j], total);
           }
-        });
+        TC_PARALLEL_END
       }
     }
     int live = 0;
     for (int i = 0; i < n; i++) if (e->g[i].d.phase != TC_PH_DONE) idx[live++] = i;
     if (!live) break;
     const int chunk = rollout_chunk;
-    par_apply((size_t)(live + chunk - 1) / chunk, ^(size_t c) {
+    TC_PARALLEL_BEGIN((size_t)(live + chunk - 1) / chunk, c)
       int lo = (int)c * chunk, hi = lo + chunk < live ? lo + chunk : live, rows = hi - lo;
       uint8_t *feat = malloc((size_t)rows * dim);
       float *q = malloc(sizeof(float) * (size_t)rows * TC_NUM_ACTIONS);
@@ -654,7 +657,7 @@ static void play_out(TcEnv *e, const TcMlp *m, int n, int dd_left, uint64_t *rng
       }
       free(feat);
       free(q);
-    });
+    TC_PARALLEL_END
   }
 }
 
@@ -786,18 +789,18 @@ int tc_selfplay_states_w(TcEnv *e, const TcMlp *m, int n, int ruleset, uint64_t 
   double *total = calloc((size_t)n, sizeof(double));
   int *idx = malloc(sizeof(int) * (size_t)n);
   const int enc = tc_mlp_encoder(m), dim = tc_feature_dim_v(enc);
-  __block int recorded = 0;
+  TC_BLOCK int recorded = 0;
   int *counter = &recorded;
   for (;;) {
     int ns = 0;
     for (int i = 0; i < n; i++)
       if (e->g[i].d.phase >= TC_PH_SOOLI_OFFER) idx[ns++] = i;
-    if (ns) par_apply((size_t)ns, ^(size_t j) { resolve_sooli(e, idx[j], &e->g[idx[j]].rng, total); });
+    if (ns) TC_PARALLEL_BEGIN((size_t)ns, j) resolve_sooli(e, idx[j], &e->g[idx[j]].rng, total); TC_PARALLEL_END
     int live = 0;
     for (int i = 0; i < n; i++) if (e->g[i].d.phase != TC_PH_DONE) idx[live++] = i;
     if (!live) break;
     const int chunk = rollout_chunk;
-    par_apply((size_t)(live + chunk - 1) / chunk, ^(size_t c) {
+    TC_PARALLEL_BEGIN((size_t)(live + chunk - 1) / chunk, c)
       int lo = (int)c * chunk, hi = lo + chunk < live ? lo + chunk : live, rows = hi - lo;
       uint8_t *feat = malloc((size_t)rows * dim);
       float *q = malloc(sizeof(float) * (size_t)rows * TC_NUM_ACTIONS);
@@ -830,7 +833,7 @@ int tc_selfplay_states_w(TcEnv *e, const TcMlp *m, int n, int ruleset, uint64_t 
       }
       free(feat);
       free(q);
-    });
+    TC_PARALLEL_END
   }
   free(total);
   free(idx);
@@ -914,7 +917,7 @@ int tc_branch_values(TcEnv *e, const TcMlp *m, const TcDeal *states, int n_state
 // a batch of states, in parallel.
 void tc_encode_states(const TcDeal *states, int n, int encoder, uint8_t *feat, uint8_t *mask) {
   const int dim = tc_feature_dim_v(encoder);
-  par_apply((size_t)(n + 255) / 256, ^(size_t c) {
+  TC_PARALLEL_BEGIN((size_t)(n + 255) / 256, c)
     int lo = (int)c * 256, hi = lo + 256 < n ? lo + 256 : n, legal[TC_NUM_ACTIONS_V2];
     TcObs ob;
     for (int s = lo; s < hi; s++) {
@@ -925,7 +928,7 @@ void tc_encode_states(const TcDeal *states, int n, int encoder, uint8_t *feat, u
       int nl = tc_legal(&states[s], legal);
       for (int j = 0; j < nl; j++) if (legal[j] < TC_NUM_ACTIONS) mk[legal[j]] = 1;
     }
-  });
+  TC_PARALLEL_END
 }
 
 // Duplicate evaluation of two policy networks under `ruleset`, all in native
@@ -967,7 +970,7 @@ int tc_duplicate_eval(TcEnv *e, const TcMlp *mA, const TcMlp *mB, int n_base, in
     int ns = 0;
     for (int i = 0; i < n; i++)
       if (e->g[i].d.phase >= TC_PH_SOOLI_OFFER) idx[ns++] = i;
-    if (ns) par_apply((size_t)ns, ^(size_t j) { resolve_sooli(e, idx[j], &e->g[idx[j]].rng, total); });
+    if (ns) TC_PARALLEL_BEGIN((size_t)ns, j) resolve_sooli(e, idx[j], &e->g[idx[j]].rng, total); TC_PARALLEL_END
     if (dd_left > 0) {
       int todo = 0;
       for (int i = 0; i < n; i++) {
@@ -975,20 +978,20 @@ int tc_duplicate_eval(TcEnv *e, const TcMlp *mA, const TcMlp *mB, int n_base, in
         if (d->phase == TC_PH_PLAY && 13 - (d->n_played >> 2) <= dd_left) idx[todo++] = i;
       }
       if (todo)
-        par_apply((size_t)(todo + 31) / 32, ^(size_t c) {
+        TC_PARALLEL_BEGIN((size_t)(todo + 31) / 32, c)
           int lo = (int)c * 32, hi = lo + 32 < todo ? lo + 32 : todo;
           for (int j = lo; j < hi; j++) {
             TcDeal *d = &e->g[idx[j]].d;
             tc_finish_with_tricks(d, tc_dd_team0_tricks(d));
             record_if_done(e, idx[j], total);
           }
-        });
+        TC_PARALLEL_END
     }
     int live = 0;
     for (int i = 0; i < n; i++) if (e->g[i].d.phase != TC_PH_DONE) idx[live++] = i;
     if (!live) break;
     const int chunk = rollout_chunk;
-    par_apply((size_t)(live + chunk - 1) / chunk, ^(size_t c) {
+    TC_PARALLEL_BEGIN((size_t)(live + chunk - 1) / chunk, c)
       int lo = (int)c * chunk, hi = lo + chunk < live ? lo + chunk : live, rows = hi - lo;
       uint8_t *feat = malloc((size_t)rows * dim);
       float *qa = malloc(sizeof(float) * (size_t)rows * TC_NUM_ACTIONS);
@@ -1021,7 +1024,7 @@ int tc_duplicate_eval(TcEnv *e, const TcMlp *mA, const TcMlp *mB, int n_base, in
         record_if_done(e, i, total);
       }
       free(feat); free(qa); free(qb);
-    });
+    TC_PARALLEL_END
   }
   for (int b = 0; b < n_base; b++) {
     double s = 0.0;
@@ -1126,18 +1129,18 @@ int tc_ppo_rollouts(TcEnv *e, const TcMlp *m, int n, int ruleset, uint64_t *rng,
   int *idx = malloc(sizeof(int) * (size_t)n);
   int16_t *steps = calloc((size_t)n, sizeof(int16_t));
   const int enc = tc_mlp_encoder(m), dim = tc_feature_dim_v(enc), fb = (dim + 7) / 8, mb = (TC_NUM_ACTIONS + 7) / 8;
-  __block int rows = 0;
+  TC_BLOCK int rows = 0;
   int *counter = &rows;
   for (;;) {
     int ns = 0;
     for (int i = 0; i < n; i++)
       if (e->g[i].d.phase >= TC_PH_SOOLI_OFFER) idx[ns++] = i;
-    if (ns) par_apply((size_t)ns, ^(size_t j) { resolve_sooli(e, idx[j], &e->g[idx[j]].rng, total); });
+    if (ns) TC_PARALLEL_BEGIN((size_t)ns, j) resolve_sooli(e, idx[j], &e->g[idx[j]].rng, total); TC_PARALLEL_END
     int live = 0;
     for (int i = 0; i < n; i++) if (e->g[i].d.phase != TC_PH_DONE) idx[live++] = i;
     if (!live) break;
     const int chunk = rollout_chunk;
-    par_apply((size_t)(live + chunk - 1) / chunk, ^(size_t c) {
+    TC_PARALLEL_BEGIN((size_t)(live + chunk - 1) / chunk, c)
       int lo = (int)c * chunk, hi = lo + chunk < live ? lo + chunk : live, nrow = hi - lo;
       uint8_t *feat = malloc((size_t)nrow * dim);
       float *q = malloc(sizeof(float) * (size_t)nrow * TC_NUM_ACTIONS);
@@ -1183,7 +1186,7 @@ int tc_ppo_rollouts(TcEnv *e, const TcMlp *m, int n, int ruleset, uint64_t *rng,
       }
       free(feat);
       free(q);
-    });
+    TC_PARALLEL_END
   }
   for (int i = 0; i < n; i++) reward[i] = (float)total[i];
   free(total); free(idx); free(steps);

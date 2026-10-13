@@ -91,13 +91,13 @@ static int give_card(const TcObs *o) {
 
 static int return_card(const TcObs *o) {
   int g = o->known_given, best = -1;
-  long best_key = 1L << 40;
+  int64_t best_key = INT64_C(1) << 40;
   for (u64 m = o->hand; m; m &= m - 1) {
     int c = __builtin_ctzll(m);
     if (c == g) continue;
     int p = low_of(c), suit = c / 13;
     int held = __builtin_popcountll(o->hand & (SM << (13 * suit)));
-    long key = (long)(p % 13) * 1000 + (g >= 0 && suit == g / 13 ? 100 : 0) + held;
+    int64_t key = (int64_t)(p % 13) * 1000 + (g >= 0 && suit == g / 13 ? 100 : 0) + held;
     if (key < best_key) { best_key = key; best = c; }
   }
   return best;
@@ -140,12 +140,12 @@ static int play_card(const TcObs *o) {
   // soolaaja may still hold; then suits with more unseen cards; then lowest.
   u64 unseen = to_low(FULL_DECK & ~hand & ~played);
   int best = -1;
-  long best_key = 1L << 40;
+  int64_t best_key = INT64_C(1) << 40;
   for (u64 m = to_low(hand); m; m &= m - 1) {
     int p = __builtin_ctzll(m), suit = p / 13;
     u64 us = unseen & (SM << (13 * suit));
     int below = __builtin_popcountll(us & ((1ULL << p) - 1));
-    long key = (long)((s_void >> suit & 1) || !us) * 100000 + below * 1000 + (13 - __builtin_popcountll(us)) * 20 + p % 13;
+    int64_t key = (int64_t)((s_void >> suit & 1) || !us) * 100000 + below * 1000 + (13 - __builtin_popcountll(us)) * 20 + p % 13;
     if (key < best_key) { best_key = key; best = p; }
   }
   return high_of(best);

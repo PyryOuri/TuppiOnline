@@ -7,7 +7,9 @@
 // suit are exchangeable under these constraints, so the count of assignments
 // factorises over suits; a DP over remaining capacities (at most 14^3 states)
 // gives exact weights for the per-suit split counts.
+#ifndef TC_PORTABLE
 #include <dispatch/dispatch.h>
+#endif
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,8 +37,14 @@ static void fill_lfact(void *unused) {
   for (int i = 1; i < 53; i++) lfact[i] = lfact[i - 1] + log((double)i);
 }
 static void init_lfact(void) {
+#ifdef TC_PORTABLE
+  /* One worker/module owns this serial portable runtime. */
+  static int once;
+  if (!once) { fill_lfact(NULL); once = 1; }
+#else
   static dispatch_once_t once;
   dispatch_once_f(&once, NULL, fill_lfact);
+#endif
 }
 
 // Rebuilds the full public trick state from an observation's history and fills
