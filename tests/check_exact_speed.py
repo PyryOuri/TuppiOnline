@@ -9,10 +9,11 @@ import struct
 import sys
 
 parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--ai',type=Path,default=Path(__file__).resolve().parents[1])
 parser.add_argument('--reference',type=Path,required=True)
 parser.add_argument('--out',type=Path,required=True)
 args=parser.parse_args()
-sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0,str(args.ai.resolve()))
 import numpy as np
 import torch
 torch.set_num_threads(1)
@@ -45,7 +46,7 @@ for index in range(56):
         checks+=1
     cells.add(score);contracts.add(contract);remaining.add(13-(deal.n_played//4));partials.add(deal.n_played%4)
 
-root=Path(__file__).resolve().parents[1]
+root=args.ai.resolve()
 reference=json.loads(args.reference.read_text())
 features=np.frombuffer(base64.b64decode(reference['inference']['features_base64']),dtype=np.uint8).reshape(reference['inference']['rows'],-1)
 batch_reports=[]
