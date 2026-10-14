@@ -113,6 +113,7 @@ lib.tc_encode_v.argtypes = [_P(TcObs), _P(C.c_uint8), C.c_int]
 lib.tc_feature_dim_v.argtypes = [C.c_int]
 lib.tc_feature_dim_v.restype = C.c_int
 lib.tc_env_set_encoder.argtypes = [C.c_void_p, C.c_int]
+lib.tc_env_set_exact_speed.argtypes = [C.c_void_p, C.c_int]
 lib.tc_env_set_sooli.argtypes = [C.c_void_p, C.c_int, C.c_int, C.c_int, C.c_double]
 lib.tc_set_rollout_chunk.argtypes = [C.c_int]
 lib.tc_sample_world_sooli.argtypes = [_P(TcObs), _P(C.c_uint64), _P(TcDeal), C.c_int, C.c_double]
@@ -299,6 +300,10 @@ class Env:
         """Search rollouts: the searching team's own seats play `mlp`, the others the search's net."""
         self._team_mlp = mlp
         lib.tc_env_set_team_rollout(self._h, mlp._h if mlp is not None else None)
+
+    def set_exact_speed(self, enabled: bool) -> None:
+        """Per-controller reward buckets, chunk 128 and forced-row compaction."""
+        lib.tc_env_set_exact_speed(self._h, int(enabled))
 
     def set_incremental(self, on: bool, width: int = 256) -> None:
         """Self-play only: incremental first layer for networks of this width (not bitwise exact)."""

@@ -15,6 +15,7 @@ void tc_env_set_encoder(TcEnv *e, int encoder);
 void tc_env_set_equity(TcEnv *e, const double *equity);
 void tc_env_set_options(TcEnv *e, double random_start, int single_deal);
 void tc_env_set_team_rollout(TcEnv *e, const TcMlp *m);
+void tc_env_set_exact_speed(TcEnv *e, int enabled);
 void tc_env_set_sooli(TcEnv *e, int belief, int return_pi, int play_heur, double lambda);
 int tc_search_values(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *actions,
                      int k, int w, int dd_left, uint64_t *rng, double *out);
@@ -53,7 +54,7 @@ int tb_configure(int n_worlds, const double *equity) {
   if (!models[0] || !models[1] || !equity || n_worlds < 1 || n_worlds > 1024 ||
       (n_worlds > 128 && n_worlds % 128)) return -1;
   worlds = n_worlds;
-  tc_set_showing_fix(1); tc_set_rollout_chunk(32);
+  tc_set_showing_fix(1);
   for (int s = 0; s < 4; ++s) {
     tc_env_free(envs[s]);
     envs[s] = tc_env_new(worlds * 26, (uint64_t)(2 * s));
@@ -61,7 +62,8 @@ int tb_configure(int n_worlds, const double *equity) {
     tc_env_set_encoder(envs[s], tc_mlp_encoder(models[0]));
     tc_env_set_equity(envs[s], equity);
     tc_env_set_options(envs[s], 0, 1);
-    tc_env_set_team_rollout(envs[s], models[0]);
+    tc_env_set_team_rollout(envs[s], NULL);
+    tc_env_set_exact_speed(envs[s], 1);
     rngs[s] = (uint64_t)(2 * s) * 2654435761ULL + 1;
     sooli_modes[s] = 0;
   }

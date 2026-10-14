@@ -47,8 +47,11 @@ typedef struct {
   float *inc_acc;
   uint16_t *inc_list;
   int16_t *inc_len;
+  int exact_speed;       // per-controller compact128 settings; calloc defaults off
 } TcEnv;
 #define INC_MAXA 320
+
+void tc_env_set_exact_speed(TcEnv *e, int enabled) { e->exact_speed = enabled != 0; }
 
 // Parallel loops (every iteration touches only its own game, so the results
 // do not depend on the order). A batch job that already runs one process per
@@ -327,6 +330,24 @@ void tc_env_hands(const TcEnv *e, uint64_t *hands, int32_t *actor) {
 #include "tuppi_mlp.h"
 int tc_sample_world(const TcObs *o, uint64_t *rng, TcDeal *out);
 
+
+// One root's read-only table, built from the actual loaded environment equity.
+// All sampled rows of a root search share the root's score and dealer.
+float tc_dd_reward_bucket(const TcDeal *d, const float payoff[14]);
+static void reward_maps(const TcEnv *e, const TcObs *o, float out[2][2][14]) {
+  TcDeal d; memset(&d, 0, sizeof d);
+  d.dealer = o->dealer; d.score[0] = o->score[0]; d.score[1] = o->score[1];
+  for (int contract = 0; contract < 2; contract++) for (int declarer = 0; declarer < 2; declarer++) {
+    d.contract = contract; d.declarer = declarer;
+    for (int t = 0; t < 14; t++) {
+      tc_finish_with_tricks(&d, t);
+      uint8_t after[2]; tc_next_score(d.score, d.winner_team, d.points, after);
+      out[contract][declarer][t] = (float)(equity0(e, after[0], after[1], d.dealer+1)
+                                           - equity0(e, d.score[0], d.score[1], d.dealer));
+    }
+  }
+}
+
 static void record_if_done(TcEnv *e, int i, double *total) {
   TcDeal *d = &e->g[i].d;
   if (d->phase != TC_PH_DONE) return;
@@ -533,7 +554,9 @@ static void forward_games(TcEnv *e, const TcMlp *m, const int *games, int rows, 
 // parallel from one draw of rng), the solver tail for the last dd_left tricks,
 // everything else greedily by the network. Deal results go to total[] (team 0).
 static void play_out(TcEnv *e, const TcMlp *m, int n, int dd_left, uint64_t *rng, double *total, int *idx,
-                     const Leaf *leaf, Capture *cap) {
+                     const Leaf *leaf, Capture *cap, const float (*buckets)[2][14]) {
+  // Certified rows have an abstract utility, not a fabricated terminal deal.
+  uint8_t *utility_done = buckets ? calloc((size_t)n, 1) : NULL;
   const int enc = tc_mlp_encoder(m), dim = tc_feature_dim_v(enc);
   inc_reset(e, n);
   for (;;) {
@@ -593,7 +616,7 @@ static void play_out(TcEnv *e, const TcMlp *m, int n, int dd_left, uint64_t *rng
       int todo = 0;
       for (int i = 0; i < n; i++) {
         TcDeal *d = &e->g[i].d;
-        if (d->phase == TC_PH_PLAY && 13 - (d->n_played >> 2) <= dd_left + (d->contract == TC_NOLO ? dd_extra_nolo : 0))
+        if ((!utility_done || !utility_done[i]) && d->phase == TC_PH_PLAY && 13 - (d->n_played >> 2) <= dd_left + (d->contract == TC_NOLO ? dd_extra_nolo : 0))
           idx[todo++] = i;
       }
       if (todo) {
@@ -601,57 +624,76 @@ static void play_out(TcEnv *e, const TcMlp *m, int n, int dd_left, uint64_t *rng
           int lo = (int)c * 32, hi = lo + 32 < todo ? lo + 32 : todo;
           for (int j = lo; j < hi; j++) {
             TcDeal *d = &e->g[idx[j]].d;
-            tc_finish_with_tricks(d, tc_dd_team0_tricks(d));
-            record_if_done(e, idx[j], total);
+            if (buckets) {
+              const int row = idx[j], decl = d->contract == TC_RAMI ? (d->declarer & 1) : 0;
+              total[row] += (double)tc_dd_reward_bucket(d, buckets[d->contract][decl]);
+              utility_done[row] = 1;
+            } else {
+              tc_finish_with_tricks(d, tc_dd_team0_tricks(d));
+              record_if_done(e, idx[j], total);
+            }
           }
         TC_PARALLEL_END
       }
     }
     int live = 0;
-    for (int i = 0; i < n; i++) if (e->g[i].d.phase != TC_PH_DONE) idx[live++] = i;
+    for (int i = 0; i < n; i++) if ((!utility_done || !utility_done[i]) && e->g[i].d.phase != TC_PH_DONE) idx[live++] = i;
     if (!live) break;
-    const int chunk = rollout_chunk;
+    const int chunk = e->exact_speed ? 128 : rollout_chunk;
     TC_PARALLEL_BEGIN((size_t)(live + chunk - 1) / chunk, c)
       int lo = (int)c * chunk, hi = lo + chunk < live ? lo + chunk : live, rows = hi - lo;
       uint8_t *feat = malloc((size_t)rows * dim);
       float *q = malloc(sizeof(float) * (size_t)rows * TC_NUM_ACTIONS);
-      int legal[TC_NUM_ACTIONS];
+      int legal_ids[rows][TC_NUM_ACTIONS], legal_count[rows], feature_slot[rows], nforced = 0, network_rows = 0;
+      const int compact = e->exact_speed && !e->team_net && !e->inc_on;
       TcObs ob;
       for (int r = 0; r < rows; r++) {
         TcDeal *d = &e->g[idx[lo + r]].d;
-        tc_observe(d, d->cur, &ob);
-        tc_encode_v(&ob, feat + (size_t)r * dim, enc);
+        legal_count[r] = tc_legal(d, legal_ids[r]);
+        const int forced = legal_count[r] == 1;
+        nforced += forced;
+        feature_slot[r] = compact && forced ? -1 : compact ? network_rows++ : r;
+        if (feature_slot[r] >= 0) {
+          tc_observe(d, d->cur, &ob);
+          tc_encode_v(&ob, feat + (size_t)feature_slot[r] * dim, enc);
+        }
       }
-      if (e->team_net && e->team_side >= 0) {
-        // Rows of the searching team's seats go to team_net, the rest to m.
-        uint8_t *ft = malloc((size_t)rows * dim), *fo = malloc((size_t)rows * dim);
-        float *qt = malloc(sizeof(float) * (size_t)rows * TC_NUM_ACTIONS);
-        float *qo = malloc(sizeof(float) * (size_t)rows * TC_NUM_ACTIONS);
-        int *which = malloc(sizeof(int) * (size_t)rows), nt = 0, no = 0;
-        for (int r = 0; r < rows; r++) {
-          int own = (e->g[idx[lo + r]].d.cur & 1) == e->team_side;
-          memcpy((own ? ft + (size_t)nt * dim : fo + (size_t)no * dim), feat + (size_t)r * dim, (size_t)dim);
-          which[r] = own ? nt++ : -1 - no++;
+      if (!e->exact_speed || nforced < rows) {
+        if (e->team_net && e->team_side >= 0) {
+          // Rows of the searching team's seats go to team_net, the rest to m.
+          uint8_t *ft = malloc((size_t)rows * dim), *fo = malloc((size_t)rows * dim);
+          float *qt = malloc(sizeof(float) * (size_t)rows * TC_NUM_ACTIONS);
+          float *qo = malloc(sizeof(float) * (size_t)rows * TC_NUM_ACTIONS);
+          int *which = malloc(sizeof(int) * (size_t)rows), nt = 0, no = 0;
+          for (int r = 0; r < rows; r++) {
+            int own = (e->g[idx[lo + r]].d.cur & 1) == e->team_side;
+            memcpy((own ? ft + (size_t)nt * dim : fo + (size_t)no * dim), feat + (size_t)r * dim, (size_t)dim);
+            which[r] = own ? nt++ : -1 - no++;
+          }
+          if (nt) tc_mlp_forward(e->team_net, ft, nt, qt);
+          if (no) tc_mlp_forward(m, fo, no, qo);
+          for (int r = 0; r < rows; r++) {
+            const float *src = which[r] >= 0 ? qt + (size_t)which[r] * TC_NUM_ACTIONS
+                                             : qo + (size_t)(-1 - which[r]) * TC_NUM_ACTIONS;
+            memcpy(q + (size_t)r * TC_NUM_ACTIONS, src, sizeof(float) * TC_NUM_ACTIONS);
+          }
+          free(ft); free(fo); free(qt); free(qo); free(which);
+        } else {
+          if (compact) tc_mlp_forward(m, feat, network_rows, q);
+          else forward_games(e, m, idx + lo, rows, feat, dim, q);
         }
-        if (nt) tc_mlp_forward(e->team_net, ft, nt, qt);
-        if (no) tc_mlp_forward(m, fo, no, qo);
-        for (int r = 0; r < rows; r++) {
-          const float *src = which[r] >= 0 ? qt + (size_t)which[r] * TC_NUM_ACTIONS
-                                           : qo + (size_t)(-1 - which[r]) * TC_NUM_ACTIONS;
-          memcpy(q + (size_t)r * TC_NUM_ACTIONS, src, sizeof(float) * TC_NUM_ACTIONS);
-        }
-        free(ft); free(fo); free(qt); free(qo); free(which);
-      } else {
-        forward_games(e, m, idx + lo, rows, feat, dim, q);
       }
       for (int r = 0; r < rows; r++) {
         int i = idx[lo + r];
         TcDeal *d = &e->g[i].d;
         // tc_legal lists actions in increasing id order, so scanning it keeps
         // numpy's "first maximum" tie-break over the masked row.
-        int nl = tc_legal(d, legal), best = legal[0];
-        const float *qr = q + (size_t)r * TC_NUM_ACTIONS;
-        for (int t = 1; t < nl; t++) if (qr[legal[t]] > qr[best]) best = legal[t];
+        const int *legal = legal_ids[r];
+        int nl = legal_count[r], best = legal[0];
+        if (!e->exact_speed || nl > 1) {
+          const float *qr = q + (size_t)feature_slot[r] * TC_NUM_ACTIONS;
+          for (int t = 1; t < nl; t++) if (qr[legal[t]] > qr[best]) best = legal[t];
+        }
         tc_apply(d, best);
         record_if_done(e, i, total);
       }
@@ -659,6 +701,7 @@ static void play_out(TcEnv *e, const TcMlp *m, int n, int dd_left, uint64_t *rng
       free(q);
     TC_PARALLEL_END
   }
+  free(utility_done);
 }
 
 static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *actions, int k, int w,
@@ -684,7 +727,10 @@ static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *
     use_leaf = 1;
     leaf.min_completed = o->n_played / 4 + 1 + e->leaf_play;
   }
-  play_out(e, m, n, dd_left, rng, total, idx, use_leaf ? &leaf : NULL, NULL);
+  float maps[2][2][14];
+  const float (*bucket_maps)[2][14] = NULL;
+  if (e->exact_speed && !use_leaf && dd_left > 0) { reward_maps(e, o, maps); bucket_maps = maps; }
+  play_out(e, m, n, dd_left, rng, total, idx, use_leaf ? &leaf : NULL, NULL, bucket_maps);
   const double sign = (o->seat & 1) == 0 ? 1.0 : -1.0;
   for (int a = 0; a < k; a++) {
     double s = 0.0;
@@ -727,7 +773,7 @@ int tc_value_rollouts(TcEnv *e, const TcMlp *m, int n, int ruleset, int dd_left,
   int8_t *team = malloc((size_t)max_rows), *last = malloc((size_t)n);
   memset(last, -1, (size_t)n);
   Capture cap = {max_rows, 0, feat, game, team, last};
-  play_out(e, m, n, dd_left, rng, total, idx, NULL, &cap);
+  play_out(e, m, n, dd_left, rng, total, idx, NULL, &cap, NULL);
   for (int r = 0; r < cap.rows; r++) {
     double t0 = total[game[r]];
     target[r] = (float)(team[r] == 0 ? t0 : -t0);
@@ -902,7 +948,7 @@ int tc_branch_values(TcEnv *e, const TcMlp *m, const TcDeal *states, int n_state
       if (rep == a) continue;
       for (int r = 0; r < k[s]; r++) if (actions[s * max_k + r] == rep) { slot[s * max_k + j] = slot[s * max_k + r]; break; }
     }
-  play_out(e, m, total_games, dd_left, rng, total, idx, NULL, NULL);
+  play_out(e, m, total_games, dd_left, rng, total, idx, NULL, NULL, NULL);
   for (int s = 0; s < n_states; s++) {
     const double sign = (states[s].cur & 1) == 0 ? 1.0 : -1.0;
     for (int j = 0; j < k[s]; j++) q[s * max_k + j] = (float)(sign * total[slot[s * max_k + j]]);
@@ -1095,7 +1141,7 @@ int tc_world_values(TcEnv *e, const TcMlp *m, const TcDeal *states, int n_states
         for (int r = 0; r < k[s]; r++) if (actions[s * max_k + r] == rep) { sl[j] = sl[r]; break; }
       }
     }
-  play_out(e, m, total_games, dd_left, rng, total, idx, NULL, NULL);
+  play_out(e, m, total_games, dd_left, rng, total, idx, NULL, NULL, NULL);
   for (int s = 0; s < n_states; s++) {
     const double sign = (states[s].cur & 1) == 0 ? 1.0 : -1.0;
     for (int j = 0; j < k[s]; j++) {

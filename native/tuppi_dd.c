@@ -188,3 +188,23 @@ int tc_dd_team0_tricks(const TcDeal *d) {
   }
   return d->team_tricks[0] + lo;
 }
+
+// Evaluator-private utility query. Exact-trick callers keep the old API.
+float tc_dd_reward_bucket(const TcDeal *d, const float payoff[14]) {
+  int base = d->team_tricks[0], remaining = 13 - (d->n_played >> 2);
+  int cuts[13], n = 0;
+  for (int i = 1; i <= remaining; i++)
+    if (payoff[base+i] != payoff[base+i-1]) cuts[n++] = i;
+  if (!n) return payoff[base];
+  if (!tt_tls) tt_tls = calloc(1ULL << TTBITS, sizeof(TTE));
+  const Ctx x = {tt_tls, 1, d->contract == TC_NOLO};
+  Pos p; to_pos(d, &p);
+  int lo = 0, hi = n;
+  while (lo < hi) {
+    int mid = (lo + hi) / 2, target = cuts[mid];
+    Pos q = p;
+    if (search(&x, &q, target-1, target) >= target) lo = mid+1;
+    else hi = mid;
+  }
+  return payoff[base + (lo ? cuts[lo-1] : 0)];
+}

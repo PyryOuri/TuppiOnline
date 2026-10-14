@@ -36,7 +36,8 @@ class Searcher:
                  dd_left: int = 0, seed: int = 0, max_actions: int = 26, belief: int = 0,
                  belief_t: float = 1.0, belief_eps: float = 0.1, belief_seats: str = "all",
                  belief_net=None, belief_n: int = 1024, belief_alpha: float = 0.5, team_net=None,
-                 opp_temp: float = 0.0, native_loop: bool = True):
+                 opp_temp: float = 0.0, native_loop: bool = True, shared_mlp=None,
+                 exact_speed: bool = False):
         self.net = net
         self.worlds = worlds
         self.dd_left = dd_left
@@ -56,13 +57,16 @@ class Searcher:
         # Python-only option is active.
         # The native loop also runs a separate own-team rollout net (tc_env_set_team_rollout).
         self.native_loop = native_loop and belief <= 1 and belief_net is None and not opp_temp
-        self.mlp = native.Mlp(net) if self.native_loop else None
+        if shared_mlp is not None and (not self.native_loop or shared_mlp.encoder != net.encoder):
+            raise ValueError("shared rollout weights require a matching native encoder")
+        self.mlp = (shared_mlp if shared_mlp is not None else native.Mlp(net)) if self.native_loop else None
         self.np_rng = np.random.default_rng(seed)
         self._hf = np.zeros((64, native.feature_dim(net.encoder)), dtype=np.uint8)
         self._hm = np.zeros((64, native.NUM_ACTIONS), dtype=np.uint8)
         self._ha = np.zeros(64, dtype=np.int32)
         self.env = native.Env(worlds * max_actions, seed, equity_table, single_deal=True,
                               encoder=net.encoder)
+        self.env.set_exact_speed(exact_speed)
         if self.native_loop and team_net is not None:
             if team_net.encoder != net.encoder:
                 raise ValueError("the own-team rollout net must use the same encoder")

@@ -106,13 +106,17 @@ ADAPTIVE_BIDS = {"batch": 128, "z": 2.5, "delta": 0.005}
 
 
 def best_agents(seats=range(4), worlds: int = WORLDS, seed: int = 0, team_rollout: bool = True,
-                showing_fix: bool | None = None) -> dict:
+                showing_fix: bool | None = None, speedups: bool = True) -> dict:
     """team_rollout=False: the clone on all rollout seats and no policy anchor
     (the configuration before 2026-09-30, the research programme's pinned B0);
     otherwise the live configuration (strong opponent model, own-team policy, anchors).
     showing_fix: worlds honour showing-fallback restrictions (B0-S1); a
     process-wide native setting, following team_rollout unless given, so the
-    pinned B0 keeps the original sampler."""
+    pinned B0 keeps the original sampler.
+    speedups: enable per-controller compact128 computation with unchanged worlds,
+    margins and solver tail. Identical rollout weights are shared read-only;
+    environments and RNG streams remain separate. False retains reference
+    computation for differential checks."""
     from . import model as qmodel
     from . import native
 
@@ -124,12 +128,15 @@ def best_agents(seats=range(4), worlds: int = WORLDS, seed: int = 0, team_rollou
     from .search import SearchAgent
 
     net = qmodel.load(OPPONENT_ROLLOUT if team_rollout else ROLLOUT, "cpu")
-    team_net = qmodel.load(TEAM_ROLLOUT, "cpu") if team_rollout else None
+    identical_rollouts = team_rollout and OPPONENT_ROLLOUT.resolve() == TEAM_ROLLOUT.resolve()
+    team_net = qmodel.load(TEAM_ROLLOUT, "cpu") if team_rollout and not (speedups and identical_rollouts) else None
+    shared_mlp = native.Mlp(net) if speedups and identical_rollouts else None
     anchor = qmodel.load(ANCHOR, "cpu") if team_rollout else None
     table = Equity.load(EQUITY).table
     adaptive = ADAPTIVE_BIDS if worlds > ADAPTIVE_BIDS["batch"] else None
     return {s: SearchAgent(net, table, s, worlds=worlds, dd_left=SOLVER_TAIL, search_showing=1, seed=seed + s,
-                           adaptive=adaptive, team_net=team_net,
+                           adaptive=adaptive, team_net=team_net, shared_mlp=shared_mlp,
+                           exact_speed=speedups,
                            keep=KEEP if team_rollout else None, blueprint_net=anchor,
                            rami_bonus=-RAMI_MARGIN if team_rollout else 0.0,
                            keep_show=KEEP_SHOW if team_rollout else None)
