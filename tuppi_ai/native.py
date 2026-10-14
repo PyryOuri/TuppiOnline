@@ -1,13 +1,18 @@
-"""ctypes bindings for native/libtuppi.dylib."""
+"""ctypes bindings for the platform's qualified native library."""
 
 from __future__ import annotations
 
 import ctypes as C
+import os
+import sys
 from pathlib import Path
 
 import numpy as np
 
-_LIB_PATH = Path(__file__).resolve().parents[1] / "native" / "libtuppi.dylib"
+_LIB_PATH = Path(os.environ.get("TUPPI_NATIVE_LIBRARY", str(
+    Path(__file__).resolve().parents[1] / "native" /
+    ("libtuppi.dylib" if sys.platform == "darwin" else "libtuppi.so")
+)))
 lib = C.CDLL(str(_LIB_PATH))
 
 NUM_ACTIONS = 156
