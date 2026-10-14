@@ -98,10 +98,14 @@ class TuppiASGIApp:
             await self._json_response(send, 400, {"error": str(exc) or "invalid_request"})
             return
         await self._json_response(send, 200, response)
-        if path.endswith("/settings"):
+        if path.endswith(("/settings", "/configure", "/join", "/ready")):
             parts = [part for part in path.split("/") if part]
             if len(parts) == 4:
                 await self._broadcast_lobby(parts[2].upper())
+                room = self.rooms.get(parts[2].upper())
+                if room.runner is not None:
+                    await self._broadcast_match(room.code)
+                    self._schedule_ai_continuation(room.code)
 
     def _http_command(self, path: str, payload: dict[str, object]) -> dict[str, object]:
         if path == "/v1/rooms":
@@ -210,6 +214,7 @@ class TuppiASGIApp:
                 room = self.rooms.mark_ready(
                     code=code,
                     token=self._string(payload, "session_token"),
+                    auto_run_ai=False,
                 )
                 return {
                     "lobby": room.snapshot(),
@@ -283,7 +288,13 @@ class TuppiASGIApp:
             seat=session.seat,
             send=send,
         )
-        self._connections.setdefault(room.code, {})[token] = connection
+        previous = self._connections.setdefault(room.code, {}).get(token)
+        self._connections[room.code][token] = connection
+        if previous is not None:
+            try:
+                await previous.send({"type": "websocket.close", "code": 4001})
+            except (OSError, RuntimeError):
+                pass
         await self._send_message(
             send,
             "hello_ack",
@@ -297,7 +308,8 @@ class TuppiASGIApp:
         await self._send_message(send, "lobby_snapshot", room.snapshot())
         if room.runner is not None:
             await self._send_match_update(connection)
-            if room.runner.current_actor in room.runner.ai_seats:
+            if (room.runner.current_actor in room.runner.ai_seats
+                    or (not room.runner.terminal and room.runner.state.phase.value == "DEAL_COMPLETE")):
                 self._schedule_ai_continuation(room.code)
         return connection
 
@@ -306,6 +318,8 @@ class TuppiASGIApp:
         connection: Connection,
         request: dict[str, object],
     ) -> None:
+        if self._connections.get(connection.room_code, {}).get(connection.token) is not connection:
+            raise RoomError("session_replaced")
         message_type = request.get("message_type")
         payload = self._payload(request)
         room, session = self.rooms.session(
@@ -380,6 +394,7 @@ class TuppiASGIApp:
                 await self._broadcast_match(room.code)
 
             async def publish_human_action() -> None:
+                self.rooms.persist(room)
                 await self._broadcast_match(room.code)
 
             result = await runner.submit_async(
@@ -393,6 +408,8 @@ class TuppiASGIApp:
                 ai_action_delay_seconds=room.ai_action_delay_ms / 1000,
             )
             if result.get("status") == "accepted":
+                if runner.terminal:
+                    room.lifecycle = "completed"
                 self.rooms.persist(room)
             acknowledgement = {
                 key: value
@@ -426,6 +443,7 @@ class TuppiASGIApp:
                         )["completed_deals"],
                         "observation": result["latest_observation"],
                         "status": "connected",
+                        **({"bidding": runner.bidding(session.seat)} if runner.bidding(session.seat) is not None else {}),
                     },
                 )
             elif result.get("status") == "duplicate":
@@ -436,11 +454,19 @@ class TuppiASGIApp:
     async def _broadcast_lobby(self, room_code: str) -> None:
         room = self.rooms.get(room_code)
         for connection in tuple(self._connections.get(room.code, {}).values()):
-            await self._send_message(connection.send, "lobby_snapshot", room.snapshot())
+            try:
+                await self._send_message(connection.send, "lobby_snapshot", room.snapshot())
+            except (OSError, RuntimeError):
+                if self._connections.get(room.code, {}).get(connection.token) is connection:
+                    self._connections[room.code].pop(connection.token, None)
 
     async def _broadcast_match(self, room_code: str) -> None:
         for connection in tuple(self._connections.get(room_code, {}).values()):
-            await self._send_match_update(connection)
+            try:
+                await self._send_match_update(connection)
+            except (OSError, RuntimeError):
+                if self._connections.get(room_code, {}).get(connection.token) is connection:
+                    self._connections[room_code].pop(connection.token, None)
 
     def _schedule_ai_continuation(self, room_code: str) -> None:
         current = self._ai_tasks.get(room_code)
@@ -468,6 +494,7 @@ class TuppiASGIApp:
             ai_action_delay_seconds=room.ai_action_delay_ms / 1000,
         )
         self.rooms.persist(room)
+        await self._broadcast_match(room.code)
         if runner.terminal:
             room.lifecycle = "completed"
             self.rooms.persist(room)

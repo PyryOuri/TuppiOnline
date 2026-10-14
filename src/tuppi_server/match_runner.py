@@ -63,6 +63,7 @@ PROTOCOL_VERSION = "tuppi.network.v1"
 ACK_SCHEMA_VERSION = "tuppi.network.action_acknowledgement.v1"
 BIDDING_SCHEMA_VERSION = "tuppi.network.bidding.v1"
 MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v4"
+HOSTED_MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v5"
 V3_MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v3"
 PREVIOUS_MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v2"
 LEGACY_MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v1"
@@ -80,6 +81,7 @@ TEST_AI_PROFILE_KEY = "first_legal_action_v1"
 #: TuppiAI's best agent (the optional package ``tuppi_ai``): search over
 #: sampled worlds with a learned rollout policy; plays sooli itself.
 TUPPI_AI_PROFILE_KEY = "tuppi_ai_search_v1"
+TUPPI_AI_WORLDS = 1024
 
 
 def tuppi_ai_available() -> bool:
@@ -146,11 +148,14 @@ def _construct_ai_agents(
     if profile_key == TEST_AI_PROFILE_KEY:
         return {seat: FirstLegalActionAgent() for seat in seats}
     if profile_key == TUPPI_AI_PROFILE_KEY:
+        if os.environ.get("TUPPI_HOSTED_BOT") == "1":
+            from .hosted_bot import HostedSearchAgent
+            return {seat: HostedSearchAgent(seat) for seat in seats}
         try:
             from tuppi_ai.best import best_agents
         except ImportError as exc:
             raise ValueError("the tuppi_ai package is not installed") from exc
-        return best_agents(sorted(seats))
+        return best_agents(sorted(seats), worlds=TUPPI_AI_WORLDS)
     if profile_key == DEFAULT_AI_PROFILE_KEY:
         return {
             seat: construct_void_lead_agent(seat, profile_key=BASE_AI_PROFILE_KEY)
@@ -272,8 +277,8 @@ class LiveMatchRunner:
         required_v4 = required_v3 | {"ruleset_id"}
         schema_version = record.get("schema_version")
         ruleset_id = RulesetId.PROJECT_TARGET_V1
-        if schema_version == MATCH_RECORD_SCHEMA_VERSION:
-            required = required_v4
+        if schema_version in {MATCH_RECORD_SCHEMA_VERSION, HOSTED_MATCH_RECORD_SCHEMA_VERSION}:
+            required = required_v4 | ({"bot_controllers"} if schema_version == HOSTED_MATCH_RECORD_SCHEMA_VERSION else set())
             ai_profile_key = record.get("ai_profile_key")
             contract_rollout_samples = record.get("contract_rollout_samples")
             action_record_version = 3
@@ -465,12 +470,20 @@ class LiveMatchRunner:
             runner._next_action_index += 1
             if client_action_id.startswith("ai:"):
                 runner._next_ai_action_id += 1
-            if runner.state.phase is EnginePhase.DEAL_COMPLETE:
+            if runner.state.phase is EnginePhase.DEAL_COMPLETE and len(runner.state.completed_deals) < len(deals):
                 runner._ensure_deal_started()
 
         if tuple(public_events) != tuple(project_event_batch(runner.state.public_events)):
             raise ValueError("replayed public events differ from persisted events")
         validate_match_state(runner.state)
+        if schema_version == HOSTED_MATCH_RECORD_SCHEMA_VERSION:
+            controllers = record["bot_controllers"]
+            if type(controllers) is not dict or set(controllers) != {str(s) for s in runner.ai_seats}:
+                raise ValueError("persisted bot controllers have invalid seats")
+            for seat, agent in runner._ai_agents.items():
+                if not hasattr(agent, "restore"):
+                    raise ValueError("hosted record requires the hosted bot runtime")
+                agent.restore(controllers[str(seat)])
         return runner
 
     @property
@@ -527,7 +540,7 @@ class LiveMatchRunner:
     def persistence_record(self) -> dict[str, object]:
         """Return private durable material for restart recovery only."""
 
-        return {
+        record = {
             "accepted_actions": [
                 {
                     "accepted_event_indices": list(record.accepted_event_indices),
@@ -558,6 +571,10 @@ class LiveMatchRunner:
             "ruleset_id": self.ruleset_id.value,
             "schema_version": MATCH_RECORD_SCHEMA_VERSION,
         }
+        if self._ai_agents and all(hasattr(a, "checkpoint") for a in self._ai_agents.values()):
+            record["schema_version"] = HOSTED_MATCH_RECORD_SCHEMA_VERSION
+            record["bot_controllers"] = {str(s): a.checkpoint() for s, a in self._ai_agents.items()}
+        return record
 
     def reconnect(self, *, seat: int, last_applied_event_index: int) -> dict[str, object]:
         if type(last_applied_event_index) is not int or last_applied_event_index < -1:
@@ -1018,7 +1035,7 @@ class LiveMatchRunner:
             if self.collecting_bids():
                 # All bids are taken at once when every human has locked; the
                 # AI bids blind at its turn, with no pacing between bids.
-                if not self._maybe_resolve_showing():
+                if not await asyncio.to_thread(self._maybe_resolve_showing):
                     return
                 if on_state_change is not None:
                     await on_state_change()

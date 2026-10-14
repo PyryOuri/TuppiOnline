@@ -254,7 +254,7 @@ class RoomManager:
             from tuppi_ai.review import ServerReviewer
 
             manager.deal_reviewer = ServerReviewer()
-        if profile == TUPPI_AI_PROFILE_KEY:
+        if profile == TUPPI_AI_PROFILE_KEY and os.environ.get("TUPPI_SERVER_SOOLI_ODDS", "1") == "1":
             # Live odds during sooli use the same bot's sooli sampler.
             from tuppi_ai.sooli_odds import SooliOdds
 
@@ -282,6 +282,8 @@ class RoomManager:
 
     def join_room(self, *, code: str, display_name: str) -> tuple[Room, Session]:
         room = self.get(code)
+        if room.runner is not None:
+            raise RoomError("settings_locked")
         name = self._validate_name(display_name)
         open_seats = [
             seat
@@ -293,6 +295,8 @@ class RoomManager:
         token = self._new_token()
         session = Session(token=token, seat=open_seats[0], display_name=name)
         room.sessions[token] = session
+        for item in room.sessions.values():
+            item.ready = False
         room.lifecycle = "waiting"
         self.persist(room)
         return room, session
@@ -307,11 +311,15 @@ class RoomManager:
         room = self.get(code)
         if room.host_token != host_token:
             raise RoomError("host_required")
+        if room.runner is not None:
+            raise RoomError("settings_locked")
         self._validate_ai_seats(ai_seats)
         for seat in ai_seats:
             if seat != 0 and room.session_for_seat(seat) is not None:
                 raise RoomError("seat_occupied")
         room.ai_seats = set(ai_seats)
+        for item in room.sessions.values():
+            item.ready = False
         room.lifecycle = "configured"
         self.persist(room)
         return room
@@ -348,6 +356,8 @@ class RoomManager:
     ) -> Room:
         room = self.get(code)
         session = self._session(room, token)
+        if room.runner is not None:
+            return room
         session.ready = True
         if self._ready_to_start(room):
             room.runner = LiveMatchRunner(

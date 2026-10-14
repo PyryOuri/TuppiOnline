@@ -88,6 +88,8 @@ def test_private_room_assigns_open_human_seats_and_requires_all_ready() -> None:
         ai_seats=frozenset({2, 3}),
     )
     manager.mark_ready(code=room.code, token=host.token)
+    assert room.runner is None  # Seat changes clear every human's prior readiness.
+    manager.mark_ready(code=room.code, token=guest.token)
     assert room.runner is not None
 
 
