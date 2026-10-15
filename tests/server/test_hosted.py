@@ -190,6 +190,30 @@ def test_static_delivery_has_correct_wasm_and_script_mime_and_private_paths_are_
     asyncio.run(scenario())
 
 
+def test_large_static_file_lets_other_rooms_run_between_chunks(tmp_path):
+    async def scenario():
+        (tmp_path/'offline-manifest.json').write_text(json.dumps({'files':[{'path':'model.f32'}]}))
+        body=bytes(range(256))*(65536*40//256)
+        (tmp_path/'model.f32').write_bytes(body)
+        app=HostedSite(HostedBoundary(TuppiASGIApp(RoomManager()),origins={'https://tuppi.example'}),tmp_path,'https://tuppi.example')
+        chunks,ticks,ticks_at_chunk=[],[0],[]
+        async def other_room():
+            while True:
+                await asyncio.sleep(0); ticks[0]+=1
+        async def send(message):  # a fast reader: never waits for the transport
+            if message['type']=='http.response.body':
+                chunks.append(message['body']); ticks_at_chunk.append(ticks[0])
+        async def receive():return {'type':'http.request','body':b''}
+        task=asyncio.create_task(other_room())
+        await asyncio.sleep(0)
+        await app({'type':'http','path':'/model.f32','method':'GET','headers':[]},receive,send)
+        task.cancel()
+        assert b''.join(chunks)==body
+        steps=[b-a for a,b in zip(ticks_at_chunk,ticks_at_chunk[1:-1])]
+        assert len(steps)==39 and min(steps)>=1
+    asyncio.run(scenario())
+
+
 def test_lite_level_cursor_round_trips_and_rejects_other_checkpoints(monkeypatch):
     monkeypatch.setenv('TUPPI_HOSTED_BOT','1'); monkeypatch.setenv('TUPPI_HOSTED_BOT_LEVEL','lite')
     from tuppi_server.hosted_bot import HostedLiteAgent

@@ -1,5 +1,6 @@
 """Serve the prebuilt browser and room API from one HTTPS origin."""
 from __future__ import annotations
+import asyncio
 import json
 import mimetypes
 import os
@@ -52,4 +53,8 @@ class HostedSite:
         with file.open('rb') as stream:
             while data:=stream.read(65536):
                 await send({'type':'http.response.body','body':data,'more_body':True})
+                # A fast reader never applies back-pressure, so send() need
+                # not yield: without this a 12.7 MB model stalls every room
+                # for ~100 ms. Not a thread: the default executor runs bots.
+                await asyncio.sleep(0)
         await send({'type':'http.response.body','body':b''})
