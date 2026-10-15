@@ -52,6 +52,7 @@ from .persistence import (
     FileRoomStore,
     PersistenceError,
 )
+from .leaderboard import LEADERBOARD_RESPONSE_SCHEMA_VERSION, Leaderboard
 from .projection import project_event_batch, project_match_result
 from tuppi_engine import match_observation_for
 from tuppi_rules import SUPPORTED_RULESETS, RulesetId
@@ -258,9 +259,13 @@ class RoomManager:
         #: Set when a room could not be saved: the server must stop accepting
         #: changes, because in-memory state is ahead of what is durable.
         self.storage_failed = False
+        self.leaderboard = Leaderboard(None if self._store is None else self._store.root / "leaderboard.json")
         if self._store is not None:
             self._store.remove_stale_temporaries()
             self._load_persisted_rooms()
+            # Count matches that finished just before a crash (idempotent).
+            for room in self._rooms.values():
+                self.record_finished_match(room)
 
     @classmethod
     def from_environment(cls) -> "RoomManager":
@@ -424,6 +429,26 @@ class RoomManager:
             room.paused = paused
             self.persist(room)
         return room
+
+    def record_finished_match(self, room: Room) -> bool:
+        """Credit a finished match's human seats on the leaderboard, once."""
+
+        runner = room.runner
+        if runner is None or not runner.terminal or not runner._deals:
+            return False
+        seats = {s.seat: s.display_name for s in room.sessions.values() if s.seat not in room.ai_seats}
+        try:
+            return self.leaderboard.record(match_key=f"{runner.match_ref}:{runner._deals[0].deal_id}", seats=seats,
+                                           winner_team=project_match_result(runner.state)["winner_team"])
+        except PersistenceError:
+            self.storage_failed = True
+            raise
+
+    def leaderboard_for_session(self, *, code: str, token: str) -> dict[str, object]:
+        """The server's standings, for anyone holding a seat in one of its rooms."""
+
+        self.session(code=code, token=token)
+        return {"entries": self.leaderboard.standings(), "schema_version": LEADERBOARD_RESPONSE_SCHEMA_VERSION}
 
     def start_rematch(self, *, code: str, host_token: str) -> Room:
         """Reopen a finished room for a new match with the same seats.

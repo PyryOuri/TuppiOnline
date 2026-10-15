@@ -233,7 +233,9 @@
           "items": {
             "enum": [
               "pause",
-              "rematch"
+              "rematch",
+              "leaderboard",
+              "compact_results"
             ]
           },
           "$comment": "Optional commands this server accepts; absent on servers without them."
@@ -418,6 +420,59 @@
           ]
         }
       }
+    },
+    "leaderboardResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entries",
+        "schema_version"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "tuppi.network.leaderboard.v1"
+        },
+        "entries": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "losses",
+              "matches",
+              "name",
+              "win_percent",
+              "wins"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "wins": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "losses": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "matches": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "win_percent": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              }
+            }
+          }
+        }
+      },
+      "$comment": "Finished online matches on this server, per unverified nickname; human seats only. POST /v1/rooms/{code}/leaderboard with a sessionRequest."
     }
   }
 }

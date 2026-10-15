@@ -202,6 +202,8 @@ export class NetworkSession {
         throw new Error('Verkkopelin paikka tai versio muuttui.');
       this.retryCount = 0; this.timers.clearTimeout(this.deadline); this.beat();
       this.features = new Set(Array.isArray(payload.features) ? payload.features : []);
+      // The browser never reads the full terminal match result; skip it.
+      if (this.features.has('compact_results')) this.send('client_options', {omit_match_result: true});
     } else if (message.message_type === 'compatibility_result') throw new Error('Päivitä Tuppi ennen verkkopeliä.');
     else if (message.message_type === 'protocol_error') throw new Error(networkErrors[payload.code] || 'Verkkopelin yhteyttä ei voitu jatkaa. Paikkasi on tallennettu.');
     else if (message.message_type === 'lobby_snapshot') {
@@ -284,6 +286,12 @@ export class NetworkSession {
     const feature = type === 'rematch' ? 'rematch' : 'pause';
     if (!this.session?.host || !this.connected || this.stopped || !this.features.has(feature)) return false;
     return this.send(type, {});
+  }
+  // Wins and losses per nickname on this server; null when not offered.
+  async leaderboard() {
+    if (!this.session || !this.features.has('leaderboard')) return null;
+    const result = await this.request(`/v1/rooms/${this.session.room_code}/leaderboard`, {session_token: this.session.session_token});
+    return Array.isArray(result.entries) ? result.entries : [];
   }
   pause() { return this.hostCommand('pause'); }
   resume() { return this.hostCommand('resume'); }

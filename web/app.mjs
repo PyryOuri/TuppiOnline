@@ -19,6 +19,8 @@ let activeIdentity = packagedRuntimeIdentity, repairIdentity = packagedRuntimeId
 let replacementPending = false;
 let preferences = loadPreferences();
 let expandedHand = preferences.expandedHand, detailSeat = null;
+let leaderboardEntries = null, leaderboardFetched = 0, leaderboardLoading = false, matchEndCounted = false;
+let turnAudio = null, lastTurnKey = null;
 let connectionState = {phase: 'local'}, lobbyConfiguration = null, lobbyRoom = null;
 const keyboard = new TableKeyboardSelection();
 let keyboardFeedback = '', revealTimer, revealFrame = null, revealKey = null;
@@ -289,6 +291,10 @@ function render() {
   }));
   if (!view.completed.length) $('history').textContent = 'Valmiit jaot ja niiden toisto ilmestyvät tähän.';
   const result = matchSummary(view);
+  // The request waits for the room's lock, which the server holds until it has credited this match.
+  if (result && networkClient && !matchEndCounted) { matchEndCounted = true; refreshLeaderboard(true); }
+  if (!result) matchEndCounted = false;
+  $('summary-leaderboard').hidden = !result || !networkClient || !leaderboardEntries?.length;
   $('match-summary').hidden = !result;
   if (result) {
     $('match-summary-title').textContent = result.title;
@@ -299,7 +305,6 @@ function render() {
   announceTurn();
 }
 // Opt-in turn sound: once each time it becomes this player's turn.
-let turnAudio = null, lastTurnKey = null;
 function announceTurn() {
   const key = canSelect() ? `${view.dealNumber}:${view.phase}:${view.history.length}:${view.legal.join(',')}` : null;
   if (key && key !== lastTurnKey && preferences.turnSound && turnAudio) {
@@ -704,12 +709,34 @@ function renderNetworkControls() {
   const features = client?.features ?? new Set(), terminal = Boolean(view?.terminal);
   const active = Boolean(view) && !terminal && lobby?.lifecycle === 'playing';
   $('network-pause').hidden = !(host && features.has('pause') && active && !lobby.paused);
-  $('network-resume').hidden = !(host && features.has('pause') && active && lobby.paused);
+  $('network-unpause').hidden = !(host && features.has('pause') && active && lobby.paused);
   $('network-rematch').hidden = !(host && features.has('rematch') && terminal);
-  for (const id of ['network-pause', 'network-resume', 'network-rematch'])
+  for (const id of ['network-pause', 'network-unpause', 'network-rematch'])
     $(id).disabled = !client?.connected || client.authRequired;
-  $('network-controls').hidden = ['network-pause', 'network-resume', 'network-rematch'].every(id => $(id).hidden);
+  $('network-controls').hidden = ['network-pause', 'network-unpause', 'network-rematch'].every(id => $(id).hidden);
   $('network-rematch-note').hidden = !(client && !host && features.has('rematch') && terminal);
+}
+// Server standings by nickname; fetched at most every few seconds.
+async function refreshLeaderboard(force = false) {
+  if (!networkClient?.connected || leaderboardLoading || (!force && Date.now() - leaderboardFetched < 5000)) return;
+  leaderboardLoading = true;
+  try {
+    const entries = await networkClient.leaderboard();
+    leaderboardFetched = Date.now();
+    if (entries) { leaderboardEntries = entries; renderLeaderboard(); }
+  } catch {} finally { leaderboardLoading = false; }
+}
+function renderLeaderboard() {
+  const own = networkClient?.session?.lobby?.seats?.find(s => s.seat === networkClient.session.seat)?.display_name?.trim().toLowerCase();
+  const rows = () => (leaderboardEntries ?? []).map((entry, index) => {
+    const item = document.createElement('li');
+    item.textContent = `${entry.name}: ${entry.wins} ${entry.wins === 1 ? 'voitto' : 'voittoa'}, ${entry.losses} ${entry.losses === 1 ? 'tappio' : 'tappiota'} (${entry.win_percent} %)`;
+    if (entry.name.trim().toLowerCase() === own) { item.className = 'own'; item.setAttribute('aria-current', 'true'); }
+    return item;
+  });
+  const shown = Boolean(leaderboardEntries?.length);
+  $('network-leaderboard').hidden = !shown; $('network-leaderboard-list').replaceChildren(...rows());
+  $('summary-leaderboard').hidden = !shown || !view?.terminal || !networkClient; $('summary-leaderboard-list').replaceChildren(...rows());
 }
 function previousMatchesText(lobby, seat) {
   const previous = lobby.previous_matches ?? [], team = seat % 2;
@@ -725,6 +752,7 @@ function showNetworkLobby(lobby) {
     cancelReveal(); networkRevealDeal = null; view = null; selectedCard = null; keyboard.reset(); render();
     if (!$('network-dialog').open) $('network-dialog').showModal();
   }
+  if (!playing || lobby.lifecycle === 'completed') refreshLeaderboard();
   const previous = previousMatchesText(lobby, networkClient?.session.seat ?? 0);
   $('network-previous').hidden = !previous; $('network-previous').textContent = previous ? `Aiemmat ottelut tässä huoneessa: ${previous}` : '';
   $('network-entry').hidden = true; $('network-lobby').hidden = false; $('network-local').hidden = false;
@@ -833,7 +861,7 @@ for (const command of ['create','join','resume']) $('network-' + command).onclic
 $('network-ready').onclick = () => networkClient?.ready();
 $('network-fill').onclick = () => networkClient?.fillEmptySeats().catch(networkFailure);
 $('network-pause').onclick = () => networkClient?.pause();
-$('network-resume').onclick = () => networkClient?.resume();
+$('network-unpause').onclick = () => networkClient?.resume();
 $('network-rematch').onclick = () => networkClient?.rematch();
 $('network-open').onclick = () => networkClient?.openSeats().catch(networkFailure);
 $('network-local').onclick = () => returnToLocal().catch(error => status(error.message, true));

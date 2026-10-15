@@ -42,6 +42,9 @@
     {"id": "pong", "transport": "websocket", "direction": "server_to_client", "schema_ref": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json#/$defs/pong"},
     {"id": "pause", "transport": "websocket", "direction": "client_to_server", "schema_ref": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json#/$defs/hostCommandPause"},
     {"id": "resume", "transport": "websocket", "direction": "client_to_server", "schema_ref": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json#/$defs/hostCommandResume"},
-    {"id": "rematch", "transport": "websocket", "direction": "client_to_server", "schema_ref": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json#/$defs/hostCommandRematch"}
+    {"id": "rematch", "transport": "websocket", "direction": "client_to_server", "schema_ref": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json#/$defs/hostCommandRematch"},
+    {"id": "client_options", "transport": "websocket", "direction": "client_to_server", "schema_ref": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json#/$defs/clientOptions"},
+    {"id": "leaderboard_request", "transport": "http", "direction": "client_to_server", "schema_ref": "https://example.invalid/tuppi/schemas/network/http_api.schema.json#/$defs/sessionRequest"},
+    {"id": "leaderboard_result", "transport": "http", "direction": "server_to_client", "schema_ref": "https://example.invalid/tuppi/schemas/network/http_api.schema.json#/$defs/leaderboardResult"}
   ]
 }

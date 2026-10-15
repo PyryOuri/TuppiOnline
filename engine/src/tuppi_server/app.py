@@ -25,7 +25,7 @@ from .rooms import RoomError, RoomManager
 Send = Callable[[dict[str, Any]], Awaitable[None]]
 #: Optional commands this server accepts; clients show their controls only
 #: when the server lists them.
-FEATURES = ("pause", "rematch")
+FEATURES = ("pause", "rematch", "leaderboard", "compact_results")
 #: A player whose connection does not take an update within this time is
 #: dropped (and reconnects), so one stalled phone cannot hold up the room.
 SEND_TIMEOUT_SECONDS = 10.0
@@ -43,6 +43,8 @@ class Connection:
     seat: int
     send: Send
     last_event_index: int = -1
+    #: client_options: the browser does not use the full terminal match result.
+    omit_match_result: bool = False
 
 
 class TuppiASGIApp:
@@ -188,6 +190,9 @@ class TuppiASGIApp:
                     code=code,
                     token=self._string(payload, "session_token"),
                 )
+            if command == "leaderboard":
+                self._require_fields(payload, required={"session_token"})
+                return self.rooms.leaderboard_for_session(code=code, token=self._string(payload, "session_token"))
             if command == "training_analysis":
                 self._require_fields(payload, required={"session_token"})
                 return self.rooms.training_analysis_for_session(
@@ -370,6 +375,12 @@ class TuppiASGIApp:
                 other.last_event_index = -1
             await self._broadcast_lobby(room.code)
             return
+        if message_type == "client_options":
+            self._require_fields(payload, required={"omit_match_result"})
+            if type(payload["omit_match_result"]) is not bool:
+                raise ProtocolError("omit_match_result must be a boolean")
+            connection.omit_match_result = payload["omit_match_result"]
+            return
         if message_type == "reconnect":
             self._require_fields(payload, required={"last_applied_event_index"})
             runner = self._require_runner(room)
@@ -379,6 +390,8 @@ class TuppiASGIApp:
                 last_applied_event_index=last_index,  # type: ignore[arg-type]
             )
             connection.last_event_index = runner.event_cursor
+            if connection.omit_match_result:
+                result.pop("match_result", None)
             await self._send_message(connection.send, "reconnect_result", result)
             return
         if message_type == "action_submission":
@@ -424,6 +437,8 @@ class TuppiASGIApp:
                 if runner.terminal:
                     room.lifecycle = "completed"
                 self.rooms.persist(room)
+                if runner.terminal:
+                    self.rooms.record_finished_match(room)
             acknowledgement = {
                 key: value
                 for key, value in result.items()
@@ -539,6 +554,7 @@ class TuppiASGIApp:
         if runner.terminal:
             room.lifecycle = "completed"
             self.rooms.persist(room)
+            self.rooms.record_finished_match(room)
 
     async def _send_match_update(self, connection: Connection) -> None:
         room, session = self.rooms.session(
@@ -563,7 +579,7 @@ class TuppiASGIApp:
         if "bidding" in reconnect:
             # project_target_v3 showing: lock status and this seat's own bid only.
             payload["bidding"] = reconnect["bidding"]
-        if runner.terminal:
+        if runner.terminal and not connection.omit_match_result:
             payload["match_result"] = reconnect.get("match_result")
         connection.last_event_index = runner.event_cursor
         await self._send_message(connection.send, "match_update", payload)

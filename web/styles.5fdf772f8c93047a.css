@@ -4,6 +4,8 @@
   --table: rgb(90% 93% 89%); --table-rami: rgb(95% 83% 84%); --table-sooli: rgb(96% 89% 73%);
   --text: rgb(12% 15% 14%); --blue: rgb(15% 38% 68%); --amber: rgb(72% 43% 8%);
   --rami: rgb(68% 24% 42%); --nolo: rgb(6% 48% 43%); --muted: rgb(0 0 0 / .58);
+  /* Small amber text: the bright amber stays for large text, fills and outlines. */
+  --amber-text: rgb(54% 30% 2%);
   /* Swift's macOS text styles: headline 13, callout 12, caption 10. */
   --card-stride: 40px;
   --phone-text: 16px; --phone-label: .875rem; --control-height: 44px;
@@ -47,7 +49,7 @@ select { padding: 6px; border: 1px solid #0003; border-radius: 6px; background: 
 #our-score { color: var(--blue); } #their-score { color: var(--amber); }
 .contract { font-size: 12px; font-weight: 600; color: var(--nolo); padding: 5px 10px; border-radius: 30px; background: rgb(6% 48% 43% / .14); }
 .contract.rami { color: var(--rami); background: rgb(68% 24% 42% / .14); }
-.contract.sooli { color: #ad6408; background: rgb(68% 39% 3% / .14); }
+.contract.sooli { color: var(--amber-text); background: rgb(68% 39% 3% / .14); }
 .table {
   display: grid;
   grid-template-columns: minmax(0, 216px) minmax(0, 1fr) minmax(0, 216px);
@@ -71,7 +73,7 @@ button.seat-name { border: 0; padding: 0; background: transparent; box-shadow: n
 .seat-cards { font-size: 10px; color: rgb(12% 15% 14% / .68); }
 .seat-shown { display: flex; gap: 4px; align-items: center; color: var(--nolo); font-size: 10px; font-weight: 500; }
 .seat-shown::before { content: ""; flex: none; width: 12px; height: 12px; background: currentColor; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 4C5 4 1 12 1 12s4 8 11 8 11-8 11-8-4-8-11-8zm0 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8z'/%3E%3C/svg%3E") center / contain no-repeat; }
-.seat-role { color: #ad6408; font-size: 10px; font-weight: 700; }
+.seat-role { color: var(--amber-text); font-size: 10px; font-weight: 700; }
 .seat-shown:empty, .seat-role:empty { display: none; }
 .north { grid-area: north; align-self: start; }
 .south { grid-area: south; align-self: end; }
@@ -80,7 +82,7 @@ button.seat-name { border: 0; padding: 0; background: transparent; box-shadow: n
 .center { grid-area: center; width: 100%; max-width: 560px; min-width: 0; justify-self: center; text-align: center; }
 .table-banner { font-size: 12px; font-weight: 600; line-height: 1.4; padding: 6px 12px; border-radius: 30px; background: #00000047; }
 .table-status { margin-top: 12px; font-size: 12px; color: var(--muted); }
-.table-status.our-turn { color: var(--amber); }
+.table-status.our-turn { color: var(--amber-text); }
 .trick-panel { padding: 18px; border-radius: 16px; background: #0000001f; }
 .trick-heading { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .trick-heading .eyebrow { font-size: 12px; letter-spacing: 1.2px; }
@@ -168,7 +170,7 @@ button.card:hover:enabled { background: var(--card-paper); border-color: #87959f
 .keyboard-prompt.armed { color: var(--text); font-weight: 600; }
 .status { margin-top: 10px; font-size: 12px; color: var(--muted); line-height: 1.5; }
 .status:empty, .keyboard-prompt:empty { display: none; }
-.error { color: #ad6408; }
+.error { color: var(--amber-text); }
 #retry { margin-top: 12px; }
 .history-section { margin-top: 18px; border: 1px solid #dce1e4; border-radius: 12px; background: #fff; padding: 16px; }
 .history-heading, .history-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
@@ -237,7 +239,7 @@ dialog::backdrop { background: #0004; }
 #network-dialog .controls { flex-wrap: wrap; }
 #network-local, #offline-prepare { margin-top: 12px; }
 .connection-strip { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 12px; font-size: 12px; color: var(--nolo); background: #f6f9f6; border-bottom: 1px solid #0001; }
-.connection-strip[data-phase="reconnecting"], .connection-strip[data-phase="authentication"], .connection-strip[data-phase="failed"] { color: var(--amber); }
+.connection-strip[data-phase="reconnecting"], .connection-strip[data-phase="authentication"], .connection-strip[data-phase="failed"] { color: var(--amber-text); }
 .connection-strip button { margin-left: auto; }
 #close-network { float: right; margin-left: 12px; }
 #network-dialog { max-width: min(42rem, calc(100vw - 2rem)); max-height: calc(100dvh - 32px); overflow-y: auto; }
@@ -255,7 +257,7 @@ dialog::backdrop { background: #0004; }
 .lobby-position, .lobby-state { font-size: 12px; color: var(--muted); }
 .lobby-name { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #network-seats button { margin: 4px 0 0; min-height: 44px; }
-#network-changed { color: var(--amber); }
+#network-changed { color: var(--amber-text); }
 #network-changed:empty { display: none; }
 #network-readiness { margin-block: 10px; line-height: 1.5; }
 #network-lobby > .controls { margin-block: 12px; }
@@ -282,7 +284,7 @@ dialog::backdrop { background: #0004; }
   .score-rail > div:first-child > .eyebrow { display: none; }
   .score-rail h1 { font-size: var(--phone-label); margin: 0; }
   #deal-label { font-size: .75rem; }
-  .scoreboard .eyebrow { font-size: .625rem; }
+  .scoreboard .eyebrow { font-size: .75rem; }
   .scoreboard div { font-size: 1.5rem; margin-top: 0; gap: 5px; }
   .contract { font-size: .75rem; padding: 5px 7px; }
   .table { min-height: 0; padding: 8px; gap: 6px 8px; align-items: stretch;
@@ -305,11 +307,11 @@ dialog::backdrop { background: #0004; }
   .table-status { font-size: var(--phone-label); margin-top: 6px; }
   .trick-panel { padding: 8px; border-radius: 10px; }
   .trick-heading { gap: 4px; margin-bottom: 6px; align-items: center; }
-  .trick-heading .eyebrow { font-size: .625rem; letter-spacing: .5px; }
+  .trick-heading .eyebrow { font-size: .75rem; letter-spacing: .5px; }
   .trick-heading button { min-width: 44px; min-height: 44px; padding: 5px; font-size: .75rem; }
   .trick { gap: 6px; min-height: 76px; }
   .trick .card { --card-width: clamp(44px, 12vw, 56px); --card-height: auto; --card-rank-size: 13px; --card-pip-size: 10px; --card-center-size: 26px; aspect-ratio: 1 / 1.42; }
-  .played-card { flex-basis: clamp(44px, 12vw, 56px); width: clamp(44px, 12vw, 56px); font-size: .625rem; }
+  .played-card { flex-basis: clamp(44px, 12vw, 56px); width: clamp(44px, 12vw, 56px); font-size: .75rem; }
   .bid-reveal { min-height: 190px; gap: 6px; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, auto); }
   .revealed-bid { gap: 3px; }
   .revealed-bid .card { --card-width: 48px; --card-height: 68px; --card-corner: 4px; --card-rank-size: 14px; --card-pip-size: 10px; --card-center-size: 24px; }
@@ -330,7 +332,9 @@ dialog::backdrop { background: #0004; }
   .action-copy h2, .selection-info, .status { font-size: var(--phone-label); }
   .selection-info { margin-top: 2px; }
   .controls { gap: 6px; }
-  #card-controls, #sooli-controls, #next-controls { flex: 1; }
+  #card-controls, #sooli-controls, #next-controls, #network-controls { flex: 1; }
+  #network-controls button, #sooli-controls button { flex: 1 1 auto; }
+  .match-summary h3 { font-size: 1rem; } .match-summary ul, .leaderboard ol { font-size: var(--phone-label); }
   #card-controls button, #next-controls button { width: 100%; }
   #bid-controls { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
   .segmented { padding: 2px; }
@@ -372,3 +376,15 @@ dialog::backdrop { background: #0004; }
 #help h3 { margin: 14px 0 4px; font-size: 14px; }
 #help p { margin: 0 0 6px; font-size: 13px; line-height: 1.45; }
 #help .toggle { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+
+.leaderboard ol { margin: 4px 0 6px; padding-left: 22px; font-size: 13px; }
+.leaderboard li.own { font-weight: 600; }
+.leaderboard h4 { margin: 8px 0 2px; font-size: 13px; }
+
+/* iOS "Increase contrast" and similar settings. */
+@media (prefers-contrast: more) {
+  :root { --muted: rgb(0 0 0 / .74); }
+  .card.red { --card-ink: #d70015; }
+  button.card.illegal.red { --card-ink: #a3524d; }
+  button, .file-label, .lobby-seat, .trick-stair { border-color: #0007; }
+}
