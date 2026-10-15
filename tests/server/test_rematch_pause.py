@@ -92,7 +92,24 @@ class Table:
         return next(m["payload"] for m in reversed(self.sent[seat]) if m["message_type"] == "lobby_snapshot")
 
 
-def test_rematch_keeps_the_room_and_result_and_starts_a_new_match(tmp_path):
+@pytest.fixture
+def near_the_end(monkeypatch):
+    """Short, repeatable matches: rooms start at 51-0 and deals come from a seed."""
+    import random
+    from tuppi_rules import MatchScore
+    from tuppi_server import deal_generation, rooms as rooms_module
+
+    class NearEnd(match_runner.LiveMatchRunner):
+        def __init__(self, **kwargs):
+            kwargs.setdefault("initial_score", MatchScore(51, 0))
+            super().__init__(**kwargs)
+    source = random.Random(20261015)
+    monkeypatch.setattr(rooms_module, "LiveMatchRunner", NearEnd)
+    monkeypatch.setattr(match_runner, "generate_live_deal",
+                        lambda *, dealer: deal_generation.generate_live_deal(dealer=dealer, rng=source))
+
+
+def test_rematch_keeps_the_room_and_result_and_starts_a_new_match(tmp_path, near_the_end):
     async def scenario():
         rooms = manager(tmp_path)
         room, host = rooms.create_room(display_name="Host", ai_seats=frozenset({1, 2, 3}))
