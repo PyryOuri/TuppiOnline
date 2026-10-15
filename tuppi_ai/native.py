@@ -373,24 +373,38 @@ class Env:
             self._h = None
 
 
+def flat_weights(net, out_scale: float = 1.0) -> np.ndarray:
+    """A QNet's parameters in tc_mlp_new's order, as one float32 array."""
+    sd = {k: v.detach().cpu().float().numpy() for k, v in net.state_dict().items()}
+    sd["out.weight"], sd["out.bias"] = sd["out.weight"] * out_scale, sd["out.bias"] * out_scale
+    parts = [sd["inp.weight"], sd["inp.bias"]]
+    for b in range(net.config["blocks"]):
+        for name in ("norm.weight", "norm.bias", "fc1.weight", "fc1.bias", "fc2.weight", "fc2.bias"):
+            parts.append(sd[f"blocks.{b}.{name}"])
+    parts += [sd["norm.weight"], sd["norm.bias"], sd["out.weight"], sd["out.bias"]]
+    return np.ascontiguousarray(np.concatenate([p.ravel() for p in parts]), dtype=np.float32)
+
+
 class Mlp:
     """A QNet's weights in native memory, for rollouts without Python."""
 
     def __init__(self, net, in_dim: int | None = None, out_dim: int | None = None, out_scale: float = 1.0):
         """`in_dim`/`out_dim` default to the Q-network's; `out_scale` multiplies the outputs."""
-        sd = {k: v.detach().cpu().float().numpy() for k, v in net.state_dict().items()}
-        sd["out.weight"], sd["out.bias"] = sd["out.weight"] * out_scale, sd["out.bias"] * out_scale
         cfg = net.config
-        parts = [sd["inp.weight"], sd["inp.bias"]]
-        for b in range(cfg["blocks"]):
-            for name in ("norm.weight", "norm.bias", "fc1.weight", "fc1.bias", "fc2.weight", "fc2.bias"):
-                parts.append(sd[f"blocks.{b}.{name}"])
-        parts += [sd["norm.weight"], sd["norm.bias"], sd["out.weight"], sd["out.bias"]]
-        flat = np.ascontiguousarray(np.concatenate([p.ravel() for p in parts]), dtype=np.float32)
-        self.encoder = cfg.get("encoder", 1)
-        self.width = cfg["width"]
-        self._h = lib.tc_mlp_new(in_dim or feature_dim(self.encoder), cfg["width"], cfg["blocks"],
-                                 out_dim or NUM_ACTIONS, self.encoder, flat.ctypes.data)
+        self._create(flat_weights(net, out_scale), cfg["width"], cfg["blocks"], cfg.get("encoder", 1), in_dim, out_dim)
+
+    @classmethod
+    def from_flat(cls, flat: np.ndarray, width: int, blocks: int, encoder: int) -> "Mlp":
+        """From `flat_weights` output, without PyTorch (the hosted lite bot)."""
+        self = cls.__new__(cls)
+        self._create(flat, width, blocks, encoder, None, None)
+        return self
+
+    def _create(self, flat, width, blocks, encoder, in_dim, out_dim):
+        flat = np.ascontiguousarray(flat, dtype=np.float32)
+        self.encoder, self.width = encoder, width
+        self._h = lib.tc_mlp_new(in_dim or feature_dim(encoder), width, blocks,
+                                 out_dim or NUM_ACTIONS, encoder, flat.ctypes.data)
         if not self._h:
             raise ValueError("unsupported network shape")
 
