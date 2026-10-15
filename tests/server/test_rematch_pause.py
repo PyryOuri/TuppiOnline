@@ -247,7 +247,7 @@ def test_hello_acknowledgement_lists_the_optional_commands(tmp_path):
         async def send(message): sent.append(json.loads(message["text"]))
         await app._authenticate({"message_type": "hello", "payload": {"protocol_version": "tuppi.network.v1",
             "room_code": room.code, "session_token": host.token}}, send)
-        assert sent[0]["message_type"] == "hello_ack" and sent[0]["payload"]["features"] == ["pause", "rematch"]
+        assert sent[0]["message_type"] == "hello_ack" and sent[0]["payload"]["features"] == ["pause", "rematch", "leaderboard", "compact_results"]
         for message in sent:
             validate(message)
     asyncio.run(scenario())
@@ -260,5 +260,5 @@ def test_compatibility_lists_the_optional_commands():
         async def send(message): sent.append(message)
         async def receive(): return {"type": "http.request", "body": b""}
         await app({"type": "http", "method": "GET", "path": "/v1/compatibility"}, receive, send)
-        assert json.loads(sent[1]["body"])["features"] == ["pause", "rematch"]
+        assert json.loads(sent[1]["body"])["features"] == ["pause", "rematch", "leaderboard", "compact_results"]
     asyncio.run(scenario())

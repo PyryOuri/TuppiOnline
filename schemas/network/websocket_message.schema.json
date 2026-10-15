@@ -50,6 +50,9 @@
     },
     {
       "$ref": "#/$defs/hostCommandRematch"
+    },
+    {
+      "$ref": "#/$defs/clientOptions"
     }
   ],
   "$defs": {
@@ -123,7 +126,9 @@
           "items": {
             "enum": [
               "pause",
-              "rematch"
+              "rematch",
+              "leaderboard",
+              "compact_results"
             ]
           },
           "$comment": "Optional commands this server accepts; absent on servers without them."
@@ -620,6 +625,32 @@
         }
       },
       "$comment": "Host only. Pause/resume while a match is in progress; rematch after it is complete."
+    },
+    "clientOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "client_options"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "omit_match_result"
+          ],
+          "properties": {
+            "omit_match_result": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "$comment": "Sent only to servers listing compact_results. omit_match_result drops match_result from this connection's match_update and reconnect_result."
     }
   }
 }
