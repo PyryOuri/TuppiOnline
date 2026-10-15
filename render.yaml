@@ -8,7 +8,8 @@ services:
     numInstances: 1
     healthCheckPath: /healthz
     autoDeployTrigger: off
-    maxShutdownDelaySeconds: 150
+    # No maxShutdownDelaySeconds: Render rejects it for a service with a disk
+    # (DEP-01) and stops it within its default 30 seconds; start.sh drains in 10.
     disk:
       name: tuppi-rooms
       mountPath: /data

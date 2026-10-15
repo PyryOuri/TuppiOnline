@@ -277,6 +277,11 @@
       "sha256": "ac0269c0103f4942a6aff4faf238f366c5e899f8c8e3fdf11195789a37c13e15"
     },
     {
+      "path": "check_blueprint.py",
+      "bytes": 2187,
+      "sha256": "2242e950b8d5cfbb37ee43ce6fc74528765fac4e51824b4f54c8cfb8a3626e15"
+    },
+    {
       "path": "engine/configs/rules/project_target_v1.json",
       "bytes": 5900,
       "sha256": "14d2bd671d5f8f27f7d7e988a1f05b12ef0ecb0aed7adf22081796f3c4ef4abf"
@@ -2368,8 +2373,8 @@
     },
     {
       "path": "render.yaml",
-      "bytes": 702,
-      "sha256": "eea4c57600079ec53e96ed52d361a2b9aab54060e73c38a762ef24e282ecd089"
+      "bytes": 829,
+      "sha256": "4ffa19d4293b48342b845cd9efd167c02b6800083d42f45d5bb970ae6aae08d3"
     },
     {
       "path": "requirements.txt",
@@ -2378,8 +2383,8 @@
     },
     {
       "path": "start.sh",
-      "bytes": 323,
-      "sha256": "213bfd01378f0465f88a302edb2f8353dac0d77a2e917b75e5d1468495c3d58a"
+      "bytes": 541,
+      "sha256": "86f5f0a0445826d88c9ccfde41cd0613ddaad994552ffc39fa7e49df8941fb4d"
     },
     {
       "path": "web/app.mjs",
@@ -2522,6 +2527,11 @@
       "sha256": "482b90f06d06e4acf23c4475ee2ae46c55ac7b0646959680afa85e899d15617c"
     },
     {
+      "path": "web/runtime.mjs",
+      "bytes": 8316,
+      "sha256": "4dc23e1c27228258c5884ab18afc41523d3d5f2ed3e395e4050d903f3b351ccc"
+    },
+    {
       "path": "web/runtime/95497f1ebdf0979b8463f3822cf3db85ad8495ed85ae1fe3e5b3b09962871b5d/build.json",
       "bytes": 4140,
       "sha256": "c31f8c1e857f438b5f95e0b984ca9ed07ff42043016703a12bbe8b5810ffe854"
@@ -2555,11 +2565,6 @@
       "path": "web/runtime/95497f1ebdf0979b8463f3822cf3db85ad8495ed85ae1fe3e5b3b09962871b5d/vrpo3_final.f32",
       "bytes": 12743280,
       "sha256": "0e4bba619908ad3fa92a75fb118470b436ffa571caaca5e8f6aab497be633b47"
-    },
-    {
-      "path": "web/runtime.mjs",
-      "bytes": 8316,
-      "sha256": "4dc23e1c27228258c5884ab18afc41523d3d5f2ed3e395e4050d903f3b351ccc"
     },
     {
       "path": "web/session.mjs",
@@ -2598,5 +2603,17 @@
     }
   ],
   "release": "eddc24b82bb34506d9bcaf5631c9517d089a462651e8cec407cf26ad17eb3966",
-  "linux_image_executed": false
+  "linux_image_executed": false,
+  "fixes": [
+    {
+      "task": "DEP-01",
+      "browser_commit": "e8736fd",
+      "files": [
+        "check_blueprint.py",
+        "render.yaml",
+        "start.sh"
+      ],
+      "note": "Applied to the published package without other changes; regenerate with prepare_hosted.py for later packages."
+    }
+  ]
 }
