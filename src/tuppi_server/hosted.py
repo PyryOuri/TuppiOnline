@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
+import hmac
 import importlib
 import json
 import os
@@ -18,6 +19,17 @@ import time
 from urllib.parse import urlsplit
 
 ROOM_ROUTE = re.compile(r"^/v1/rooms/([A-Z0-9]{6})/(join|configure|settings|ready)$", re.I)
+#: Wrong room-creation passcodes accepted per minute before refusing all tries.
+MAX_PASSCODE_FAILURES_PER_MINUTE = 20
+
+
+def room_passcode_from_environment() -> str | None:
+    """TUPPI_ROOM_PASSCODE: when set, creating a room requires it (joining by
+    invitation does not). A public deployment sets it as a provider secret."""
+    value = os.environ.get("TUPPI_ROOM_PASSCODE") or None
+    if value is not None and (len(value) < 8 or len(value) > 128 or value != value.strip()):
+        raise ValueError("TUPPI_ROOM_PASSCODE must be 8-128 characters without surrounding spaces")
+    return value
 
 
 def validate_origins(raw: str) -> frozenset[str]:
@@ -91,12 +103,22 @@ def create_hosted_app():
     identity = verify_bot_identity(level)
     # Import only after the hosted configuration and weights have been checked.
     from .app import app
-    return HostedBoundary(app, origins=origins, bot_identity=identity, max_bot_rooms=bot_room_limit(level, 8))
+    return HostedBoundary(app, origins=origins, bot_identity=identity, max_bot_rooms=bot_room_limit(level, 8),
+                          room_passcode=room_passcode_from_environment())
+
+
+class PasscodeRefused(Exception):
+    def __init__(self, code: str, status: int):
+        super().__init__(code)
+        self.status = status
 
 
 class HostedBoundary:
-    def __init__(self, game, *, origins, bot_identity=None, max_rooms=8, max_connections=32, max_bot_rooms=1, max_retained_rooms=32):
+    def __init__(self, game, *, origins, bot_identity=None, max_rooms=8, max_connections=32, max_bot_rooms=1,
+                 max_retained_rooms=32, room_passcode=None):
         self.game = game
+        self.room_passcode = room_passcode
+        self.passcode_failures = []
         self.origins = frozenset(origins)
         self.bot_identity = bot_identity or {"profile": "test"}
         self.max_rooms, self.max_connections = max_rooms, max_connections
@@ -144,6 +166,36 @@ class HostedBoundary:
                 self.activity[code] = time.time()
 
         game._authenticate, game._handle_message, game._continue_ai = auth, message, continuation
+
+    async def _room_creation_body(self, receive) -> bytes:
+        """Read a create-room body, check and remove its room_passcode.
+
+        The passcode is a hosting concern; the game sees the request without it.
+        Malformed bodies pass through for the game's own validation.
+        """
+        chunks = []
+        while True:
+            message = await receive()
+            chunks.append(message.get("body", b""))
+            if not message.get("more_body", False):
+                break
+        body = b"".join(chunks)
+        try:
+            payload = json.loads(body) if body else {}
+        except (ValueError, UnicodeError):
+            payload = None
+        offered = payload.pop("room_passcode", None) if type(payload) is dict else None
+        if self.room_passcode is not None:
+            now = time.time()
+            self.passcode_failures = [t for t in self.passcode_failures if now - t < 60]
+            if len(self.passcode_failures) >= MAX_PASSCODE_FAILURES_PER_MINUTE:
+                raise PasscodeRefused("too_many_attempts", 429)
+            if not isinstance(offered, str) or not offered:
+                raise PasscodeRefused("room_passcode_required", 403)
+            if not hmac.compare_digest(offered.encode(), self.room_passcode.encode()):
+                self.passcode_failures.append(now)
+                raise PasscodeRefused("invalid_room_passcode", 403)
+        return json.dumps(payload).encode() if type(payload) is dict else body
 
     def _lock(self, code):
         return self.room_locks.setdefault(code, asyncio.Lock())
@@ -249,6 +301,7 @@ class HostedBoundary:
         if scope.get("method") == "GET" and path in {"/healthz", "/v1/compatibility"}:
             from .app import FEATURES
             await self.game._json_response(cors_send, 200, {"compatible": True, "features": list(FEATURES),
+                "create_passcode_required": self.room_passcode is not None,
                 "protocol_version": "tuppi.network.v1", "ruleset_id": "project_target_v3",
                 "status": "ok", "bot": self.bot_identity})
             return
@@ -267,6 +320,16 @@ class HostedBoundary:
                 raise ValueError("request_too_large")
             return message
         if path == "/v1/rooms":
+            try:
+                body = await self._room_creation_body(limited_body)
+            except PasscodeRefused as refusal:
+                await self.game._json_response(cors_send, refusal.status, {"error": str(refusal)})
+                return
+            except (ValueError, asyncio.TimeoutError) as exc:
+                await self.game._json_response(cors_send, 400, {"error": str(exc) or "invalid_request"})
+                return
+            async def creation_body():
+                return {"type": "http.request", "body": body, "more_body": False}
             async with self.creation_lock:
                 self.expire_idle_rooms()
                 self.created = [t for t in self.created if time.time() - t < 60]
@@ -284,7 +347,7 @@ class HostedBoundary:
                     self._archive(candidates[0])
                 self.created.append(time.time())
                 before = set(self.game.rooms._rooms)
-                await self.game(scope, limited_body, cors_send)
+                await self.game(scope, creation_body, cors_send)
                 for code in set(self.game.rooms._rooms) - before:
                     self.activity[code] = time.time()
         else:

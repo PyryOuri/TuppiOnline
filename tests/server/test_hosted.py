@@ -47,6 +47,44 @@ def test_exact_origin_and_body_and_capacity_guards():
     assert validate_origins('https://tuppi.example,http://127.0.0.1:18740')
 
 
+def test_room_creation_requires_the_configured_passcode(monkeypatch):
+    from tuppi_server.hosted import MAX_PASSCODE_FAILURES_PER_MINUTE, room_passcode_from_environment
+    async def scenario():
+        app=HostedBoundary(TuppiASGIApp(RoomManager()),origins={'https://tuppi.example'},room_passcode='friends-only-2026')
+        _,body=await http(app,'/v1/compatibility',method='GET')
+        assert body['create_passcode_required'] is True
+        start,body=await http(app,'/v1/rooms',{'display_name':'Host','ai_seats':[]})
+        assert start['status']==403 and body['error']=='room_passcode_required'
+        start,body=await http(app,'/v1/rooms',{'display_name':'Host','ai_seats':[],'room_passcode':'guess'})
+        assert start['status']==403 and body['error']=='invalid_room_passcode' and not app.game.rooms._rooms
+        start,body=await http(app,'/v1/rooms',{'display_name':'Host','ai_seats':[],'room_passcode':'friends-only-2026'})
+        assert start['status']==200 and body['lobby']['seats'][0]['display_name']=='Host'
+        # Invitations need only the room code.
+        start,body=await http(app,f"/v1/rooms/{body['room_code']}/join",{'display_name':'Friend'})
+        assert start['status']==200 and body['seat']==1
+        start,body=await http(app,'/v1/rooms',{'display_name':'x'*17000,'ai_seats':[],'room_passcode':'friends-only-2026'})
+        assert start['status']==400 and body['error']=='request_too_large'
+        for _ in range(MAX_PASSCODE_FAILURES_PER_MINUTE-1):
+            await http(app,'/v1/rooms',{'display_name':'Host','ai_seats':[],'room_passcode':'guess'})
+        start,body=await http(app,'/v1/rooms',{'display_name':'Host','ai_seats':[],'room_passcode':'friends-only-2026'})
+        assert start['status']==429 and body['error']=='too_many_attempts', 'guessing is throttled'
+        assert len(app.game.rooms._rooms)==1
+        # Without a configured passcode, creation is open and a stray field is ignored.
+        open_app=HostedBoundary(TuppiASGIApp(RoomManager()),origins={'https://tuppi.example'})
+        _,body=await http(open_app,'/v1/compatibility',method='GET')
+        assert body['create_passcode_required'] is False
+        start,_=await http(open_app,'/v1/rooms',{'display_name':'Host','ai_seats':[],'room_passcode':'anything'})
+        assert start['status']==200
+    asyncio.run(scenario())
+    monkeypatch.delenv('TUPPI_ROOM_PASSCODE',raising=False)
+    assert room_passcode_from_environment() is None
+    for bad in ('short','  padded-passcode  ','x'*129):
+        monkeypatch.setenv('TUPPI_ROOM_PASSCODE',bad)
+        with pytest.raises(ValueError): room_passcode_from_environment()
+    monkeypatch.setenv('TUPPI_ROOM_PASSCODE','friends-only-2026')
+    assert room_passcode_from_environment()=='friends-only-2026'
+
+
 def test_started_room_and_readiness_cannot_be_reconfigured():
     rooms=RoomManager(ruleset_id=RulesetId.PROJECT_TARGET_V3,ai_profile_key=TEST_AI_PROFILE_KEY)
     room,host=rooms.create_room(display_name='Host')

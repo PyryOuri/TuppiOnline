@@ -237,6 +237,10 @@
             ]
           },
           "$comment": "Optional commands this server accepts; absent on servers without them."
+        },
+        "create_passcode_required": {
+          "type": "boolean",
+          "$comment": "Hosted deployments: whether creating a room needs room_passcode. Joining never does."
         }
       }
     },
@@ -253,6 +257,12 @@
         },
         "ai_seats": {
           "$ref": "#/$defs/aiSeats"
+        },
+        "room_passcode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "$comment": "Required by hosts that set a room-creation passcode (see compatibilityResult.create_passcode_required); removed before the room is created."
         }
       }
     },
