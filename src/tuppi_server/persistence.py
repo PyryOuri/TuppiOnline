@@ -19,6 +19,10 @@ ROOM_RECORD_SCHEMA_VERSION = "tuppi.server.room_record.v2"
 #: A room on a ruleset other than project_target_v1 records its ruleset_id.
 RULESET_ROOM_RECORD_SCHEMA_VERSION = "tuppi.server.room_record.v3"
 LEGACY_ROOM_RECORD_SCHEMA_VERSION = "tuppi.server.room_record.v1"
+#: A room that has paused or played more than one match: v3 plus
+#: match_index, paused and previous_matches. Other rooms keep writing v2/v3,
+#: so an earlier server can still read them.
+MULTI_MATCH_ROOM_RECORD_SCHEMA_VERSION = "tuppi.server.room_record.v4"
 POST_MATCH_ANALYSIS_RECORD_SCHEMA_VERSION = (
     "tuppi.server.post_match_analysis_record.v1"
 )
@@ -49,6 +53,7 @@ class FileRoomStore:
         if record.get("schema_version") not in (
             ROOM_RECORD_SCHEMA_VERSION,
             RULESET_ROOM_RECORD_SCHEMA_VERSION,
+            MULTI_MATCH_ROOM_RECORD_SCHEMA_VERSION,
         ):
             raise PersistenceError("unsupported room record schema_version")
         try:
@@ -142,6 +147,20 @@ class FileRoomStore:
         if type(response) is not dict:
             raise PersistenceError("persisted analysis response must be an object")
         return response
+
+    def discard_match_analyses(self, room_code: str) -> None:
+        """Remove a finished match's analysis caches before the room's rematch."""
+
+        if _ROOM_CODE.fullmatch(room_code) is None:
+            raise PersistenceError("analysis room_code is invalid")
+        if not self.root.exists():
+            return
+        try:
+            for path in (*self.root.glob(f"analysis-{room_code}.json"),
+                         *self.root.glob(f"deal-analysis-{room_code}-*.json")):
+                path.unlink()
+        except OSError as exc:
+            raise PersistenceError(f"cannot discard analyses of room {room_code}: {exc}") from exc
 
     def post_match_analysis_codes(self) -> tuple[str, ...]:
         """Return analysis artifact room codes and reject malformed entries."""

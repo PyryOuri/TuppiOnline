@@ -247,7 +247,8 @@ class HostedBoundary:
             await self.game._json_response(cors_send, 200, {})
             return
         if scope.get("method") == "GET" and path in {"/healthz", "/v1/compatibility"}:
-            await self.game._json_response(cors_send, 200, {"compatible": True,
+            from .app import FEATURES
+            await self.game._json_response(cors_send, 200, {"compatible": True, "features": list(FEATURES),
                 "protocol_version": "tuppi.network.v1", "ruleset_id": "project_target_v3",
                 "status": "ok", "bot": self.bot_identity})
             return

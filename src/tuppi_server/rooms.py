@@ -46,12 +46,13 @@ from .real_game_deal_analysis import (
 from .post_match_diagnostics import generate_post_match_diagnostics
 from .persistence import (
     LEGACY_ROOM_RECORD_SCHEMA_VERSION,
+    MULTI_MATCH_ROOM_RECORD_SCHEMA_VERSION,
     ROOM_RECORD_SCHEMA_VERSION,
     RULESET_ROOM_RECORD_SCHEMA_VERSION,
     FileRoomStore,
     PersistenceError,
 )
-from .projection import project_event_batch
+from .projection import project_event_batch, project_match_result
 from tuppi_engine import match_observation_for
 from tuppi_rules import SUPPORTED_RULESETS, RulesetId
 
@@ -94,6 +95,9 @@ DEFAULT_AI_ACTION_DELAY_MS = min(
     AI_ACTION_DELAY_OPTIONS_MS,
     key=lambda value: abs(value - round(AI_ACTION_DELAY_SECONDS * 1000)),
 )
+#: Earlier results a room keeps after rematches (summaries only).
+MAX_PREVIOUS_MATCHES = 10
+_PREVIOUS_MATCH_FIELDS = frozenset({"deals", "final_score", "match_ref", "winner_team"})
 
 
 @dataclass(slots=True)
@@ -120,6 +124,20 @@ class Room:
     ai_action_delay_ms: int = DEFAULT_AI_ACTION_DELAY_MS
     ruleset_id: RulesetId = RulesetId.PROJECT_TARGET_V1
     ai_profile_key: str = DEFAULT_AI_PROFILE_KEY
+    #: 0 for the room's first match; each rematch increments it.
+    match_index: int = 0
+    #: Host pause: no bot moves, deal starts or human moves until resumed.
+    paused: bool = False
+    previous_matches: list[dict[str, object]] = field(default_factory=list)
+
+    def match_ref(self) -> str:
+        """The current match's identity; a rematch gets a new one."""
+
+        base = f"room-{self.code.lower()}"
+        return base if self.match_index == 0 else f"{base}-{self.match_index + 1}"
+
+    def multi_match(self) -> bool:
+        return bool(self.match_index or self.paused or self.previous_matches)
 
     def session_for_seat(self, seat: int) -> Session | None:
         return next((item for item in self.sessions.values() if item.seat == seat), None)
@@ -160,6 +178,12 @@ class Room:
         }
         if self.ruleset_id is not RulesetId.PROJECT_TARGET_V1:
             snapshot["ruleset_id"] = self.ruleset_id.value
+        if self.paused:
+            snapshot["paused"] = True
+        if self.match_index:
+            snapshot["match_number"] = self.match_index + 1
+        if self.previous_matches:
+            snapshot["previous_matches"] = deepcopy(self.previous_matches)
         return snapshot
 
     def persistence_record(self) -> dict[str, object]:
@@ -188,6 +212,10 @@ class Room:
         if self.ruleset_id is not RulesetId.PROJECT_TARGET_V1:
             record["schema_version"] = RULESET_ROOM_RECORD_SCHEMA_VERSION
             record["ruleset_id"] = self.ruleset_id.value
+        if self.multi_match():
+            record.update(schema_version=MULTI_MATCH_ROOM_RECORD_SCHEMA_VERSION,
+                ruleset_id=self.ruleset_id.value, match_index=self.match_index,
+                paused=self.paused, previous_matches=deepcopy(self.previous_matches))
         return record
 
 
@@ -361,7 +389,7 @@ class RoomManager:
         session.ready = True
         if self._ready_to_start(room):
             room.runner = LiveMatchRunner(
-                match_ref=f"room-{room.code.lower()}",
+                match_ref=room.match_ref(),
                 ai_seats=frozenset(room.ai_seats),
                 contract_rollout_samples=self._contract_rollout_samples,
                 auto_run_ai=auto_run_ai,
@@ -371,6 +399,59 @@ class RoomManager:
             room.lifecycle = "playing"
         else:
             room.lifecycle = "ready"
+        self.persist(room)
+        return room
+
+    def set_paused(self, *, code: str, host_token: str, paused: bool) -> Room:
+        """Host pause/resume of a match in progress. Idempotent.
+
+        Callers hold the room's lock, so a pause lands between committed
+        actions: bots finish the replies already running, then nothing moves
+        (no bot move, deal start or human move) until the host resumes.
+        Locked but unrevealed bids stay locked.
+        """
+
+        room = self.get(code)
+        if room.host_token != host_token:
+            raise RoomError("host_required")
+        if room.runner is None or room.runner.terminal:
+            raise RoomError("match_not_active")
+        if room.paused != paused:
+            room.paused = paused
+            self.persist(room)
+        return room
+
+    def start_rematch(self, *, code: str, host_token: str) -> Room:
+        """Reopen a finished room for a new match with the same seats.
+
+        The finished match's result is kept as a summary. Readiness is
+        cleared so everyone confirms the (editable) bot seats again; the next
+        match gets a new identity and new bot controllers when it starts.
+        """
+
+        room = self.get(code)
+        if room.host_token != host_token:
+            raise RoomError("host_required")
+        if room.runner is None or not room.runner.terminal:
+            raise RoomError("match_not_complete")
+        result = project_match_result(room.runner.state)
+        room.previous_matches = [*room.previous_matches, {
+            "deals": len(room.runner.state.completed_deals),
+            "final_score": result["final_score"],
+            "match_ref": room.runner.match_ref,
+            "winner_team": result["winner_team"],
+        }][-MAX_PREVIOUS_MATCHES:]
+        room.match_index += 1
+        room.runner = None
+        room.paused = False
+        room.post_match_analysis = None
+        room.completed_deal_analyses.clear()
+        room.deal_reviews.clear()
+        for item in room.sessions.values():
+            item.ready = False
+        room.lifecycle = "configured" if room.ai_seats else "waiting"
+        if self._store is not None:
+            self._store.discard_match_analyses(room.code)
         self.persist(room)
         return room
 
@@ -787,7 +868,14 @@ class RoomManager:
         expected_v2 = expected_v1 | {"ai_action_delay_ms"}
         schema_version = record.get("schema_version")
         ruleset_id = RulesetId.PROJECT_TARGET_V1
-        if schema_version == RULESET_ROOM_RECORD_SCHEMA_VERSION:
+        if schema_version == MULTI_MATCH_ROOM_RECORD_SCHEMA_VERSION:
+            expected = expected_v2 | {"ruleset_id", "match_index", "paused", "previous_matches"}
+            ai_action_delay_ms = record.get("ai_action_delay_ms")
+            try:
+                ruleset_id = RulesetId(record.get("ruleset_id"))
+            except ValueError as exc:
+                raise PersistenceError("persisted ruleset_id is invalid") from exc
+        elif schema_version == RULESET_ROOM_RECORD_SCHEMA_VERSION:
             expected = expected_v2 | {"ruleset_id"}
             ai_action_delay_ms = record.get("ai_action_delay_ms")
             try:
@@ -835,6 +923,18 @@ class RoomManager:
             ai_action_delay_ms=ai_action_delay_ms,
             ruleset_id=ruleset_id,
         )
+        if schema_version == MULTI_MATCH_ROOM_RECORD_SCHEMA_VERSION:
+            match_index, paused, previous = record["match_index"], record["paused"], record["previous_matches"]
+            if type(match_index) is not int or match_index < 0 or not isinstance(paused, bool):
+                raise PersistenceError("persisted match_index or paused is invalid")
+            if (type(previous) is not list or len(previous) > MAX_PREVIOUS_MATCHES or any(
+                    type(item) is not dict or set(item) != _PREVIOUS_MATCH_FIELDS
+                    or type(item["deals"]) is not int or not isinstance(item["match_ref"], str)
+                    or type(item["winner_team"]) is not int or type(item["final_score"]) is not list
+                    or len(item["final_score"]) != 2 or any(type(v) is not int for v in item["final_score"])
+                    for item in previous)):
+                raise PersistenceError("persisted previous_matches are invalid")
+            room.match_index, room.paused, room.previous_matches = match_index, paused, previous
         for raw_session in sessions_data:
             if type(raw_session) is not dict or set(raw_session) != {
                 "display_name", "ready", "seat", "token"
@@ -869,11 +969,13 @@ class RoomManager:
             if type(runner_record) is not dict:
                 raise PersistenceError("persisted runner must be an object or null")
             room.runner = LiveMatchRunner.from_persistence_record(runner_record)
-            if room.runner.match_ref != f"room-{room.code.lower()}":
+            if room.runner.match_ref != room.match_ref():
                 raise PersistenceError("persisted runner match_ref disagrees with room")
             if room.runner.ruleset_id is not room.ruleset_id:
                 raise PersistenceError("persisted runner ruleset disagrees with room")
             room.lifecycle = "playing" if not room.runner.terminal else "completed"
+        if room.paused and (room.runner is None or room.runner.terminal):
+            raise PersistenceError("persisted pause has no match in progress")
         return room
 
     def _new_code(self) -> str:

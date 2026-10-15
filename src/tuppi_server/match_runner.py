@@ -768,6 +768,7 @@ class LiveMatchRunner:
         on_human_action: Callable[[], Awaitable[None]] | None = None,
         on_state_change: Callable[[], Awaitable[None]] | None = None,
         ai_action_delay_seconds: float | None = None,
+        paused: Callable[[], bool] | None = None,
     ) -> dict[str, object]:
         """Submit an action while allowing the server to pace AI turn starts."""
 
@@ -785,6 +786,7 @@ class LiveMatchRunner:
                 await self._run_ai_until_human_or_terminal_async(
                     on_state_change=on_state_change,
                     delay_seconds=ai_action_delay_seconds,
+                    paused=paused,
                 )
             return locked
         pending, immediate = self._prepare_human_submission(
@@ -803,6 +805,7 @@ class LiveMatchRunner:
         await self._run_ai_until_human_or_terminal_async(
             on_state_change=on_state_change,
             delay_seconds=ai_action_delay_seconds,
+            paused=paused,
         )
         return self._complete_human_submission(pending)
 
@@ -811,12 +814,14 @@ class LiveMatchRunner:
         *,
         on_state_change: Callable[[], Awaitable[None]] | None = None,
         ai_action_delay_seconds: float | None = None,
+        paused: Callable[[], bool] | None = None,
     ) -> None:
         """Advance AI seats with the live-action delay between every move."""
 
         await self._run_ai_until_human_or_terminal_async(
             on_state_change=on_state_change,
             delay_seconds=ai_action_delay_seconds,
+            paused=paused,
         )
 
     def _submit_locked_bid(
@@ -1025,12 +1030,17 @@ class LiveMatchRunner:
         *,
         on_state_change: Callable[[], Awaitable[None]] | None = None,
         delay_seconds: float | None = None,
+        paused: Callable[[], bool] | None = None,
     ) -> None:
         delay = AI_ACTION_DELAY_SECONDS if delay_seconds is None else delay_seconds
         if not isinstance(delay, (int, float)) or isinstance(delay, bool) or not 0 <= delay <= 60:
             raise ValueError("AI action delay must be numeric and in 0..60")
         revealed = 0
         while not self.terminal:
+            # A host pause stops here, between committed actions: no deal
+            # starts, no locked bids resolve and no bot moves until resumed.
+            if paused is not None and paused():
+                return
             self._ensure_deal_started()
             if self.collecting_bids():
                 # All bids are taken at once when every human has locked; the

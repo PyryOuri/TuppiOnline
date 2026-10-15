@@ -23,6 +23,9 @@ from .rooms import RoomError, RoomManager
 
 
 Send = Callable[[dict[str, Any]], Awaitable[None]]
+#: Optional commands this server accepts; clients show their controls only
+#: when the server lists them.
+FEATURES = ("pause", "rematch")
 Receive = Callable[[], Awaitable[dict[str, Any]]]
 
 
@@ -65,6 +68,7 @@ class TuppiASGIApp:
                 200,
                 {
                     "compatible": True,
+                    "features": list(FEATURES),
                     "protocol_version": PROTOCOL_VERSION,
                     "status": "ok",
                 },
@@ -346,6 +350,22 @@ class TuppiASGIApp:
                 if not was_playing:
                     self._schedule_ai_continuation(room.code)
             return
+        if message_type in {"pause", "resume"}:
+            self._require_fields(payload, required=set())
+            room = self.rooms.set_paused(code=room.code, host_token=session.token,
+                                         paused=message_type == "pause")
+            await self._broadcast_lobby(room.code)
+            if not room.paused:
+                self._schedule_ai_continuation(room.code)
+            return
+        if message_type == "rematch":
+            self._require_fields(payload, required=set())
+            room = self.rooms.start_rematch(code=room.code, host_token=session.token)
+            # The next match's events start again from 0 for every seat.
+            for other in self._connections.get(room.code, {}).values():
+                other.last_event_index = -1
+            await self._broadcast_lobby(room.code)
+            return
         if message_type == "reconnect":
             self._require_fields(payload, required={"last_applied_event_index"})
             runner = self._require_runner(room)
@@ -370,24 +390,12 @@ class TuppiASGIApp:
             runner = self._require_runner(room)
             try:
                 action = action_from_data(payload.get("action"))
-            except Exception as exc:
-                await self._send_message(
-                    connection.send,
-                    "action_acknowledgement",
-                    {
-                        "accepted_event_indices": [],
-                        "client_action_id": (
-                            payload.get("client_action_id")
-                            if isinstance(payload.get("client_action_id"), str)
-                            else "malformed-action"
-                        ),
-                        "last_event_index": runner.event_cursor,
-                        "match_ref": runner.match_ref,
-                        "schema_version": "tuppi.network.action_acknowledgement.v1",
-                        "status": "rejected",
-                        "code": "malformed_action",
-                    },
-                )
+            except Exception:
+                await self._reject_submission(connection, payload, runner, "malformed_action")
+                return
+            if room.paused:
+                # Not recorded: the player chooses again after the resume.
+                await self._reject_submission(connection, payload, runner, "paused")
                 return
             async def publish_ai_action() -> None:
                 self.rooms.persist(room)
@@ -406,6 +414,7 @@ class TuppiASGIApp:
                 on_human_action=publish_human_action,
                 on_state_change=publish_ai_action,
                 ai_action_delay_seconds=room.ai_action_delay_ms / 1000,
+                paused=lambda: room.paused,
             )
             if result.get("status") == "accepted":
                 if runner.terminal:
@@ -451,6 +460,26 @@ class TuppiASGIApp:
             return
         raise ProtocolError("unknown_message_type")
 
+    async def _reject_submission(self, connection: Connection, payload: dict[str, object],
+                                 runner, code: str) -> None:
+        await self._send_message(
+            connection.send,
+            "action_acknowledgement",
+            {
+                "accepted_event_indices": [],
+                "client_action_id": (
+                    payload.get("client_action_id")
+                    if isinstance(payload.get("client_action_id"), str)
+                    else "malformed-action"
+                ),
+                "last_event_index": runner.event_cursor,
+                "match_ref": runner.match_ref,
+                "schema_version": "tuppi.network.action_acknowledgement.v1",
+                "status": "rejected",
+                "code": code,
+            },
+        )
+
     async def _broadcast_lobby(self, room_code: str) -> None:
         room = self.rooms.get(room_code)
         for connection in tuple(self._connections.get(room.code, {}).values()):
@@ -492,6 +521,7 @@ class TuppiASGIApp:
         await runner.run_ai_async(
             on_state_change=publish_ai_action,
             ai_action_delay_seconds=room.ai_action_delay_ms / 1000,
+            paused=lambda: room.paused,
         )
         self.rooms.persist(room)
         await self._broadcast_match(room.code)
