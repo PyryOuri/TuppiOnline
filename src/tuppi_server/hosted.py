@@ -18,9 +18,29 @@ import re
 import time
 from urllib.parse import urlsplit
 
+from .persistence import PersistenceError
+
 ROOM_ROUTE = re.compile(r"^/v1/rooms/([A-Z0-9]{6})/(join|configure|settings|ready)$", re.I)
 #: Wrong room-creation passcodes accepted per minute before refusing all tries.
 MAX_PASSCODE_FAILURES_PER_MINUTE = 20
+#: How often idle rooms are archived and old archives pruned.
+MAINTENANCE_INTERVAL_SECONDS = 3600
+
+
+def storage_limits_from_environment() -> dict:
+    """Archive retention and the free-space floor for new rooms."""
+    def number(key, default, low, high):
+        raw = os.environ.get(key, str(default))
+        try:
+            value = float(raw)
+        except ValueError as exc:
+            raise ValueError(f"{key} must be a number") from exc
+        if not low <= value <= high:
+            raise ValueError(f"{key} must be in {low}..{high}")
+        return value
+    return {"archive_days": number("TUPPI_ARCHIVE_DAYS", 30, 1, 3650),
+            "archive_max_bytes": int(number("TUPPI_ARCHIVE_MAX_MB", 200, 1, 100000) * 2**20),
+            "min_free_bytes": int(number("TUPPI_MIN_FREE_MB", 50, 1, 100000) * 2**20)}
 
 
 def room_passcode_from_environment() -> str | None:
@@ -104,7 +124,7 @@ def create_hosted_app():
     # Import only after the hosted configuration and weights have been checked.
     from .app import app
     return HostedBoundary(app, origins=origins, bot_identity=identity, max_bot_rooms=bot_room_limit(level, 8),
-                          room_passcode=room_passcode_from_environment())
+                          room_passcode=room_passcode_from_environment(), **storage_limits_from_environment())
 
 
 class PasscodeRefused(Exception):
@@ -115,8 +135,12 @@ class PasscodeRefused(Exception):
 
 class HostedBoundary:
     def __init__(self, game, *, origins, bot_identity=None, max_rooms=8, max_connections=32, max_bot_rooms=1,
-                 max_retained_rooms=32, room_passcode=None):
+                 max_retained_rooms=32, room_passcode=None, archive_days=30, archive_max_bytes=200 * 2**20,
+                 min_free_bytes=50 * 2**20):
         self.game = game
+        self.archive_days, self.archive_max_bytes = archive_days, archive_max_bytes
+        self.min_free_bytes = min_free_bytes
+        self.maintenance_task = None
         self.room_passcode = room_passcode
         self.passcode_failures = []
         self.origins = frozenset(origins)
@@ -148,6 +172,9 @@ class HostedBoundary:
         game.rooms.mark_ready = ready
 
         async def auth(request, send):
+            if game.rooms.storage_failed:
+                from .rooms import RoomError
+                raise RoomError("storage_unavailable")
             code = str(request.get("payload", {}).get("room_code", "")).upper()
             self.game.rooms.get(code)
             async with self._lock(code):
@@ -156,6 +183,9 @@ class HostedBoundary:
                 return connection
 
         async def message(connection, request):
+            if game.rooms.storage_failed and request.get("message_type") != "ping":
+                from .rooms import RoomError
+                raise RoomError("storage_unavailable")
             async with self._lock(connection.room_code):
                 await original_message(connection, request)
                 self.activity[connection.room_code] = time.time()
@@ -196,6 +226,47 @@ class HostedBoundary:
                 self.passcode_failures.append(now)
                 raise PasscodeRefused("invalid_room_passcode", 403)
         return json.dumps(payload).encode() if type(payload) is dict else body
+
+    def storage_state(self) -> str:
+        """failed: a save failed, so changes stop until a restart recovers the
+        last durable state. low: free space below the floor for new rooms."""
+        if self.game.rooms.storage_failed:
+            return "failed"
+        store = self.game.rooms._store
+        try:
+            if store is not None and store.free_bytes() < self.min_free_bytes:
+                return "low"
+        except OSError:
+            return "low"
+        return "ok"
+
+    def maintain(self) -> dict:
+        """Archive idle rooms and prune the archive (hourly and at startup)."""
+        self.expire_idle_rooms()
+        store = self.game.rooms._store
+        if store is None:
+            return {"removed": 0}
+        return store.prune_archive(max_age_days=self.archive_days, max_bytes=self.archive_max_bytes)
+
+    async def _maintenance_loop(self):
+        while True:
+            await asyncio.sleep(MAINTENANCE_INTERVAL_SECONDS)
+            try:
+                self.maintain()
+            except Exception:  # never let housekeeping stop the authority
+                pass
+
+    async def _http_game(self, scope, receive, send):
+        started = False
+        async def tracked(message):
+            nonlocal started
+            started = started or message["type"] == "http.response.start"
+            await send(message)
+        try:
+            await self.game(scope, receive, tracked)
+        except PersistenceError:
+            if not started:
+                await self.game._json_response(send, 503, {"error": "storage_unavailable"})
 
     def _lock(self, code):
         return self.room_locks.setdefault(code, asyncio.Lock())
@@ -243,10 +314,14 @@ class HostedBoundary:
                         asyncio.get_running_loop().set_default_executor(self.executor)
                         from .hosted_bot import warm
                         await asyncio.to_thread(warm)
+                        self.maintain()
+                        self.maintenance_task = asyncio.create_task(self._maintenance_loop())
                         await send({"type": "lifespan.startup.complete"})
                     except Exception as exc:
                         await send({"type": "lifespan.startup.failed", "message": str(exc)})
                 elif message["type"] == "lifespan.shutdown":
+                    if self.maintenance_task is not None:
+                        self.maintenance_task.cancel()
                     for task in self.game._ai_tasks.values():
                         task.cancel()
                     await asyncio.gather(*self.game._ai_tasks.values(), return_exceptions=True)
@@ -265,7 +340,7 @@ class HostedBoundary:
             return
         path = scope.get("path", "")
         if kind == "websocket":
-            if path != "/v1/ws" or self.connections >= self.max_connections:
+            if path != "/v1/ws" or self.connections >= self.max_connections or self.game.rooms.storage_failed:
                 await send({"type": "websocket.close", "code": 1013})
                 return
             self.connections += 1
@@ -282,6 +357,10 @@ class HostedBoundary:
                 await self.game(scope, limited_receive, send)
             except asyncio.TimeoutError:
                 await send({"type": "websocket.close", "code": 1001})
+            except PersistenceError:
+                # The move was not saved and was not acknowledged; the client
+                # retries it after the restart that recovers durable state.
+                await send({"type": "websocket.close", "code": 1011})
             finally:
                 self.connections -= 1
             return
@@ -300,10 +379,16 @@ class HostedBoundary:
             return
         if scope.get("method") == "GET" and path in {"/healthz", "/v1/compatibility"}:
             from .app import FEATURES
-            await self.game._json_response(cors_send, 200, {"compatible": True, "features": list(FEATURES),
+            storage = self.storage_state()
+            await self.game._json_response(cors_send, 503 if storage == "failed" else 200, {
+                "compatible": True, "features": list(FEATURES),
                 "create_passcode_required": self.room_passcode is not None,
                 "protocol_version": "tuppi.network.v1", "ruleset_id": "project_target_v3",
-                "status": "ok", "bot": self.bot_identity})
+                "status": "storage_failed" if storage == "failed" else "ok", "storage": storage,
+                "bot": self.bot_identity})
+            return
+        if scope.get("method") == "POST" and self.game.rooms.storage_failed:
+            await self.game._json_response(cors_send, 503, {"error": "storage_unavailable"})
             return
         route = ROOM_ROUTE.fullmatch(path)
         if scope.get("method") != "POST" or (path != "/v1/rooms" and route is None):
@@ -330,6 +415,9 @@ class HostedBoundary:
                 return
             async def creation_body():
                 return {"type": "http.request", "body": body, "more_body": False}
+            if self.storage_state() == "low":
+                await self.game._json_response(cors_send, 503, {"error": "storage_low"})
+                return
             async with self.creation_lock:
                 self.expire_idle_rooms()
                 self.created = [t for t in self.created if time.time() - t < 60]
@@ -347,7 +435,7 @@ class HostedBoundary:
                     self._archive(candidates[0])
                 self.created.append(time.time())
                 before = set(self.game.rooms._rooms)
-                await self.game(scope, creation_body, cors_send)
+                await self._http_game(scope, creation_body, cors_send)
                 for code in set(self.game.rooms._rooms) - before:
                     self.activity[code] = time.time()
         else:
@@ -355,4 +443,4 @@ class HostedBoundary:
                 await self.game._json_response(cors_send, 404, {"error": "room_not_found"})
                 return
             async with self._lock(route[1].upper()):
-                await self.game(scope, limited_body, cors_send)
+                await self._http_game(scope, limited_body, cors_send)

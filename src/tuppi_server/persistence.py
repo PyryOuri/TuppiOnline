@@ -11,8 +11,11 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import re
+import shutil
+import time
 
 from tuppi_engine import atomic_write_canonical_json, strict_json_load_file
+from tuppi_engine.errors import SerializationError
 
 
 ROOM_RECORD_SCHEMA_VERSION = "tuppi.server.room_record.v2"
@@ -62,8 +65,54 @@ class FileRoomStore:
             target = self.root / f"room-{code}.json"
             atomic_write_canonical_json(target, record)
             os.chmod(target, 0o600)
-        except OSError as exc:
-            raise PersistenceError(f"cannot persist room {code}: {exc}") from exc
+            self._sync_directory()
+        except (OSError, SerializationError) as exc:
+            # A full disk surfaces as SerializationError (a ValueError); it
+            # must not reach clients as an ordinary request error.
+            raise PersistenceError(f"cannot persist room {code}") from exc
+
+    def _sync_directory(self) -> None:
+        """Make the atomic rename itself durable before acknowledging."""
+        descriptor = os.open(self.root, os.O_RDONLY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+
+    def remove_stale_temporaries(self) -> int:
+        """Delete half-written records left by a crash. Startup only (one writer)."""
+        if not self.root.is_dir():
+            return 0
+        stale = [path for path in self.root.glob(".room-*.json.*.tmp") if path.is_file() and not path.is_symlink()]
+        for path in stale:
+            path.unlink()
+        return len(stale)
+
+    def free_bytes(self) -> int:
+        target = self.root if self.root.exists() else self.root.parent
+        return shutil.disk_usage(target).free
+
+    def prune_archive(self, *, max_age_days: float, max_bytes: int) -> dict[str, int]:
+        """Delete archived (expired) room records older than the retention
+        period, then the oldest ones until the archive fits its byte budget."""
+        archive = self.root / "expired"
+        if not archive.is_dir():
+            return {"removed": 0, "kept": 0, "bytes": 0}
+        files = sorted((path for path in archive.glob("room-*.json") if path.is_file() and not path.is_symlink()),
+                       key=lambda path: path.stat().st_mtime)
+        now, removed = time.time(), 0
+        kept = []
+        for path in files:
+            if now - path.stat().st_mtime > max_age_days * 86400:
+                path.unlink(); removed += 1
+            else:
+                kept.append(path)
+        total = sum(path.stat().st_size for path in kept)
+        while kept and total > max_bytes:
+            oldest = kept.pop(0)
+            total -= oldest.stat().st_size
+            oldest.unlink(); removed += 1
+        return {"removed": removed, "kept": len(kept), "bytes": total}
 
     def load_all(self) -> tuple[dict[str, object], ...]:
         if not self.root.exists():
