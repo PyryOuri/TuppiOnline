@@ -33,18 +33,35 @@ def validate_origins(raw: str) -> frozenset[str]:
     return origins
 
 
+def _verified_model_manifest(root: Path, level: str) -> dict:
+    if level not in {"lite", "full"}:
+        raise ValueError("TUPPI_HOSTED_BOT_LEVEL must be lite or full")
+    models = root / "models"
+    lite = models / "hosted-models.lite.json"
+    full = models / "hosted-models.json"
+    if level == "lite" and lite.is_file():
+        path, expected = lite, {"vrpo3_final.lite.npz"}
+    else:
+        if level == "full" and not full.is_file() and lite.is_file():
+            raise RuntimeError("this runtime contains only the lite bot; use the full image for TUPPI_HOSTED_BOT_LEVEL=full")
+        path = full
+        expected = {"vrpo1_actor_0504.pt", "vrpo3_final.pt", "equity_incumbent.json", "vrpo3_final.lite.npz"}
+    manifest = json.loads(path.read_text())
+    if type(manifest) is not dict or set(manifest) != expected:
+        raise RuntimeError("hosted model manifest fields are invalid")
+    for name, digest in manifest.items():
+        if (not isinstance(digest, str) or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+                or hashlib.sha256((models / name).read_bytes()).hexdigest() != digest):
+            raise RuntimeError(f"hosted model identity mismatch: {name}")
+    return manifest
+
+
 def verify_bot_identity(level: str = "full") -> dict:
     spec = importlib.util.find_spec("tuppi_ai")
     if spec is None or spec.origin is None:
         raise RuntimeError("the trained bot package is required")
     root = Path(spec.origin).resolve().parents[1]
-    manifest = json.loads((root / "models/hosted-models.json").read_text())
-    expected = {"vrpo1_actor_0504.pt", "vrpo3_final.pt", "equity_incumbent.json", "vrpo3_final.lite.npz"}
-    if set(manifest) != expected:
-        raise RuntimeError("hosted model manifest fields are invalid")
-    for name, digest in manifest.items():
-        if hashlib.sha256((root / "models" / name).read_bytes()).hexdigest() != digest:
-            raise RuntimeError(f"hosted model identity mismatch: {name}")
+    manifest = _verified_model_manifest(root, level)
     from tuppi_ai import native
     bot = ({"profile": "tuppi_ai_lite_v1", "level": "lite", "search": None} if level == "lite"
            else {"profile": "tuppi_ai_search_v1", "level": "full", "worlds": 1024})
