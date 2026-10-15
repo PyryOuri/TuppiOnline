@@ -66,8 +66,11 @@ which its bid matters. In the public event log each bid appears as
 
 The live server collects the human players' bids simultaneously: every human
 locks a bid while seeing nothing of the others; the bids are then applied in
-seat order; locked bids after the first RAMI are discarded unseen and are
-never stored.
+seat order; locked bids after the first RAMI are discarded unseen. Until the
+bids resolve, a locked bid is kept only in the server's private room record,
+so a restart does not lose it, and it is never shown to another seat. A
+discarded bid is deleted at resolution; only its acknowledgement is kept,
+for duplicate retries, until the next deal starts.
 
 ## Ruleset versioning
 

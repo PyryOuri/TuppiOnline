@@ -83,7 +83,7 @@ def test_bids_are_collected_blind_and_applied_together():
     assert restored.persistence_record() == runner.persistence_record()
 
 
-def test_bid_after_the_first_rami_is_never_revealed_or_stored():
+def test_bid_after_the_first_rami_is_never_revealed_or_kept():
     rng = random.Random("discard")
     for attempt in range(30):
         runner = _runner(dealer=3)  # forehand = seat 0
@@ -102,11 +102,18 @@ def test_bid_after_the_first_rami_is_never_revealed_or_stored():
             if seat != 2:
                 assert '"seat": 2, "shown_card"' not in text and _bid_text(bid2) not in text.replace(
                     json.dumps(runner.observation(seat)["own_hand"]), "")
-        assert '"lock-2"' not in record
-        # a retry of the discarded lock is answered as a duplicate, not re-applied
-        again = runner.submit(seat=2, client_action_id="lock-2", match_ref=runner.match_ref,
-                              expected_event_index=runner.event_cursor, action=action_from_data(bid2))
-        assert again["status"] == "duplicate"
+        # Only the discarded lock's acknowledgement is kept (for duplicate
+        # retries in this deal), never its card or contract.
+        stored = runner.persistence_record()
+        assert stored.get("locked_bids", []) == []
+        assert set(stored["discarded_bid_acks"]) == {"lock-2"}
+        assert "action" not in stored["discarded_bid_acks"]["lock-2"] and "shown_card" not in record.split(
+            '"discarded_bid_acks"')[1].split('"initial_dealer"')[0]
+        # a retry of the discarded lock is answered as a duplicate, not re-applied, also after a restart
+        for current in (runner, LiveMatchRunner.from_persistence_record(json.loads(record))):
+            again = current.submit(seat=2, client_action_id="lock-2", match_ref=current.match_ref,
+                                   expected_event_index=current.event_cursor, action=action_from_data(bid2))
+            assert again["status"] == "duplicate"
         return
     raise AssertionError("no deal reached")
 
@@ -254,16 +261,18 @@ def test_tuppi_ai_profile_plays_a_v3_deal():
     validate_instance(room.snapshot(), "https://example.invalid/tuppi/schemas/network/http_api.schema.json#/$defs/lobbySnapshot")
 
 
-def test_restart_mid_bidding_forgets_pending_locks_and_restart_mid_sooli_resumes():
+def test_restart_mid_bidding_keeps_pending_locks_and_restart_mid_sooli_resumes():
     rng = random.Random("restart")
     runner = LiveMatchRunner(match_ref="restart-v3", ruleset_id=V3)
     bid = runner.bidding(2)["options"][0]
     _lock(runner, 2, bid, "pending-2")
     record = json.loads(json.dumps(runner.persistence_record()))
-    assert "pending-2" not in json.dumps(record)
+    assert [item["client_action_id"] for item in record["locked_bids"]] == ["pending-2"]
     restored = LiveMatchRunner.from_persistence_record(record)
-    assert restored.collecting_bids() and restored.bidding(2)["own_bid"] is None
-    assert restored.bidding(2)["options"]  # the seat simply locks again
+    assert restored.collecting_bids() and restored.bidding(2)["own_bid"] == bid
+    assert restored.bidding(2)["options"] == []  # the seat does not lock again
+    for seat in (0, 1, 3):
+        assert restored.bidding(seat)["own_bid"] is None and restored.observation(seat)["show_actions"] == []
     # drive to a sooli exchange or sooli play, restart there, and finish the deal
     for attempt in range(60):
         runner = LiveMatchRunner(match_ref=f"restart-s{attempt}", ruleset_id=V3)
