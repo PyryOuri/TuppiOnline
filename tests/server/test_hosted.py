@@ -147,6 +147,30 @@ def test_failed_socket_does_not_abort_other_players():
     asyncio.run(scenario())
 
 
+def test_a_stalled_connection_cannot_hold_up_the_room(monkeypatch):
+    from tuppi_server import app as app_module
+    monkeypatch.setattr(app_module,'SEND_TIMEOUT_SECONDS',0.05)
+    async def scenario():
+        rooms=RoomManager(ai_profile_key=TEST_AI_PROFILE_KEY)
+        room,host=rooms.create_room(display_name='Host',ai_seats=frozenset({1,3}))
+        _,guest=rooms.join_room(code=room.code,display_name='Sleeping phone')
+        rooms.mark_ready(code=room.code,token=host.token); rooms.mark_ready(code=room.code,token=guest.token)
+        app=TuppiASGIApp(rooms); received=[]; closes=[]
+        async def stalled(message):
+            if message.get('type')=='websocket.close': closes.append(message); return
+            await asyncio.Event().wait()  # a phone that stopped reading
+        async def live(message): received.append(message)
+        app._connections[room.code]={guest.token:Connection(room.code,guest.token,2,stalled),
+            host.token:Connection(room.code,host.token,0,live)}
+        started=time.perf_counter()
+        await app._broadcast_match(room.code)
+        await app._broadcast_lobby(room.code)
+        assert time.perf_counter()-started<1.0
+        assert guest.token not in app._connections[room.code] and len(received)==2
+        assert closes==[{'type':'websocket.close','code':1011}]
+    asyncio.run(scenario())
+
+
 def test_restart_at_final_human_card_does_not_invent_a_deal(monkeypatch):
     from tuppi_server import match_runner
     monkeypatch.setattr(match_runner,'REVEAL_PAUSE_SECONDS',0)
