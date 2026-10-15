@@ -149,8 +149,8 @@ def _construct_ai_agents(
         return {seat: FirstLegalActionAgent() for seat in seats}
     if profile_key == TUPPI_AI_PROFILE_KEY:
         if os.environ.get("TUPPI_HOSTED_BOT") == "1":
-            from .hosted_bot import HostedSearchAgent
-            return {seat: HostedSearchAgent(seat) for seat in seats}
+            from .hosted_bot import hosted_agents
+            return hosted_agents(seats)
         try:
             from tuppi_ai.best import best_agents
         except ImportError as exc:

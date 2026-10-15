@@ -188,3 +188,48 @@ def test_static_delivery_has_correct_wasm_and_script_mime_and_private_paths_are_
         config=await get('/deployment.json')
         assert json.loads(config[1]['body'])['backend']=='https://tuppi.example'
     asyncio.run(scenario())
+
+
+def test_lite_level_cursor_round_trips_and_rejects_other_checkpoints(monkeypatch):
+    monkeypatch.setenv('TUPPI_HOSTED_BOT','1'); monkeypatch.setenv('TUPPI_HOSTED_BOT_LEVEL','lite')
+    from tuppi_server.hosted_bot import HostedLiteAgent
+    runner=LiveMatchRunner(match_ref='hosted-lite-cursor',ai_seats=frozenset({1,2,3}),
+        ai_profile_key=TUPPI_AI_PROFILE_KEY,ruleset_id=RulesetId.PROJECT_TARGET_V3,auto_run_ai=False)
+    assert all(type(a) is HostedLiteAgent for a in runner._ai_agents.values())
+    for seat,agent in runner._ai_agents.items(): agent.rng_state=987654321+seat
+    record=runner.persistence_record()
+    restored=LiveMatchRunner.from_persistence_record(record)
+    assert {s:a.checkpoint() for s,a in restored._ai_agents.items()} == {s:a.checkpoint() for s,a in runner._ai_agents.items()}
+    full=dict(record,bot_controllers={k:{'schema':'tuppi.hosted.controller.v1','worlds':1024,'rng':1} for k in record['bot_controllers']})
+    with pytest.raises(ValueError,match='controller'): LiveMatchRunner.from_persistence_record(full)
+
+
+def test_lite_bot_plays_a_complete_deal_through_the_runner(monkeypatch):
+    monkeypatch.setenv('TUPPI_HOSTED_BOT','1'); monkeypatch.setenv('TUPPI_HOSTED_BOT_LEVEL','lite')
+    from tuppi_server.hosted_bot import hosted_agents
+    from tuppi_engine import ExplicitDeal, apply_match_action, begin_explicit_deal, create_match, match_observation_for
+    from tuppi_engine.state import ACTIVE_PHASES
+    from tuppi_rules import MatchScore
+    from tuppi_rules.cards import FULL_DECK
+    agents=hosted_agents(range(4)); cards=list(FULL_DECK)
+    state=begin_explicit_deal(create_match(initial_score=MatchScore(0,0),initial_dealer=0,match_ref='lite-deal',
+        ruleset_id=RulesetId.PROJECT_TARGET_V3),ExplicitDeal(dealer=0,hands=tuple(tuple(cards[s::4]) for s in range(4))))
+    while state.phase in ACTIVE_PHASES:
+        seat=state.current_actor; state=apply_match_action(state,agents[seat].choose_action(match_observation_for(state,seat)))
+    assert state.completed_deals and agents[0].last_stats['decision_seconds']<1
+
+
+def test_bot_level_is_validated_and_lite_admits_bots_in_every_room(monkeypatch):
+    from tuppi_server.hosted import bot_room_limit, verify_bot_identity
+    from tuppi_server.hosted_bot import level
+    monkeypatch.setenv('TUPPI_HOSTED_BOT_LEVEL','fast')
+    with pytest.raises(ValueError,match='lite or full'): level()
+    assert bot_room_limit('full',8)==1 and bot_room_limit('lite',8)==8
+    rooms=RoomManager(ruleset_id=RulesetId.PROJECT_TARGET_V3,ai_profile_key=TEST_AI_PROFILE_KEY)
+    HostedBoundary(TuppiASGIApp(rooms),origins={'https://tuppi.example'},max_bot_rooms=bot_room_limit('lite',8))
+    for index in range(3):
+        room,host=rooms.create_room(display_name=f'Room {index}',ai_seats=frozenset({1,2,3}))
+        rooms.mark_ready(code=room.code,token=host.token,auto_run_ai=False)
+        assert room.runner is not None
+    identity=verify_bot_identity('lite')
+    assert identity['profile']=='tuppi_ai_lite_v1' and identity['search'] is None

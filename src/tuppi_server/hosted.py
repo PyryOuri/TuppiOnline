@@ -33,22 +33,30 @@ def validate_origins(raw: str) -> frozenset[str]:
     return origins
 
 
-def verify_bot_identity() -> dict:
+def verify_bot_identity(level: str = "full") -> dict:
     spec = importlib.util.find_spec("tuppi_ai")
     if spec is None or spec.origin is None:
         raise RuntimeError("the trained bot package is required")
     root = Path(spec.origin).resolve().parents[1]
     manifest = json.loads((root / "models/hosted-models.json").read_text())
-    expected = {"vrpo1_actor_0504.pt", "vrpo3_final.pt", "equity_incumbent.json"}
+    expected = {"vrpo1_actor_0504.pt", "vrpo3_final.pt", "equity_incumbent.json", "vrpo3_final.lite.npz"}
     if set(manifest) != expected:
         raise RuntimeError("hosted model manifest fields are invalid")
     for name, digest in manifest.items():
         if hashlib.sha256((root / "models" / name).read_bytes()).hexdigest() != digest:
             raise RuntimeError(f"hosted model identity mismatch: {name}")
     from tuppi_ai import native
-    return {"profile": "tuppi_ai_search_v1", "worlds": 1024,
+    bot = ({"profile": "tuppi_ai_lite_v1", "level": "lite", "search": None} if level == "lite"
+           else {"profile": "tuppi_ai_search_v1", "level": "full", "worlds": 1024})
+    return {**bot,
         "models_sha256": hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest(),
         "native_sha256": hashlib.sha256(Path(native.lib._name).read_bytes()).hexdigest()}
+
+
+def bot_room_limit(level: str, max_rooms: int) -> int:
+    """Active bot-filled matches. The full bot qualified one per CPU; the lite
+    bot costs about 1 ms of CPU per seat and deal, so every room may use bots."""
+    return max_rooms if level == "lite" else 1
 
 
 def create_hosted_app():
@@ -61,10 +69,12 @@ def create_hosted_app():
             "TUPPI_CONTRACT_ROLLOUT_SAMPLES": "0"}.items():
         if os.environ.get(key) != expected:
             raise ValueError(f"hosted deployment requires {key}={expected}")
-    identity = verify_bot_identity()
+    from .hosted_bot import level as bot_level
+    level = bot_level()
+    identity = verify_bot_identity(level)
     # Import only after the hosted configuration and weights have been checked.
     from .app import app
-    return HostedBoundary(app, origins=origins, bot_identity=identity)
+    return HostedBoundary(app, origins=origins, bot_identity=identity, max_bot_rooms=bot_room_limit(level, 8))
 
 
 class HostedBoundary:
