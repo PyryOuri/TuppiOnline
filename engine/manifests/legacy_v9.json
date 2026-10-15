@@ -1,0 +1,54 @@
+{
+  "schema_version": "tuppi.legacy.manifest.v1",
+  "artifact_id": "legacy_v9_unverified",
+  "manifest_created": "2026-07-31",
+  "audit_python_version": "3.14.3",
+  "immutable": true,
+  "source_provenance": {
+    "status": "unavailable",
+    "statement": "Source provenance and version history are unavailable."
+  },
+  "historical_results": {
+    "status": "unavailable",
+    "statement": "Historical evaluation results are unavailable and no historical strength claims are verified."
+  },
+  "validation_status": "This artifact is not a validated rules implementation and must not be treated as the target Tuppi ruleset.",
+  "artifacts": [
+    {
+      "path": "Archive/tuppi_emulator_v9.py",
+      "sha256": "f5d52f2a41d0c1fc2db18fa54f1171355d432d581c6eb6cb18c1298218aa87c9",
+      "size_bytes": 71435,
+      "text_encoding": "UTF-8",
+      "role": "Interactive legacy emulator, agents, PIMC, scoring, analysis, and CLI"
+    },
+    {
+      "path": "Archive/tuppi_gui_client_multi_v8.py",
+      "sha256": "a926f5a2a7714b82eb7eaa3d4f640ef1676011874cb090712b862c27d63a2558",
+      "size_bytes": 16033,
+      "text_encoding": "ASCII",
+      "role": "Legacy Tk LAN client for a missing host implementation"
+    }
+  ],
+  "known_entry_points": [
+    {
+      "command": "python Archive/tuppi_emulator_v9.py",
+      "status": "interactive_only"
+    },
+    {
+      "command": "python Archive/tuppi_gui_client_multi_v8.py --host HOST",
+      "status": "requires_missing_lan_host_and_tk"
+    }
+  ],
+  "known_major_limitations": [
+    "Rules, state mutation, agents, search, presentation, and analysis are coupled in one module.",
+    "The default behavior is not the intended or current tournament ruleset.",
+    "The legacy code uses one module-global random stream for dealing, search, hints, and analysis.",
+    "Agent observations and hands are mutable and not protected by an enforceable information boundary.",
+    "Several invalid configurations and invalid actions are silently normalized or replaced.",
+    "PIMC determinizations omit some public-information constraints, including inferred voids.",
+    "There is no native finite all-AI runner or structured result format.",
+    "The GUI host/server is unavailable.",
+    "There are no preserved datasets, trained models, experiment configurations, or historical results."
+  ]
+}
+

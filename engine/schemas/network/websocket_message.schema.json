@@ -1,0 +1,625 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json",
+  "title": "Tuppi network v1 WebSocket messages",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/hello"
+    },
+    {
+      "$ref": "#/$defs/helloAcknowledgement"
+    },
+    {
+      "$ref": "#/$defs/compatibilityResult"
+    },
+    {
+      "$ref": "#/$defs/lobbySnapshot"
+    },
+    {
+      "$ref": "#/$defs/ready"
+    },
+    {
+      "$ref": "#/$defs/matchUpdate"
+    },
+    {
+      "$ref": "#/$defs/actionSubmission"
+    },
+    {
+      "$ref": "#/$defs/actionAcknowledgement"
+    },
+    {
+      "$ref": "#/$defs/reconnect"
+    },
+    {
+      "$ref": "#/$defs/reconnectResult"
+    },
+    {
+      "$ref": "#/$defs/protocolError"
+    },
+    {
+      "$ref": "#/$defs/ping"
+    },
+    {
+      "$ref": "#/$defs/pong"
+    },
+    {
+      "$ref": "#/$defs/hostCommandPause"
+    },
+    {
+      "$ref": "#/$defs/hostCommandResume"
+    },
+    {
+      "$ref": "#/$defs/hostCommandRematch"
+    }
+  ],
+  "$defs": {
+    "eventIndex": {
+      "type": "integer",
+      "minimum": -1
+    },
+    "roomCode": {
+      "type": "string",
+      "pattern": "^[A-Z0-9]{6}$"
+    },
+    "sessionToken": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "emptyPayload": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "helloPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol_version",
+        "room_code",
+        "session_token"
+      ],
+      "properties": {
+        "protocol_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "room_code": {
+          "$ref": "#/$defs/roomCode"
+        },
+        "session_token": {
+          "$ref": "#/$defs/sessionToken"
+        }
+      }
+    },
+    "helloAcknowledgementPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "compatible",
+        "protocol_version",
+        "room_code",
+        "seat"
+      ],
+      "properties": {
+        "compatible": {
+          "const": true
+        },
+        "protocol_version": {
+          "const": "tuppi.network.v1"
+        },
+        "room_code": {
+          "$ref": "#/$defs/roomCode"
+        },
+        "seat": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "features": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "pause",
+              "rematch"
+            ]
+          },
+          "$comment": "Optional commands this server accepts; absent on servers without them."
+        }
+      }
+    },
+    "compatibilityResultPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "compatible",
+        "supported_protocol_versions",
+        "message_key"
+      ],
+      "properties": {
+        "compatible": {
+          "const": false
+        },
+        "supported_protocol_versions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "const": "tuppi.network.v1"
+          }
+        },
+        "message_key": {
+          "const": "update_required"
+        }
+      }
+    },
+    "readyPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_token"
+      ],
+      "properties": {
+        "session_token": {
+          "$ref": "#/$defs/sessionToken"
+        }
+      }
+    },
+    "reconnectPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "last_applied_event_index"
+      ],
+      "properties": {
+        "last_applied_event_index": {
+          "$ref": "#/$defs/eventIndex"
+        }
+      }
+    },
+    "actionSubmissionPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "client_action_id",
+        "expected_event_index",
+        "match_ref"
+      ],
+      "properties": {
+        "action": {
+          "oneOf": [
+            {
+              "$ref": "https://example.invalid/tuppi/schemas/engine/agent_script.schema.json#/$defs/action"
+            },
+            {
+              "$ref": "https://example.invalid/tuppi/schemas/engine/player_observation.schema.json#/$defs/sooliDecisionAction"
+            },
+            {
+              "$ref": "https://example.invalid/tuppi/schemas/engine/player_observation.schema.json#/$defs/sooliExchangeAction"
+            }
+          ]
+        },
+        "client_action_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "expected_event_index": {
+          "$ref": "#/$defs/eventIndex"
+        },
+        "match_ref": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.:-]{1,96}$"
+        }
+      }
+    },
+    "matchUpdatePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "completed_deals",
+        "event_batch",
+        "last_event_index",
+        "match_ref",
+        "observation"
+      ],
+      "properties": {
+        "completed_deals": {
+          "type": "array",
+          "items": {
+            "$ref": "https://example.invalid/tuppi/schemas/engine/deal_result.schema.json"
+          }
+        },
+        "event_batch": {
+          "type": "array",
+          "items": {
+            "$ref": "https://example.invalid/tuppi/schemas/engine/public_event_log.schema.json#/$defs/event"
+          }
+        },
+        "last_event_index": {
+          "$ref": "#/$defs/eventIndex"
+        },
+        "match_ref": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.:-]{1,96}$"
+        },
+        "observation": {
+          "$ref": "https://example.invalid/tuppi/schemas/engine/player_observation.schema.json"
+        },
+        "match_result": {
+          "oneOf": [
+            {
+              "$ref": "https://example.invalid/tuppi/schemas/engine/match_result.schema.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "bidding": {
+          "$ref": "#/$defs/biddingPayload"
+        }
+      }
+    },
+    "reconnectResultPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "completed_deals",
+        "event_delta",
+        "observation",
+        "status"
+      ],
+      "properties": {
+        "completed_deals": {
+          "type": "array",
+          "items": {
+            "$ref": "https://example.invalid/tuppi/schemas/engine/deal_result.schema.json"
+          }
+        },
+        "event_delta": {
+          "type": "array",
+          "items": {
+            "$ref": "https://example.invalid/tuppi/schemas/engine/public_event_log.schema.json#/$defs/event"
+          }
+        },
+        "observation": {
+          "$ref": "https://example.invalid/tuppi/schemas/engine/player_observation.schema.json"
+        },
+        "status": {
+          "const": "connected"
+        },
+        "match_result": {
+          "oneOf": [
+            {
+              "$ref": "https://example.invalid/tuppi/schemas/engine/match_result.schema.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "bidding": {
+          "$ref": "#/$defs/biddingPayload"
+        }
+      }
+    },
+    "protocolErrorPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 96
+        }
+      }
+    },
+    "hello": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "hello"
+        },
+        "payload": {
+          "$ref": "#/$defs/helloPayload"
+        }
+      }
+    },
+    "helloAcknowledgement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "hello_ack"
+        },
+        "payload": {
+          "$ref": "#/$defs/helloAcknowledgementPayload"
+        }
+      }
+    },
+    "compatibilityResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "compatibility_result"
+        },
+        "payload": {
+          "$ref": "#/$defs/compatibilityResultPayload"
+        }
+      }
+    },
+    "lobbySnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "lobby_snapshot"
+        },
+        "payload": {
+          "$ref": "https://example.invalid/tuppi/schemas/network/http_api.schema.json#/$defs/lobbySnapshot"
+        }
+      }
+    },
+    "ready": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "ready"
+        },
+        "payload": {
+          "$ref": "#/$defs/readyPayload"
+        }
+      }
+    },
+    "matchUpdate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "match_update"
+        },
+        "payload": {
+          "$ref": "#/$defs/matchUpdatePayload"
+        }
+      }
+    },
+    "actionSubmission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "action_submission"
+        },
+        "payload": {
+          "$ref": "#/$defs/actionSubmissionPayload"
+        }
+      }
+    },
+    "actionAcknowledgement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "action_acknowledgement"
+        },
+        "payload": {
+          "$ref": "https://example.invalid/tuppi/schemas/network/action_acknowledgement.schema.json"
+        }
+      }
+    },
+    "reconnect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "reconnect"
+        },
+        "payload": {
+          "$ref": "#/$defs/reconnectPayload"
+        }
+      }
+    },
+    "reconnectResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "reconnect_result"
+        },
+        "payload": {
+          "$ref": "#/$defs/reconnectResultPayload"
+        }
+      }
+    },
+    "protocolError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "protocol_error"
+        },
+        "payload": {
+          "$ref": "#/$defs/protocolErrorPayload"
+        }
+      }
+    },
+    "ping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "ping"
+        },
+        "payload": {
+          "$ref": "#/$defs/emptyPayload"
+        }
+      }
+    },
+    "pong": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "pong"
+        },
+        "payload": {
+          "$ref": "#/$defs/emptyPayload"
+        }
+      }
+    },
+    "biddingPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "locked_seats",
+        "own_bid",
+        "options"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "tuppi.network.bidding.v1"
+        },
+        "locked_seats": {
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          }
+        },
+        "own_bid": {
+          "oneOf": [
+            {
+              "$ref": "https://example.invalid/tuppi/schemas/engine/player_observation.schema.json#/$defs/showAction"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "https://example.invalid/tuppi/schemas/engine/player_observation.schema.json#/$defs/showAction"
+          }
+        }
+      },
+      "$comment": "project_target_v3 only, while bids are locked: which seats have locked, this seat's own bid and, until it locks, its options. Never another seat's bid."
+    },
+    "hostCommandPause": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "pause"
+        },
+        "payload": {
+          "$ref": "#/$defs/emptyPayload"
+        }
+      },
+      "$comment": "Host only. Pause/resume while a match is in progress; rematch after it is complete."
+    },
+    "hostCommandResume": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "resume"
+        },
+        "payload": {
+          "$ref": "#/$defs/emptyPayload"
+        }
+      },
+      "$comment": "Host only. Pause/resume while a match is in progress; rematch after it is complete."
+    },
+    "hostCommandRematch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "rematch"
+        },
+        "payload": {
+          "$ref": "#/$defs/emptyPayload"
+        }
+      },
+      "$comment": "Host only. Pause/resume while a match is in progress; rematch after it is complete."
+    }
+  }
+}

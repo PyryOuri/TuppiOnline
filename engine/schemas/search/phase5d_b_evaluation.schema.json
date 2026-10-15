@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tuppi.research/schemas/search/phase5d_b_evaluation.schema.json",
+  "title": "Phase 5D-B development evaluation summary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "bank", "sealed_bank_opened"],
+  "properties": {
+    "schema_version": {"enum": ["tuppi.search.phase5d_b_evaluation.v1", "tuppi.search.phase5d_b_heterogeneous.v1"]},
+    "bank": {"type": "object"},
+    "arrangements": {"type": "array", "items": {"type": "object"}},
+    "candidate_agent_id": {"type": "string"},
+    "candidate_profile_key": {"type": "string"},
+    "comparison_id": {"type": "string"},
+    "opponent_agent_id": {"type": "string"},
+    "opponent_profile_key": {"type": "string"},
+    "pair_count": {"type": "integer", "minimum": 1},
+    "pair_count_per_arrangement": {"type": "integer", "minimum": 1},
+    "primary_match_inference": {"type": "object"},
+    "safety_cap": {"type": "integer", "minimum": 1},
+    "sealed_bank_opened": {"const": false},
+    "secondary_metrics": {"type": "object"}
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tuppi.research/schemas/search/tiny_multi_observer_reference.schema.json",
+  "title": "Tiny independent multi-observer reference",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "pimc_best_action", "root_only_budget", "root_only_action", "exact_best_action", "multi_observer_budget", "multi_observer_action"],
+  "properties": {
+    "schema_version": {"const": "tuppi.search.tiny_multi_observer_reference.v1"},
+    "pimc_best_action": {"enum": ["A", "B"]},
+    "root_only_budget": {"type": "integer", "minimum": 1},
+    "root_only_action": {"enum": ["A", "B"]},
+    "exact_best_action": {"enum": ["A", "B"]},
+    "multi_observer_budget": {"type": "integer", "minimum": 1},
+    "multi_observer_action": {"enum": ["A", "B"]}
+  }
+}

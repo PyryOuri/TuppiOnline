@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/ruleset.schema.json",
+  "title": "Authoritative project_target_v1 Tuppi rules configuration",
+  "description": "A deliberately strict schema for the first authoritative project ruleset. A later ruleset version must revise this schema deliberately.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "ruleset_id",
+    "ruleset_version",
+    "provenance",
+    "players",
+    "deck",
+    "dealer",
+    "showing",
+    "contracts",
+    "trick_play",
+    "deal",
+    "deal_scoring",
+    "match",
+    "invalid_actions"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.ruleset.config.v1"},
+    "ruleset_id": {"const": "project_target_v1"},
+    "ruleset_version": {"const": 1},
+    "provenance": {
+      "const": {
+        "source_type": "project-owner specification",
+        "specification_date": "2026-07-31",
+        "original_language": "Finnish",
+        "status": "authoritative for this project",
+        "relationship_to_tournament_rules": "derived from traditional/tournament-style Tuppi but intentionally modified",
+        "web_sources_override": false,
+        "legacy_v9_unverified_overrides": false
+      }
+    },
+    "players": {
+      "const": {
+        "count": 4,
+        "seats_clockwise": [0, 1, 2, 3],
+        "partnerships": {"team_0": [0, 2], "team_1": [1, 3]}
+      }
+    },
+    "deck": {
+      "const": {
+        "kind": "standard_52_card",
+        "card_count": 52,
+        "cards_per_hand": 13,
+        "card_serialization": {
+          "encoding_id": "project_target_v1_suit_major_hdcs_rank_2_to_ace",
+          "order": "suit_major_then_rank_low_to_high",
+          "index_min": 0,
+          "index_max": 51
+        },
+        "suit_serialization_order": ["hearts", "diamonds", "clubs", "spades"],
+        "suit_order_has_gameplay_precedence": false,
+        "suit_colors": {
+          "hearts": "red",
+          "diamonds": "red",
+          "clubs": "black",
+          "spades": "black"
+        },
+        "rank_order_low_to_high": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+        "rank_names": {"11": "jack", "12": "queen", "13": "king", "14": "ace"},
+        "trump": null
+      }
+    },
+    "dealer": {
+      "const": {
+        "initial_selection": "runner_supplied_explicitly",
+        "random_selection_scope": "runner_only",
+        "forehand": {"operation": "seat_add_modulo", "offset": 1, "modulus": 4},
+        "rotation_after_completed_deal": {"operation": "seat_add_modulo", "offset": 1, "modulus": 4}
+      }
+    },
+    "showing": {
+      "const": {
+        "separate_physical_show_cards": false,
+        "shown_card_source": "players_own_hand",
+        "cards_shown_per_action": 1,
+        "order": "forehand_then_clockwise",
+        "eligible_ranks": [3, 4, 5, 6, 7, 8, 9],
+        "contract_colors": {"RAMI": "red", "NOLO": "black"},
+        "fallback_hierarchy": [
+          {
+            "priority": 1,
+            "condition": "eligible_matching_color_exists",
+            "allowed_cards": "eligible_matching_color_cards",
+            "verbal_required": false
+          },
+          {
+            "priority": 2,
+            "condition": "no_eligible_matching_color_but_any_eligible_exists",
+            "allowed_cards": "all_eligible_cards",
+            "verbal_required": true
+          },
+          {
+            "priority": 3,
+            "condition": "no_eligible_cards_exist",
+            "allowed_cards": "all_cards_in_hand",
+            "verbal_required": true
+          }
+        ],
+        "declared_contract_is_explicit": true,
+        "declared_contract_overrides_fallback_card_color": true,
+        "verbal_required_is_derived": true,
+        "shown_card_public": true,
+        "shown_card_retained_in_hand": true,
+        "shown_card_reserved": false,
+        "termination": "immediately_after_first_rami_otherwise_after_four_nolo"
+      }
+    },
+    "contracts": {
+      "const": {
+        "values": ["RAMI", "NOLO"],
+        "rami_objective": "win_tricks",
+        "nolo_objective": "avoid_tricks",
+        "rami_declarer": "first_player_declaring_rami",
+        "rami_declaring_team": "partnership_containing_first_rami_declarer",
+        "nolo_declarer": null,
+        "first_leader": {
+          "NOLO": {"operation": "forehand"},
+          "RAMI": {"operation": "seat_add_modulo_from_declarer", "offset": -1, "modulus": 4}
+        }
+      }
+    },
+    "trick_play": {
+      "const": {
+        "cards_per_trick": 4,
+        "leader_allowed_cards": "any_card_in_hand",
+        "followers": "must_follow_led_suit_when_possible",
+        "void_player_allowed_cards": "any_card_in_hand",
+        "winner": "highest_rank_of_led_suit",
+        "off_suit_cards_can_win": false,
+        "next_leader": "trick_winner"
+      }
+    },
+    "deal": {
+      "const": {
+        "tricks_per_completed_deal": 13,
+        "cards_played_per_completed_deal": 52,
+        "each_card_played_exactly_once": true,
+        "early_termination": false,
+        "scoring_timing": "after_all_13_tricks"
+      }
+    },
+    "deal_scoring": {
+      "const": {
+        "NOLO": {
+          "winner": "team_with_fewer_tricks",
+          "winner_tricks_min": 0,
+          "winner_tricks_max": 6,
+          "formula": {
+            "operation": "multiply_difference",
+            "factor": 4,
+            "pivot": 7,
+            "operand": "winner_tricks",
+            "direction": "pivot_minus_operand"
+          },
+          "points_min": 4,
+          "points_max": 28
+        },
+        "RAMI": {
+          "declaring_team_wins_at_least": 7,
+          "normal": {
+            "formula": {
+              "operation": "multiply_difference",
+              "factor": 4,
+              "pivot": 6,
+              "operand": "declaring_team_tricks",
+              "direction": "operand_minus_pivot"
+            },
+            "points_min": 4,
+            "points_max": 28
+          },
+          "stolen": {
+            "winner": "opponents_of_declaring_team",
+            "condition": "declaring_team_tricks_at_most_6",
+            "formula": {
+              "operation": "multiply_difference",
+              "factor": 8,
+              "pivot": 6,
+              "operand": "opponent_tricks",
+              "direction": "operand_minus_pivot"
+            },
+            "points_min": 8,
+            "points_max": 56
+          }
+        }
+      }
+    },
+    "match": {
+      "const": {
+        "scoring_model": "continuous_rising_score",
+        "valid_score_invariant": "nonnegative_and_at_most_one_team_positive",
+        "up_team": "sole_team_with_positive_score",
+        "down_team": "opponent_of_up_team",
+        "table_state": [0, 0],
+        "transitions": {
+          "table_state_deal_win": "winner_receives_deal_points_and_becomes_up",
+          "up_team_win": "add_deal_points_to_existing_up_score",
+          "down_team_win": "erase_up_score_and_award_no_points"
+        },
+        "down_team_reset_awards_points": false,
+        "target_score": 52,
+        "terminal_comparison": "greater_than_or_equal",
+        "fixed_deal_count": false,
+        "continue_after_terminal": false
+      }
+    },
+    "invalid_actions": {
+      "const": {
+        "policy": "reject_with_explicit_error",
+        "silent_substitution": false,
+        "silent_defaulting": false
+      }
+    }
+  }
+}

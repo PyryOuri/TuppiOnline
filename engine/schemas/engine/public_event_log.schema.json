@@ -1,0 +1,989 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/engine/public_event_log.schema.json",
+  "title": "project_target_v1/v2/v3 privacy-safe public event log",
+  "description": "A canonical public event stream. It deliberately contains no initial hands or content-derived deal identifiers.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "ruleset_id",
+    "match_ref",
+    "event_log_id",
+    "events"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "tuppi.engine.public_event_log.v1"
+    },
+    "ruleset_id": {
+      "enum": [
+        "project_target_v1",
+        "project_target_v2",
+        "project_target_v3"
+      ]
+    },
+    "match_ref": {
+      "$ref": "#/$defs/matchRef"
+    },
+    "event_log_id": {
+      "$ref": "#/$defs/sha256"
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/event"
+      }
+    }
+  },
+  "$defs": {
+    "seat": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3
+    },
+    "team": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "matchRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]{1,96}$"
+    },
+    "dealRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]{1,96}/deal:(?:0|[1-9][0-9]*)$",
+      "maxLength": 128
+    },
+    "card": {
+      "type": "string",
+      "pattern": "^(?:[2-9]|10|J|Q|K|A)[HDCS]$"
+    },
+    "score": {
+      "oneOf": [
+        {
+          "type": "array",
+          "prefixItems": [
+            {
+              "const": 0
+            },
+            {
+              "type": "integer",
+              "minimum": 0
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "const": 0
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        }
+      ]
+    },
+    "terminalScore": {
+      "oneOf": [
+        {
+          "type": "array",
+          "prefixItems": [
+            {
+              "const": 0
+            },
+            {
+              "type": "integer",
+              "minimum": 52
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "integer",
+              "minimum": 52
+            },
+            {
+              "const": 0
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        }
+      ]
+    },
+    "teamTricks": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 13
+        },
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 13
+        }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "eventEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "ruleset_id",
+        "event_index",
+        "event_type",
+        "match_ref",
+        "deal_ref",
+        "payload"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "tuppi.engine.public_event.v1"
+        },
+        "ruleset_id": {
+          "enum": [
+            "project_target_v1",
+            "project_target_v2",
+            "project_target_v3"
+          ]
+        },
+        "event_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "event_type": {
+          "enum": [
+            "deal_started",
+            "show_accepted",
+            "contract_resolved",
+            "trick_started",
+            "card_played",
+            "trick_completed",
+            "deal_completed",
+            "match_score_changed",
+            "dealer_rotated",
+            "match_completed",
+            "bid_locked",
+            "sooli_decision",
+            "sooli_exchanged"
+          ]
+        },
+        "match_ref": {
+          "$ref": "#/$defs/matchRef"
+        },
+        "deal_ref": {
+          "$ref": "#/$defs/dealRef"
+        },
+        "payload": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/dealStartedPayload"
+            },
+            {
+              "$ref": "#/$defs/showAcceptedPayload"
+            },
+            {
+              "$ref": "#/$defs/contractResolvedPayload"
+            },
+            {
+              "$ref": "#/$defs/trickStartedPayload"
+            },
+            {
+              "$ref": "#/$defs/cardPlayedPayload"
+            },
+            {
+              "$ref": "#/$defs/trickCompletedPayload"
+            },
+            {
+              "$ref": "#/$defs/dealCompletedPayload"
+            },
+            {
+              "$ref": "#/$defs/matchScoreChangedPayload"
+            },
+            {
+              "$ref": "#/$defs/dealerRotatedPayload"
+            },
+            {
+              "$ref": "#/$defs/matchCompletedPayload"
+            },
+            {
+              "$ref": "#/$defs/bidLockedPayload"
+            },
+            {
+              "$ref": "#/$defs/sooliDecisionPayload"
+            },
+            {
+              "$ref": "#/$defs/sooliExchangedPayload"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "ruleset_id": {
+                "const": "project_target_v1"
+              }
+            },
+            "required": [
+              "ruleset_id"
+            ]
+          },
+          "then": {
+            "properties": {
+              "event_type": {
+                "not": {
+                  "enum": [
+                    "bid_locked",
+                    "sooli_decision",
+                    "sooli_exchanged"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "ruleset_id": {
+                "const": "project_target_v2"
+              }
+            },
+            "required": [
+              "ruleset_id"
+            ]
+          },
+          "then": {
+            "properties": {
+              "event_type": {
+                "not": {
+                  "const": "bid_locked"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "event": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/dealStartedEvent"
+        },
+        {
+          "$ref": "#/$defs/showAcceptedEvent"
+        },
+        {
+          "$ref": "#/$defs/contractResolvedEvent"
+        },
+        {
+          "$ref": "#/$defs/trickStartedEvent"
+        },
+        {
+          "$ref": "#/$defs/cardPlayedEvent"
+        },
+        {
+          "$ref": "#/$defs/trickCompletedEvent"
+        },
+        {
+          "$ref": "#/$defs/dealCompletedEvent"
+        },
+        {
+          "$ref": "#/$defs/matchScoreChangedEvent"
+        },
+        {
+          "$ref": "#/$defs/dealerRotatedEvent"
+        },
+        {
+          "$ref": "#/$defs/matchCompletedEvent"
+        },
+        {
+          "$ref": "#/$defs/bidLockedEvent"
+        },
+        {
+          "$ref": "#/$defs/sooliDecisionEvent"
+        },
+        {
+          "$ref": "#/$defs/sooliExchangedEvent"
+        }
+      ]
+    },
+    "dealStartedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/eventEnvelope"
+        },
+        {
+          "properties": {
+            "event_type": {
+              "const": "deal_started"
+            },
+            "payload": {
+              "$ref": "#/$defs/dealStartedPayload"
+            }
+          }
+        }
+      ]
+    },
+    "showAcceptedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/eventEnvelope"
+        },
+        {
+          "properties": {
+            "event_type": {
+              "const": "show_accepted"
+            },
+            "payload": {
+              "$ref": "#/$defs/showAcceptedPayload"
+            }
+          }
+        }
+      ]
+    },
+    "contractResolvedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/eventEnvelope"
+        },
+        {
+          "properties": {
+            "event_type": {
+              "const": "contract_resolved"
+            },
+            "payload": {
+              "$ref": "#/$defs/contractResolvedPayload"
+            }
+          }
+        }
+      ]
+    },
+    "trickStartedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/eventEnvelope"
+        },
+        {
+          "properties": {
+            "event_type": {
+              "const": "trick_started"
+            },
+            "payload": {
+              "$ref": "#/$defs/trickStartedPayload"
+            }
+          }
+        }
+      ]
+    },
+    "cardPlayedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/eventEnvelope"
+        },
+        {
+          "properties": {
+            "event_type": {
+              "const": "card_played"
+            },
+            "payload": {
+              "$ref": "#/$defs/cardPlayedPayload"
+            }
+          }
+        }
+      ]
+    },
+    "trickCompletedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/eventEnvelope"
+        },
+        {
+          "properties": {
+            "event_type": {
+              "const": "trick_completed"
+            },
+            "payload": {
+              "$ref": "#/$defs/trickCompletedPayload"
+            }
+          }
+        }
+      ]
+    },
+    "dealCompletedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/eventEnvelope"
+        },
+        {
+          "properties": {
+            "event_type": {
+              "const": "deal_completed"
+            },
+            "payload": {
+              "$ref": "#/$defs/dealCompletedPayload"
+            }
+          }
+        }
+      ]
+    },
+    "matchScoreChangedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/eventEnvelope"
+        },
+        {
+          "properties": {
+            "event_type": {
+              "const": "match_score_changed"
+            },
+            "payload": {
+              "$ref": "#/$defs/matchScoreChangedPayload"
+            }
+          }
+        }
+      ]
+    },
+    "dealerRotatedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/eventEnvelope"
+        },
+        {
+          "properties": {
+            "event_type": {
+              "const": "dealer_rotated"
+            },
+            "payload": {
+              "$ref": "#/$defs/dealerRotatedPayload"
+            }
+          }
+        }
+      ]
+    },
+    "matchCompletedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/eventEnvelope"
+        },
+        {
+          "properties": {
+            "event_type": {
+              "const": "match_completed"
+            },
+            "payload": {
+              "$ref": "#/$defs/matchCompletedPayload"
+            }
+          }
+        }
+      ]
+    },
+    "dealStartedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deal_number",
+        "dealer",
+        "forehand",
+        "score_before"
+      ],
+      "properties": {
+        "deal_number": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dealer": {
+          "$ref": "#/$defs/seat"
+        },
+        "forehand": {
+          "$ref": "#/$defs/seat"
+        },
+        "score_before": {
+          "$ref": "#/$defs/score"
+        }
+      }
+    },
+    "showAcceptedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seat",
+        "shown_card",
+        "declared_contract",
+        "verbal_required"
+      ],
+      "properties": {
+        "seat": {
+          "$ref": "#/$defs/seat"
+        },
+        "shown_card": {
+          "$ref": "#/$defs/card"
+        },
+        "declared_contract": {
+          "enum": [
+            "RAMI",
+            "NOLO"
+          ]
+        },
+        "verbal_required": {
+          "type": "boolean"
+        }
+      }
+    },
+    "contractResolvedPayload": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contract",
+            "declarer",
+            "first_leader"
+          ],
+          "properties": {
+            "contract": {
+              "const": "RAMI"
+            },
+            "declarer": {
+              "$ref": "#/$defs/seat"
+            },
+            "first_leader": {
+              "$ref": "#/$defs/seat"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contract",
+            "declarer",
+            "first_leader"
+          ],
+          "properties": {
+            "contract": {
+              "const": "NOLO"
+            },
+            "declarer": {
+              "type": "null"
+            },
+            "first_leader": {
+              "$ref": "#/$defs/seat"
+            }
+          }
+        }
+      ]
+    },
+    "trickStartedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trick_index",
+        "leader"
+      ],
+      "properties": {
+        "trick_index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 12
+        },
+        "leader": {
+          "$ref": "#/$defs/seat"
+        }
+      }
+    },
+    "cardPlayedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trick_index",
+        "position",
+        "seat",
+        "card"
+      ],
+      "properties": {
+        "trick_index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 12
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "seat": {
+          "$ref": "#/$defs/seat"
+        },
+        "card": {
+          "$ref": "#/$defs/card"
+        }
+      }
+    },
+    "trickCompletedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trick_index",
+        "winner",
+        "team_tricks_after"
+      ],
+      "properties": {
+        "trick_index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 12
+        },
+        "winner": {
+          "$ref": "#/$defs/seat"
+        },
+        "team_tricks_after": {
+          "$ref": "#/$defs/teamTricks"
+        }
+      }
+    },
+    "dealCompletedPayload": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contract",
+            "declarer",
+            "outcome",
+            "points",
+            "team_tricks",
+            "winner_team"
+          ],
+          "properties": {
+            "contract": {
+              "const": "NOLO"
+            },
+            "declarer": {
+              "type": "null"
+            },
+            "outcome": {
+              "const": "NOLO"
+            },
+            "points": {
+              "type": "integer",
+              "minimum": 4,
+              "maximum": 28,
+              "multipleOf": 4
+            },
+            "team_tricks": {
+              "$ref": "#/$defs/teamTricks"
+            },
+            "winner_team": {
+              "$ref": "#/$defs/team"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contract",
+            "declarer",
+            "outcome",
+            "points",
+            "team_tricks",
+            "winner_team"
+          ],
+          "properties": {
+            "contract": {
+              "const": "RAMI"
+            },
+            "declarer": {
+              "$ref": "#/$defs/seat"
+            },
+            "outcome": {
+              "const": "MADE_RAMI"
+            },
+            "points": {
+              "type": "integer",
+              "minimum": 4,
+              "maximum": 28,
+              "multipleOf": 4
+            },
+            "team_tricks": {
+              "$ref": "#/$defs/teamTricks"
+            },
+            "winner_team": {
+              "$ref": "#/$defs/team"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contract",
+            "declarer",
+            "outcome",
+            "points",
+            "team_tricks",
+            "winner_team"
+          ],
+          "properties": {
+            "contract": {
+              "const": "RAMI"
+            },
+            "declarer": {
+              "$ref": "#/$defs/seat"
+            },
+            "outcome": {
+              "const": "STOLEN_RAMI"
+            },
+            "points": {
+              "type": "integer",
+              "minimum": 8,
+              "maximum": 56,
+              "multipleOf": 8
+            },
+            "team_tricks": {
+              "$ref": "#/$defs/teamTricks"
+            },
+            "winner_team": {
+              "$ref": "#/$defs/team"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contract",
+            "declarer",
+            "outcome",
+            "points",
+            "team_tricks",
+            "winner_team"
+          ],
+          "properties": {
+            "contract": {
+              "const": "RAMI"
+            },
+            "declarer": {
+              "$ref": "#/$defs/seat"
+            },
+            "outcome": {
+              "enum": [
+                "SOOLI_WON",
+                "SOOLI_LOST"
+              ]
+            },
+            "points": {
+              "const": 24
+            },
+            "team_tricks": {
+              "$ref": "#/$defs/teamTricks"
+            },
+            "winner_team": {
+              "$ref": "#/$defs/team"
+            }
+          }
+        }
+      ]
+    },
+    "matchScoreChangedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deal_points",
+        "deal_winner",
+        "score_after",
+        "score_before",
+        "transition_kind"
+      ],
+      "properties": {
+        "deal_points": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 56,
+          "multipleOf": 4
+        },
+        "deal_winner": {
+          "$ref": "#/$defs/team"
+        },
+        "score_after": {
+          "$ref": "#/$defs/score"
+        },
+        "score_before": {
+          "$ref": "#/$defs/score"
+        },
+        "transition_kind": {
+          "enum": [
+            "ESTABLISH_UP",
+            "ADD_TO_UP",
+            "RESET_BY_DOWN"
+          ]
+        }
+      }
+    },
+    "dealerRotatedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dealer_after",
+        "dealer_before"
+      ],
+      "properties": {
+        "dealer_after": {
+          "$ref": "#/$defs/seat"
+        },
+        "dealer_before": {
+          "$ref": "#/$defs/seat"
+        }
+      }
+    },
+    "matchCompletedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "final_score",
+        "winner_team"
+      ],
+      "properties": {
+        "final_score": {
+          "$ref": "#/$defs/terminalScore"
+        },
+        "winner_team": {
+          "$ref": "#/$defs/team"
+        }
+      }
+    },
+    "bidLockedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seat",
+        "bid_index"
+      ],
+      "properties": {
+        "seat": {
+          "$ref": "#/$defs/seat"
+        },
+        "bid_index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        }
+      },
+      "$comment": "project_target_v3: who bid, never what; the bids are revealed as show_accepted events when showing resolves."
+    },
+    "sooliDecisionPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seat",
+        "play_sooli"
+      ],
+      "properties": {
+        "seat": {
+          "$ref": "#/$defs/seat"
+        },
+        "play_sooli": {
+          "type": "boolean"
+        }
+      }
+    },
+    "sooliExchangedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "soolaaja",
+        "partner"
+      ],
+      "properties": {
+        "soolaaja": {
+          "$ref": "#/$defs/seat"
+        },
+        "partner": {
+          "$ref": "#/$defs/seat"
+        }
+      },
+      "$comment": "The exchanged cards are private and never appear in public events."
+    },
+    "bidLockedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/eventEnvelope"
+        },
+        {
+          "properties": {
+            "event_type": {
+              "const": "bid_locked"
+            },
+            "payload": {
+              "$ref": "#/$defs/bidLockedPayload"
+            }
+          }
+        }
+      ]
+    },
+    "sooliDecisionEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/eventEnvelope"
+        },
+        {
+          "properties": {
+            "event_type": {
+              "const": "sooli_decision"
+            },
+            "payload": {
+              "$ref": "#/$defs/sooliDecisionPayload"
+            }
+          }
+        }
+      ]
+    },
+    "sooliExchangedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/eventEnvelope"
+        },
+        {
+          "properties": {
+            "event_type": {
+              "const": "sooli_exchanged"
+            },
+            "payload": {
+              "$ref": "#/$defs/sooliExchangedPayload"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "$comment": "event_log_id recomputation, match_ref equality, contiguous indices from zero, event ordering, deal_ref sequencing, score formulas, and temporal hidden-card privacy are enforced in executable validation and tests."
+}

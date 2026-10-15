@@ -1,0 +1,24 @@
+# Prepared deployment configuration. No paid resource has been created.
+services:
+  - type: web
+    name: tuppi-online
+    runtime: docker
+    region: frankfurt
+    plan: 0.5c-512mb
+    numInstances: 1
+    healthCheckPath: /healthz
+    autoDeployTrigger: off
+    maxShutdownDelaySeconds: 150
+    disk:
+      name: tuppi-rooms
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: TUPPI_SERVER_DATA_DIR
+        value: /data/rooms
+      - key: TUPPI_WEB_DIR
+        value: /app/web
+      # Room-creation passcode (8-128 characters). sync: false makes Render ask
+      # for it when the Blueprint is created; it is never stored in the repo.
+      - key: TUPPI_ROOM_PASSCODE
+        sync: false

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tuppi.research/schemas/search/root_info_uct_configuration.schema.json",
+  "title": "Root-player information-set UCT configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["configuration_id", "action_ordering_id", "exact_tail_enabled", "expansion_rule_id", "exploration_constant", "failure_policy", "final_action_rule_id", "protocol_version", "rollout_policy_key", "sampler_algorithm_id", "schema_version", "seed_protocol", "showing_policy_key", "simulation_budget", "utility_id", "utility_normalization_id"],
+  "properties": {
+    "configuration_id": {"type": "string", "pattern": "^rootuctcfg:sha256:[0-9a-f]{64}$"},
+    "action_ordering_id": {"const": "tuppi.engine.legal_action_order.v1"},
+    "exact_tail_enabled": {"const": false},
+    "expansion_rule_id": {"const": "all_legal_actions_canonical_v1"},
+    "exploration_constant": {"type": "number", "exclusiveMinimum": 0},
+    "failure_policy": {"const": "strict"},
+    "final_action_rule_id": {"const": "highest_visits_then_mean_then_legal_order_v1"},
+    "protocol_version": {"const": "tuppi.search.root_info_uct.v1"},
+    "rollout_policy_key": {"enum": ["partner_aware_v1", "public_counting_v1"]},
+    "sampler_algorithm_id": {"const": "tuppi.exact.counted_prefix_uniform_v1"},
+    "schema_version": {"const": "tuppi.search.root_info_uct_configuration.v1"},
+    "seed_protocol": {"const": "tuppi.search.root_info_uct_seed.v1"},
+    "showing_policy_key": {"const": "partner_aware_v1"},
+    "simulation_budget": {"type": "integer", "minimum": 1, "maximum": 4096},
+    "utility_id": {"type": "string", "enum": ["tuppi.search.utility.deal_result.v1", "tuppi.search.utility.match_transition.v1"]},
+    "utility_normalization_id": {"const": "identity_bounded_minus_one_to_one_v1"}
+  }
+}

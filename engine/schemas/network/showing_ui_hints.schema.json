@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/network/showing_ui_hints.schema.json",
+  "title": "Tuppi showing presentation hints",
+  "description": "Non-authoritative display metadata derived from the authoritative showing rules.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "current_actor", "actions"],
+  "properties": {
+    "schema_version": {"const": "tuppi.ui.showing_hints.v1"},
+    "current_actor": {"type": ["integer", "null"], "minimum": 0, "maximum": 3},
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "seat", "shown_card", "declared_contract", "verbal_required", "fallback"],
+        "properties": {
+          "type": {"const": "show"},
+          "seat": {"type": "integer", "minimum": 0, "maximum": 3},
+          "shown_card": {"type": "string", "pattern": "^(?:[2-9]|10|J|Q|K|A)[HDCS]$"},
+          "declared_contract": {"enum": ["RAMI", "NOLO"]},
+          "verbal_required": {"type": "boolean"},
+          "fallback": {"enum": ["none", "eligible_rank_fallback", "no_eligible_rank_fallback"]}
+        }
+      }
+    }
+  }
+}

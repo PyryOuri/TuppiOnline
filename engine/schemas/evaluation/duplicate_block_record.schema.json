@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/evaluation/duplicate_block_record.schema.json",
+  "title": "Independent duplicate-block record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "block_record_id", "evaluation_id", "block_index",
+    "base_deal_id", "game_record_ids", "valid_game_count",
+    "invalid_game_count", "complete", "paired_utility", "block_outcome"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.eval.duplicate_block_record.v1"},
+    "block_record_id": {"type": "string", "pattern": "^block:sha256:[0-9a-f]{64}$"},
+    "evaluation_id": {"type": "string", "pattern": "^eval:sha256:[0-9a-f]{64}$"},
+    "block_index": {"type": "integer", "minimum": 0},
+    "base_deal_id": {"type": "string", "pattern": "^(?:base|sequence):sha256:[0-9a-f]{64}$"},
+    "game_record_ids": {"type": "array", "minItems": 8, "maxItems": 8, "uniqueItems": true, "items": {"type": "string", "pattern": "^game:sha256:[0-9a-f]{64}$"}},
+    "valid_game_count": {"type": "integer", "minimum": 0},
+    "invalid_game_count": {"type": "integer", "minimum": 0},
+    "complete": {"type": "boolean"},
+    "paired_utility": {"oneOf": [{"type": "number"}, {"type": "null"}]},
+    "block_outcome": {"oneOf": [{"enum": ["win", "tie", "loss"]}, {"type": "null"}]}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"complete": {"const": true}}, "required": ["complete"]},
+      "then": {
+        "properties": {
+          "invalid_game_count": {"const": 0},
+          "paired_utility": {"type": "number"},
+          "block_outcome": {"enum": ["win", "tie", "loss"]}
+        }
+      },
+      "else": {
+        "properties": {
+          "paired_utility": {"type": "null"},
+          "block_outcome": {"type": "null"}
+        }
+      }
+    }
+  ]
+}

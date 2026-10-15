@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/network/post_match_analysis.schema.json",
+  "title": "Versioned Tuppi post-match analysis endpoint response",
+  "description": "The endpoint returns real seat-scoped v3 review diagnostics. Legacy v1 and v2 remain accepted only for committed fixture/replay compatibility.",
+  "oneOf": [
+    {
+      "$ref": "https://example.invalid/tuppi/schemas/network/post_match_analysis_v1.schema.json"
+    },
+    {
+      "$ref": "https://example.invalid/tuppi/schemas/network/post_match_diagnostics_v2.schema.json"
+    },
+    {
+      "$ref": "https://example.invalid/tuppi/schemas/network/post_match_diagnostics_v3.schema.json"
+    }
+  ]
+}

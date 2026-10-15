@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/network/protocol_manifest.schema.json",
+  "title": "Tuppi network protocol manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "protocol_version", "ruleset_id", "canonical_payloads", "messages"],
+  "properties": {
+    "schema_version": {"const": "tuppi.network.protocol_manifest.v1"},
+    "protocol_version": {"const": "tuppi.network.v1"},
+    "ruleset_id": {"const": "project_target_v1"},
+    "canonical_payloads": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["identity", "schema_ref"],
+        "properties": {
+          "identity": {"type": "string", "minLength": 1},
+          "schema_ref": {"type": "string", "format": "uri-reference"}
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "transport", "direction", "schema_ref"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+          "transport": {"enum": ["http", "websocket"]},
+          "direction": {"enum": ["client_to_server", "server_to_client"]},
+          "schema_ref": {"type": "string", "format": "uri-reference"}
+        }
+      }
+    }
+  }
+}

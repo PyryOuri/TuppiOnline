@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/agents/heuristic_profile.schema.json",
+  "title": "Immutable Tuppi Phase 4 heuristic profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "profile_id", "profile_key", "family", "profile_version",
+    "showing_policy", "parameters", "disabled_rule_ids", "enabled_rule_ids",
+    "uses_public_inference", "uses_partner_rules", "match_state_enabled",
+    "partner_convention_id", "show_tie_break_id", "implementation_reference",
+    "description"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.agents.heuristic_profile.v1"},
+    "profile_id": {"$ref": "#/$defs/profileId"},
+    "profile_key": {"$ref": "#/$defs/reference"},
+    "family": {
+      "enum": [
+        "legacy_heuristic_port",
+        "reactive_contract",
+        "public_counting",
+        "partner_aware",
+        "match_aware"
+      ]
+    },
+    "profile_version": {"$ref": "#/$defs/reference"},
+    "showing_policy": {"enum": ["legacy_show_v1", "simple_show_v1"]},
+    "parameters": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"type": ["number", "boolean"]}
+    },
+    "disabled_rule_ids": {"$ref": "#/$defs/ruleIds"},
+    "enabled_rule_ids": {"$ref": "#/$defs/nonemptyRuleIds"},
+    "uses_public_inference": {"type": "boolean"},
+    "uses_partner_rules": {"type": "boolean"},
+    "match_state_enabled": {"type": "boolean"},
+    "partner_convention_id": {
+      "oneOf": [{"$ref": "#/$defs/reference"}, {"type": "null"}]
+    },
+    "show_tie_break_id": {
+      "enum": [
+        "legacy_v9_suit_precedence_shdc_v1",
+        "project_target_v1_suit_order_hdcs_v1"
+      ]
+    },
+    "implementation_reference": {
+      "type": "string",
+      "pattern": "^tuppi_agents\\.factory:[a-z0-9_]+_v1$"
+    },
+    "description": {"type": "string", "minLength": 1}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"family": {"const": "legacy_heuristic_port"}},
+        "required": ["family"]
+      },
+      "then": {
+        "properties": {
+          "showing_policy": {"const": "legacy_show_v1"},
+          "uses_public_inference": {"const": false},
+          "uses_partner_rules": {"const": false},
+          "match_state_enabled": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"match_state_enabled": {"const": true}},
+        "required": ["match_state_enabled"]
+      },
+      "then": {"properties": {"family": {"const": "match_aware"}}}
+    },
+    {
+      "if": {
+        "properties": {"partner_convention_id": {"type": "string"}},
+        "required": ["partner_convention_id"]
+      },
+      "then": {
+        "properties": {
+          "show_tie_break_id": {"const": "legacy_v9_suit_precedence_shdc_v1"}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "profileId": {"type": "string", "pattern": "^profile:sha256:[0-9a-f]{64}$"},
+    "reference": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,160}$"},
+    "ruleId": {"type": "string", "pattern": "^[a-z][a-z0-9_.]*\\.v1$"},
+    "ruleIds": {
+      "type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/ruleId"}
+    },
+    "nonemptyRuleIds": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {"$ref": "#/$defs/ruleId"}
+    }
+  },
+  "$comment": "The Python loader recomputes profile_id from the behavioural content and rejects unknown fields, out-of-range parameters, and contradictory settings. The description is explicitly excluded from profile identity."
+}

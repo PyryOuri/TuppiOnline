@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/network/training_analysis_v1.schema.json",
+  "title": "Tuppi live training-analysis endpoint response",
+  "description": "Seat-scoped, mid-deal suit-split and card-location odds derived only from the requesting seat's own formal observation. Valid only while a deal is in progress.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "match_ref", "deal_ref", "seat", "other_seats", "suit_splits", "card_locations", "assumed"],
+  "properties": {
+    "schema_version": {"const": "tuppi.server.training_analysis.v1"},
+    "match_ref": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,96}$"},
+    "deal_ref": {"type": "string", "pattern": "^[A-Za-z0-9_.:/-]{1,128}$"},
+    "seat": {"type": "integer", "minimum": 0, "maximum": 3},
+    "other_seats": {
+      "type": "array",
+      "items": {"type": "integer", "minimum": 0, "maximum": 3},
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true
+    },
+    "suit_splits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spades", "hearts", "diamonds", "clubs"],
+      "properties": {
+        "spades": {"$ref": "#/$defs/suitSplit"},
+        "hearts": {"$ref": "#/$defs/suitSplit"},
+        "diamonds": {"$ref": "#/$defs/suitSplit"},
+        "clubs": {"$ref": "#/$defs/suitSplit"}
+      }
+    },
+    "card_locations": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/cardLocation"}
+    },
+    "assumed": {
+      "description": "The same two sections recomputed under stated assumptions about how opponents choose cards. Null when the assumptions cannot hold, which proves somebody did not play the obvious card.",
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rules", "prior_probability", "suit_splits", "card_locations"],
+          "properties": {
+            "rules": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"enum": ["show_lowest", "duck_high", "win_high_last", "follow_low"]}
+            },
+            "prior_probability": {
+              "description": "Share of hard-feasible assignments that also satisfy the assumptions: how much of a leap the read is, exactly one count divided by another.",
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "suit_splits": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["spades", "hearts", "diamonds", "clubs"],
+              "properties": {
+                "spades": {"$ref": "#/$defs/suitSplit"},
+                "hearts": {"$ref": "#/$defs/suitSplit"},
+                "diamonds": {"$ref": "#/$defs/suitSplit"},
+                "clubs": {"$ref": "#/$defs/suitSplit"}
+              }
+            },
+            "card_locations": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/cardLocation"}
+            }
+          }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "suitSplit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outstanding", "hand_sizes", "known_counts", "distribution"],
+      "properties": {
+        "outstanding": {"type": "integer", "minimum": 0, "maximum": 13},
+        "hand_sizes": {
+          "type": "array",
+          "items": {"type": "integer", "minimum": 0, "maximum": 13},
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "known_counts": {
+          "description": "Cards of this suit whose owner is already public, excluded from the split law because they are certain rather than probable.",
+          "type": "array",
+          "items": {"type": "integer", "minimum": 0, "maximum": 13},
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "distribution": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/suitSplitEntry"}
+        }
+      }
+    },
+    "suitSplitEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["counts", "probability"],
+      "properties": {
+        "counts": {
+          "type": "array",
+          "items": {"type": "integer", "minimum": 0, "maximum": 13},
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "probability": {"type": "number", "exclusiveMinimum": 0, "maximum": 1}
+      }
+    },
+    "cardLocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["card", "seat_probabilities"],
+      "properties": {
+        "card": {"type": "string", "pattern": "^(?:[2-9]|10|J|Q|K|A)[HDCS]$"},
+        "seat_probabilities": {
+          "type": "array",
+          "items": {"type": "number", "minimum": 0, "maximum": 1},
+          "minItems": 4,
+          "maxItems": 4
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/evaluation/team_spec.schema.json",
+  "title": "Immutable Tuppi partnership specification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "team_id", "component_agent_ids",
+    "partner_convention_id", "shared_instances", "description"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.eval.team_spec.v1"},
+    "team_id": {"type": "string", "pattern": "^team:sha256:[0-9a-f]{64}$"},
+    "component_agent_ids": {
+      "type": "array", "minItems": 2, "maxItems": 2,
+      "items": {"type": "string", "pattern": "^agent:sha256:[0-9a-f]{64}$"}
+    },
+    "partner_convention_id": {
+      "oneOf": [
+        {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,160}$"},
+        {"type": "null"}
+      ]
+    },
+    "shared_instances": {"const": false},
+    "description": {"type": "string", "minLength": 1}
+  },
+  "$comment": "Homogeneous teams repeat an agent ID; heterogeneous teams use two IDs. Runtime objects remain distinct."
+}

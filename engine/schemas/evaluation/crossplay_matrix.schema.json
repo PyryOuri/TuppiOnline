@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/evaluation/crossplay_matrix.schema.json",
+  "title": "Symmetric baseline cross-play matrix",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "matrix_id", "deal_bank_id", "team_ids", "cells", "display_matrix"],
+  "properties": {
+    "schema_version": {"const": "tuppi.eval.crossplay_matrix.v1"},
+    "matrix_id": {"type": "string", "pattern": "^matrix:sha256:[0-9a-f]{64}$"},
+    "deal_bank_id": {"type": "string", "pattern": "^bank:sha256:[0-9a-f]{64}$"},
+    "team_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/teamId"}},
+    "cells": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/cell"}},
+    "display_matrix": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "array", "minItems": 1,
+        "items": {
+          "type": "object", "additionalProperties": false,
+          "required": ["cell_id", "status", "value"],
+          "properties": {
+            "cell_id": {"type": "string", "pattern": "^cell:sha256:[0-9a-f]{64}$"},
+            "status": {"enum": ["valid", "invalid", "missing"]},
+            "value": {"oneOf": [{"type": "number"}, {"type": "null"}]}
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "teamId": {"type": "string", "pattern": "^team:sha256:[0-9a-f]{64}$"},
+    "cell": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "cell_id", "row_team_id", "column_team_id", "status", "evaluation_id", "result_id", "mean_paired_utility_row_orientation", "independent_base_deals", "failure_count"],
+      "properties": {
+        "schema_version": {"const": "tuppi.eval.crossplay_cell.v1"},
+        "cell_id": {"type": "string", "pattern": "^cell:sha256:[0-9a-f]{64}$"},
+        "row_team_id": {"$ref": "#/$defs/teamId"},
+        "column_team_id": {"$ref": "#/$defs/teamId"},
+        "status": {"enum": ["valid", "invalid", "missing"]},
+        "evaluation_id": {"oneOf": [{"type": "string", "pattern": "^eval:sha256:[0-9a-f]{64}$"}, {"type": "null"}]},
+        "result_id": {"oneOf": [{"type": "string", "pattern": "^result:sha256:[0-9a-f]{64}$"}, {"type": "null"}]},
+        "mean_paired_utility_row_orientation": {"oneOf": [{"type": "number"}, {"type": "null"}]},
+        "independent_base_deals": {"type": "integer", "minimum": 0},
+        "failure_count": {"type": "integer", "minimum": 0}
+      }
+    }
+  },
+  "$comment": "Executable validation reconstructs display symmetry and retains one raw cell per normalized unordered pair."
+}

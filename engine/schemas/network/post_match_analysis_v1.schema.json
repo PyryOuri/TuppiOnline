@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/network/post_match_analysis_v1.schema.json",
+  "title": "Legacy Tuppi fixture post-match analysis response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "match_ref", "analyses"],
+  "properties": {
+    "schema_version": {"const": "tuppi.analysis.post_match.v1"},
+    "match_ref": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,96}$"},
+    "analyses": {"type": "array", "items": {"$ref": "#/$defs/analysis"}}
+  },
+  "$defs": {
+    "analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "analysis_id", "match_ref", "event_index", "deal_number", "trick_index", "seat", "decision_kind", "title", "summary", "played_action", "recommended_action", "recommendation", "alternatives", "explanation", "limitations", "source"],
+      "properties": {
+        "schema_version": {"const": "tuppi.analysis.post_match.v1"},
+        "analysis_id": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,128}$"},
+        "match_ref": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,96}$"},
+        "event_index": {"type": "integer", "minimum": 0},
+        "deal_number": {"type": "integer", "minimum": 0},
+        "trick_index": {"type": ["integer", "null"], "minimum": 0, "maximum": 12},
+        "seat": {"type": "integer", "minimum": 0, "maximum": 3},
+        "decision_kind": {"enum": ["SHOWING", "TRICK_PLAY"]},
+        "title": {"type": "string", "minLength": 1, "maxLength": 200},
+        "summary": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "played_action": {"$ref": "#/$defs/action"},
+        "recommended_action": {"$ref": "#/$defs/action"},
+        "recommendation": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "alternatives": {"type": "array", "items": {"$ref": "#/$defs/alternative"}},
+        "explanation": {"type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 1000}},
+        "limitations": {"type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 1000}},
+        "source": {"type": "string", "minLength": 1, "maxLength": 128}
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "seat"],
+      "properties": {
+        "type": {"enum": ["show", "play"]},
+        "seat": {"type": "integer", "minimum": 0, "maximum": 3},
+        "card": {"type": "string", "pattern": "^(?:[2-9]|10|J|Q|K|A)[HDCS]$"},
+        "shown_card": {"type": "string", "pattern": "^(?:[2-9]|10|J|Q|K|A)[HDCS]$"},
+        "declared_contract": {"enum": ["RAMI", "NOLO"]}
+      }
+    },
+    "alternative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rank", "action", "title", "assessment", "reason"],
+      "properties": {
+        "rank": {"type": "integer", "minimum": 1},
+        "action": {"$ref": "#/$defs/action"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 200},
+        "assessment": {"type": "string", "minLength": 1, "maxLength": 200},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 1000}
+      }
+    }
+  }
+}

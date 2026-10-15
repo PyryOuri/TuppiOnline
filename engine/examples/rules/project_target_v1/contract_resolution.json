@@ -1,0 +1,49 @@
+{
+  "schema_version": "tuppi.rules.examples.v1",
+  "ruleset_id": "project_target_v1",
+  "operation": "resolve_showing",
+  "hands_by_seat": {
+    "0": ["2H", "3H", "4H", "5H", "6H", "7H", "8H", "9H", "10H", "JH", "QH", "KH", "AH"],
+    "1": ["2D", "3D", "4D", "5D", "6D", "7D", "8D", "9D", "10D", "JD", "QD", "KD", "AD"],
+    "2": ["2C", "3C", "4C", "5C", "6C", "7C", "8C", "9C", "10C", "JC", "QC", "KC", "AC"],
+    "3": ["2S", "3S", "4S", "5S", "6S", "7S", "8S", "9S", "10S", "JS", "QS", "KS", "AS"]
+  },
+  "scenarios": [
+    {
+      "id": "rami_declared_by_forehand",
+      "dealer": 0,
+      "actions": [
+        {"seat": 1, "shown_card": "3D", "declared_contract": "RAMI"}
+      ],
+      "expected_contract": "RAMI",
+      "expected_declarer": 1,
+      "expected_first_leader": 0
+    },
+    {
+      "id": "rami_declared_by_dealer",
+      "dealer": 1,
+      "actions": [
+        {"seat": 2, "shown_card": "3C", "declared_contract": "NOLO"},
+        {"seat": 3, "shown_card": "3S", "declared_contract": "NOLO"},
+        {"seat": 0, "shown_card": "3H", "declared_contract": "NOLO"},
+        {"seat": 1, "shown_card": "3D", "declared_contract": "RAMI"}
+      ],
+      "expected_contract": "RAMI",
+      "expected_declarer": 1,
+      "expected_first_leader": 0
+    },
+    {
+      "id": "four_player_nolo_sequence",
+      "dealer": 0,
+      "actions": [
+        {"seat": 1, "shown_card": "3D", "declared_contract": "NOLO"},
+        {"seat": 2, "shown_card": "3C", "declared_contract": "NOLO"},
+        {"seat": 3, "shown_card": "3S", "declared_contract": "NOLO"},
+        {"seat": 0, "shown_card": "3H", "declared_contract": "NOLO"}
+      ],
+      "expected_contract": "NOLO",
+      "expected_declarer": null,
+      "expected_first_leader": 1
+    }
+  ]
+}

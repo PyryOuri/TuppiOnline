@@ -1,0 +1,423 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/network/http_api.schema.json",
+  "title": "Tuppi private-alpha HTTP API payloads",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/compatibilityResult"
+    },
+    {
+      "$ref": "#/$defs/createRoomRequest"
+    },
+    {
+      "$ref": "#/$defs/joinRoomRequest"
+    },
+    {
+      "$ref": "#/$defs/configureRoomRequest"
+    },
+    {
+      "$ref": "#/$defs/roomSettingsRequest"
+    },
+    {
+      "$ref": "#/$defs/sessionRequest"
+    },
+    {
+      "$ref": "#/$defs/roomBootstrap"
+    },
+    {
+      "$ref": "#/$defs/roomStatusResponse"
+    },
+    {
+      "$ref": "#/$defs/serverError"
+    },
+    {
+      "$ref": "https://example.invalid/tuppi/schemas/network/post_match_analysis.schema.json"
+    },
+    {
+      "$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis.schema.json"
+    },
+    {
+      "$ref": "https://example.invalid/tuppi/schemas/network/training_analysis.schema.json"
+    }
+  ],
+  "$defs": {
+    "seat": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3
+    },
+    "aiSeat": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3
+    },
+    "roomCode": {
+      "type": "string",
+      "pattern": "^[A-Z0-9]{6}$"
+    },
+    "sessionToken": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40
+    },
+    "aiSeats": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/aiSeat"
+      }
+    },
+    "lobbySeat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "display_name",
+        "kind",
+        "ready",
+        "seat"
+      ],
+      "properties": {
+        "display_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 40
+        },
+        "kind": {
+          "enum": [
+            "open",
+            "human",
+            "ai"
+          ]
+        },
+        "ready": {
+          "type": "boolean"
+        },
+        "seat": {
+          "$ref": "#/$defs/seat"
+        },
+        "agent_profile": {
+          "enum": [
+            "partner_aware_v1",
+            "partner_aware_lead_v2",
+            "tuppi_ai_search_v1"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "ai"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "agent_profile"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "agent_profile"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "lobbySnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ai_action_delay_ms",
+        "lifecycle",
+        "room_code",
+        "seats"
+      ],
+      "properties": {
+        "ai_action_delay_ms": {
+          "enum": [
+            0,
+            500,
+            1000,
+            1500,
+            2000,
+            2500,
+            3000,
+            4000,
+            5000
+          ]
+        },
+        "lifecycle": {
+          "enum": [
+            "created",
+            "configured",
+            "waiting",
+            "ready",
+            "playing",
+            "completed"
+          ]
+        },
+        "room_code": {
+          "$ref": "#/$defs/roomCode"
+        },
+        "seats": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/lobbySeat"
+          }
+        },
+        "ruleset_id": {
+          "enum": [
+            "project_target_v2",
+            "project_target_v3"
+          ],
+          "$comment": "Absent for project_target_v1 rooms."
+        },
+        "paused": {
+          "const": true,
+          "$comment": "Present while the host has paused the match."
+        },
+        "match_number": {
+          "type": "integer",
+          "minimum": 2,
+          "$comment": "Present after a rematch; the first match omits it."
+        },
+        "previous_matches": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/$defs/previousMatch"
+          },
+          "$comment": "Results of this room's earlier matches, oldest first."
+        }
+      }
+    },
+    "compatibilityResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "compatible",
+        "protocol_version",
+        "status"
+      ],
+      "properties": {
+        "compatible": {
+          "const": true
+        },
+        "protocol_version": {
+          "const": "tuppi.network.v1"
+        },
+        "status": {
+          "const": "ok"
+        },
+        "features": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "pause",
+              "rematch"
+            ]
+          },
+          "$comment": "Optional commands this server accepts; absent on servers without them."
+        },
+        "create_passcode_required": {
+          "type": "boolean",
+          "$comment": "Hosted deployments: whether creating a room needs room_passcode. Joining never does."
+        }
+      }
+    },
+    "createRoomRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "display_name",
+        "ai_seats"
+      ],
+      "properties": {
+        "display_name": {
+          "$ref": "#/$defs/displayName"
+        },
+        "ai_seats": {
+          "$ref": "#/$defs/aiSeats"
+        },
+        "room_passcode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "$comment": "Required by hosts that set a room-creation passcode (see compatibilityResult.create_passcode_required); removed before the room is created."
+        }
+      }
+    },
+    "joinRoomRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "display_name"
+      ],
+      "properties": {
+        "display_name": {
+          "$ref": "#/$defs/displayName"
+        }
+      }
+    },
+    "configureRoomRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_token",
+        "ai_seats"
+      ],
+      "properties": {
+        "session_token": {
+          "$ref": "#/$defs/sessionToken"
+        },
+        "ai_seats": {
+          "$ref": "#/$defs/aiSeats"
+        }
+      }
+    },
+    "roomSettingsRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_token",
+        "ai_action_delay_ms"
+      ],
+      "properties": {
+        "session_token": {
+          "$ref": "#/$defs/sessionToken"
+        },
+        "ai_action_delay_ms": {
+          "enum": [
+            0,
+            500,
+            1000,
+            1500,
+            2000,
+            2500,
+            3000,
+            4000,
+            5000
+          ]
+        }
+      }
+    },
+    "sessionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_token"
+      ],
+      "properties": {
+        "session_token": {
+          "$ref": "#/$defs/sessionToken"
+        }
+      }
+    },
+    "roomBootstrap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "room_code",
+        "seat",
+        "session_token",
+        "lobby"
+      ],
+      "properties": {
+        "room_code": {
+          "$ref": "#/$defs/roomCode"
+        },
+        "seat": {
+          "$ref": "#/$defs/seat"
+        },
+        "session_token": {
+          "$ref": "#/$defs/sessionToken"
+        },
+        "lobby": {
+          "$ref": "#/$defs/lobbySnapshot"
+        }
+      }
+    },
+    "roomStatusResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lobby"
+      ],
+      "properties": {
+        "lobby": {
+          "$ref": "#/$defs/lobbySnapshot"
+        },
+        "playing": {
+          "type": "boolean"
+        }
+      }
+    },
+    "serverError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 96
+        }
+      }
+    },
+    "previousMatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deals",
+        "final_score",
+        "match_ref",
+        "winner_team"
+      ],
+      "properties": {
+        "deals": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "final_score": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer"
+          }
+        },
+        "match_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "winner_team": {
+          "enum": [
+            0,
+            1
+          ]
+        }
+      }
+    }
+  }
+}

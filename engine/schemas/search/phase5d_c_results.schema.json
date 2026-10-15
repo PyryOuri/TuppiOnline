@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tuppi.example/schemas/search/phase5d_c_results.schema.json",
+  "title": "Phase 5D-C result summary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "package_version", "path", "semantic_mismatches", "differential_complete_remainders", "differential_transitions", "strength_pairs", "strength_wins", "strength_ties", "strength_losses"],
+  "properties": {
+    "schema_version": {"const": "tuppi.search.phase5d_c_results.v1"},
+    "package_version": {"type": "string"},
+    "path": {"enum": ["F1", "F2", "F3", "F4"]},
+    "semantic_mismatches": {"type": "integer", "minimum": 0},
+    "differential_complete_remainders": {"type": "integer", "minimum": 0},
+    "differential_transitions": {"type": "integer", "minimum": 0},
+    "strength_pairs": {"type": "integer", "minimum": 0},
+    "strength_wins": {"type": "integer", "minimum": 0},
+    "strength_ties": {"type": "integer", "minimum": 0},
+    "strength_losses": {"type": "integer", "minimum": 0},
+    "sealed_bank_opened": {"const": false}
+  }
+}

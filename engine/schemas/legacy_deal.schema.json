@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/legacy_deal.schema.json",
+  "title": "Frozen legacy Tuppi deal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "deal_id",
+    "card_encoding",
+    "hands",
+    "dealer",
+    "source"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.legacy.deal.v1"},
+    "deal_id": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "card_encoding": {
+      "const": "legacy_v9_integer_0_51_suit_major_rank_2_to_ace"
+    },
+    "hands": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "array",
+        "minItems": 13,
+        "maxItems": 13,
+        "uniqueItems": true,
+        "items": {"type": "integer", "minimum": 0, "maximum": 51}
+      }
+    },
+    "dealer": {"type": "integer", "minimum": 0, "maximum": 3},
+    "source": {"type": "object", "minProperties": 1}
+  },
+  "$comment": "Cross-hand uniqueness and deal_id verification are enforced by tuppi_legacy.deals."
+}
+

@@ -1,0 +1,36 @@
+{
+  "schema_version": "tuppi.rules.examples.v1",
+  "ruleset_id": "project_target_v1",
+  "operation": "score_completed_deal",
+  "scenarios": [
+    {
+      "id": "nolo_6_to_7",
+      "contract": "NOLO",
+      "team0_tricks": 6,
+      "team1_tricks": 7,
+      "expected_winner_team": 0,
+      "expected_points": 4,
+      "expected_stolen_rami": false
+    },
+    {
+      "id": "rami_7_to_6",
+      "contract": "RAMI",
+      "declaring_team": 0,
+      "team0_tricks": 7,
+      "team1_tricks": 6,
+      "expected_winner_team": 0,
+      "expected_points": 4,
+      "expected_stolen_rami": false
+    },
+    {
+      "id": "stolen_rami_6_to_7",
+      "contract": "RAMI",
+      "declaring_team": 0,
+      "team0_tricks": 6,
+      "team1_tricks": 7,
+      "expected_winner_team": 1,
+      "expected_points": 8,
+      "expected_stolen_rami": true
+    }
+  ]
+}

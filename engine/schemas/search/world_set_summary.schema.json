@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tuppi.research/schemas/search/world_set_summary.schema.json",
+  "title": "Sampled-world set summary",
+  "description": "A compact record of one decision's world set. It contains no hand and no candidate action: the world set is built before any candidate is considered and must not depend on one. Duplicates are counted, never removed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "constraint_model_digest",
+    "duplicate_count",
+    "duplicate_fraction",
+    "exact_feasible_assignment_count",
+    "fully_determined",
+    "mode",
+    "requested_indices",
+    "requested_world_count",
+    "schema_version",
+    "unique_world_count",
+    "unknown_card_count",
+    "world_construction_status",
+    "world_sampling_seed",
+    "world_set_id"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.search.sampled_world_set.v1"},
+    "mode": {
+      "enum": ["uniform_sampling", "exact_enumeration"],
+      "description": "Enumeration answers the exact PIMC value; sampling estimates it. Never conflated."
+    },
+    "constraint_model_digest": {
+      "type": "string",
+      "pattern": "^constraints:sha256:[0-9a-f]{64}$"
+    },
+    "world_set_id": {"type": "string", "pattern": "^worldset:sha256:[0-9a-f]{64}$"},
+    "world_sampling_seed": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "requested_indices": {
+      "type": "array",
+      "items": {"type": "integer", "minimum": 0}
+    },
+    "requested_world_count": {"type": "integer", "minimum": 1},
+    "unique_world_count": {"type": "integer", "minimum": 1},
+    "duplicate_count": {"type": "integer", "minimum": 0},
+    "duplicate_fraction": {"type": "number", "minimum": 0, "maximum": 1},
+    "exact_feasible_assignment_count": {"type": "integer", "minimum": 1},
+    "fully_determined": {"type": "boolean"},
+    "unknown_card_count": {"type": "integer", "minimum": 0},
+    "world_construction_status": {"const": "constructed"}
+  }
+}

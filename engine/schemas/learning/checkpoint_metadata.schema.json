@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tuppi Phase 6 checkpoint metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["actor_configuration", "checkpoint_id", "path_name", "schema_version", "training_configuration", "training_seed", "training_steps", "weight_sha256"],
+  "properties": {
+    "actor_configuration": {"$ref": "actor_configuration.schema.json"},
+    "checkpoint_id": {"type": "string", "pattern": "^checkpoint:sha256:[0-9a-f]{64}$"},
+    "path_name": {"type": "string"},
+    "schema_version": {"const": "tuppi.learning.actor_checkpoint.v1"},
+    "training_configuration": {"type": "object"},
+    "training_seed": {"type": ["integer", "null"]},
+    "training_steps": {"type": "integer", "minimum": 0},
+    "weight_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

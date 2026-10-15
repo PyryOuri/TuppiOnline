@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/engine/explicit_deal.schema.json",
+  "title": "project_target_v1 explicit deal input",
+  "description": "A complete ordered deal for the deterministic clean engine.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "ruleset_id",
+    "card_encoding",
+    "deal_id",
+    "dealer",
+    "hands"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.engine.explicit_deal.v1"},
+    "ruleset_id": {"const": "project_target_v1"},
+    "card_encoding": {
+      "const": "project_target_v1_suit_major_hdcs_rank_2_to_ace"
+    },
+    "deal_id": {"$ref": "#/$defs/sha256"},
+    "dealer": {"$ref": "#/$defs/seat"},
+    "hands": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        {"$ref": "#/$defs/hand"},
+        {"$ref": "#/$defs/hand"},
+        {"$ref": "#/$defs/hand"},
+        {"$ref": "#/$defs/hand"}
+      ],
+      "items": false
+    }
+  },
+  "$defs": {
+    "seat": {"type": "integer", "minimum": 0, "maximum": 3},
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "card": {
+      "type": "string",
+      "pattern": "^(?:[2-9]|10|J|Q|K|A)[HDCS]$"
+    },
+    "hand": {
+      "type": "array",
+      "minItems": 13,
+      "maxItems": 13,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/card"}
+    }
+  },
+  "$comment": "Cross-hand uniqueness, complete-deck membership, canonical uppercase card parsing, and deal_id recomputation are enforced by tuppi_engine.serialization and ExplicitDeal."
+}

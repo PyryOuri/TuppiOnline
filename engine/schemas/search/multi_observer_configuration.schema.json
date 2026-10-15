@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tuppi.research/schemas/search/multi_observer_configuration.schema.json",
+  "title": "Phase 5E multi-observer re-determinizing configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["configuration_id", "algorithm_id", "action_ordering_id", "availability_rule_id", "exact_tail_enabled", "expansion_rule_id", "exploration_constant", "failure_policy", "fallback_policy_key", "final_action_rule_id", "max_tree_depth", "protocol_version", "redeterminization_rule_id", "sampler_algorithm_id", "schema_version", "seed_protocol", "showing_policy_key", "simulation_budget", "utility_id", "utility_normalization_id"],
+  "properties": {
+    "configuration_id": {"type": "string", "pattern": "^moismctscfg:sha256:[0-9a-f]{64}$"},
+    "algorithm_id": {"const": "redeterminizing_ismcts_v1"},
+    "action_ordering_id": {"const": "tuppi.engine.legal_action_order.v1"},
+    "availability_rule_id": {"const": "availability_aware_uct_v1"},
+    "exact_tail_enabled": {"const": false},
+    "expansion_rule_id": {"const": "one_unvisited_edge_then_continue_tree_v1"},
+    "exploration_constant": {"type": "number", "exclusiveMinimum": 0},
+    "failure_policy": {"const": "strict"},
+    "fallback_policy_key": {"const": "partner_aware_v1"},
+    "final_action_rule_id": {"const": "highest_visits_then_mean_then_legal_order_v1"},
+    "max_tree_depth": {"type": "integer", "minimum": 1, "maximum": 256},
+    "protocol_version": {"const": "tuppi.search.redeterminizing_ismcts.v1"},
+    "redeterminization_rule_id": {"const": "every_non_root_tree_decision_v1"},
+    "sampler_algorithm_id": {"const": "tuppi.exact.counted_prefix_uniform_v1"},
+    "schema_version": {"const": "tuppi.search.redeterminizing_ismcts_configuration.v1"},
+    "seed_protocol": {"const": "tuppi.search.redeterminizing_ismcts_seed.v1"},
+    "showing_policy_key": {"const": "partner_aware_v1"},
+    "simulation_budget": {"type": "integer", "minimum": 1, "maximum": 4096},
+    "utility_id": {"type": "string", "enum": ["tuppi.search.utility.deal_result.v1", "tuppi.search.utility.match_transition.v1"]},
+    "utility_normalization_id": {"const": "identity_bounded_minus_one_to_one_v1"}
+  }
+}

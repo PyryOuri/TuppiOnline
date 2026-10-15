@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/network/wire_recordings.schema.json",
+  "title": "Tuppi HTTP and WebSocket protocol recordings",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "protocol_version", "http", "websocket"],
+  "properties": {
+    "schema_version": {"const": "tuppi.ui.wire_recordings.v1"},
+    "protocol_version": {"const": "tuppi.network.v1"},
+    "http": {"type": "array", "items": {"$ref": "#/$defs/httpRecording"}},
+    "websocket": {"type": "array", "items": {"$ref": "#/$defs/webSocketRecording"}}
+  },
+  "$defs": {
+    "httpRecording": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "method", "path", "request_schema_ref", "request", "response_schema_ref", "response"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "method": {"enum": ["GET", "POST"]},
+        "path": {"type": "string", "pattern": "^/"},
+        "request_schema_ref": {"type": ["string", "null"]},
+        "request": {"type": ["object", "null"]},
+        "response_schema_ref": {"type": "string"},
+        "response": {"type": "object"}
+      }
+    },
+    "webSocketRecording": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "direction", "schema_ref", "message"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "direction": {"enum": ["client_to_server", "server_to_client"]},
+        "schema_ref": {"const": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json"},
+        "message": {"$ref": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json"}
+      }
+    }
+  }
+}

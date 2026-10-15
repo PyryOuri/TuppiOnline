@@ -1,0 +1,321 @@
+{
+  "schema_version": "tuppi.ruleset.config.v3",
+  "ruleset_id": "project_target_v3",
+  "ruleset_version": 3,
+  "provenance": {
+    "source_type": "project-owner specification",
+    "specification_date": "2026-07-31",
+    "original_language": "Finnish",
+    "status": "authoritative for this project",
+    "relationship_to_tournament_rules": "derived from traditional/tournament-style Tuppi but intentionally modified",
+    "web_sources_override": false,
+    "legacy_v9_unverified_overrides": false,
+    "base_ruleset": "project_target_v2",
+    "addition": "locked_bids",
+    "addition_specification_date": "2026-09-23"
+  },
+  "players": {
+    "count": 4,
+    "seats_clockwise": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "partnerships": {
+      "team_0": [
+        0,
+        2
+      ],
+      "team_1": [
+        1,
+        3
+      ]
+    }
+  },
+  "deck": {
+    "kind": "standard_52_card",
+    "card_count": 52,
+    "cards_per_hand": 13,
+    "card_serialization": {
+      "encoding_id": "project_target_v1_suit_major_hdcs_rank_2_to_ace",
+      "order": "suit_major_then_rank_low_to_high",
+      "index_min": 0,
+      "index_max": 51
+    },
+    "suit_serialization_order": [
+      "hearts",
+      "diamonds",
+      "clubs",
+      "spades"
+    ],
+    "suit_order_has_gameplay_precedence": false,
+    "suit_colors": {
+      "hearts": "red",
+      "diamonds": "red",
+      "clubs": "black",
+      "spades": "black"
+    },
+    "rank_order_low_to_high": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "rank_names": {
+      "11": "jack",
+      "12": "queen",
+      "13": "king",
+      "14": "ace"
+    },
+    "trump": null
+  },
+  "dealer": {
+    "initial_selection": "runner_supplied_explicitly",
+    "random_selection_scope": "runner_only",
+    "forehand": {
+      "operation": "seat_add_modulo",
+      "offset": 1,
+      "modulus": 4
+    },
+    "rotation_after_completed_deal": {
+      "operation": "seat_add_modulo",
+      "offset": 1,
+      "modulus": 4
+    }
+  },
+  "showing": {
+    "separate_physical_show_cards": false,
+    "shown_card_source": "players_own_hand",
+    "cards_shown_per_action": 1,
+    "order": "forehand_then_clockwise",
+    "eligible_ranks": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "contract_colors": {
+      "RAMI": "red",
+      "NOLO": "black"
+    },
+    "fallback_hierarchy": [
+      {
+        "priority": 1,
+        "condition": "eligible_matching_color_exists",
+        "allowed_cards": "eligible_matching_color_cards",
+        "verbal_required": false
+      },
+      {
+        "priority": 2,
+        "condition": "no_eligible_matching_color_but_any_eligible_exists",
+        "allowed_cards": "all_eligible_cards",
+        "verbal_required": true
+      },
+      {
+        "priority": 3,
+        "condition": "no_eligible_cards_exist",
+        "allowed_cards": "all_cards_in_hand",
+        "verbal_required": true
+      }
+    ],
+    "declared_contract_is_explicit": true,
+    "declared_contract_overrides_fallback_card_color": true,
+    "verbal_required_is_derived": true,
+    "shown_card_public": true,
+    "shown_card_retained_in_hand": true,
+    "shown_card_reserved": false,
+    "termination": "immediately_after_first_rami_otherwise_after_four_nolo"
+  },
+  "contracts": {
+    "values": [
+      "RAMI",
+      "NOLO"
+    ],
+    "rami_objective": "win_tricks",
+    "nolo_objective": "avoid_tricks",
+    "rami_declarer": "first_player_declaring_rami",
+    "rami_declaring_team": "partnership_containing_first_rami_declarer",
+    "nolo_declarer": null,
+    "first_leader": {
+      "NOLO": {
+        "operation": "forehand"
+      },
+      "RAMI": {
+        "operation": "seat_add_modulo_from_declarer",
+        "offset": -1,
+        "modulus": 4
+      }
+    }
+  },
+  "trick_play": {
+    "cards_per_trick": 4,
+    "leader_allowed_cards": "any_card_in_hand",
+    "followers": "must_follow_led_suit_when_possible",
+    "void_player_allowed_cards": "any_card_in_hand",
+    "winner": "highest_rank_of_led_suit",
+    "off_suit_cards_can_win": false,
+    "next_leader": "trick_winner"
+  },
+  "deal": {
+    "tricks_per_completed_deal": 13,
+    "cards_played_per_completed_deal": 52,
+    "each_card_played_exactly_once": true,
+    "early_termination": false,
+    "scoring_timing": "after_all_13_tricks"
+  },
+  "deal_scoring": {
+    "NOLO": {
+      "winner": "team_with_fewer_tricks",
+      "winner_tricks_min": 0,
+      "winner_tricks_max": 6,
+      "formula": {
+        "operation": "multiply_difference",
+        "factor": 4,
+        "pivot": 7,
+        "operand": "winner_tricks",
+        "direction": "pivot_minus_operand"
+      },
+      "points_min": 4,
+      "points_max": 28
+    },
+    "RAMI": {
+      "declaring_team_wins_at_least": 7,
+      "normal": {
+        "formula": {
+          "operation": "multiply_difference",
+          "factor": 4,
+          "pivot": 6,
+          "operand": "declaring_team_tricks",
+          "direction": "operand_minus_pivot"
+        },
+        "points_min": 4,
+        "points_max": 28
+      },
+      "stolen": {
+        "winner": "opponents_of_declaring_team",
+        "condition": "declaring_team_tricks_at_most_6",
+        "formula": {
+          "operation": "multiply_difference",
+          "factor": 8,
+          "pivot": 6,
+          "operand": "opponent_tricks",
+          "direction": "operand_minus_pivot"
+        },
+        "points_min": 8,
+        "points_max": 56
+      }
+    }
+  },
+  "match": {
+    "scoring_model": "continuous_rising_score",
+    "valid_score_invariant": "nonnegative_and_at_most_one_team_positive",
+    "up_team": "sole_team_with_positive_score",
+    "down_team": "opponent_of_up_team",
+    "table_state": [
+      0,
+      0
+    ],
+    "transitions": {
+      "table_state_deal_win": "winner_receives_deal_points_and_becomes_up",
+      "up_team_win": "add_deal_points_to_existing_up_score",
+      "down_team_win": "erase_up_score_and_award_no_points"
+    },
+    "down_team_reset_awards_points": false,
+    "target_score": 52,
+    "terminal_comparison": "greater_than_or_equal",
+    "fixed_deal_count": false,
+    "continue_after_terminal": false
+  },
+  "invalid_actions": {
+    "policy": "reject_with_explicit_error",
+    "silent_substitution": false,
+    "silent_defaulting": false
+  },
+  "sooli": {
+    "available_in_contracts": [
+      "RAMI"
+    ],
+    "decision_timing": "after_showing_resolves_before_first_card",
+    "eligible_players": "defenders",
+    "offer_order": [
+      {
+        "operation": "seat_add_modulo_from_declarer",
+        "offset": 1,
+        "modulus": 4
+      },
+      {
+        "operation": "seat_add_modulo_from_declarer",
+        "offset": 3,
+        "modulus": 4
+      }
+    ],
+    "first_acceptance_ends_offers": true,
+    "decisions_public": true,
+    "counter_move_for_rami_pair": false,
+    "exchange": {
+      "cards_each_way": 1,
+      "order": [
+        "soolaaja_gives",
+        "partner_returns"
+      ],
+      "partner_sees_given_card_before_returning": true,
+      "partner_may_return_received_card": false,
+      "exchanged_cards_public": false,
+      "shown_card_may_be_exchanged": true
+    },
+    "partner_after_exchange": "out_of_play_hand_dead_not_revealed",
+    "active_players": 3,
+    "rank_order_low_to_high": [
+      14,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+    ],
+    "first_leader": "declarer",
+    "trick_order": [
+      "leader",
+      "other_rami_player",
+      "soolaaja"
+    ],
+    "followers": "must_follow_led_suit_when_possible",
+    "off_suit_cards_can_win": false,
+    "next_leader": "trick_winner",
+    "failure": "soolaaja_wins_any_trick_deal_ends_immediately",
+    "success": "soolaaja_wins_no_trick_in_13_tricks",
+    "points": 24,
+    "winner_on_failure": "rami_pair",
+    "winner_on_success": "soolaaja_team",
+    "match_transition": "ordinary_rising_score"
+  },
+  "locked_bids": {
+    "bid_contents": "shown_card_and_declaration_as_in_showing",
+    "bid_visibility": "locked_until_resolution",
+    "reveal_order": "forehand_then_clockwise",
+    "revealed_bids": "up_to_and_including_the_first_rami_or_all_four_if_none",
+    "bids_after_first_rami": "never_revealed_and_without_effect",
+    "public_during_showing": "which_seats_have_bid",
+    "reference_collection": "sequential_in_seat_order_each_seat_blind"
+  }
+}

@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tuppi.research/schemas/exact/match_rule_diagnosis.schema.json",
+  "title": "Match-aware rule diagnosis report",
+  "description": "The Phase 5B diagnosis of the four match.* rules. Every instrument records its own scope, and the trajectory and measure caveats are required fields rather than prose in a document.",
+  "type": "object",
+  "required": [
+    "census",
+    "instruments",
+    "monotonicity_certificate",
+    "protect_threshold_lattice",
+    "schema_version",
+    "structural_verdict",
+    "variant_composition_check"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.exact.match_rule_diagnosis.v1"},
+    "instruments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "monotonicity_certificate": {
+      "type": "object",
+      "required": ["cases_checked", "claim", "failures", "holds", "scope"],
+      "properties": {
+        "cases_checked": {"type": "integer", "minimum": 1},
+        "claim": {"type": "string", "minLength": 1},
+        "failures": {"type": "array"},
+        "holds": {"type": "boolean"},
+        "scope": {"type": "string", "minLength": 1},
+        "schema_version": {
+          "const": "tuppi.exact.monotonicity_certificate.v1"
+        }
+      }
+    },
+    "protect_threshold_lattice": {
+      "type": "object",
+      "required": [
+        "distinct_behaviours",
+        "equivalence_classes",
+        "reachable_positive_scores",
+        "why_it_matters"
+      ],
+      "properties": {
+        "distinct_behaviours": {"type": "integer", "minimum": 1},
+        "equivalence_classes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "distances",
+              "firing_scores",
+              "is_equivalent_to_rule_off"
+            ],
+            "properties": {
+              "distances": {
+                "type": "array",
+                "items": {"type": "integer", "minimum": 0}
+              },
+              "firing_scores": {
+                "type": "array",
+                "items": {"type": "integer", "minimum": 0}
+              },
+              "is_equivalent_to_rule_off": {"type": "boolean"}
+            }
+          }
+        },
+        "reachable_positive_scores": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "integer", "minimum": 1}
+        },
+        "why_it_matters": {"type": "string", "minLength": 1}
+      }
+    },
+    "structural_verdict": {
+      "type": "object",
+      "required": ["claim", "holds", "rules_covered", "scope"],
+      "properties": {
+        "claim": {"type": "string", "minLength": 1},
+        "holds": {"type": "boolean"},
+        "rules_covered": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        },
+        "scope": {"type": "string", "minLength": 1}
+      }
+    },
+    "census": {
+      "type": "object",
+      "required": [
+        "deals_played",
+        "decisions_by_phase",
+        "per_rule",
+        "trajectory_caveat"
+      ],
+      "properties": {
+        "deals_played": {"type": "integer", "minimum": 1},
+        "trajectory_caveat": {"type": "string", "minLength": 1},
+        "per_rule": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "decision_changes",
+              "exact_verdicts",
+              "phase",
+              "sampled_verdicts"
+            ],
+            "properties": {
+              "decision_changes": {"type": "integer", "minimum": 0},
+              "phase": {"enum": ["SHOWING", "TRICK_PLAY"]},
+              "exact_verdicts": {"$ref": "#/$defs/verdictCounts"},
+              "sampled_verdicts": {"$ref": "#/$defs/verdictCounts"}
+            }
+          }
+        }
+      }
+    },
+    "variant_composition_check": {
+      "type": "object",
+      "required": [
+        "behaviour_matches_frozen_ablation",
+        "composed_behaviour_digest",
+        "frozen_ablation_behaviour_digest"
+      ],
+      "properties": {
+        "behaviour_matches_frozen_ablation": {"const": true},
+        "composed_behaviour_digest": {"$ref": "#/$defs/sha256"},
+        "frozen_ablation_behaviour_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "show_rule_census": {
+      "type": "object",
+      "required": ["decisions", "interpretation", "per_variant", "threshold_margin"],
+      "properties": {
+        "decisions": {"type": "integer", "minimum": 1},
+        "interpretation": {"type": "string", "minLength": 1},
+        "per_variant": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "card_only_changes",
+              "changed_rule_id",
+              "contract_flips",
+              "eligible_decisions"
+            ],
+            "properties": {
+              "card_only_changes": {"type": "integer", "minimum": 0},
+              "changed_rule_id": {"type": "string", "minLength": 1},
+              "contract_flips": {"type": "integer", "minimum": 0},
+              "eligible_decisions": {"type": "integer", "minimum": 0}
+            }
+          }
+        }
+      }
+    },
+    "rule_ablation": {
+      "type": "object",
+      "required": ["comparisons", "pair_count", "sign_convention", "schema_version"],
+      "properties": {
+        "schema_version": {"const": "tuppi.exact.rule_ablation_report.v1"},
+        "pair_count": {"type": "integer", "minimum": 1},
+        "sign_convention": {"type": "string", "minLength": 1},
+        "comparisons": {"type": "array", "minItems": 1}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "verdictCounts": {
+      "type": "object",
+      "required": ["neutral", "rule_helps", "rule_hurts", "total"],
+      "properties": {
+        "neutral": {"type": "integer", "minimum": 0},
+        "rule_helps": {"type": "integer", "minimum": 0},
+        "rule_hurts": {"type": "integer", "minimum": 0},
+        "total": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

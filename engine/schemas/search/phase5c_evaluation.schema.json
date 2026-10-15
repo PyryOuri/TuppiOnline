@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tuppi.research/schemas/search/phase5c_evaluation.schema.json",
+  "title": "Phase 5C complete-match evaluation report",
+  "description": "One complete-match development comparison with a PIMC candidate, run on the frozen Phase 5A protocol. The sign convention and the worker-independence statement are required fields rather than prose in a document.",
+  "type": "object",
+  "required": [
+    "bank",
+    "candidate_profile_key",
+    "comparison_id",
+    "hypothesis",
+    "name",
+    "opponent_profile_key",
+    "pair_count",
+    "primary_match_inference",
+    "safety_cap",
+    "schema_version",
+    "secondary_metrics",
+    "sign_convention",
+    "worker_independence"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.search.phase5c_evaluation.v1"},
+    "comparison_id": {"type": "string", "pattern": "^cmp:sha256:[0-9a-f]{64}$"},
+    "pair_count": {"type": "integer", "minimum": 1},
+    "safety_cap": {"type": "integer", "minimum": 1},
+    "sign_convention": {"type": "string", "minLength": 1},
+    "worker_independence": {"type": "string", "minLength": 1},
+    "bank": {
+      "type": "object",
+      "required": ["role"],
+      "properties": {
+        "role": {
+          "const": "development",
+          "description": "Phase 5C never opens the promotion-sealed bank."
+        }
+      }
+    },
+    "primary_match_inference": {
+      "type": "object",
+      "required": [
+        "candidate_match_win_probability",
+        "censored_pair_count",
+        "complete_pair_count",
+        "mean_d_match",
+        "pair_outcomes",
+        "sign_flip_p_value",
+        "unit_of_inference",
+        "win_probability_confidence_interval"
+      ],
+      "properties": {
+        "candidate_match_win_probability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "complete_pair_count": {"type": "integer", "minimum": 0},
+        "censored_pair_count": {"type": "integer", "minimum": 0},
+        "sign_flip_p_value": {"type": "number", "minimum": 0, "maximum": 1},
+        "win_probability_confidence_interval": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {"type": "number"}
+        }
+      }
+    },
+    "secondary_metrics": {"type": "object"}
+  }
+}

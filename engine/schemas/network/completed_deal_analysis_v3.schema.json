@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v3.schema.json",
+  "title": "Completed Tuppi deal review with same-shuffle bot replay",
+  "description": "Post-deal-only diagnostics, the authoritative played result, and a deterministic four-seat partner_aware_v1 replay of the identical explicit deal.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "match_ref",
+    "deal_ref",
+    "deal_id",
+    "deal_number",
+    "seat",
+    "local_team",
+    "initial_hands",
+    "bot_policy",
+    "actual_result",
+    "bot_replay",
+    "comparison",
+    "summary",
+    "analyses"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.analysis.completed_deal.v3"},
+    "match_ref": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,96}$"},
+    "deal_ref": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,96}/deal:(?:0|[1-9][0-9]*)$", "maxLength": 128},
+    "deal_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "deal_number": {"type": "integer", "minimum": 0},
+    "seat": {"type": "integer", "minimum": 0, "maximum": 3},
+    "local_team": {"type": "integer", "minimum": 0, "maximum": 1},
+    "initial_hands": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "array",
+        "minItems": 13,
+        "maxItems": 13,
+        "uniqueItems": true,
+        "items": {"type": "string", "pattern": "^(?:10|[2-9JQKA])[HDCS]$"}
+      }
+    },
+    "bot_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile", "policy_id", "determinism", "analysis_seed", "bot_seats"],
+      "properties": {
+        "profile": {"const": "partner_aware_v1"},
+        "policy_id": {"type": "string", "minLength": 1, "maxLength": 256},
+        "determinism": {"const": "deterministic"},
+        "analysis_seed": {"type": "null"},
+        "bot_seats": {
+          "type": "array",
+          "prefixItems": [{"const": 0}, {"const": 1}, {"const": 2}, {"const": 3}],
+          "items": false,
+          "minItems": 4,
+          "maxItems": 4
+        }
+      }
+    },
+    "actual_result": {"$ref": "https://example.invalid/tuppi/schemas/engine/deal_result.schema.json"},
+    "bot_replay": {"$ref": "https://example.invalid/tuppi/schemas/engine/deal_result.schema.json"},
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "local_team",
+        "actual_tricks",
+        "bot_tricks",
+        "trick_difference",
+        "actual_deal_points",
+        "bot_deal_points",
+        "deal_point_difference",
+        "actual_match_score_after",
+        "bot_match_score_after",
+        "match_score_difference",
+        "actual_score_margin_after",
+        "bot_score_margin_after",
+        "match_score_margin_difference"
+      ],
+      "properties": {
+        "local_team": {"type": "integer", "minimum": 0, "maximum": 1},
+        "actual_tricks": {"type": "integer", "minimum": 0, "maximum": 13},
+        "bot_tricks": {"type": "integer", "minimum": 0, "maximum": 13},
+        "trick_difference": {"type": "integer", "minimum": -13, "maximum": 13},
+        "actual_deal_points": {"type": "integer", "minimum": -56, "maximum": 56},
+        "bot_deal_points": {"type": "integer", "minimum": -56, "maximum": 56},
+        "deal_point_difference": {"type": "integer", "minimum": -112, "maximum": 112},
+        "actual_match_score_after": {"type": "integer", "minimum": 0},
+        "bot_match_score_after": {"type": "integer", "minimum": 0},
+        "match_score_difference": {"type": "integer"},
+        "actual_score_margin_after": {"type": "integer"},
+        "bot_score_margin_after": {"type": "integer"},
+        "match_score_margin_difference": {"type": "integer"}
+      }
+    },
+    "summary": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v2.schema.json#/properties/summary"},
+    "analyses": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v2.schema.json#/properties/analyses"}
+  }
+}

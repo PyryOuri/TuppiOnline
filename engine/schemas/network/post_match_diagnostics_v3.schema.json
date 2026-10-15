@@ -1,0 +1,652 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/network/post_match_diagnostics_v3.schema.json",
+  "title": "Reviewable seat-scoped Tuppi post-match diagnostics",
+  "description": "v2 diagnostics plus reference-agreement statistics, the played action's position in the reference policy's ranking, and the scalars behind a RAMI/NOLO choice.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "match_ref",
+    "seat",
+    "summary",
+    "analyses"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "tuppi.analysis.post_match.v3"
+    },
+    "match_ref": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]{1,96}$"
+    },
+    "seat": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    },
+    "analyses": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "$ref": "#/$defs/analysis"
+      }
+    }
+  },
+  "$defs": {
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deal_count",
+        "diagnostic_count",
+        "final_score",
+        "reference_agreement",
+        "winner_team"
+      ],
+      "properties": {
+        "deal_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "diagnostic_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "final_score": {
+          "$ref": "#/$defs/integerPair"
+        },
+        "reference_agreement": {
+          "$ref": "#/$defs/referenceAgreement"
+        },
+        "winner_team": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "referenceAgreement": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How often the analysed seat's own accepted actions matched the frozen reference policy across every reconstructed decision, not only the returned diagnostics.",
+      "required": [
+        "reference_profile",
+        "decision_count",
+        "forced_decision_count",
+        "match_count",
+        "showing_decision_count",
+        "showing_match_count",
+        "trick_decision_count",
+        "trick_match_count",
+        "indifferent_count",
+        "top_rank_count",
+        "second_rank_count",
+        "lower_rank_count",
+        "mean_played_rank",
+        "mean_legal_action_count"
+      ],
+      "properties": {
+        "reference_profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "decision_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "forced_decision_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Decisions with exactly one legal action. They agree by construction."
+        },
+        "match_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "showing_decision_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "showing_match_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "trick_decision_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "trick_match_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "indifferent_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "top_rank_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "second_rank_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lower_rank_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mean_played_rank": {
+          "type": "number",
+          "minimum": 0
+        },
+        "mean_legal_action_count": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "referenceRanking": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The played action's position in the reference policy's complete ranking of the same legal actions. reference_indifferent means the played action scored identically to the policy's own pick and only the documented engine-index tie-break separated them.",
+      "required": [
+        "reference_profile",
+        "reference_action",
+        "played_rank",
+        "legal_action_count",
+        "strictly_better_count",
+        "reference_indifferent"
+      ],
+      "properties": {
+        "reference_profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "reference_action": {
+          "$ref": "#/$defs/action"
+        },
+        "played_rank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "legal_action_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "strictly_better_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reference_indifferent": {
+          "type": "boolean"
+        }
+      }
+    },
+    "contractReasoning": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The reference policy's own showing scalars and its closed-set verdict notes. Present only on a SHOWING decision; null on TRICK_PLAY.",
+      "required": [
+        "declared_contract",
+        "reference_contract",
+        "metrics",
+        "verdict_notes"
+      ],
+      "properties": {
+        "declared_contract": {
+          "enum": [
+            "RAMI",
+            "NOLO"
+          ]
+        },
+        "reference_contract": {
+          "enum": [
+            "RAMI",
+            "NOLO"
+          ]
+        },
+        "metrics": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "value"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{0,63}$"
+              },
+              "value": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "verdict_notes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "rami_threshold_met",
+              "nolo_veto_applied",
+              "rami_declared",
+              "nolo_declared",
+              "match_protect_terminal_lead",
+              "match_reset_opponent_rise",
+              "legacy_protect_large_rise",
+              "legacy_gamble_for_reset",
+              "legacy_expected_value_choice"
+            ]
+          }
+        }
+      }
+    },
+    "analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "analysis_id",
+        "match_ref",
+        "event_index",
+        "deal_number",
+        "trick_index",
+        "seat",
+        "decision_kind",
+        "title",
+        "summary",
+        "played_action",
+        "recommended_action",
+        "recommendation",
+        "alternatives",
+        "explanation",
+        "limitations",
+        "source",
+        "confidence",
+        "source_id",
+        "reason_code",
+        "legal_actions",
+        "equivalent_actions",
+        "contract_reasoning",
+        "reference_ranking",
+        "context",
+        "quantitative"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "tuppi.analysis.post_match.v3"
+        },
+        "analysis_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+        },
+        "match_ref": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.:-]{1,96}$"
+        },
+        "event_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "deal_number": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "trick_index": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 12
+        },
+        "seat": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "decision_kind": {
+          "enum": [
+            "SHOWING",
+            "TRICK_PLAY"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "played_action": {
+          "$ref": "#/$defs/action"
+        },
+        "recommended_action": {
+          "$ref": "#/$defs/action"
+        },
+        "recommendation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "alternatives": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "$ref": "#/$defs/alternative"
+          }
+        },
+        "explanation": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        },
+        "source": {
+          "enum": [
+            "Exact",
+            "Rule-based",
+            "Reference"
+          ]
+        },
+        "confidence": {
+          "enum": [
+            "perfect_information_exact",
+            "objective_rule_pattern",
+            "reference_policy_only"
+          ]
+        },
+        "source_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "reason_code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "legal_actions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/action"
+          }
+        },
+        "equivalent_actions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/action"
+          }
+        },
+        "contract_reasoning": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/contractReasoning"
+            }
+          ]
+        },
+        "reference_ranking": {
+          "$ref": "#/$defs/referenceRanking"
+        },
+        "context": {
+          "$ref": "#/$defs/context"
+        },
+        "quantitative": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/quantitative"
+            }
+          ]
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract",
+        "player_role",
+        "trick_number",
+        "current_trick",
+        "score",
+        "team_tricks"
+      ],
+      "properties": {
+        "contract": {
+          "enum": [
+            "RAMI",
+            "NOLO",
+            null
+          ]
+        },
+        "player_role": {
+          "enum": [
+            "showing_player",
+            "nolo_player",
+            "declarer",
+            "declarer_partner",
+            "defender"
+          ]
+        },
+        "trick_number": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 13
+        },
+        "current_trick": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/playedCard"
+          }
+        },
+        "score": {
+          "$ref": "#/$defs/integerPair"
+        },
+        "team_tricks": {
+          "$ref": "#/$defs/integerPair"
+        }
+      }
+    },
+    "quantitative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "metric",
+        "chosen_value",
+        "best_value",
+        "difference",
+        "unit"
+      ],
+      "properties": {
+        "metric": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "chosen_value": {
+          "type": "number"
+        },
+        "best_value": {
+          "type": "number"
+        },
+        "difference": {
+          "type": "number",
+          "minimum": 0
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      }
+    },
+    "action": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "seat",
+            "card"
+          ],
+          "properties": {
+            "type": {
+              "const": "play"
+            },
+            "seat": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3
+            },
+            "card": {
+              "$ref": "#/$defs/card"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "seat",
+            "shown_card",
+            "declared_contract"
+          ],
+          "properties": {
+            "type": {
+              "const": "show"
+            },
+            "seat": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3
+            },
+            "shown_card": {
+              "$ref": "#/$defs/card"
+            },
+            "declared_contract": {
+              "enum": [
+                "RAMI",
+                "NOLO"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "playedCard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seat",
+        "card"
+      ],
+      "properties": {
+        "seat": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "card": {
+          "$ref": "#/$defs/card"
+        }
+      }
+    },
+    "alternative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rank",
+        "action",
+        "title",
+        "assessment",
+        "reason"
+      ],
+      "properties": {
+        "rank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "action": {
+          "$ref": "#/$defs/action"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "assessment": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      }
+    },
+    "integerPair": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "integer",
+          "minimum": 0
+        }
+      ],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "card": {
+      "type": "string",
+      "pattern": "^(?:[2-9]|10|J|Q|K|A)[HDCS]$"
+    }
+  },
+  "$comment": "v3 deliberately widens the client boundary to the reference policy's own ranking position and showing scalars. It still forbids any search tree, belief particle, observation digest, raw private hand, or training diagnostic, and every field is constructed by src/tuppi_server/post_match_diagnostics.py rather than forwarded from a DecisionDiagnostics mapping."
+}

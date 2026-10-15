@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tuppi Phase 6 complete-match evaluation summary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["candidate_agent_id", "comparison_id", "inference", "opponent_agent_id", "pair_count", "pairs", "root_seed", "schema_version", "secondary"],
+  "properties": {
+    "candidate_agent_id": {"type": "string"},
+    "comparison_id": {"type": "string"},
+    "inference": {"type": "object"},
+    "opponent_agent_id": {"type": "string"},
+    "pair_count": {"type": "integer", "minimum": 1},
+    "pairs": {"type": "array"},
+    "root_seed": {},
+    "schema_version": {"const": "tuppi.learning.complete_match_evaluation.v1"},
+    "secondary": {"type": "object"}
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/agents/decision_diagnostics.schema.json",
+  "title": "Privacy-safe Tuppi Phase 4 decision diagnostics",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "agent_id", "profile_id", "profile_key", "phase",
+    "observation_digest", "observing_seat", "partner_seat", "match_role",
+    "contract", "own_hand_size", "legal_action_count", "action_ordering_id",
+    "tie_break_id", "tie_break_applied", "selected_action",
+    "selected_action_order_index", "invoked_rule_ids", "candidates"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.agents.decision_diagnostics.v1"},
+    "agent_id": {"type": "string", "pattern": "^agent:sha256:[0-9a-f]{64}$"},
+    "profile_id": {"type": "string", "pattern": "^profile:sha256:[0-9a-f]{64}$"},
+    "profile_key": {"type": "string", "pattern": "^[a-z0-9_]+_v1$"},
+    "phase": {"enum": ["SHOWING", "TRICK_PLAY"]},
+    "observation_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "observing_seat": {"type": "integer", "minimum": 0, "maximum": 3},
+    "partner_seat": {"type": "integer", "minimum": 0, "maximum": 3},
+    "match_role": {"enum": ["table", "up", "down"]},
+    "contract": {"oneOf": [{"enum": ["NOLO", "RAMI"]}, {"type": "null"}]},
+    "own_hand_size": {"type": "integer", "minimum": 1, "maximum": 13},
+    "legal_action_count": {"type": "integer", "minimum": 1},
+    "action_ordering_id": {"const": "tuppi.agents.engine_legal_action_order.v1"},
+    "tie_break_id": {"const": "lowest_engine_legal_action_index_v1"},
+    "tie_break_applied": {"type": "boolean"},
+    "selected_action": {"$ref": "#/$defs/action"},
+    "selected_action_order_index": {"type": "integer", "minimum": 0},
+    "invoked_rule_ids": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z][a-z0-9_.]*\\.v1$"}
+    },
+    "candidates": {
+      "type": "array", "minItems": 1, "items": {"$ref": "#/$defs/candidate"}
+    }
+  },
+  "$defs": {
+    "action": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "seat", "card"],
+          "properties": {
+            "type": {"const": "play"},
+            "seat": {"type": "integer", "minimum": 0, "maximum": 3},
+            "card": {"$ref": "#/$defs/cardCode"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "seat", "shown_card", "declared_contract"],
+          "properties": {
+            "type": {"const": "show"},
+            "seat": {"type": "integer", "minimum": 0, "maximum": 3},
+            "shown_card": {"$ref": "#/$defs/cardCode"},
+            "declared_contract": {"enum": ["NOLO", "RAMI"]}
+          }
+        }
+      ]
+    },
+    "cardCode": {"type": "string", "pattern": "^(?:[2-9]|10|J|Q|K|A)[HDCS]$"},
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action", "action_order_index", "score_vector", "feature_contributions",
+        "rule_ids", "reason_codes", "selected"
+      ],
+      "properties": {
+        "action": {"$ref": "#/$defs/action"},
+        "action_order_index": {"type": "integer", "minimum": 0},
+        "score_vector": {"type": "array", "minItems": 1, "items": {"type": "number"}},
+        "feature_contributions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["component", "value"],
+            "properties": {
+              "component": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+              "value": {"type": "number"}
+            }
+          }
+        },
+        "rule_ids": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-z][a-z0-9_.]*\\.v1$"}
+        },
+        "reason_codes": {
+          "type": "array", "items": {"type": "string", "pattern": "^[a-z0-9_]+$"}
+        },
+        "selected": {"type": "boolean"}
+      }
+    }
+  },
+  "$comment": "A diagnostics record may name only the observing seat's legal actions. It never contains another seat's card, the full own hand, an engine object, an explicit deal, a hidden-state-derived deal identifier, or evaluator-private data. The observation digest is a one-way commitment."
+}

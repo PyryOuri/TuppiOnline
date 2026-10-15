@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/evaluation/deal_bank.schema.json",
+  "title": "Deterministic Tuppi deal bank",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "ruleset_id", "generator_id", "generator_version",
+    "shuffle_algorithm", "root_seed", "dealer_policy", "initial_dealer",
+    "deal_bank_id", "content_digest", "creation_metadata", "base_deals"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.eval.deal_bank.v1"},
+    "ruleset_id": {"const": "project_target_v1"},
+    "generator_id": {"const": "tuppi.eval.sha256_fisher_yates"},
+    "generator_version": {"const": "1.0.0"},
+    "shuffle_algorithm": {"const": "sha256_counter_fisher_yates_modulo_v1"},
+    "root_seed": {"oneOf": [{"type": "integer"}, {"type": "string"}]},
+    "dealer_policy": {"enum": ["round_robin", "digest_derived"]},
+    "initial_dealer": {"$ref": "#/$defs/seat"},
+    "deal_bank_id": {"type": "string", "pattern": "^bank:sha256:[0-9a-f]{64}$"},
+    "content_digest": {"$ref": "#/$defs/sha256"},
+    "creation_metadata": {"type": "object"},
+    "base_deals": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/baseDeal"}}
+  },
+  "$defs": {
+    "seat": {"type": "integer", "minimum": 0, "maximum": 3},
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "card": {"type": "string", "pattern": "^(?:[2-9]|10|J|Q|K|A)[HDCS]$"},
+    "hand": {
+      "type": "array", "minItems": 13, "maxItems": 13, "uniqueItems": true,
+      "items": {"$ref": "#/$defs/card"}
+    },
+    "score": {
+      "oneOf": [
+        {"type": "array", "prefixItems": [{"const": 0}, {"type": "integer", "minimum": 0, "maximum": 51}], "items": false},
+        {"type": "array", "prefixItems": [{"type": "integer", "minimum": 1, "maximum": 51}, {"const": 0}], "items": false}
+      ],
+      "minItems": 2, "maxItems": 2
+    },
+    "baseDeal": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "ruleset_id", "card_encoding", "base_deal_id", "index", "dealer", "starting_score", "hands"],
+      "properties": {
+        "schema_version": {"const": "tuppi.eval.base_deal.v1"},
+        "ruleset_id": {"const": "project_target_v1"},
+        "card_encoding": {"const": "project_target_v1_suit_major_hdcs_rank_2_to_ace"},
+        "base_deal_id": {"type": "string", "pattern": "^base:sha256:[0-9a-f]{64}$"},
+        "index": {"type": "integer", "minimum": 0},
+        "dealer": {"$ref": "#/$defs/seat"},
+        "starting_score": {"$ref": "#/$defs/score"},
+        "hands": {
+          "type": "array", "minItems": 4, "maxItems": 4,
+          "prefixItems": [
+            {"$ref": "#/$defs/hand"}, {"$ref": "#/$defs/hand"},
+            {"$ref": "#/$defs/hand"}, {"$ref": "#/$defs/hand"}
+          ],
+          "items": false
+        }
+      }
+    }
+  },
+  "$comment": "Executable validation enforces complete-deck uniqueness, dealer policy, duplicate detection, and all content digests."
+}

@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tuppi.research/schemas/search/phase5d_a_convergence.schema.json",
+  "title": "Phase 5D-A nested-budget convergence report",
+  "description": "Action stability across nested sample prefixes. A convergence diagnostic, not a strength evaluation: an agent that stops changing its action has stopped changing its mind, which is a different property from being right.",
+  "type": "object",
+  "required": [
+    "adjacent_agreement",
+    "agreement_with_largest",
+    "budgets",
+    "by_stratum",
+    "corpus_id",
+    "declaration_shift",
+    "duplicate_fraction",
+    "interpretation",
+    "positions",
+    "rank_correlation",
+    "schema_version",
+    "selection_gap",
+    "timing_seconds"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.search.budget_convergence.v1"},
+    "corpus_id": {"type": "string", "pattern": "^corpus:sha256:[0-9a-f]{64}$"},
+    "interpretation": {"type": "string", "minLength": 1},
+    "budgets": {
+      "type": "array",
+      "minItems": 2,
+      "items": {"type": "integer", "minimum": 1}
+    },
+    "positions": {
+      "type": "object",
+      "required": ["showing", "total", "trick_play"],
+      "properties": {
+        "showing": {"type": "integer", "minimum": 0},
+        "total": {"type": "integer", "minimum": 1},
+        "trick_play": {"type": "integer", "minimum": 0}
+      }
+    },
+    "adjacent_agreement": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "agreement_rate",
+          "agreements",
+          "comparisons",
+          "from_worlds",
+          "to_worlds"
+        ],
+        "properties": {
+          "agreement_rate": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+          "agreements": {"type": "integer", "minimum": 0},
+          "comparisons": {"type": "integer", "minimum": 0},
+          "from_worlds": {"type": "integer", "minimum": 1},
+          "to_worlds": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "agreement_with_largest": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "agreement_rate",
+          "agreements",
+          "comparisons",
+          "largest_worlds",
+          "world_count"
+        ]
+      }
+    },
+    "declaration_shift": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rami_declaration_rate", "showing_decisions", "world_count"],
+        "properties": {
+          "rami_declaration_rate": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 1
+          },
+          "showing_decisions": {"type": "integer", "minimum": 0},
+          "world_count": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "selection_gap": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "mean_gap",
+          "tie_broken_by_canonical_order",
+          "tie_rate",
+          "world_count"
+        ]
+      }
+    },
+    "rank_correlation": {"type": "array"},
+    "duplicate_fraction": {"type": "array"},
+    "timing_seconds": {"type": "array"},
+    "by_stratum": {"type": "object"}
+  }
+}

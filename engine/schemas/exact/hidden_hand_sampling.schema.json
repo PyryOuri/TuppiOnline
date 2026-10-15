@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tuppi.research/schemas/exact/hidden_hand_sampling.schema.json",
+  "title": "Uniform feasible hidden-hand sampling summary",
+  "description": "A sampling request recorded without any card. is_posterior_over_opponent_hands is const false: uniform-over-feasible is a neutral reference measure, and a record that claimed otherwise would be invalid.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "distinct_assignments_drawn",
+    "feasible_assignment_count",
+    "provenance",
+    "requested_count",
+    "schema_version"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.exact.uniform_feasible_sampler.v1"},
+    "distinct_assignments_drawn": {"type": "integer", "minimum": 0},
+    "feasible_assignment_count": {"type": "integer", "minimum": 1},
+    "requested_count": {"type": "integer", "minimum": 1},
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm_id",
+        "distribution",
+        "feasible_assignment_count",
+        "is_posterior_over_opponent_hands",
+        "posterior_caveat",
+        "random_source_id",
+        "schema_version",
+        "seed",
+        "stream_seed_digest",
+        "unknown_card_count"
+      ],
+      "properties": {
+        "algorithm_id": {"const": "tuppi.exact.counted_prefix_uniform_v1"},
+        "distribution": {"const": "uniform_over_feasible_assignments"},
+        "feasible_assignment_count": {"type": "integer", "minimum": 1},
+        "is_posterior_over_opponent_hands": {"const": false},
+        "posterior_caveat": {"type": "string", "minLength": 1},
+        "random_source_id": {
+          "const": "sha256_counter_bit_reservoir_rejection_v1"
+        },
+        "schema_version": {"const": "tuppi.exact.uniform_feasible_sampler.v1"},
+        "seed": {"type": "string", "minLength": 1},
+        "stream_seed_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "unknown_card_count": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

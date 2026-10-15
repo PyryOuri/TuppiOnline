@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/evaluation/evaluation_config.schema.json",
+  "title": "Strict immutable Tuppi evaluation configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "evaluation_id", "configuration_digest", "ruleset_id",
+    "engine_identity", "deal_bank_id", "agent_specifications",
+    "agent_registry_digest", "team_a", "team_b", "schedule_id",
+    "schedule_design_id", "evaluation_mode", "match_sequence_length",
+    "starting_score", "dealer_policy", "number_base_deals",
+    "transformations_applied", "failure_policy", "output_mode",
+    "confidence_level", "bootstrap_replicates", "permutation_replicates",
+    "primary_metric", "seed_hierarchy", "timeouts", "sequential_protocol",
+    "software_environment", "description"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.eval.evaluation_config.v1"},
+    "evaluation_id": {"type": "string", "pattern": "^eval:sha256:[0-9a-f]{64}$"},
+    "configuration_digest": {"$ref": "#/$defs/sha256"},
+    "ruleset_id": {"const": "project_target_v1"},
+    "engine_identity": {"type": "string", "minLength": 1},
+    "deal_bank_id": {"type": "string", "pattern": "^bank:sha256:[0-9a-f]{64}$"},
+    "agent_specifications": {
+      "type": "array", "minItems": 1,
+      "items": {"$ref": "https://example.invalid/tuppi/schemas/evaluation/agent_spec.schema.json"}
+    },
+    "agent_registry_digest": {"$ref": "#/$defs/sha256"},
+    "team_a": {"$ref": "https://example.invalid/tuppi/schemas/evaluation/team_spec.schema.json"},
+    "team_b": {"$ref": "https://example.invalid/tuppi/schemas/evaluation/team_spec.schema.json"},
+    "schedule_id": {"type": "string", "pattern": "^schedule:sha256:[0-9a-f]{64}$"},
+    "schedule_design_id": {"const": "balanced_duplicate_8_v1"},
+    "evaluation_mode": {"enum": ["deal", "match"]},
+    "match_sequence_length": {"oneOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
+    "starting_score": {"$ref": "#/$defs/score"},
+    "dealer_policy": {"enum": ["round_robin", "digest_derived"]},
+    "number_base_deals": {"type": "integer", "minimum": 1},
+    "transformations_applied": {
+      "type": "array", "minItems": 8, "maxItems": 8, "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^transform:sha256:[0-9a-f]{64}$"}
+    },
+    "failure_policy": {"enum": ["continue", "abort"]},
+    "output_mode": {"const": "raw_and_summary"},
+    "confidence_level": {"type": "number", "exclusiveMinimum": 0.5, "exclusiveMaximum": 1.0},
+    "bootstrap_replicates": {"type": "integer", "minimum": 1},
+    "permutation_replicates": {"type": "integer", "minimum": 1},
+    "primary_metric": {"const": "paired_duplicate_utility_points_v1"},
+    "seed_hierarchy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["deal_root_seed", "agent_root_seed", "analysis_seed"],
+      "properties": {
+        "deal_root_seed": {"$ref": "#/$defs/seed"},
+        "agent_root_seed": {"$ref": "#/$defs/seed"},
+        "analysis_seed": {"$ref": "#/$defs/seed"}
+      }
+    },
+    "timeouts": {
+      "type": "object", "additionalProperties": false,
+      "required": ["per_action_seconds", "per_deal_seconds", "per_match_seconds"],
+      "properties": {
+        "per_action_seconds": {"$ref": "#/$defs/limit"},
+        "per_deal_seconds": {"$ref": "#/$defs/limit"},
+        "per_match_seconds": {"$ref": "#/$defs/limit"}
+      }
+    },
+    "sequential_protocol": {
+      "type": "object", "additionalProperties": false,
+      "required": ["mode", "maximum_base_deals", "interim_checkpoints", "stopping_boundaries"],
+      "properties": {
+        "mode": {"const": "fixed_sample"},
+        "maximum_base_deals": {"type": "integer", "minimum": 1},
+        "interim_checkpoints": {"type": "array", "maxItems": 0},
+        "stopping_boundaries": {"type": "array", "maxItems": 0}
+      }
+    },
+    "software_environment": {"type": "object"},
+    "description": {"type": "string", "minLength": 1}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"evaluation_mode": {"const": "deal"}}, "required": ["evaluation_mode"]},
+      "then": {"properties": {"match_sequence_length": {"type": "null"}}},
+      "else": {
+        "properties": {
+          "match_sequence_length": {"type": "integer", "minimum": 1},
+          "dealer_policy": {"const": "round_robin"}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "seed": {"oneOf": [{"type": "integer"}, {"type": "string"}]},
+    "limit": {"oneOf": [{"type": "number", "exclusiveMinimum": 0}, {"type": "null"}]},
+    "score": {
+      "oneOf": [
+        {"type": "array", "prefixItems": [{"const": 0}, {"type": "integer", "minimum": 0, "maximum": 51}], "items": false},
+        {"type": "array", "prefixItems": [{"type": "integer", "minimum": 1, "maximum": 51}, {"const": 0}], "items": false}
+      ],
+      "minItems": 2, "maxItems": 2
+    }
+  },
+  "$comment": "The loader recomputes all nested identities and rejects cross-field mismatches, including fixed-sample size."
+}

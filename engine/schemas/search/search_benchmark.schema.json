@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tuppi.research/schemas/search/search_benchmark.schema.json",
+  "title": "Phase 5C search benchmark summary",
+  "description": "Operational performance measurement. Every figure is wall-clock and none is semantic: no agent's behaviour depends on timing, and no latency threshold is asserted by the test suite.",
+  "type": "object",
+  "required": [
+    "decisions",
+    "match_throughput",
+    "rollout",
+    "schema_version",
+    "timing_is_operational",
+    "world_construction"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.search.benchmark.v1"},
+    "timing_is_operational": {"type": "string", "minLength": 1},
+    "world_construction": {
+      "type": "object",
+      "required": ["constraint_model", "exact_count", "per_world_ms", "world_set"]
+    },
+    "rollout": {
+      "type": "object",
+      "required": [
+        "by_remaining_tricks",
+        "mean_actions_per_rollout",
+        "simulated_actions_per_second"
+      ]
+    },
+    "decisions": {
+      "type": "object",
+      "required": ["decisions"],
+      "properties": {
+        "decisions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "configuration_id",
+              "exact_tail_enabled",
+              "latency",
+              "rollout_policy_key",
+              "world_count"
+            ]
+          }
+        }
+      }
+    },
+    "match_throughput": {
+      "type": "object",
+      "required": [
+        "deals_per_second",
+        "mean_search_decisions_per_deal",
+        "note",
+        "profile_key"
+      ]
+    }
+  }
+}

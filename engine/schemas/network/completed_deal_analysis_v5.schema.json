@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v5.schema.json",
+  "title": "Completed Tuppi deal review with live and replay-bot contract estimates",
+  "description": "Post-deal diagnostics, same-shuffle bot replay, and separately identified contract estimates from the human-played deal and the bot-only replay.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "match_ref",
+    "deal_ref",
+    "deal_id",
+    "deal_number",
+    "seat",
+    "local_team",
+    "initial_hands",
+    "bot_policy",
+    "actual_result",
+    "bot_replay",
+    "comparison",
+    "summary",
+    "analyses",
+    "contract_evaluations",
+    "bot_replay_contract_evaluations"
+  ],
+  "properties": {
+    "schema_version": {"const": "tuppi.analysis.completed_deal.v5"},
+    "match_ref": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v4.schema.json#/properties/match_ref"},
+    "deal_ref": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v4.schema.json#/properties/deal_ref"},
+    "deal_id": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v4.schema.json#/properties/deal_id"},
+    "deal_number": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v4.schema.json#/properties/deal_number"},
+    "seat": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v4.schema.json#/properties/seat"},
+    "local_team": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v4.schema.json#/properties/local_team"},
+    "initial_hands": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v4.schema.json#/properties/initial_hands"},
+    "bot_policy": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v4.schema.json#/properties/bot_policy"},
+    "actual_result": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v4.schema.json#/properties/actual_result"},
+    "bot_replay": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v4.schema.json#/properties/bot_replay"},
+    "comparison": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v4.schema.json#/properties/comparison"},
+    "summary": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v4.schema.json#/properties/summary"},
+    "analyses": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v4.schema.json#/properties/analyses"},
+    "contract_evaluations": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v4.schema.json#/$defs/contractEvaluation"}
+    },
+    "bot_replay_contract_evaluations": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {"$ref": "https://example.invalid/tuppi/schemas/network/completed_deal_analysis_v4.schema.json#/$defs/contractEvaluation"}
+    }
+  }
+}

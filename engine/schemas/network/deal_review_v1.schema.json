@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/network/deal_review_v1.schema.json",
+  "title": "After-deal review of one seat's own decisions",
+  "description": "POST /v1/rooms/{code}/deals/{n}/review. A bot re-decided each of the requesting seat's decisions from that seat's own observation at the time; findings are the clear mistakes only. Costs are estimated match-equity (win-probability) differences.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "match_ref",
+    "deal_ref",
+    "deal_number",
+    "seat",
+    "ruleset_id",
+    "reviewer_id",
+    "decisions_reviewed",
+    "findings",
+    "total_cost"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "tuppi.analysis.deal_review.v1"
+    },
+    "match_ref": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]{1,96}$"
+    },
+    "deal_ref": {
+      "type": "string",
+      "maxLength": 128
+    },
+    "deal_number": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "seat": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3
+    },
+    "ruleset_id": {
+      "enum": [
+        "project_target_v1",
+        "project_target_v2",
+        "project_target_v3"
+      ]
+    },
+    "reviewer_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "decisions_reviewed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "total_cost": {
+      "type": "number",
+      "minimum": 0
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision_index",
+        "event_index",
+        "kind",
+        "trick_index",
+        "played_action",
+        "recommended_action",
+        "cost",
+        "standard_error"
+      ],
+      "properties": {
+        "decision_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "event_index": {
+          "type": "integer",
+          "minimum": -1
+        },
+        "kind": {
+          "enum": [
+            "bid",
+            "discard",
+            "follow",
+            "lead",
+            "sooli_discard",
+            "sooli_follow",
+            "sooli_give",
+            "sooli_lead",
+            "sooli_offer",
+            "sooli_return"
+          ]
+        },
+        "trick_index": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 12
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "played_action": {
+          "$ref": "https://example.invalid/tuppi/schemas/engine/player_observation.schema.json#/$defs/action"
+        },
+        "recommended_action": {
+          "$ref": "https://example.invalid/tuppi/schemas/engine/player_observation.schema.json#/$defs/action"
+        },
+        "cost": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "standard_error": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}
