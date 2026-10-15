@@ -41,6 +41,15 @@
     },
     {
       "$ref": "#/$defs/pong"
+    },
+    {
+      "$ref": "#/$defs/hostCommandPause"
+    },
+    {
+      "$ref": "#/$defs/hostCommandResume"
+    },
+    {
+      "$ref": "#/$defs/hostCommandRematch"
     }
   ],
   "$defs": {
@@ -107,6 +116,17 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 3
+        },
+        "features": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "pause",
+              "rematch"
+            ]
+          },
+          "$comment": "Optional commands this server accepts; absent on servers without them."
         }
       }
     },
@@ -549,6 +569,57 @@
         }
       },
       "$comment": "project_target_v3 only, while bids are locked: which seats have locked, this seat's own bid and, until it locks, its options. Never another seat's bid."
+    },
+    "hostCommandPause": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "pause"
+        },
+        "payload": {
+          "$ref": "#/$defs/emptyPayload"
+        }
+      },
+      "$comment": "Host only. Pause/resume while a match is in progress; rematch after it is complete."
+    },
+    "hostCommandResume": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "resume"
+        },
+        "payload": {
+          "$ref": "#/$defs/emptyPayload"
+        }
+      },
+      "$comment": "Host only. Pause/resume while a match is in progress; rematch after it is complete."
+    },
+    "hostCommandRematch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "rematch"
+        },
+        "payload": {
+          "$ref": "#/$defs/emptyPayload"
+        }
+      },
+      "$comment": "Host only. Pause/resume while a match is in progress; rematch after it is complete."
     }
   }
 }

@@ -304,6 +304,7 @@ class TuppiASGIApp:
             "hello_ack",
             {
                 "compatible": True,
+                "features": list(FEATURES),
                 "protocol_version": PROTOCOL_VERSION,
                 "room_code": room.code,
                 "seat": session.seat,

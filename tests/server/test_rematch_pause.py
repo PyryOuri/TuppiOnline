@@ -11,6 +11,9 @@ from tuppi_server.app import Connection, TuppiASGIApp
 from tuppi_server.persistence import PersistenceError
 from tuppi_server.rooms import RoomError, RoomManager
 from tuppi_server.match_runner import TEST_AI_PROFILE_KEY
+from tuppi_ui_fixtures.validation import validate_instance
+
+WS_SCHEMA = "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json"
 
 V3 = RulesetId.PROJECT_TARGET_V3
 
@@ -19,6 +22,12 @@ V3 = RulesetId.PROJECT_TARGET_V3
 def unpaced(monkeypatch):
     monkeypatch.setattr(match_runner, "REVEAL_PAUSE_SECONDS", 0)
     monkeypatch.setattr(match_runner, "REVEAL_STEP_SECONDS", 0)
+
+
+def validate(message):
+    """The fixture bot's profile is not a protocol profile; validate the rest."""
+    text = json.dumps(message).replace(f'"{TEST_AI_PROFILE_KEY}"', '"tuppi_ai_search_v1"')
+    validate_instance(json.loads(text), WS_SCHEMA)
 
 
 def manager(path):
@@ -31,7 +40,7 @@ class Table:
     def __init__(self, rooms, room, sessions):
         self.rooms, self.room, self.app = rooms, room, TuppiASGIApp(rooms)
         self.sent = {s.seat: [] for s in sessions}
-        self.connections = {}
+        self.connections, self.checked = {}, {}
         for session in sessions:
             async def send(message, seat=session.seat):
                 self.sent[seat].append(json.loads(message["text"]))
@@ -40,9 +49,14 @@ class Table:
         room.ai_action_delay_ms = 0
 
     async def send(self, seat, message_type, payload=None):
-        await self.app._handle_message(self.connections[seat],
-                                       {"message_type": message_type, "payload": payload or {}})
+        request = {"message_type": message_type, "payload": payload or {}}
+        validate_instance(request, WS_SCHEMA)
+        await self.app._handle_message(self.connections[seat], request)
         await self.settle()
+        for messages in self.sent.values():  # every server message keeps the protocol schema
+            for message in messages[self.checked.get(id(messages), 0):]:
+                validate(message)
+            self.checked[id(messages)] = len(messages)
 
     async def settle(self):
         while tasks := [t for t in self.app._ai_tasks.values() if not t.done()]:
@@ -206,6 +220,20 @@ def test_pause_and_rematch_need_the_right_match_state(tmp_path):
     rooms.persist(room)
     with pytest.raises(PersistenceError, match="pause"):
         manager(tmp_path)
+
+
+def test_hello_acknowledgement_lists_the_optional_commands(tmp_path):
+    async def scenario():
+        rooms = manager(tmp_path)
+        room, host = rooms.create_room(display_name="Host", ai_seats=frozenset({1, 2, 3}))
+        app, sent = TuppiASGIApp(rooms), []
+        async def send(message): sent.append(json.loads(message["text"]))
+        await app._authenticate({"message_type": "hello", "payload": {"protocol_version": "tuppi.network.v1",
+            "room_code": room.code, "session_token": host.token}}, send)
+        assert sent[0]["message_type"] == "hello_ack" and sent[0]["payload"]["features"] == ["pause", "rematch"]
+        for message in sent:
+            validate(message)
+    asyncio.run(scenario())
 
 
 def test_compatibility_lists_the_optional_commands():

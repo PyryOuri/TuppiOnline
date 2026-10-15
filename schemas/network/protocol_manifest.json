@@ -39,6 +39,9 @@
     {"id": "reconnect_result", "transport": "websocket", "direction": "server_to_client", "schema_ref": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json#/$defs/reconnectResult"},
     {"id": "protocol_error", "transport": "websocket", "direction": "server_to_client", "schema_ref": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json#/$defs/protocolError"},
     {"id": "ping", "transport": "websocket", "direction": "client_to_server", "schema_ref": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json#/$defs/ping"},
-    {"id": "pong", "transport": "websocket", "direction": "server_to_client", "schema_ref": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json#/$defs/pong"}
+    {"id": "pong", "transport": "websocket", "direction": "server_to_client", "schema_ref": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json#/$defs/pong"},
+    {"id": "pause", "transport": "websocket", "direction": "client_to_server", "schema_ref": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json#/$defs/hostCommandPause"},
+    {"id": "resume", "transport": "websocket", "direction": "client_to_server", "schema_ref": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json#/$defs/hostCommandResume"},
+    {"id": "rematch", "transport": "websocket", "direction": "client_to_server", "schema_ref": "https://example.invalid/tuppi/schemas/network/websocket_message.schema.json#/$defs/hostCommandRematch"}
   ]
 }
