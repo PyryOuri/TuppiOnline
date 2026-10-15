@@ -9,6 +9,8 @@ const networkErrors = {room_not_found:'Huonetta ei löydy. Tarkista huonekoodi.'
   room_passcode_required:'Huoneen luominen tällä palvelimella vaatii luontikoodin.',
   invalid_room_passcode:'Luontikoodi ei kelpaa. Tarkista koodi.',
   too_many_attempts:'Liian monta väärää koodia. Odota minuutti ja yritä uudelleen.',
+  storage_unavailable:'Palvelimen tallennus ei juuri nyt toimi. Siirtoasi ei tallennettu; peli jatkuu, kun palvelu on käynnistynyt uudelleen.',
+  storage_low:'Palvelimen tallennustila on vähissä, joten uusia huoneita ei nyt voi luoda. Käynnissä olevat pelit jatkuvat.',
   match_not_active:'Ottelu ei ole käynnissä.', match_not_complete:'Uuden ottelun voi aloittaa, kun ottelu on päättynyt.',
   invalid_display_name:'Kirjoita nimimerkki (1–40 merkkiä).'};
 export function networkBase(value) {

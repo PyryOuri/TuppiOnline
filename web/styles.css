@@ -364,3 +364,11 @@ dialog::backdrop { background: #0004; }
   .trick-panel { padding: 8px; }
   .play-panel { padding: 8px 12px max(8px, env(safe-area-inset-bottom, 0px)); }
 }
+
+.match-summary { margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; background: var(--panel, #f6f9f6); border: 1px solid #0001; }
+.match-summary h3 { margin: 0 0 6px; font-size: 15px; }
+.match-summary ul { margin: 0; padding-left: 18px; font-size: 13px; }
+#help { max-width: min(640px, calc(100vw - 32px)); }
+#help h3 { margin: 14px 0 4px; font-size: 14px; }
+#help p { margin: 0 0 6px; font-size: 13px; line-height: 1.45; }
+#help .toggle { display: flex; gap: 8px; align-items: center; margin-top: 12px; }

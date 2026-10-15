@@ -26,6 +26,9 @@ Send = Callable[[dict[str, Any]], Awaitable[None]]
 #: Optional commands this server accepts; clients show their controls only
 #: when the server lists them.
 FEATURES = ("pause", "rematch")
+#: A player whose connection does not take an update within this time is
+#: dropped (and reconnects), so one stalled phone cannot hold up the room.
+SEND_TIMEOUT_SECONDS = 10.0
 Receive = Callable[[], Awaitable[dict[str, Any]]]
 
 
@@ -484,19 +487,26 @@ class TuppiASGIApp:
     async def _broadcast_lobby(self, room_code: str) -> None:
         room = self.rooms.get(room_code)
         for connection in tuple(self._connections.get(room.code, {}).values()):
-            try:
-                await self._send_message(connection.send, "lobby_snapshot", room.snapshot())
-            except (OSError, RuntimeError):
-                if self._connections.get(room.code, {}).get(connection.token) is connection:
-                    self._connections[room.code].pop(connection.token, None)
+            await self._deliver(room.code, connection,
+                                self._send_message(connection.send, "lobby_snapshot", room.snapshot()))
 
     async def _broadcast_match(self, room_code: str) -> None:
         for connection in tuple(self._connections.get(room_code, {}).values()):
-            try:
-                await self._send_match_update(connection)
-            except (OSError, RuntimeError):
-                if self._connections.get(room_code, {}).get(connection.token) is connection:
-                    self._connections[room_code].pop(connection.token, None)
+            await self._deliver(room_code, connection, self._send_match_update(connection))
+
+    async def _deliver(self, room_code: str, connection: Connection, sending: Awaitable[None]) -> None:
+        """Send one broadcast; drop a connection that fails or stalls."""
+
+        try:
+            await asyncio.wait_for(sending, SEND_TIMEOUT_SECONDS)
+        except (OSError, RuntimeError, TimeoutError) as exc:
+            if self._connections.get(room_code, {}).get(connection.token) is connection:
+                self._connections[room_code].pop(connection.token, None)
+            if isinstance(exc, TimeoutError):
+                try:
+                    await asyncio.wait_for(connection.send({"type": "websocket.close", "code": 1011}), 1)
+                except Exception:
+                    pass
 
     def _schedule_ai_continuation(self, room_code: str) -> None:
         current = self._ai_tasks.get(room_code)

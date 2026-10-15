@@ -5,7 +5,7 @@ import {OfflineSetup, packagedRuntimeIdentity} from './offline.mjs';
 import {seatNames, suitNames, suitSVG, cardRank, cardLabel, cardAction, legalCards, sortedHand,
   TableKeyboardSelection, bidRevealFrame, revealTiming} from './table.mjs';
 import {HandView} from './hand.mjs';
-import {seatPresentation} from './presentation.mjs';
+import {seatPresentation, matchSummary} from './presentation.mjs';
 import {networkEnabled} from './capabilities.mjs';
 import {LobbyView, lobbyPresentation, invitationURL} from './lobby.mjs';
 import {loadPreferences, savePreferences} from './preferences.mjs';
@@ -288,6 +288,32 @@ function render() {
     row.append(label, button); return row;
   }));
   if (!view.completed.length) $('history').textContent = 'Valmiit jaot ja niiden toisto ilmestyvät tähän.';
+  const result = matchSummary(view);
+  $('match-summary').hidden = !result;
+  if (result) {
+    $('match-summary-title').textContent = result.title;
+    $('match-summary-lines').replaceChildren(...result.lines.map(line => {
+      const item = document.createElement('li'); item.textContent = line; return item;
+    }));
+  }
+  announceTurn();
+}
+// Opt-in turn sound: once each time it becomes this player's turn.
+let turnAudio = null, lastTurnKey = null;
+function announceTurn() {
+  const key = canSelect() ? `${view.dealNumber}:${view.phase}:${view.history.length}:${view.legal.join(',')}` : null;
+  if (key && key !== lastTurnKey && preferences.turnSound && turnAudio) {
+    try {
+      const tone = turnAudio.createOscillator(), gain = turnAudio.createGain();
+      tone.frequency.value = 880; gain.gain.value = 0.04;
+      tone.connect(gain).connect(turnAudio.destination); tone.start(); tone.stop(turnAudio.currentTime + 0.12);
+    } catch {}
+  }
+  lastTurnKey = key;
+}
+function enableTurnAudio() {
+  // Browsers allow audio only after a user gesture, such as ticking the option.
+  try { turnAudio ??= new (globalThis.AudioContext ?? globalThis.webkitAudioContext)(); turnAudio.resume?.(); } catch { turnAudio = null; }
 }
 
 function boot(save = null, {replace = false, engine = new URL('./worker.mjs', import.meta.url), identity = save?.identity ?? packagedRuntimeIdentity} = {}) {
@@ -794,6 +820,13 @@ $('network-toggle').onclick = () => {
 $('network-toggle').hidden = !networkEnabled;
 $('network-toggle').disabled = !networkEnabled;
 $('network-name').value = preferences.nickname;
+$('help-toggle').onclick = () => { $('turn-sound').checked = preferences.turnSound; $('help').showModal(); };
+$('close-help').onclick = () => $('help').close();
+$('turn-sound').onchange = () => {
+  preferences = savePreferences({...preferences, turnSound: Boolean($('turn-sound').checked)});
+  if (preferences.turnSound) enableTurnAudio();
+};
+addEventListener('pointerdown', () => { if (preferences.turnSound && !turnAudio) enableTurnAudio(); }, {once: true});
 $('network-name').onchange = () => { preferences = savePreferences({...preferences, nickname: $('network-name').value}); };
 $('close-network').onclick = () => $('network-dialog').close();
 for (const command of ['create','join','resume']) $('network-' + command).onclick = () => startNetwork(command);

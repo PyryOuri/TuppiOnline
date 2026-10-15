@@ -1,8 +1,8 @@
 const preferenceKey = 'tuppi.ui.preferences.v1';
-const defaults = {nickname: 'Pelaaja', expandedHand: false};
+const defaults = {nickname: 'Pelaaja', expandedHand: false, turnSound: false};
 function cleanPreferences(value) {
   return {nickname: typeof value?.nickname === 'string' && value.nickname.trim() ? value.nickname.trim().slice(0, 40) : defaults.nickname,
-    expandedHand: value?.expandedHand === true};
+    expandedHand: value?.expandedHand === true, turnSound: value?.turnSound === true};
 }
 // Optional UI preferences cannot prevent a match from opening. They never
 // contain room credentials, actions, cards or an offline save.

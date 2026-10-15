@@ -64,6 +64,10 @@ ACK_SCHEMA_VERSION = "tuppi.network.action_acknowledgement.v1"
 BIDDING_SCHEMA_VERSION = "tuppi.network.bidding.v1"
 MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v4"
 HOSTED_MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v5"
+#: v4/v5 plus the bids locked but not yet revealed (and this deal's discarded-
+#: bid acknowledgements), so a restart keeps them. Written only while either
+#: exists; bot_controllers is present for hosted bots.
+BIDS_MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v6"
 V3_MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v3"
 PREVIOUS_MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v2"
 LEGACY_MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v1"
@@ -187,7 +191,8 @@ class AcceptedActionRecord:
 class _LockedBid:
     """project_target_v3: a human's bid, held until every human has locked.
 
-    Never persisted: a bid that is not revealed is never stored.
+    Kept in the private room record until the bids resolve, so a restart
+    keeps it; never projected to another seat. Discarded bids are deleted.
     """
 
     client_action_id: str
@@ -277,8 +282,11 @@ class LiveMatchRunner:
         required_v4 = required_v3 | {"ruleset_id"}
         schema_version = record.get("schema_version")
         ruleset_id = RulesetId.PROJECT_TARGET_V1
-        if schema_version in {MATCH_RECORD_SCHEMA_VERSION, HOSTED_MATCH_RECORD_SCHEMA_VERSION}:
+        if schema_version in {MATCH_RECORD_SCHEMA_VERSION, HOSTED_MATCH_RECORD_SCHEMA_VERSION, BIDS_MATCH_RECORD_SCHEMA_VERSION}:
             required = required_v4 | ({"bot_controllers"} if schema_version == HOSTED_MATCH_RECORD_SCHEMA_VERSION else set())
+            if schema_version == BIDS_MATCH_RECORD_SCHEMA_VERSION:
+                required = required_v4 | {"locked_bids", "discarded_bid_acks"} | (
+                    {"bot_controllers"} if "bot_controllers" in record else set())
             ai_profile_key = record.get("ai_profile_key")
             contract_rollout_samples = record.get("contract_rollout_samples")
             action_record_version = 3
@@ -476,7 +484,9 @@ class LiveMatchRunner:
         if tuple(public_events) != tuple(project_event_batch(runner.state.public_events)):
             raise ValueError("replayed public events differ from persisted events")
         validate_match_state(runner.state)
-        if schema_version == HOSTED_MATCH_RECORD_SCHEMA_VERSION:
+        if schema_version == BIDS_MATCH_RECORD_SCHEMA_VERSION:
+            runner._restore_bids(record["locked_bids"], record["discarded_bid_acks"])
+        if "bot_controllers" in required:
             controllers = record["bot_controllers"]
             if type(controllers) is not dict or set(controllers) != {str(s) for s in runner.ai_seats}:
                 raise ValueError("persisted bot controllers have invalid seats")
@@ -574,7 +584,46 @@ class LiveMatchRunner:
         if self._ai_agents and all(hasattr(a, "checkpoint") for a in self._ai_agents.values()):
             record["schema_version"] = HOSTED_MATCH_RECORD_SCHEMA_VERSION
             record["bot_controllers"] = {str(s): a.checkpoint() for s, a in self._ai_agents.items()}
+        if self._locked_bids or self._discarded_bid_acks:
+            record["schema_version"] = BIDS_MATCH_RECORD_SCHEMA_VERSION
+            record["locked_bids"] = [
+                {"acknowledgement": bid.acknowledgement, "action": action_to_data(bid.action),
+                 "client_action_id": bid.client_action_id, "seat": bid.seat}
+                for _, bid in sorted(self._locked_bids.items())
+            ]
+            record["discarded_bid_acks"] = dict(sorted(self._discarded_bid_acks.items()))
         return record
+
+    def _restore_bids(self, locked: object, discarded: object) -> None:
+        """Validate and restore the persisted unrevealed bids after replay."""
+
+        if type(locked) is not list or type(discarded) is not dict:
+            raise ValueError("persisted bids are invalid")
+        if locked and not self.collecting_bids():
+            raise ValueError("persisted locked bids outside a bidding round")
+        for item in locked:
+            if type(item) is not dict or set(item) != {"acknowledgement", "action", "client_action_id", "seat"}:
+                raise ValueError("persisted locked bid fields are invalid")
+            seat, client_action_id, ack = item["seat"], item["client_action_id"], item["acknowledgement"]
+            if type(seat) is not int or seat not in self._human_seats() or seat in self._locked_bids:
+                raise ValueError("persisted locked bid seat is invalid")
+            if (not isinstance(client_action_id, str) or not client_action_id or client_action_id.startswith("ai:")
+                    or client_action_id in self._records
+                    or any(bid.client_action_id == client_action_id for bid in self._locked_bids.values())):
+                raise ValueError("persisted locked bid client_action_id is invalid")
+            action = action_from_data(item["action"])
+            if (not isinstance(action, ShowAction) or action.seat != seat
+                    or action not in locked_bid_options(self.state.active_deal, seat)):
+                raise ValueError("persisted locked bid is not a legal bid")
+            if type(ack) is not dict or ack.get("client_action_id") != client_action_id or ack.get("status") != "accepted":
+                raise ValueError("persisted locked bid acknowledgement is invalid")
+            self._locked_bids[seat] = _LockedBid(client_action_id=client_action_id, seat=seat,
+                                                 action=action, acknowledgement=ack)
+        for client_action_id, ack in discarded.items():
+            if (client_action_id in self._records or type(ack) is not dict
+                    or ack.get("client_action_id") != client_action_id):
+                raise ValueError("persisted discarded bid acknowledgement is invalid")
+            self._discarded_bid_acks[client_action_id] = ack
 
     def reconnect(self, *, seat: int, last_applied_event_index: int) -> dict[str, object]:
         if type(last_applied_event_index) is not int or last_applied_event_index < -1:
@@ -664,7 +713,8 @@ class LiveMatchRunner:
 
         AI seats decide at their turn from an observation that shows no bid.
         Human bids come from the lock buffer. The locked bids after the first
-        RAMI are discarded unseen and never stored.
+        RAMI are discarded unseen; only their acknowledgements are kept, for
+        duplicate retries, until the next deal starts.
         """
 
         while self.state.phase is EnginePhase.SHOWING:
@@ -1140,6 +1190,8 @@ class LiveMatchRunner:
         if self.state.terminal:
             return
         deal_number = len(self.state.completed_deals)
+        # A discarded bid's duplicate retry is answered only within its deal.
+        self._discarded_bid_acks = {}
         if deal_number < len(self._deals):
             deal = self._deals[deal_number]
         else:

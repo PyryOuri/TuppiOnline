@@ -4,10 +4,10 @@ const networkEnabled = true;
 
 // Source: preferences.mjs
 const preferenceKey = 'tuppi.ui.preferences.v1';
-const defaults = {nickname: 'Pelaaja', expandedHand: false};
+const defaults = {nickname: 'Pelaaja', expandedHand: false, turnSound: false};
 function cleanPreferences(value) {
   return {nickname: typeof value?.nickname === 'string' && value.nickname.trim() ? value.nickname.trim().slice(0, 40) : defaults.nickname,
-    expandedHand: value?.expandedHand === true};
+    expandedHand: value?.expandedHand === true, turnSound: value?.turnSound === true};
 }
 // Optional UI preferences cannot prevent a match from opening. They never
 // contain room credentials, actions, cards or an offline save.
@@ -273,6 +273,19 @@ function seatPresentation(view, seat, nickname = seatNames[seat]) {
     active: view.phase !== 2 && view.actor === seat};
 }
 
+// End-of-match summary from the public completed-deal results only.
+function matchSummary(view) {
+  if (!view?.terminal) return null;
+  const deals = view.completed ?? [], ours = deals.filter(deal => deal.result.winnerTeam === 0);
+  const count = test => deals.filter(deal => test(deal.result)).length;
+  const best = Math.max(0, ...ours.map(deal => deal.result.points));
+  const won = view.score0 > view.score1;
+  return {won, title: `${won ? 'Voititte ottelun' : 'Vastustajat voittivat ottelun'} ${view.score0}–${view.score1}`,
+    lines: [`${deals.length} ${deals.length === 1 ? 'jako' : 'jakoa'}: voititte ${ours.length}, vastustajat ${deals.length - ours.length}.`,
+      `RAMI ${count(r => r.soolaaja < 0 && r.contract === 1)} · NOLO ${count(r => r.soolaaja < 0 && r.contract === 0)} · SOOLI ${count(r => r.soolaaja >= 0)}`,
+      ...(best ? [`Suurin jakovoittonne: ${best} pistettä.`] : [])]};
+}
+
 // Source: offline.mjs
 // The packager pins this value without changing runtime/model save identity.
 const packagedRuntimeIdentity = "95497f1ebdf0979b8463f3822cf3db85ad8495ed85ae1fe3e5b3b09962871b5d";
@@ -397,6 +410,8 @@ const networkErrors = {room_not_found:'Huonetta ei löydy. Tarkista huonekoodi.'
   room_passcode_required:'Huoneen luominen tällä palvelimella vaatii luontikoodin.',
   invalid_room_passcode:'Luontikoodi ei kelpaa. Tarkista koodi.',
   too_many_attempts:'Liian monta väärää koodia. Odota minuutti ja yritä uudelleen.',
+  storage_unavailable:'Palvelimen tallennus ei juuri nyt toimi. Siirtoasi ei tallennettu; peli jatkuu, kun palvelu on käynnistynyt uudelleen.',
+  storage_low:'Palvelimen tallennustila on vähissä, joten uusia huoneita ei nyt voi luoda. Käynnissä olevat pelit jatkuvat.',
   match_not_active:'Ottelu ei ole käynnissä.', match_not_complete:'Uuden ottelun voi aloittaa, kun ottelu on päättynyt.',
   invalid_display_name:'Kirjoita nimimerkki (1–40 merkkiä).'};
 function networkBase(value) {
@@ -1064,6 +1079,32 @@ function render() {
     row.append(label, button); return row;
   }));
   if (!view.completed.length) $('history').textContent = 'Valmiit jaot ja niiden toisto ilmestyvät tähän.';
+  const result = matchSummary(view);
+  $('match-summary').hidden = !result;
+  if (result) {
+    $('match-summary-title').textContent = result.title;
+    $('match-summary-lines').replaceChildren(...result.lines.map(line => {
+      const item = document.createElement('li'); item.textContent = line; return item;
+    }));
+  }
+  announceTurn();
+}
+// Opt-in turn sound: once each time it becomes this player's turn.
+let turnAudio = null, lastTurnKey = null;
+function announceTurn() {
+  const key = canSelect() ? `${view.dealNumber}:${view.phase}:${view.history.length}:${view.legal.join(',')}` : null;
+  if (key && key !== lastTurnKey && preferences.turnSound && turnAudio) {
+    try {
+      const tone = turnAudio.createOscillator(), gain = turnAudio.createGain();
+      tone.frequency.value = 880; gain.gain.value = 0.04;
+      tone.connect(gain).connect(turnAudio.destination); tone.start(); tone.stop(turnAudio.currentTime + 0.12);
+    } catch {}
+  }
+  lastTurnKey = key;
+}
+function enableTurnAudio() {
+  // Browsers allow audio only after a user gesture, such as ticking the option.
+  try { turnAudio ??= new (globalThis.AudioContext ?? globalThis.webkitAudioContext)(); turnAudio.resume?.(); } catch { turnAudio = null; }
 }
 
 function boot(save = null, {replace = false, engine = new URL('./engine.ba679a5bb2e66563.mjs', import.meta.url), identity = save?.identity ?? packagedRuntimeIdentity} = {}) {
@@ -1570,6 +1611,13 @@ $('network-toggle').onclick = () => {
 $('network-toggle').hidden = !networkEnabled;
 $('network-toggle').disabled = !networkEnabled;
 $('network-name').value = preferences.nickname;
+$('help-toggle').onclick = () => { $('turn-sound').checked = preferences.turnSound; $('help').showModal(); };
+$('close-help').onclick = () => $('help').close();
+$('turn-sound').onchange = () => {
+  preferences = savePreferences({...preferences, turnSound: Boolean($('turn-sound').checked)});
+  if (preferences.turnSound) enableTurnAudio();
+};
+addEventListener('pointerdown', () => { if (preferences.turnSound && !turnAudio) enableTurnAudio(); }, {once: true});
 $('network-name').onchange = () => { preferences = savePreferences({...preferences, nickname: $('network-name').value}); };
 $('close-network').onclick = () => $('network-dialog').close();
 for (const command of ['create','join','resume']) $('network-' + command).onclick = () => startNetwork(command);

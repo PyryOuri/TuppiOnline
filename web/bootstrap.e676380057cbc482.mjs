@@ -35,7 +35,7 @@ addEventListener('tuppi-startup', ({detail}) => {
 addEventListener('error', event => { if (!ready) startupFailure(event.error ?? new Error(event.message)); });
 addEventListener('unhandledrejection', event => { if (!ready) startupFailure(event.reason); });
 
-export async function startClient({fetchManifest = () => fetch('./frontend.4d9ca6562ede9e3d.json', {cache: 'no-store'}),
+export async function startClient({fetchManifest = () => fetch('./frontend.be0da04422e74637.json', {cache: 'no-store'}),
   importClient = url => import(url), base = import.meta.url} = {}) {
   progress('Ladataan pelin käyttöliittymä…');
   try {

@@ -255,7 +255,11 @@ class RoomManager:
         self._store = (
             None if persistence_dir is None else FileRoomStore(persistence_dir)
         )
+        #: Set when a room could not be saved: the server must stop accepting
+        #: changes, because in-memory state is ahead of what is durable.
+        self.storage_failed = False
         if self._store is not None:
+            self._store.remove_stale_temporaries()
             self._load_persisted_rooms()
 
     @classmethod
@@ -457,7 +461,11 @@ class RoomManager:
 
     def persist(self, room: Room) -> None:
         if self._store is not None:
-            self._store.save(room.persistence_record())
+            try:
+                self._store.save(room.persistence_record())
+            except PersistenceError:
+                self.storage_failed = True
+                raise
 
     def set_post_match_analysis(
         self,
