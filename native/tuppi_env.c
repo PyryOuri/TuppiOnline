@@ -704,15 +704,104 @@ static void play_out(TcEnv *e, const TcMlp *m, int n, int dd_left, uint64_t *rng
   free(utility_done);
 }
 
+// ------------------------------------------------------ play inference
+// research/play-inference-20261016 (strength step 2). When an action model is
+// set, the search draws mult * w worlds as usual and resamples w of them by the
+// model's likelihood of the other seats' past unforced choices, replayed in each
+// world under its own rules: prod_t [(1 - eps) softmax(logits_t / T)[a_t] +
+// eps / k_t]. Only after the bidding (a locked showing reveals nothing while it
+// runs) and not in sooli play. Off unless tc_set_belief is called.
+int tc_history_rows(const TcDeal *world, int seat_mask, int encoder, int max_rows,
+                    uint8_t *feat, uint8_t *mask, int32_t *action);
+static struct { const TcMlp *m; int mult, all; double inv_t, eps; } belief;
+
+void tc_set_belief(const TcMlp *m, int mult, double temperature, double eps, int all_seats) {
+  belief.m = mult > 1 ? m : NULL;
+  belief.mult = mult;
+  belief.inv_t = temperature > 0 ? 1.0 / temperature : 1.0;
+  belief.eps = eps;
+  belief.all = all_seats;
+}
+
+static int belief_applies(const TcObs *o) {
+  return belief.m && o->soolaaja < 0 && (o->phase == TC_PH_PLAY || o->phase == TC_PH_SOOLI_OFFER);
+}
+
+// Fills out[0..w) with worlds resampled by likelihood; -1 if no world can be drawn.
+static int belief_worlds(const TcEnv *e, const TcObs *o, int w, uint64_t *rng, TcDeal *out) {
+  enum { MAXR = 64 };
+  const int M = w * belief.mult, enc = tc_mlp_encoder(belief.m), dim = tc_feature_dim_v(enc);
+  const int opp = (1 << ((o->seat + 1) & 3)) | (1 << ((o->seat + 3) & 3));
+  const int seats = belief.all ? (0xF & ~(1 << o->seat)) : opp;
+  TcDeal *cand = malloc(sizeof(TcDeal) * (size_t)M);
+  double *logw = calloc((size_t)M, sizeof(double));
+  uint8_t *feat = malloc((size_t)M * MAXR * dim), *mask = malloc((size_t)M * MAXR * TC_NUM_ACTIONS);
+  int32_t *act = malloc(sizeof(int32_t) * (size_t)M * MAXR), *owner = malloc(sizeof(int32_t) * (size_t)M * MAXR);
+  int rows = 0, status = 0;
+  for (int i = 0; i < M; i++) {
+    if (tc_sample_world_sooli(o, rng, &cand[i], e->sooli_belief, e->sooli_lambda) != 0) { status = -1; break; }
+    int r = tc_history_rows(&cand[i], seats, enc, MAXR, feat + (size_t)rows * dim,
+                            mask + (size_t)rows * TC_NUM_ACTIONS, act + rows);
+    if (r < 0) { logw[i] = -1e300; continue; }  // the history cannot be replayed in this world
+    for (int j = 0; j < r; j++) owner[rows + j] = i;
+    rows += r;
+  }
+  if (status == 0 && rows) {
+    float *q = malloc(sizeof(float) * (size_t)rows * TC_NUM_ACTIONS);
+    tc_mlp_forward(belief.m, feat, rows, q);
+    for (int r = 0; r < rows; r++) {
+      const float *qr = q + (size_t)r * TC_NUM_ACTIONS;
+      const uint8_t *mr = mask + (size_t)r * TC_NUM_ACTIONS;
+      double top = -1e300, sum = 0.0;
+      int legal = 0;
+      for (int a = 0; a < TC_NUM_ACTIONS; a++) if (mr[a] && qr[a] > top) top = qr[a];
+      for (int a = 0; a < TC_NUM_ACTIONS; a++) if (mr[a]) { sum += exp((qr[a] - top) * belief.inv_t); legal++; }
+      double p = exp((qr[act[r]] - top) * belief.inv_t) / sum;
+      logw[owner[r]] += log((1.0 - belief.eps) * p + belief.eps / legal);
+    }
+    free(q);
+  }
+  if (status == 0) {
+    double top = -1e300, total = 0.0;
+    for (int i = 0; i < M; i++) if (logw[i] > top) top = logw[i];
+    for (int i = 0; i < M; i++) { logw[i] = logw[i] < -1e299 ? 0.0 : exp(logw[i] - top); total += logw[i]; }
+    if (total <= 0) { for (int i = 0; i < M; i++) logw[i] = 1.0; total = M; }
+    // Systematic resampling: as few duplicates as the weights force.
+    double u = unit(rng) / w * total, cum = logw[0];
+    for (int j = 0, i = 0; j < w; j++) {
+      double target = u + j * (total / w);
+      while (cum < target && i < M - 1) cum += logw[++i];
+      out[j] = cand[i];
+    }
+  }
+  free(cand); free(logw); free(feat); free(mask); free(act); free(owner);
+  return status;
+}
+
+// Test hook: the w worlds the search would use at this observation (with the
+// belief when it applies, else uniform). Returns 0, or -1.
+int tc_search_worlds(TcEnv *e, const TcObs *o, int w, uint64_t *rng, TcDeal *out) {
+  if (belief_applies(o)) return belief_worlds(e, o, w, rng, out);
+  for (int i = 0; i < w; i++)
+    if (tc_sample_world_sooli(o, rng, &out[i], e->sooli_belief, e->sooli_lambda) != 0) return -1;
+  return 0;
+}
+
 static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *actions, int k, int w,
                        int dd_left, uint64_t *rng, double *values, double *per_world) {
   const int n = w * k;
   if (n > e->n) return -2;
-  TcDeal world;
+  TcDeal world, *picked = NULL;
+  if (belief_applies(o)) {
+    picked = malloc(sizeof(TcDeal) * (size_t)w);
+    if (belief_worlds(e, o, w, rng, picked) != 0) { free(picked); return -1; }
+  }
   for (int wi = 0; wi < w; wi++) {
-    if (tc_sample_world_sooli(o, rng, &world, e->sooli_belief, e->sooli_lambda) != 0) return -1;
+    if (picked) world = picked[wi];
+    else if (tc_sample_world_sooli(o, rng, &world, e->sooli_belief, e->sooli_lambda) != 0) return -1;
     for (int ai = 0; ai < k; ai++) { e->g[wi * k + ai].d = world; e->g[wi * k + ai].live = 1; }
   }
+  free(picked);
   double *total = calloc((size_t)n, sizeof(double));
   int *idx = malloc(sizeof(int) * (size_t)n);
   for (int i = 0; i < n; i++) {
