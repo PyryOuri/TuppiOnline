@@ -6,7 +6,7 @@ import re
 
 from tuppi_server.usage import QUIET_INTERVAL_SECONDS, Usage
 
-from test_leaderboard import Room, short_matches  # noqa: F401  (fixture)
+from .test_leaderboard import Room, short_matches  # noqa: F401  (fixture)
 
 
 def test_a_played_match_is_counted_without_private_details(tmp_path):
