@@ -19,6 +19,12 @@
       "$ref": "#/$defs/roomSettingsRequest"
     },
     {
+      "$ref": "#/$defs/renameRequest"
+    },
+    {
+      "$ref": "#/$defs/releaseSeatRequest"
+    },
+    {
       "$ref": "#/$defs/sessionRequest"
     },
     {
@@ -235,7 +241,9 @@
               "pause",
               "rematch",
               "leaderboard",
-              "compact_results"
+              "compact_results",
+              "rename",
+              "release_seat"
             ]
           },
           "$comment": "Optional commands this server accepts; absent on servers without them."
@@ -473,6 +481,40 @@
         }
       },
       "$comment": "Finished online matches on this server, per unverified nickname; human seats only. POST /v1/rooms/{code}/leaderboard with a sessionRequest."
+    },
+    "renameRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_token",
+        "display_name"
+      ],
+      "properties": {
+        "session_token": {
+          "$ref": "#/$defs/sessionToken"
+        },
+        "display_name": {
+          "$ref": "#/$defs/displayName"
+        }
+      },
+      "$comment": "POST /v1/rooms/{code}/name: a player renames their own seat before the match starts (feature rename)."
+    },
+    "releaseSeatRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_token",
+        "seat"
+      ],
+      "properties": {
+        "session_token": {
+          "$ref": "#/$defs/sessionToken"
+        },
+        "seat": {
+          "$ref": "#/$defs/seat"
+        }
+      },
+      "$comment": "POST /v1/rooms/{code}/release: the host frees another player's seat before the match starts (feature release_seat); that player's socket closes with code 4002."
     }
   }
 }

@@ -361,6 +361,44 @@ class RoomManager:
         self.persist(room)
         return room
 
+    def rename(self, *, code: str, token: str, display_name: str) -> Room:
+        """A player changes their own nickname before the match starts.
+
+        Names are fixed while a match is played: the leaderboard credits the
+        names seated when it finishes.
+        """
+
+        room = self.get(code)
+        session = self._session(room, token)
+        if room.runner is not None:
+            raise RoomError("settings_locked")
+        session.display_name = self._validate_name(display_name)
+        self.persist(room)
+        return room
+
+    def release_seat(self, *, code: str, host_token: str, seat: object) -> tuple[Room, str]:
+        """The host frees another player's seat before the match starts.
+
+        For a seat its player has left for good, e.g. after rejoining under a
+        new name or from another device, which would otherwise never be ready.
+        Returns the room and the released session token (no longer valid).
+        """
+
+        room = self.get(code)
+        if room.host_token != host_token:
+            raise RoomError("host_required")
+        if room.runner is not None:
+            raise RoomError("settings_locked")
+        session = room.session_for_seat(seat) if type(seat) is int and 0 <= seat <= 3 else None
+        if session is None or session.token == room.host_token:
+            raise RoomError("seat_not_releasable")
+        del room.sessions[session.token]
+        for item in room.sessions.values():
+            item.ready = False
+        room.lifecycle = "waiting"
+        self.persist(room)
+        return room, session.token
+
     def set_ai_action_delay(
         self,
         *,

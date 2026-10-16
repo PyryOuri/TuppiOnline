@@ -21,7 +21,7 @@ from urllib.parse import urlsplit
 from .persistence import PersistenceError
 from .usage import USAGE_INTERVAL_SECONDS, Usage, resident_megabytes
 
-ROOM_ROUTE = re.compile(r"^/v1/rooms/([A-Z0-9]{6})/(join|configure|settings|ready|leaderboard)$", re.I)
+ROOM_ROUTE = re.compile(r"^/v1/rooms/([A-Z0-9]{6})/(join|configure|settings|ready|leaderboard|name|release)$", re.I)
 #: Wrong room-creation passcodes accepted per minute before refusing all tries.
 MAX_PASSCODE_FAILURES_PER_MINUTE = 20
 #: How often idle rooms are archived and old archives pruned.
