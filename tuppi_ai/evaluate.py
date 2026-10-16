@@ -72,12 +72,12 @@ def _make_candidate(spec: str) -> dict:
     `vn=<value net>[:vlb=<tricks>][:vlp=<tricks>][:vbb=1]` value-net leaves
     for bid searches (vlb, default 0 = start of play; -1 off) and card-play
     searches (vlp, default -1 = off) (docs/VALUE_NET_PLAN.md)."""
-    # `best[:pib=<k>][:pibt=<T>][:pibe=<eps>][:pibs=all|opp][:pibp=<policy>]`: the live
+    # `best[:w=<worlds>][:pib=<k>][:pibt=<T>][:pibe=<eps>][:pibs=all|opp][:pibp=<policy>]`: the live
     # bot, optionally with play inference in its searches (k x worlds resampled).
     if spec == "best" or spec.startswith("best:"):
-        from .best import best_agents
-        agents = best_agents()
+        from .best import WORLDS, best_agents
         opts = dict(part.split("=") for part in spec.split(":")[1:])
+        agents = best_agents(worlds=int(opts.get("w", WORLDS)))
         if "pib" in opts:  # play inference (research/play-inference-20261016): pib=<oversampling>
             from . import model as qmodel
             from . import native
