@@ -25,7 +25,7 @@ from .rooms import RoomError, RoomManager
 Send = Callable[[dict[str, Any]], Awaitable[None]]
 #: Optional commands this server accepts; clients show their controls only
 #: when the server lists them.
-FEATURES = ("pause", "rematch", "leaderboard", "compact_results", "rename", "release_seat")
+FEATURES = ("pause", "rematch", "leaderboard", "compact_results", "rename", "release_seat", "concede")
 #: Close code sent to a player whose seat the host released.
 SEAT_RELEASED_CLOSE_CODE = 4002
 #: A player whose connection does not take an update within this time is
@@ -398,6 +398,18 @@ class TuppiASGIApp:
                 other.last_event_index = -1
             await self._broadcast_lobby(room.code)
             return
+        if message_type == "concede":
+            # Any player may finish a deal whose result is already 0-0. If it
+            # no longer is (the deal ended meanwhile), the update says so.
+            self._require_fields(payload, required=set())
+            runner = self._require_runner(room)
+            if not room.paused and runner.concede(seat=session.seat):
+                self.rooms.persist(room)
+                await self._broadcast_match(room.code)
+                self._schedule_ai_continuation(room.code)
+            else:
+                await self._send_match_update(connection)
+            return
         if message_type == "client_options":
             self._require_fields(payload, required={"omit_match_result"})
             if type(payload["omit_match_result"]) is not bool:
@@ -602,6 +614,8 @@ class TuppiASGIApp:
         if "bidding" in reconnect:
             # project_target_v3 showing: lock status and this seat's own bid only.
             payload["bidding"] = reconnect["bidding"]
+        if "conceded_deals" in reconnect:
+            payload["conceded_deals"] = reconnect["conceded_deals"]
         if runner.terminal and not connection.omit_match_result:
             payload["match_result"] = reconnect.get("match_result")
         connection.last_event_index = runner.event_cursor

@@ -11,6 +11,7 @@ import asyncio
 from dataclasses import dataclass
 import importlib.util
 import os
+import re
 from typing import Any, Awaitable, Callable
 
 from tuppi_agents import (
@@ -172,6 +173,10 @@ def _construct_ai_agents(
         seat: construct_registered_agent(specification, seat=seat)
         for seat in seats
     }
+
+
+#: Forced plays after a concession: concede:<seat>:<tricks>:<deal number>:<n>.
+CONCEDE_ID = re.compile(r"concede:([0-3]):(\d{1,2}):(\d{1,4}):(\d{1,2})")
 
 
 @dataclass(frozen=True, slots=True)
@@ -645,6 +650,9 @@ class LiveMatchRunner:
             result["bidding"] = bidding
         if self.terminal:
             result["match_result"] = project_match_result(self.state)
+        conceded = self.conceded_deals()
+        if conceded:
+            result["conceded_deals"] = conceded
         return result
 
     # ------------------------------------------------------ locked bids (v3)
@@ -1136,12 +1144,65 @@ class LiveMatchRunner:
             return decision.action, decision.record
         return agent.choose_action(observation), None
 
+    # ------------------------------------------------------------ concession
+
+    def concede_available(self) -> bool:
+        """The deal's result is already 0-0: the team that is behind wins it.
+
+        In the rising score a deal won by the team behind resets the match to
+        0-0 whatever its points. That is certain once, in NOLO, the team ahead
+        has 7 tricks (the fewer tricks win), or, in RAMI, the team behind has
+        7 (it made its RAMI or stole the other's). Normal trick play only, not
+        sooli.
+        """
+
+        if self.terminal or self.state.phase is not EnginePhase.TRICK_PLAY or self.state.active_deal is None:
+            return False
+        observation = match_observation_for(self.state, 0)
+        up = observation.match_score.up_team
+        if up is None or observation.contract is None:
+            return False
+        ahead, behind = observation.team_tricks[up.value], observation.team_tricks[1 - up.value]
+        return (ahead >= 7) if observation.contract.value == "NOLO" else (behind >= 7)
+
+    def conceded_deals(self) -> list[dict[str, object]]:
+        """Conceded deals, from the forced plays' action ids (see concede)."""
+
+        found: dict[int, dict[str, object]] = {}
+        for record in self._accepted_actions:
+            match = CONCEDE_ID.fullmatch(record.client_action_id)
+            if match and int(match[3]) not in found:
+                found[int(match[3])] = {"after_tricks": int(match[2]), "deal_number": int(match[3]), "seat": int(match[1])}
+        return [found[key] for key in sorted(found)]
+
+    def concede(self, *, seat: int) -> bool:
+        """Finish a decided deal at once: every seat plays its first legal card.
+
+        Bots are not asked (their random state is untouched), and the plays
+        are ordinary accepted actions, so restarts replay them exactly. Their
+        ids, concede:<seat>:<tricks so far>:<deal number>:<n>, mark the deal
+        as conceded in the history.
+        """
+
+        if not self.concede_available():
+            return False
+        deal_number = len(self.state.completed_deals)  # 0-based, as in DealResult
+        tricks = sum(match_observation_for(self.state, 0).team_tricks)
+        n = 0
+        while self.state.phase is EnginePhase.TRICK_PLAY and len(self.state.completed_deals) == deal_number:
+            actor = self.state.current_actor
+            action = match_observation_for(self.state, actor).legal_actions[0]
+            self._apply_ai_action(actor, action=action, client_action_id=f"concede:{seat}:{tricks}:{deal_number}:{n}")
+            n += 1
+        return True
+
     def _apply_ai_action(
         self,
         actor: int,
         *,
         action: Action | None = None,
         contract_evaluation: dict[str, object] | None = None,
+        client_action_id: str | None = None,
     ) -> None:
         if action is None:
             action, contract_evaluation = self._choose_ai_action(actor)
@@ -1158,7 +1219,8 @@ class LiveMatchRunner:
                 ),
             )
         )
-        client_action_id = f"ai:{self._next_ai_action_id}"
+        forced = client_action_id is not None
+        client_action_id = client_action_id or f"ai:{self._next_ai_action_id}"
         acknowledgement = self._acknowledgement(
             client_action_id=client_action_id,
             status="accepted",
@@ -1182,7 +1244,10 @@ class LiveMatchRunner:
             )
         )
         self._next_action_index += 1
-        self._next_ai_action_id += 1
+        if forced:
+            self._records[client_action_id] = self._accepted_actions[-1]
+        else:
+            self._next_ai_action_id += 1
 
     def _ensure_deal_started(self) -> None:
         if self.state.phase not in (EnginePhase.AWAITING_DEAL, EnginePhase.DEAL_COMPLETE):

@@ -53,6 +53,9 @@
     },
     {
       "$ref": "#/$defs/clientOptions"
+    },
+    {
+      "$ref": "#/$defs/concede"
     }
   ],
   "$defs": {
@@ -130,7 +133,8 @@
               "leaderboard",
               "compact_results",
               "rename",
-              "release_seat"
+              "release_seat",
+              "concede"
             ]
           },
           "$comment": "Optional commands this server accepts; absent on servers without them."
@@ -267,6 +271,12 @@
         },
         "bidding": {
           "$ref": "#/$defs/biddingPayload"
+        },
+        "conceded_deals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/concededDeal"
+          }
         }
       }
     },
@@ -310,6 +320,12 @@
         },
         "bidding": {
           "$ref": "#/$defs/biddingPayload"
+        },
+        "conceded_deals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/concededDeal"
+          }
         }
       }
     },
@@ -653,6 +669,49 @@
         }
       },
       "$comment": "Sent only to servers listing compact_results. omit_match_result drops match_result from this connection's match_update and reconnect_result."
+    },
+    "concededDeal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "after_tricks",
+        "deal_number",
+        "seat"
+      ],
+      "properties": {
+        "after_tricks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 13
+        },
+        "deal_number": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "seat": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        }
+      },
+      "$comment": "A deal finished by concession (feature concede): who conceded and after how many tricks. Its remaining cards were played automatically; the result was already 0-0."
+    },
+    "concede": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "concede"
+        },
+        "payload": {
+          "$ref": "#/$defs/emptyPayload"
+        }
+      },
+      "$comment": "Any human seat (feature concede): finish a deal whose result is already 0-0. Ignored (answered with a match_update) when not available."
     }
   }
 }
