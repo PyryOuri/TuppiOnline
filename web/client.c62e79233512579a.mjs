@@ -771,6 +771,20 @@ class NetworkSession {
 }
 
 // Source: lobby.mjs
+// Pasted links supply only a room code. Requests still use this app's configured
+// server; a link to another site must be opened there rather than joined here.
+function roomCodeFromInput(value, base) {
+  const text = String(value ?? '').trim();
+  if (/^[a-z0-9]{6}$/i.test(text)) return text.toUpperCase();
+  let url;
+  try { url = new URL(text); } catch { throw new Error('Kirjoita kuusimerkkinen huonekoodi tai liitä kutsulinkki.'); }
+  if (!['https:', 'http:'].includes(url.protocol)) throw new Error('Kutsulinkki ei ole kelvollinen.');
+  if (base && url.origin !== new URL(base).origin) throw new Error('Tämä kutsu on toiselle Tuppi-sivustolle. Avaa alkuperäinen kutsulinkki.');
+  const code = url.searchParams.get('room') ?? '';
+  if (!/^[a-z0-9]{6}$/i.test(code)) throw new Error('Kutsulinkistä puuttuu kelvollinen huonekoodi.');
+  return code.toUpperCase();
+}
+
 function lobbyPresentation(lobby, ownSeat = 0) {
   const seats = lobby.seats.map(seat => ({...seat, position: networkSeat(seat.seat, ownSeat)}));
   const teams = [0, 1].map(team => seats.filter(seat => seat.position % 2 === team)
@@ -840,20 +854,35 @@ let expandedHand = preferences.expandedHand, detailSeat = null;
 let leaderboardEntries = null, leaderboardFetched = 0, leaderboardLoading = false, matchEndCounted = false;
 let turnAudio = null, lastTurnKey = null;
 let connectionState = {phase: 'local'}, lobbyConfiguration = null, lobbyRoom = null;
+const historyRows = new Map();
 const keyboard = new TableKeyboardSelection();
 let keyboardFeedback = '', revealTimer, revealFrame = null, revealKey = null;
 let networkClient = null, savedNetwork = null, networkAddress = null, offlineStarted = false, networkRevealDeal = null;
+let screen = 'home', entryReady = false, networkResolved = false, navigationPending = false, navigationToken = 0;
+let roomIntent = 'join', invitation = false, entryPending = false, passcodeRequired = null, passcodeCheck = null;
+let awaitingNetworkGame = false;
 const networkEntry = (() => { try { return new URL(globalThis.location.href).searchParams; } catch { return new URLSearchParams(); } })();
 const startsOnline = networkEnabled && (networkEntry.get('play') === 'online' || networkEntry.has('room'));
-const networkConfiguration = (async () => {
+async function readNetworkConfiguration() {
   if (!networkEnabled) return null;
+  const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 8000);
   try {
-    const response = await fetch('./deployment.json', {cache: 'no-store'});
+    const response = await fetch('./deployment.json', {cache: 'no-store', signal: controller.signal});
     const config = await response.json();
     if (response.ok && config.schema === 'tuppi.browser.deployment.v1' && config.backend) return networkBase(config.backend);
-  } catch {}
+  } catch {} finally { clearTimeout(timeout); }
   return null;
-})();
+}
+const networkConfiguration = readNetworkConfiguration();
+const networkReady = networkConfiguration.then(address => {
+  networkAddress = address; networkResolved = true;
+  if (!writeAccess) return address;
+  renderHome();
+  if (!$('network-entry').hidden) renderRoomEntry();
+  if (!address && $('network-dialog').open) $('network-status').textContent = 'Verkkopeli ei ole käytettävissä. Voit pelata botteja vastaan.';
+  else if ($('network-status').textContent === 'Yhdistetään verkkopeliin…') $('network-status').textContent = '';
+  return address;
+});
 
 function cardFace(card, interactive = false, disabled = false, selected = false, legal = true, shown = false) {
   const suit = Math.floor(card / 13), rank = cardRank(card);
@@ -870,7 +899,80 @@ function cardFace(card, interactive = false, disabled = false, selected = false,
   return element;
 }
 
-function status(message, error = false) { $('status').textContent = message; $('status').classList.toggle('error', error); }
+function status(message, error = false) {
+  $('status').textContent = message; $('status').classList.toggle('error', error);
+  if ($('settings').open && error) $('settings-status').textContent = message;
+  if (screen === 'home' && error && !document.querySelector('dialog[open]')) { $('home-status').textContent = message; $('home-status').classList.toggle('error', true); }
+}
+// One modal at a time. Native dialog supplies Escape, focus containment and
+// focus return; settings must not push the live table down the page.
+function openDialog(id) {
+  const dialog = $(id), current = document.querySelector('dialog[open]');
+  if (current && current !== dialog) current.close();
+  dialog.hidden = false;
+  if (!dialog.open) dialog.showModal();
+}
+function renderHome() {
+  const session = networkClient?.session ?? savedNetwork;
+  $('home-friends').hidden = !networkEnabled;
+  $('home-online').disabled = !entryReady || !writeAccess || navigationPending || entryPending;
+  $('home-online').textContent = session?.active && session.base === networkAddress ? `Jatka huoneessa ${session.room_code}` : 'Pelaa verkossa';
+  $('home-local').disabled = !entryReady || !writeAccess || !localReadable || changingLocal || navigationPending || entryPending;
+  $('home-local').textContent = lastSave || (worker && !networkClient) ? 'Jatka omaa peliä' : 'Pelaa botteja vastaan';
+  $('home-local-copy').textContent = lastSave ? 'Tallennettu ottelusi jatkuu siitä, mihin jäit.' : 'Pelaa omaan tahtiin. Ottelu tallentuu tälle laitteelle.';
+  $('network-toggle').hidden = !networkEnabled || !networkClient?.session;
+}
+function showGame() {
+  screen = 'game'; $('home').hidden = true; $('game').hidden = $('game-footer').hidden = false;
+  $('mode-label').textContent = networkClient?.session ? `· Verkkopeli ${networkClient.session.room_code}` : '· Paikallinen peli';
+}
+function showHome() {
+  navigationToken++; awaitingNetworkGame = false;
+  document.querySelector('dialog[open]')?.close();
+  screen = 'home'; $('home').hidden = false; $('game').hidden = $('game-footer').hidden = true;
+  $('mode-label').textContent = '';
+  if (entryReady) { $('home-status').textContent = ''; $('home-status').classList.toggle('error', false); }
+  render();
+}
+function renderRoomEntry() {
+  const creating = roomIntent === 'create';
+  if (!$('network-entry').hidden) {
+    $('network-dialog').dataset.stage = 'entry';
+    $('network-title').textContent = creating ? 'Luo oma huone' : invitation ? `Liity huoneeseen ${$('network-code').value}` : 'Liity ystävän huoneeseen';
+  }
+  $('network-entry-copy').textContent = creating ? 'Luo huone ja jaa sen kutsulinkki ystävillesi.' : invitation ?
+    'Valitse nimimerkki ja liity peliin.' : 'Kirjoita nimimerkkisi ja huoneen koodi. Voit myös liittää kutsulinkin.';
+  $('network-code-row').hidden = creating || invitation;
+  $('network-passcode-row').hidden = !creating || passcodeRequired === false;
+  $('network-submit').textContent = entryPending ? 'Yhdistetään…' : creating ? 'Luo huone' : 'Liity huoneeseen';
+  $('network-submit').disabled = !entryReady || !writeAccess || !networkAddress || entryPending;
+  $('network-reload').hidden = !networkResolved || Boolean(networkAddress);
+  for (const id of ['network-name', 'network-code', 'network-passcode', 'network-switch', 'network-resume']) $(id).disabled = entryPending;
+  $('network-switch').hidden = invitation;
+  $('network-switch').textContent = creating ? 'Liity sittenkin ystävän huoneeseen' : 'Luo oma huone';
+  const sameServer = savedNetwork?.base === networkAddress;
+  $('network-resume').hidden = !sameServer || (invitation && savedNetwork.room_code !== $('network-code').value);
+  $('network-resume').textContent = savedNetwork ? `Jatka huoneessa ${savedNetwork.room_code}` : 'Jatka verkkopeliä';
+}
+function openRoomEntry({invite = false} = {}) {
+  navigationToken++; roomIntent = 'join'; invitation = invite;
+  $('network-entry').hidden = false; $('network-lobby').hidden = true;
+  $('network-status').textContent = !networkResolved ? 'Yhdistetään verkkopeliin…' : !networkAddress ? 'Verkkopeli ei ole käytettävissä. Voit pelata botteja vastaan.' : '';
+  $('network-local').hidden = false;
+  renderRoomEntry(); openDialog('network-dialog');
+}
+async function enterLocalPlay() {
+  if (!entryReady || !writeAccess || !localReadable || changingLocal || navigationPending || entryPending) return;
+  navigationToken++; navigationPending = true; renderHome();
+  try {
+    awaitingNetworkGame = false; $('network-dialog').close();
+    if (networkClient || savedNetwork?.active) await returnToLocal();
+    else if (worker) { showGame(); render(); }
+    else if (!lastSave || !packagedRuntimeIdentity || lastSave.identity === packagedRuntimeIdentity) boot(lastSave);
+    else await resumeLocal(lastSave);
+  } catch (error) { localFailure(error); }
+  finally { navigationPending = false; renderHome(); }
+}
 const startup = detail => dispatchEvent(new CustomEvent('tuppi-startup', {detail}));
 function post(type, extra = {}) {
   if (networkClient) {
@@ -897,7 +999,7 @@ function pickCard(card) {
   keyboard.reset(); keyboardFeedback = ''; render();
 }
 
-function canSelect() { return !changingLocal && !busy && !pendingWrites && !saveFailed && view?.waitingHuman && !view.revealing; }
+function canSelect() { return writeAccess && screen === 'game' && !changingLocal && !busy && !pendingWrites && !saveFailed && view?.waitingHuman && !view.revealing; }
 function selectContract(contract) {
   if (!canSelect() || !legalCards(view, contract).length) return;
   bidContract = contract;
@@ -937,7 +1039,10 @@ function playedCard(play) {
   wrap.append(cardFace(play.card), label); return wrap;
 }
 function renderStair(id, title, count) {
-  const panel = $(id), heading = document.createElement('div'); heading.className = 'stair-title';
+  const panel = $(id);
+  if (panel.dataset.count === String(count)) return;
+  panel.dataset.count = String(count);
+  const heading = document.createElement('div'); heading.className = 'stair-title';
   heading.textContent = title;
   const number = document.createElement('span'); number.className = 'stair-count'; number.textContent = `${count}/13`; heading.append(number);
   const cards = document.createElement('div'); cards.className = 'stair-cards';
@@ -980,15 +1085,39 @@ function renderDetails() {
     'Alkukäden yhteenveto ei ole saatavilla tässä pelissä.';
 }
 
+function renderHistory(completed) {
+  const rows = completed.toReversed().map(deal => {
+    if (!historyRows.has(deal.index)) {
+      const row = document.createElement('div'); row.className = 'history-row';
+      const label = document.createElement('span'), button = document.createElement('button');
+      button.textContent = 'Toista jako'; button.onclick = () => openReplay(row.deal);
+      row.append(label, button); historyRows.set(deal.index, row);
+    }
+    const row = historyRows.get(deal.index); row.deal = deal;
+    row.children[0].textContent = `Jako ${deal.index + 1} · ${deal.result.soolaaja >= 0 ? 'SOOLI' : deal.result.contract ? 'RAMI' : 'NOLO'} · ${deal.result.winnerTeam === 0 ? 'meille' : 'vastustajille'} ${deal.result.points} p`;
+    row.children[1].setAttribute('aria-label', `Toista jako ${deal.index + 1}`);
+    return row;
+  });
+  const visible = new Set(completed.map(deal => deal.index));
+  for (const id of historyRows.keys()) if (!visible.has(id)) historyRows.delete(id);
+  const container = $('history');
+  if (rows.length !== container.children.length || rows.some((row, i) => row !== container.children[i])) container.replaceChildren(...rows);
+  if (!rows.length) container.textContent = 'Valmiit jaot ja niiden toisto ilmestyvät tähän.';
+  $('history-count').textContent = `${completed.length} ${completed.length === 1 ? 'jako' : 'jakoa'}`;
+}
+
 function render() {
-  renderLocalChoices(); renderNetworkControls();
+  renderLocalChoices(); renderNetworkControls(); renderHome();
+  $('export').disabled = !lastSave;
   for (const id of ['worlds', 'pacing', 'new-game', 'import']) $(id).disabled = Boolean(networkClient);
   for (const id of ['worlds', 'new-game', 'import']) $(id).disabled ||= changingLocal || !writeAccess || !localReadable;
   if (!view) {
-    handView.render([], {allowed: []}); layoutHand(); $('bid-reveal').replaceChildren(); $('trick').replaceChildren();
+    $('history-section').hidden = true;
+    handView.render([], {allowed: []}); layoutHand(); $('bid-reveal').replaceChildren(); $('trick').replaceChildren(); delete $('trick').dataset.cards;
     $('own-seat-details').disabled = $('hand-details').disabled = true;
     $('starting-hand').hidden = true;
     for (const id of ['bid-controls', 'card-controls', 'sooli-controls', 'next-controls', 'trick-panel']) $(id).hidden = true;
+    $('action-row').classList.toggle('card-action', false);
     for (const name of ['rami', 'sooli', 'revealing']) $('table').classList.toggle(name, false);
     for (let seat = 0; seat < 4; seat++) {
       const panel = $(`seat-${seat}`); panel.classList.toggle('active', false);
@@ -997,6 +1126,7 @@ function render() {
     return;
   }
   $('our-score').textContent = view.score0; $('their-score').textContent = view.score1;
+  $('history-section').hidden = !view.completed.length && !view.terminal;
   $('deal-label').textContent = `Jako ${view.dealNumber}`;
   const pending = Boolean(revealFrame?.contractPending), revealing = Boolean(view.revealing);
   $('phase-title').textContent = pending || view.phase === 0 ? 'Tarjoukset (lukitut)' :
@@ -1040,7 +1170,10 @@ function render() {
   const trickStart = count ? count - (count % size || size) : 0;
   $('trick-panel').hidden = !count || revealing;
   $('trick-title').textContent = count % size ? 'NYKYINEN TIKKI' : 'VIIMEISIN TIKKI';
-  $('trick').replaceChildren(...view.history.slice(trickStart).map(playedCard));
+  const plays = view.history.slice(trickStart), trickKey = plays.map(play => `${play.seat}:${play.card}`).join('|');
+  if ($('trick').dataset.cards !== trickKey) {
+    $('trick').replaceChildren(...plays.map(playedCard)); $('trick').dataset.cards = trickKey;
+  }
   const previousStart = count - (count % size || size) - size;
   $('previous-trick').hidden = previousStart < 0;
   $('previous-trick').textContent = count % size ? 'Näytä viimeisin tikki' : 'Näytä edellinen tikki';
@@ -1060,7 +1193,9 @@ function render() {
   $('table-status').classList.toggle('our-turn', canSelect());
   $('bid-controls').hidden = view.phase !== 0 || revealing;
   $('card-controls').hidden = ![1, 4, 5, 6].includes(view.phase) || view.actor !== 0 || revealing;
-  $('play-card').textContent = view.phase === 4 ? 'Anna kortti' : view.phase === 5 ? 'Palauta kortti' : 'Pelaa kortti';
+  $('action-row').classList.toggle('card-action', !$('card-controls').hidden);
+  const selectedLabel = selectedCard === null ? 'kortti' : cardLabel(selectedCard);
+  $('play-card').textContent = `${view.phase === 4 ? 'Anna' : view.phase === 5 ? 'Palauta' : 'Pelaa'} ${selectedLabel}`;
   $('play-card').disabled = !canSelect() || selectedCard === null || !legalCards(view, bidContract).includes(selectedCard);
   $('sooli-controls').hidden = view.phase !== 3 || view.actor !== 0 || revealing;
   $('next-controls').hidden = Boolean(networkClient) || view.phase !== 2 || Boolean(view.terminal);
@@ -1095,19 +1230,12 @@ function render() {
     if (red !== Boolean(bidContract)) selectionInfo += ` Vastaväri: ilmoitat ${bidContract ? 'RAMIn' : 'NOLOn'} tällä kortilla.`;
     else if (!ordinary) selectionInfo += ' Kädessäsi ei ole tavallista näyttökorttia. Sopimus ilmoitetaan valitulla kortilla.';
   }
-  $('selection-info').textContent = canSelect() && view.phase !== 3 ? selectionInfo : '';
+  $('selection-info').textContent = canSelect() && view.phase !== 3 && (view.phase === 0 || selectedCard === null) ? selectionInfo : '';
   $('selection-info').hidden = !$('selection-info').textContent;
   $('keyboard-prompt').textContent = canSelect() && view.phase !== 3 ? keyboardFeedback || keyboard.prompt ||
     `Pikanäppäimet: ${view.phase === 0 ? 'N NOLO · R RAMI · ' : ''}H/D/C/S maa · arvo · ←/→ valinta · Enter vahvistaa` : '';
   $('keyboard-prompt').classList.toggle('armed', Boolean(keyboard.prompt || keyboardFeedback));
-  $('history').replaceChildren(...view.completed.toReversed().map(deal => {
-    const row = document.createElement('div'); row.className = 'history-row';
-    const label = document.createElement('span');
-    label.textContent = `Jako ${deal.index + 1} · ${deal.result.soolaaja >= 0 ? 'SOOLI' : deal.result.contract ? 'RAMI' : 'NOLO'} · ${deal.result.winnerTeam === 0 ? 'meille' : 'vastustajille'} ${deal.result.points} p`;
-    const button = document.createElement('button'); button.textContent = 'Toista jako'; button.onclick = () => openReplay(deal);
-    row.append(label, button); return row;
-  }));
-  if (!view.completed.length) $('history').textContent = 'Valmiit jaot ja niiden toisto ilmestyvät tähän.';
+  renderHistory(view.completed);
   const result = matchSummary(view);
   // The request waits for the room's lock, which the server holds until it has credited this match.
   if (result && networkClient && !matchEndCounted) { matchEndCounted = true; refreshLeaderboard(true); }
@@ -1145,6 +1273,8 @@ function boot(save = null, {replace = false, engine = new URL('./engine.ba679a5b
   activeIdentity = identity;
   replacementPending ||= replace;
   let replaceOnCheckpoint = replacementPending;
+  showGame();
+  $('saved').textContent = 'Pelisi tallentuu tälle laitteelle.';
   $('mode-label').textContent = '· Paikallinen peli';
   if (!offlineStarted) { offlineStarted = true; offline.start(); }
   worker?.terminate(); generation++; cancelReveal(); keyboard.reset(); keyboardFeedback = '';
@@ -1200,6 +1330,7 @@ function boot(save = null, {replace = false, engine = new URL('./engine.ba679a5b
     }
   };
   worker.onerror = event => {
+    if (currentGeneration !== generation || worker !== targetWorker) return;
     busy = false;
     if (!view) startup({error: event.message || 'Paikallisen pelimoottorin lataus epäonnistui.'});
     else { status('Pelin laskenta keskeytyi. Voit jatkaa viimeisestä tallennetusta siirrosta.', true); $('retry').hidden = !lastSave; }
@@ -1243,11 +1374,11 @@ new ResizeObserver(layoutHand).observe($('hand').parentElement);
 globalThis.matchMedia?.('(max-width: 600px) and (orientation: portrait)').addEventListener('change', layoutHand);
 function showSeatDetails(seat) {
   if (!view) return;
-  detailSeat = seat; renderDetails(); $('seat-details').showModal();
+  detailSeat = seat; renderDetails(); openDialog('seat-details');
 }
 for (let seat = 0; seat < 4; seat++) $(`seat-${seat}`).querySelector('.seat-name').onclick = () => showSeatDetails(seat);
 $('own-seat-details').onclick = () => showSeatDetails(0);
-$('hand-details').onclick = () => { renderDetails(); $('hand-detail').showModal(); };
+$('hand-details').onclick = () => { renderDetails(); openDialog('hand-detail'); };
 $('close-seat-details').onclick = () => { $('seat-details').close(); detailSeat = null; };
 $('close-hand-detail').onclick = () => $('hand-detail').close();
 $('hand-layout').onclick = () => {
@@ -1259,7 +1390,16 @@ $('hand-layout').onclick = () => {
 };
 $('hand-layout').setAttribute('aria-pressed', String(expandedHand));
 $('hand-layout').textContent = expandedHand ? 'Tiivistä kortit' : 'Levitä kortit';
-$('settings-toggle').onclick = () => { $('settings').hidden = !$('settings').hidden; $('settings-toggle').setAttribute('aria-expanded', String(!$('settings').hidden)); if (!$('settings').hidden) refreshStorage(); };
+$('settings-toggle').onclick = () => {
+  if ($('settings').open) { $('settings').close(); return; }
+  $('settings-status').textContent = '';
+  $('turn-sound').checked = preferences.turnSound;
+  openDialog('settings'); $('settings-toggle').setAttribute('aria-expanded', 'true'); refreshStorage();
+};
+$('close-settings').onclick = () => $('settings').close();
+$('settings').onclose = () => {
+  if (!$('settings').open) { $('settings').hidden = true; $('settings-toggle').setAttribute('aria-expanded', 'false'); }
+};
 $('pacing').onchange = () => post('delay', {delay: Number($('pacing').value)});
 $('new-game').onclick = () => newLocalMatch();
 $('worlds').onchange = async () => { if (!await newLocalMatch() && lastSave) $('worlds').value = String(lastSave.worlds); };
@@ -1275,7 +1415,9 @@ $('import').onchange = async event => {
     const file = event.target.files[0]; if (!file) return;
     if (file.size > 10 * 1024 * 1024) throw new Error('Tallennustiedosto on liian suuri.');
     const save = await unwrap(JSON.parse(await file.text()));
-    if (confirm('Avataanko tallennus? Nykyinen ottelu siirtyy palautuskopioksi ja korvaa aiemman palautuskopion.')) await resumeLocal(save, true);
+    if (confirm('Avataanko tallennus? Nykyinen ottelu siirtyy palautuskopioksi ja korvaa aiemman palautuskopion.')) {
+      await resumeLocal(save, true); $('settings').close();
+    }
   } catch (error) { status(error.message, true); }
   event.target.value = '';
 };
@@ -1307,9 +1449,12 @@ function showLocalChoices(message = '') {
   }
   if (message) $('local-status').textContent = message;
   renderLocalChoices();
-  if (!$('local-games').open) $('local-games').showModal();
+  if (!$('local-games').open) openDialog('local-games');
 }
-function localFailure(error) { status(error.message, true); showLocalChoices(error.message); }
+function localFailure(error) {
+  status(error.message, true); showLocalChoices(error.message);
+  if (screen === 'home') $('home-recovery').hidden = false;
+}
 async function refreshRecoveryCopy() {
   recoveryKnown = false;
   try {
@@ -1321,12 +1466,14 @@ async function refreshRecoveryCopy() {
 }
 async function reloadLocalSave() {
   // Never interpret a failed database read as an empty device.
-  localReadable = false; saveIdentityKnown = false;
+  entryReady = false; localReadable = false; saveIdentityKnown = false;
   const record = await readLocalRecord(); localReadable = true; hasLocalRecord = Boolean(record);
   lastSave = record ? await unwrap(record) : null;
   replacementPending = false;
   durableIdentity = lastSave?.identity ?? null; saveIdentityKnown = true;
   await refreshRecoveryCopy();
+  entryReady = writeAccess;
+  $('home-status').textContent = ''; $('home-status').classList.toggle('error', false); $('home-recovery').hidden = true;
 }
 async function resumeLocal(save, replace = false) {
   if (!writeAccess || changingLocal || networkClient) return;
@@ -1361,8 +1508,9 @@ async function resumeLocal(save, replace = false) {
 }
 async function newLocalMatch() {
   if (!writeAccess || !localReadable || changingLocal || networkClient) return false;
-  if (!confirm('Aloitetaanko uusi ottelu nykyisellä asennetulla peliversiolla? Nykyinen ottelu siirtyy palautuskopioksi ja korvaa aiemman palautuskopion. Lataa tärkeät tallennukset ensin talteen.')) return false;
-  try { await resumeLocal(null, true); return true; }
+  const replacing = Boolean(lastSave || hasLocalRecord);
+  if (replacing && !confirm('Aloitetaanko uusi ottelu? Nykyinen ottelu siirtyy palautuskopioksi ja korvaa aiemman palautuskopion.')) return false;
+  try { await resumeLocal(null, replacing); $('settings').close(); return true; }
   catch (error) { localFailure(error); return false; }
 }
 async function downloadRecord(record, name) {
@@ -1402,7 +1550,7 @@ $('local-repair').onclick = async () => {
   finally { changingLocal = false; renderLocalChoices(); }
 };
 
-function openReplay(deal) { replayDeal = deal; replayIndex = 0; showReplay(); $('replay').showModal(); }
+function openReplay(deal) { replayDeal = deal; replayIndex = 0; showReplay(); openDialog('replay'); }
 function showReplay() {
   const size = replayDeal.result.trickSize, total = Math.ceil(replayDeal.history.length / size);
   const plays = replayDeal.history.slice(replayIndex * size, (replayIndex + 1) * size);
@@ -1428,30 +1576,35 @@ async function ownMatch(lock) {
     return;
   }
   writeAccess = true;
+  const untilLeave = new Promise(resolve => addEventListener('pagehide', () => {
+    writeAccess = false; entryReady = false; navigationToken++; generation++;
+    cancelReveal(); worker?.terminate(); networkClient?.close(); renderHome(); resolve();
+  }, {once: true}));
   try {
     startup({message: 'Avataan tämän laitteen tallennus…'});
-    await reloadLocalSave(); const saved = lastSave;
-    networkAddress = await networkConfiguration;
+    await reloadLocalSave(); if (!writeAccess) return;
+    const saved = lastSave;
     if (networkEnabled) try { savedNetwork = await loadNetwork(); } catch (error) { $('network-status').textContent = error.message; }
-    $('network-create').disabled = $('network-join').disabled = !networkAddress;
-    if (networkEnabled && networkAddress) showPasscodeIfRequired();
+    if (!writeAccess) return;
     $('network-code').value = (networkEntry.get('room') || '').toUpperCase();
-    $('network-resume').hidden = !savedNetwork || savedNetwork.base !== networkAddress;
-    if (startsOnline || (savedNetwork?.active && savedNetwork.base === networkAddress)) {
+    entryReady = true; $('home-status').textContent = ''; renderHome(); startup({ready: true});
+    if (networkEnabled && (startsOnline || savedNetwork?.active)) {
       $('network-local').hidden = false;
-      startup({ready: true}); busy = true; render(); $('prompt').textContent = 'Valitse huone tai jatka verkkopeliä.';
-      if (savedNetwork?.active && savedNetwork.base === networkAddress &&
+      busy = true; render();
+      openRoomEntry({invite: /^[A-Z0-9]{6}$/.test($('network-code').value)});
+      const route = navigationToken;
+      await networkReady;
+      if (route === navigationToken && savedNetwork?.active && savedNetwork.base === networkAddress &&
           (!networkEntry.get('room') || savedNetwork.room_code === networkEntry.get('room').toUpperCase())) await startNetwork('resume');
-      else $('network-dialog').showModal();
-    } else if (saved && packagedRuntimeIdentity && saved.identity !== packagedRuntimeIdentity) {
-      if (!offlineStarted) { offlineStarted = true; await offline.start(); }
-      repairIdentity = saved.identity;
-      showLocalChoices('Tallennettu ottelu käyttää aiempaa peliversiota. Jatka sillä tai aloita uusi ottelu tämän julkaisun peliversiolla.');
-    } else boot(saved);
+    } else if (!networkEnabled || networkEntry.get('play') === 'offline') {
+      if (saved && packagedRuntimeIdentity && saved.identity !== packagedRuntimeIdentity) {
+        if (!offlineStarted) { offlineStarted = true; await offline.start(); }
+        repairIdentity = saved.identity;
+        showLocalChoices('Tallennettu ottelu käyttää aiempaa peliversiota. Jatka sillä tai aloita uusi ottelu tämän julkaisun peliversiolla.');
+      } else boot(saved);
+    } else showHome();
   } catch (error) { localFailure(error); }
-  await new Promise(resolve => addEventListener('pagehide', () => {
-    writeAccess = false; cancelReveal(); worker?.terminate(); networkClient?.close(); resolve();
-  }, {once: true}));
+  await untilLeave;
 }
 addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
 const offline = new OfflineSetup({paths: [globalThis.location?.pathname ?? '/', new URL(import.meta.url).pathname,
@@ -1462,10 +1615,11 @@ const offline = new OfflineSetup({paths: [globalThis.location?.pathname ?? '/', 
   $('offline-progress').hidden = !downloading;
   $('offline-download').hidden = !downloading && !failed;
   $('offline-retry').hidden = !failed;
+  $('offline-prepare').hidden = offlineStarted || state.ready;
   $('offline-status').textContent = state.updateReady ? 'Päivitys valmis: sulje Tuppi ja avaa se uudelleen.' :
     downloading ? `Offline-paketti ${Math.min(100, Math.floor(bytes / total * 100))} % · ${(bytes / 1e6).toFixed(1)} / ${(total / 1e6).toFixed(1)} Mt` :
-    failed ? `${state.error ?? 'Offline-lataus jäi kesken.'}${state.ready ? ' Aiempi offline-paketti on käytettävissä.' : ''}` :
-    state.ready ? 'Valmis offline-peliin' : state.error ?? 'Valmistellaan offline-peliä…';
+    failed ? `${state.error ?? 'Lataus jäi kesken.'}${state.ready ? ' Aiempi offline-peli on käytettävissä.' : ''}` :
+    state.ready ? 'Valmis pelaamaan ilman verkkoyhteyttä' : state.error ?? 'Lataa peli tälle laitteelle, kun haluat pelata ilman verkkoa.';
 }});
 $('offline-retry').onclick = () => offline.retry();
 async function refreshStorage(requestPersistence = false) {
@@ -1568,13 +1722,15 @@ function showNetworkLobby(lobby) {
   const model = lobbyPresentation(lobby, networkClient?.session.seat ?? 0), playing = model.playing;
   if (!playing && view && networkClient) {
     // A rematch reopened the room: leave the finished table for the lobby.
-    cancelReveal(); networkRevealDeal = null; view = null; selectedCard = null; keyboard.reset(); render();
-    if (!$('network-dialog').open) $('network-dialog').showModal();
+    cancelReveal(); networkRevealDeal = null; view = null; selectedCard = null; keyboard.reset(); awaitingNetworkGame = true; render();
+    if (!$('network-dialog').open) openDialog('network-dialog');
   }
   if (!playing || lobby.lifecycle === 'completed') refreshLeaderboard();
   const previous = previousMatchesText(lobby, networkClient?.session.seat ?? 0);
   $('network-previous').hidden = !previous; $('network-previous').textContent = previous ? `Aiemmat ottelut tässä huoneessa: ${previous}` : '';
   $('network-entry').hidden = true; $('network-lobby').hidden = false; $('network-local').hidden = false;
+  $('network-title').textContent = 'Pelihuone';
+  $('network-dialog').dataset.stage = 'lobby';
   $('network-room').textContent = lobby.match_number ? `Huone ${lobby.room_code} · ottelu ${lobby.match_number}` : `Huone ${lobby.room_code}`;
   const available = Boolean(networkClient?.connected && !networkClient.authRequired);
   const configuring = Boolean(networkClient?.configuring);
@@ -1593,23 +1749,45 @@ function showNetworkLobby(lobby) {
   $('network-ready').textContent = model.ownReady ? 'Olet valmis' : 'Olen valmis';
   $('network-seat-guide').hidden = !networkClient?.session.host || playing || model.humans > 1;
   $('network-invite').value = invitationURL(location.href, lobby.room_code);
-  if (playing) { if (!view) $('network-dialog').close(); $('mode-label').textContent = `· Verkkopeli ${lobby.room_code}`; }
+  if (playing && screen === 'game') $('mode-label').textContent = `· Verkkopeli ${lobby.room_code}`;
 }
 // The room-creation passcode field appears only when this host asks for it.
 async function showPasscodeIfRequired() {
-  try { $('network-passcode-row').hidden = !(await new NetworkSession().createPasscodeRequired(networkAddress)); }
-  catch { /* A refused create reveals the field instead. */ }
+  if (!networkAddress) return;
+  passcodeCheck ??= new NetworkSession().createPasscodeRequired(networkAddress)
+    .then(required => { passcodeRequired = required; })
+    .catch(() => { passcodeCheck = null; });
+  await passcodeCheck;
+  if (!$('network-entry').hidden) renderRoomEntry();
 }
 async function startNetwork(command) {
-  if (!networkEnabled) return;
-  if (!writeAccess || !networkAddress) return;
-  busy = true; await saveQueue.catch(() => {}); worker?.terminate(); worker = null;
+  if (!networkEnabled || entryPending || navigationPending) return;
+  if (!writeAccess || !networkAddress) { $('network-status').textContent = 'Verkkopeli ei ole vielä valmis. Yritä hetken kuluttua.'; return; }
+  if (command === 'resume' && (!savedNetwork || savedNetwork.base !== networkAddress)) return;
+  if (command === 'join') {
+    try { $('network-code').value = roomCodeFromInput($('network-code').value, location.href); }
+    catch (error) { $('network-status').textContent = error.message; $('network-code').focus?.(); return; }
+  }
+  entryPending = true; awaitingNetworkGame = true; navigationToken++; renderRoomEntry(); renderHome();
+  await saveQueue.catch(() => {});
+  if (saveFailed) {
+    entryPending = false; awaitingNetworkGame = false; renderRoomEntry(); renderHome();
+    $('network-status').textContent = 'Paikallisen pelin tallennus ei onnistunut. Lataa siitä varmuuskopio asetuksista ennen pelitavan vaihtoa.';
+    return;
+  }
+  busy = true; worker?.terminate(); worker = null;
   generation++; cancelReveal(); networkRevealDeal = null; keyboard.reset(); selectedCard = null;
   lobbyConfiguration = null; lobbyRoom = null;
   pendingWrites = 0; saveFailed = false;
   networkClient?.close(); view = null; render(); startup({ready: true});
   networkClient = new NetworkSession({persist: async session => { await storeNetwork(session); savedNetwork = structuredClone(session); },
-    onConnection: state => { connectionState = state; renderConnection(); },
+    onConnection: state => {
+      connectionState = state; renderConnection();
+      if (networkClient?.session && !networkClient.session.lobby) {
+        $('network-entry').hidden = $('network-lobby').hidden = true;
+        $('network-title').textContent = `Yhdistetään huoneeseen ${networkClient.session.room_code}`;
+      }
+    },
     // The server may have restarted for an update: fetch a newer release in
     // the background; it is used after Tuppi is closed and opened again.
     onReconnect: () => { offline.checkForUpdate(); },
@@ -1629,17 +1807,20 @@ async function startNetwork(command) {
       if (reveal) networkRevealDeal = next.dealNumber;
       next.revealing = Boolean(reveal || (revealFrame && old?.dealNumber === next.dealNumber));
       view = next; busy = !networkClient.connected || Boolean(networkClient.session.pending);
+      if (awaitingNetworkGame) { awaitingNetworkGame = false; showGame(); $('network-dialog').close(); }
       if (!next.waitingHuman || old?.phase !== next.phase || old?.dealNumber !== next.dealNumber) { selectedCard = null; keyboard.reset(); }
       if (reveal) startReveal(); else render();
     }});
   $('mode-label').textContent = '· Verkkopeli'; $('saved').textContent = 'Huone tallentuu palveluun. Paikkasi muistetaan tällä selaimella.';
-  $('offline-prepare').hidden = offlineStarted;
   try {
     if (command === 'resume') await networkClient.begin({...savedNetwork, active: true});
     else {
-      preferences = savePreferences({...preferences, nickname: $('network-name').value});
-      if (command === 'create') await networkClient.create(networkAddress, $('network-name').value.trim(), ($('network-passcode').value ?? '').trim());
-      else await networkClient.join(networkAddress, $('network-code').value.trim().toUpperCase(), $('network-name').value.trim());
+      const nickname = $('network-name').value.trim() || 'Pelaaja';
+      preferences = savePreferences({...preferences, nickname});
+      if (command === 'create') {
+        await networkClient.create(networkAddress, nickname, ($('network-passcode').value ?? '').trim());
+        $('network-passcode').value = '';
+      } else await networkClient.join(networkAddress, $('network-code').value, nickname);
     }
   } catch (error) {
     networkClient.close(); networkClient = null;
@@ -1647,9 +1828,11 @@ async function startNetwork(command) {
     renderConnection(); $('network-resume').hidden = !savedNetwork || savedNetwork.base !== networkAddress;
     $('network-status').textContent = error.message; $('network-entry').hidden = false; $('network-lobby').hidden = true;
     if (['room_passcode_required', 'invalid_room_passcode'].includes(error.code)) {
-      $('network-passcode-row').hidden = false; $('network-passcode').focus?.();
+      passcodeRequired = true; roomIntent = 'create';
     }
     status(error.message, true); $('network-local').hidden = false;
+  } finally {
+    entryPending = false; renderRoomEntry(); renderHome();
   }
 }
 async function returnToLocal() {
@@ -1664,13 +1847,32 @@ async function returnToLocal() {
 }
 $('network-toggle').onclick = () => {
   if (!networkEnabled) return;
-  if (!networkClient) $('network-status').textContent = networkAddress ? 'Luo huone tai liity ystävän kutsulla.' : 'Verkkopeliä valmistellaan. Paikallinen peli on käytössä.';
-  $('network-dialog').showModal();
+  if (networkClient?.session) { showNetworkLobby(networkClient.session.lobby); openDialog('network-dialog'); }
+  else openRoomEntry();
 };
-$('network-toggle').hidden = !networkEnabled;
 $('network-toggle').disabled = !networkEnabled;
+$('home-toggle').onclick = showHome;
+$('home-local').onclick = enterLocalPlay;
+$('home-online').onclick = async () => {
+  if (!entryReady || !networkEnabled || entryPending || navigationPending) return;
+  navigationToken++;
+  if (networkClient?.session) {
+    if (view) { showGame(); render(); }
+    else { awaitingNetworkGame = true; showNetworkLobby(networkClient.session.lobby); openDialog('network-dialog'); }
+  } else {
+    openRoomEntry();
+    if (savedNetwork?.active && savedNetwork.base === networkAddress) await startNetwork('resume');
+  }
+};
+$('home-retry').onclick = () => location.reload();
+$('network-reload').onclick = async () => {
+  networkResolved = false; $('network-reload').hidden = true; $('network-status').textContent = 'Yhdistetään verkkopeliin…';
+  networkAddress = await readNetworkConfiguration(); networkResolved = true; renderHome(); renderRoomEntry();
+  $('network-status').textContent = networkAddress ? '' : 'Yhteyttä ei saatu. Tarkista verkkoyhteys ja yritä uudelleen.';
+};
 $('network-name').value = preferences.nickname;
-$('help-toggle').onclick = () => { $('turn-sound').checked = preferences.turnSound; $('help').showModal(); };
+$('turn-sound').checked = preferences.turnSound;
+$('help-toggle').onclick = () => openDialog('help');
 $('close-help').onclick = () => $('help').close();
 $('turn-sound').onchange = () => {
   preferences = savePreferences({...preferences, turnSound: Boolean($('turn-sound').checked)});
@@ -1679,14 +1881,22 @@ $('turn-sound').onchange = () => {
 addEventListener('pointerdown', () => { if (preferences.turnSound && !turnAudio) enableTurnAudio(); }, {once: true});
 $('network-name').onchange = () => { preferences = savePreferences({...preferences, nickname: $('network-name').value}); };
 $('close-network').onclick = () => $('network-dialog').close();
-for (const command of ['create','join','resume']) $('network-' + command).onclick = () => startNetwork(command);
+$('network-dialog').onclose = () => { if (screen === 'home') awaitingNetworkGame = false; };
+$('network-form').onsubmit = event => { event.preventDefault(); return startNetwork(roomIntent); };
+$('network-resume').onclick = () => startNetwork('resume');
+$('network-switch').onclick = async () => {
+  if (entryPending) return;
+  invitation = false; roomIntent = roomIntent === 'create' ? 'join' : 'create';
+  $('network-status').textContent = ''; renderRoomEntry();
+  if (roomIntent === 'create') await showPasscodeIfRequired();
+};
 $('network-ready').onclick = () => networkClient?.ready();
 $('network-fill').onclick = () => networkClient?.fillEmptySeats().catch(networkFailure);
 $('network-pause').onclick = () => networkClient?.pause();
 $('network-unpause').onclick = () => networkClient?.resume();
 $('network-rematch').onclick = () => networkClient?.rematch();
 $('network-open').onclick = () => networkClient?.openSeats().catch(networkFailure);
-$('network-local').onclick = () => returnToLocal().catch(error => status(error.message, true));
+$('network-local').onclick = enterLocalPlay;
 $('network-copy').onclick = async () => {
   if (!networkClient?.session) return;
   const link = invitationURL(location.href, networkClient.session.room_code);

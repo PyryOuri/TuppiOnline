@@ -1,6 +1,20 @@
 import {networkSeat} from './network.mjs';
 import {seatNames} from './table.mjs';
 
+// Pasted links supply only a room code. Requests still use this app's configured
+// server; a link to another site must be opened there rather than joined here.
+export function roomCodeFromInput(value, base) {
+  const text = String(value ?? '').trim();
+  if (/^[a-z0-9]{6}$/i.test(text)) return text.toUpperCase();
+  let url;
+  try { url = new URL(text); } catch { throw new Error('Kirjoita kuusimerkkinen huonekoodi tai liitä kutsulinkki.'); }
+  if (!['https:', 'http:'].includes(url.protocol)) throw new Error('Kutsulinkki ei ole kelvollinen.');
+  if (base && url.origin !== new URL(base).origin) throw new Error('Tämä kutsu on toiselle Tuppi-sivustolle. Avaa alkuperäinen kutsulinkki.');
+  const code = url.searchParams.get('room') ?? '';
+  if (!/^[a-z0-9]{6}$/i.test(code)) throw new Error('Kutsulinkistä puuttuu kelvollinen huonekoodi.');
+  return code.toUpperCase();
+}
+
 export function lobbyPresentation(lobby, ownSeat = 0) {
   const seats = lobby.seats.map(seat => ({...seat, position: networkSeat(seat.seat, ownSeat)}));
   const teams = [0, 1].map(team => seats.filter(seat => seat.position % 2 === team)
