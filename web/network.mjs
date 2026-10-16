@@ -302,17 +302,21 @@ export class NetworkSession {
     const view = networkView(this.latest, [...this.completed.values()].sort((a,b) => a.deal_number-b.deal_number),
       this.session.summaryDeal === this.latest.observation.deal_ref ? this.session.summary : null, this.conceded);
     const paused = Boolean(this.session.lobby?.paused) && !view.terminal;
-    if (!this.connected || this.stopped || this.session.pending || paused) view.waitingHuman = false;
+    // A bot is playing this seat while its player was away (feature seat_bot).
+    const covered = this.session.lobby?.seats?.find(s => s.seat === this.session.seat)?.kind === 'ai' && !view.terminal;
+    view.covered = covered;
+    if (!this.connected || this.stopped || this.session.pending || paused || covered) view.waitingHuman = false;
     view.paused = paused;
     view.concedeAvailable = this.features.has('concede') && this.connected && !this.stopped && !this.session.pending &&
-      !paused && networkDecided(view);
+      !paused && !covered && networkDecided(view);
     if (!this.connected) view.prompt = 'Yhdistetään verkkopeliin…';
     else if (paused) view.prompt = this.session.host ? 'Peli on tauolla. Jatka, kun kaikki ovat valmiita.' : 'Peli on tauolla. Huoneen luoja jatkaa peliä.';
+    else if (covered) view.prompt = 'Botti pelaa paikallasi. Voit ottaa paikkasi takaisin.';
     else if (this.session.pending && view.phase !== 2 &&
         (!this.placedPending() || this.latest.observation.current_actor === this.session.seat)) view.prompt = 'Käsitellään siirtoasi…';
     else if (!view.waitingHuman && ![0,2].includes(view.phase)) {
       const participant = this.session.lobby?.seats.find(s => s.seat === this.latest.observation.current_actor);
-      view.prompt = participant?.kind === 'ai' ? `${participant.display_name || 'Botti'} miettii…` :
+      view.prompt = participant?.kind === 'ai' ? `${participant.covering ? `Botti (${participant.covering})` : participant.display_name || 'Botti'} miettii…` :
         participant ? `${participant.display_name}: odotetaan siirtoa…` : 'Odotetaan siirtoa…';
     }
     this.onView(view);
@@ -346,6 +350,13 @@ export class NetworkSession {
   concede() {
     if (!this.features.has('concede') || !this.connected || this.stopped || this.session.pending || !this.latest) return false;
     return this.send('concede', {});
+  }
+  // A bot plays for an absent player (host), or a covered seat is taken back
+  // (host, or that seat's own player).
+  seatBot(seat, bot) {
+    if (!this.features.has('seat_bot') || !this.connected || this.stopped || !this.session) return false;
+    if (bot ? !this.session.host : !this.session.host && seat !== this.session.seat) return false;
+    return this.send('seat_bot', {seat, bot: Boolean(bot)});
   }
   pause() { return this.hostCommand('pause'); }
   resume() { return this.hostCommand('resume'); }

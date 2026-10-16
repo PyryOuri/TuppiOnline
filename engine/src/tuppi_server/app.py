@@ -25,7 +25,8 @@ from .rooms import RoomError, RoomManager
 Send = Callable[[dict[str, Any]], Awaitable[None]]
 #: Optional commands this server accepts; clients show their controls only
 #: when the server lists them.
-FEATURES = ("pause", "rematch", "leaderboard", "compact_results", "rename", "release_seat", "concede", "results")
+FEATURES = ("pause", "rematch", "leaderboard", "compact_results", "rename", "release_seat", "concede", "results",
+            "seat_bot")
 #: Close code sent to a player whose seat the host released.
 SEAT_RELEASED_CLOSE_CODE = 4002
 #: A player whose connection does not take an update within this time is
@@ -293,6 +294,10 @@ class TuppiASGIApp:
                 current = self._connections.get(connection.room_code, {}).get(connection.token)
                 if current is connection:
                     self._connections[connection.room_code].pop(connection.token, None)
+                    try:  # the others see that this player left
+                        await self._broadcast_lobby(connection.room_code)
+                    except Exception:
+                        pass
 
     async def _authenticate(self, request: dict[str, object], send: Send) -> Connection:
         if request.get("message_type") != "hello":
@@ -341,7 +346,8 @@ class TuppiASGIApp:
                 "seat": session.seat,
             },
         )
-        await self._send_message(send, "lobby_snapshot", room.snapshot())
+        # Everyone sees who is connected (the newcomer gets the lobby too).
+        await self._broadcast_lobby(room.code)
         if room.runner is not None:
             await self._send_match_update(connection)
             if (room.runner.current_actor in room.runner.ai_seats
@@ -397,6 +403,20 @@ class TuppiASGIApp:
             for other in self._connections.get(room.code, {}).values():
                 other.last_event_index = -1
             await self._broadcast_lobby(room.code)
+            return
+        if message_type == "seat_bot":
+            # Host: a bot plays for an absent player; player or host: take it back.
+            # A refusal (e.g. the player came back meanwhile) answers with the lobby.
+            self._require_fields(payload, required={"seat", "bot"})
+            try:
+                room = self.rooms.set_seat_bot(code=room.code, token=session.token, seat=payload["seat"],
+                    bot=payload["bot"], connected=lambda token: token in self._connections.get(room.code, {}))
+            except RoomError:
+                await self._send_message(connection.send, "lobby_snapshot", self._lobby(room))
+                return
+            await self._broadcast_lobby(room.code)
+            await self._broadcast_match(room.code)
+            self._schedule_ai_continuation(room.code)
             return
         if message_type == "concede":
             # Any player may finish a deal whose result is already 0-0. If it
@@ -534,11 +554,23 @@ class TuppiASGIApp:
             },
         )
 
+    def _lobby(self, room) -> dict[str, object]:
+        """The lobby with who is connected now (people's seats only)."""
+
+        snapshot = room.snapshot()
+        online = self._connections.get(room.code, {})
+        for seat in snapshot["seats"]:
+            session = room.session_for_seat(seat["seat"])
+            if session is not None:
+                seat["connected"] = session.token in online
+        return snapshot
+
     async def _broadcast_lobby(self, room_code: str) -> None:
         room = self.rooms.get(room_code)
+        snapshot = self._lobby(room)
         for connection in tuple(self._connections.get(room.code, {}).values()):
             await self._deliver(room.code, connection,
-                                self._send_message(connection.send, "lobby_snapshot", room.snapshot()))
+                                self._send_message(connection.send, "lobby_snapshot", snapshot))
 
     async def _broadcast_match(self, room_code: str) -> None:
         for connection in tuple(self._connections.get(room_code, {}).values()):

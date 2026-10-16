@@ -51,6 +51,25 @@ export function seatAction(seat, {host, playing, features = new Set()}) {
   return host ? 'toggle' : null;
 }
 
+// During a match (feature seat_bot): the host may let a bot play for a player
+// who is not connected, and give a covered seat back; a covered player may
+// take their own seat back. Never the host's seat.
+export function standInActions(lobby, {host, ownSeat, features = new Set(), active}) {
+  if (!active || !features.has('seat_bot') || !lobby?.seats) return [];
+  return lobby.seats.flatMap(seat => {
+    if (seat.seat === 0) return [];
+    if (seat.kind === 'human' && seat.connected === false && host)
+      return [{seat: seat.seat, bot: true, text: `Botti pelaa: ${seat.display_name}`}];
+    if (seat.kind === 'ai' && seat.covering && (host || seat.seat === ownSeat))
+      return [{seat: seat.seat, bot: false, text: seat.seat === ownSeat ? 'Ota paikkasi takaisin' : `Palauta paikka: ${seat.covering}`}];
+    return [];
+  });
+}
+// A seat's name at the table: a stand-in bot says whom it plays for.
+export function seatDisplayName(seat) {
+  return seat?.covering ? `Botti (${seat.covering})` : seat?.display_name;
+}
+
 export class LobbyView {
   constructor(teams, onToggle, {onRename = () => {}, onRelease = () => {}} = {}) {
     this.teams = teams; this.onToggle = onToggle; this.onRename = onRename; this.onRelease = onRelease; this.nodes = new Map();

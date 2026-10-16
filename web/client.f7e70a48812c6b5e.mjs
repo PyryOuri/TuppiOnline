@@ -770,17 +770,21 @@ class NetworkSession {
     const view = networkView(this.latest, [...this.completed.values()].sort((a,b) => a.deal_number-b.deal_number),
       this.session.summaryDeal === this.latest.observation.deal_ref ? this.session.summary : null, this.conceded);
     const paused = Boolean(this.session.lobby?.paused) && !view.terminal;
-    if (!this.connected || this.stopped || this.session.pending || paused) view.waitingHuman = false;
+    // A bot is playing this seat while its player was away (feature seat_bot).
+    const covered = this.session.lobby?.seats?.find(s => s.seat === this.session.seat)?.kind === 'ai' && !view.terminal;
+    view.covered = covered;
+    if (!this.connected || this.stopped || this.session.pending || paused || covered) view.waitingHuman = false;
     view.paused = paused;
     view.concedeAvailable = this.features.has('concede') && this.connected && !this.stopped && !this.session.pending &&
-      !paused && networkDecided(view);
+      !paused && !covered && networkDecided(view);
     if (!this.connected) view.prompt = 'Yhdistetään verkkopeliin…';
     else if (paused) view.prompt = this.session.host ? 'Peli on tauolla. Jatka, kun kaikki ovat valmiita.' : 'Peli on tauolla. Huoneen luoja jatkaa peliä.';
+    else if (covered) view.prompt = 'Botti pelaa paikallasi. Voit ottaa paikkasi takaisin.';
     else if (this.session.pending && view.phase !== 2 &&
         (!this.placedPending() || this.latest.observation.current_actor === this.session.seat)) view.prompt = 'Käsitellään siirtoasi…';
     else if (!view.waitingHuman && ![0,2].includes(view.phase)) {
       const participant = this.session.lobby?.seats.find(s => s.seat === this.latest.observation.current_actor);
-      view.prompt = participant?.kind === 'ai' ? `${participant.display_name || 'Botti'} miettii…` :
+      view.prompt = participant?.kind === 'ai' ? `${participant.covering ? `Botti (${participant.covering})` : participant.display_name || 'Botti'} miettii…` :
         participant ? `${participant.display_name}: odotetaan siirtoa…` : 'Odotetaan siirtoa…';
     }
     this.onView(view);
@@ -814,6 +818,13 @@ class NetworkSession {
   concede() {
     if (!this.features.has('concede') || !this.connected || this.stopped || this.session.pending || !this.latest) return false;
     return this.send('concede', {});
+  }
+  // A bot plays for an absent player (host), or a covered seat is taken back
+  // (host, or that seat's own player).
+  seatBot(seat, bot) {
+    if (!this.features.has('seat_bot') || !this.connected || this.stopped || !this.session) return false;
+    if (bot ? !this.session.host : !this.session.host && seat !== this.session.seat) return false;
+    return this.send('seat_bot', {seat, bot: Boolean(bot)});
   }
   pause() { return this.hostCommand('pause'); }
   resume() { return this.hostCommand('resume'); }
@@ -947,6 +958,25 @@ function seatAction(seat, {host, playing, features = new Set()}) {
   if (seat.kind === 'human' && seat.position === 0) return features.has('rename') ? 'rename' : null;
   if (seat.kind === 'human') return host && features.has('release_seat') ? 'release' : null;
   return host ? 'toggle' : null;
+}
+
+// During a match (feature seat_bot): the host may let a bot play for a player
+// who is not connected, and give a covered seat back; a covered player may
+// take their own seat back. Never the host's seat.
+function standInActions(lobby, {host, ownSeat, features = new Set(), active}) {
+  if (!active || !features.has('seat_bot') || !lobby?.seats) return [];
+  return lobby.seats.flatMap(seat => {
+    if (seat.seat === 0) return [];
+    if (seat.kind === 'human' && seat.connected === false && host)
+      return [{seat: seat.seat, bot: true, text: `Botti pelaa: ${seat.display_name}`}];
+    if (seat.kind === 'ai' && seat.covering && (host || seat.seat === ownSeat))
+      return [{seat: seat.seat, bot: false, text: seat.seat === ownSeat ? 'Ota paikkasi takaisin' : `Palauta paikka: ${seat.covering}`}];
+    return [];
+  });
+}
+// A seat's name at the table: a stand-in bot says whom it plays for.
+function seatDisplayName(seat) {
+  return seat?.covering ? `Botti (${seat.covering})` : seat?.display_name;
 }
 
 class LobbyView {
@@ -1218,7 +1248,7 @@ const handView = new HandView($('hand'), card => cardFace(card, true), (element,
   element.setAttribute('aria-label', `${suitNames[Math.floor(card / 13)]} ${cardRank(card)}${legal ? '' : ', ei sallittu tällä vuorolla'}`);
 });
 function seatInfo(seat) {
-  const nickname = networkClient?.session?.lobby?.seats.find(s => networkSeat(s.seat, networkClient.session.seat) === seat)?.display_name;
+  const nickname = seatDisplayName(networkClient?.session?.lobby?.seats.find(s => networkSeat(s.seat, networkClient.session.seat) === seat));
   return seatPresentation(view, seat, nickname || seatNames[seat]);
 }
 function renderDetails() {
@@ -1973,6 +2003,7 @@ function renderConnection() {
 }
 // Host pause/resume during a match and rematch after it, when the server
 // supports them; other players see the state and who can act on it.
+let standInKey = '';
 function renderNetworkControls() {
   const client = networkClient, lobby = client?.session?.lobby, host = Boolean(client?.session?.host);
   const features = client?.features ?? new Set(), terminal = Boolean(view?.terminal);
@@ -1982,7 +2013,20 @@ function renderNetworkControls() {
   $('network-rematch').hidden = !(host && features.has('rematch') && terminal);
   for (const id of ['network-pause', 'network-unpause', 'network-rematch'])
     $(id).disabled = !client?.connected || client.authRequired;
-  $('network-controls').hidden = ['network-pause', 'network-unpause', 'network-rematch'].every(id => $(id).hidden);
+  // Bot stand-ins for players who are away (and taking a seat back).
+  const standIns = standInActions(lobby, {host, ownSeat: client?.session?.seat, features, active});
+  const key = JSON.stringify(standIns);
+  if (key !== standInKey) {
+    standInKey = key;
+    $('network-standins').replaceChildren(...standIns.map(action => {
+      const button = document.createElement('button'); button.textContent = action.text;
+      button.onclick = () => networkClient?.seatBot(action.seat, action.bot);  // repeats are harmless
+      return button;
+    }));
+  }
+  for (const button of $('network-standins').children) button.disabled = !client?.connected || client.authRequired;
+  $('network-standins').hidden = !standIns.length;
+  $('network-controls').hidden = ['network-pause', 'network-unpause', 'network-rematch'].every(id => $(id).hidden) && !standIns.length;
   $('network-rematch-note').hidden = !(client && !host && features.has('rematch') && terminal);
 }
 // Server standings by nickname; fetched at most every few seconds.

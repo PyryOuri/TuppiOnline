@@ -118,6 +118,14 @@
             "partner_aware_lead_v2",
             "tuppi_ai_search_v1"
           ]
+        },
+        "connected": {
+          "type": "boolean",
+          "$comment": "People's seats in WebSocket lobby updates: whether that player is connected now."
+        },
+        "covering": {
+          "$ref": "#/$defs/displayName",
+          "$comment": "A bot seat standing in for this player during a match (feature seat_bot)."
         }
       },
       "allOf": [
@@ -248,7 +256,8 @@
               "rename",
               "release_seat",
               "concede",
-              "results"
+              "results",
+              "seat_bot"
             ]
           },
           "$comment": "Optional commands this server accepts; absent on servers without them."

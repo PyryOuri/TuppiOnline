@@ -7,7 +7,7 @@ import {seatNames, suitNames, suitSVG, cardRank, cardLabel, cardAction, legalCar
 import {HandView} from './hand.mjs';
 import {seatPresentation, matchSummary, offlineResultReport, analysisPresentation, dealHands} from './presentation.mjs';
 import {networkEnabled} from './capabilities.mjs';
-import {LobbyView, lobbyPresentation, invitationURL, roomCodeFromInput} from './lobby.mjs';
+import {LobbyView, lobbyPresentation, invitationURL, roomCodeFromInput, standInActions, seatDisplayName} from './lobby.mjs';
 import {loadPreferences, savePreferences} from './preferences.mjs';
 
 const $ = id => document.getElementById(id);
@@ -237,7 +237,7 @@ const handView = new HandView($('hand'), card => cardFace(card, true), (element,
   element.setAttribute('aria-label', `${suitNames[Math.floor(card / 13)]} ${cardRank(card)}${legal ? '' : ', ei sallittu tällä vuorolla'}`);
 });
 function seatInfo(seat) {
-  const nickname = networkClient?.session?.lobby?.seats.find(s => networkSeat(s.seat, networkClient.session.seat) === seat)?.display_name;
+  const nickname = seatDisplayName(networkClient?.session?.lobby?.seats.find(s => networkSeat(s.seat, networkClient.session.seat) === seat));
   return seatPresentation(view, seat, nickname || seatNames[seat]);
 }
 function renderDetails() {
@@ -992,6 +992,7 @@ function renderConnection() {
 }
 // Host pause/resume during a match and rematch after it, when the server
 // supports them; other players see the state and who can act on it.
+let standInKey = '';
 function renderNetworkControls() {
   const client = networkClient, lobby = client?.session?.lobby, host = Boolean(client?.session?.host);
   const features = client?.features ?? new Set(), terminal = Boolean(view?.terminal);
@@ -1001,7 +1002,20 @@ function renderNetworkControls() {
   $('network-rematch').hidden = !(host && features.has('rematch') && terminal);
   for (const id of ['network-pause', 'network-unpause', 'network-rematch'])
     $(id).disabled = !client?.connected || client.authRequired;
-  $('network-controls').hidden = ['network-pause', 'network-unpause', 'network-rematch'].every(id => $(id).hidden);
+  // Bot stand-ins for players who are away (and taking a seat back).
+  const standIns = standInActions(lobby, {host, ownSeat: client?.session?.seat, features, active});
+  const key = JSON.stringify(standIns);
+  if (key !== standInKey) {
+    standInKey = key;
+    $('network-standins').replaceChildren(...standIns.map(action => {
+      const button = document.createElement('button'); button.textContent = action.text;
+      button.onclick = () => networkClient?.seatBot(action.seat, action.bot);  // repeats are harmless
+      return button;
+    }));
+  }
+  for (const button of $('network-standins').children) button.disabled = !client?.connected || client.authRequired;
+  $('network-standins').hidden = !standIns.length;
+  $('network-controls').hidden = ['network-pause', 'network-unpause', 'network-rematch'].every(id => $(id).hidden) && !standIns.length;
   $('network-rematch-note').hidden = !(client && !host && features.has('rematch') && terminal);
 }
 // Server standings by nickname; fetched at most every few seconds.
