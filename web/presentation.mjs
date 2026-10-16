@@ -1,4 +1,4 @@
-import {cardLabel, seatNames} from './table.mjs';
+import {cardLabel, cardRank, seatNames, suits} from './table.mjs';
 
 // Only consume the adapter's public view, never infer a hidden bid or hand.
 export function seatPresentation(view, seat, nickname = seatNames[seat]) {
@@ -67,4 +67,19 @@ export function analysisPresentation(result) {
   const summary = items.length ? `${items.length} ${items.length === 1 ? 'ratkaisu' : 'ratkaisua'}: ${count('good')} hyvää, ` +
     `${count('inaccuracy')} epätarkkaa, ${count('mistake')} virhettä.` : 'Tässä jaossa ei ollut valittavaa: jokainen siirto oli ainoa sallittu.';
   return {items, summary};
+}
+
+// Every player's dealt hand in a finished deal (deck positions seat*13…), from
+// the viewer's seat round the table, by suit from the ace down, with high-card
+// points (A 4, K 3, Q 2, J 1). Offline it is the saved deal; online, the cards
+// each seat played (every card is played by the end of a non-sooli deal).
+export function dealHands(deal, ownSeat = 0) {
+  return [0, 1, 2, 3].map(position => {
+    const seat = (ownSeat + position) % 4, cards = deal.cards.slice(seat * 13, seat * 13 + 13);
+    const bySuit = [0, 1, 2, 3].map(suit => ({suit: suits[suit],
+      ranks: cards.filter(card => Math.floor(card / 13) === suit).sort((a, b) => b - a).map(cardRank)}));
+    return {position, label: seatNames[position], suits: bySuit,
+      highCardPoints: cards.reduce((sum, card) => sum + Math.max(0, card % 13 - 8), 0),
+      text: bySuit.map(item => `${item.suit} ${item.ranks.join(' ') || '–'}`).join('  ')};
+  });
 }

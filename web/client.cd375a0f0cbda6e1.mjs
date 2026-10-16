@@ -329,6 +329,21 @@ function analysisPresentation(result) {
   return {items, summary};
 }
 
+// Every player's dealt hand in a finished deal (deck positions seat*13…), from
+// the viewer's seat round the table, by suit from the ace down, with high-card
+// points (A 4, K 3, Q 2, J 1). Offline it is the saved deal; online, the cards
+// each seat played (every card is played by the end of a non-sooli deal).
+function dealHands(deal, ownSeat = 0) {
+  return [0, 1, 2, 3].map(position => {
+    const seat = (ownSeat + position) % 4, cards = deal.cards.slice(seat * 13, seat * 13 + 13);
+    const bySuit = [0, 1, 2, 3].map(suit => ({suit: suits[suit],
+      ranks: cards.filter(card => Math.floor(card / 13) === suit).sort((a, b) => b - a).map(cardRank)}));
+    return {position, label: seatNames[position], suits: bySuit,
+      highCardPoints: cards.reduce((sum, card) => sum + Math.max(0, card % 13 - 8), 0),
+      text: bySuit.map(item => `${item.suit} ${item.ranks.join(' ') || '–'}`).join('  ')};
+  });
+}
+
 // Source: offline.mjs
 // The packager pins this value without changing runtime/model save identity.
 const packagedRuntimeIdentity = "95497f1ebdf0979b8463f3822cf3db85ad8495ed85ae1fe3e5b3b09962871b5d";
@@ -1784,6 +1799,13 @@ function openAnalysis(deal) {
   const request = analysisRequest(deal);
   if (!request) return;
   $('analysis-title').textContent = `Jaon ${deal.index + 1} analyysi`;
+  // Everyone's dealt hand, on request; available before the analysis finishes.
+  $('analysis-hands').replaceChildren(...dealHands(request.deal, request.seat).map(hand => {
+    const row = document.createElement('div'), name = document.createElement('strong'), cards = document.createElement('span');
+    row.className = 'analysis-hand'; name.textContent = `${hand.label} · ${hand.highCardPoints} HCP`; cards.textContent = hand.text;
+    row.append(name, cards); return row;
+  }));
+  showHands(false);
   analysisShown = request.key; openDialog('analysis');
   if (analysisCache.has(request.key)) { showAnalysis(analysisCache.get(request.key)); return; }
   $('analysis-list').replaceChildren(); $('analysis-summary').textContent = '';
@@ -1817,6 +1839,11 @@ function openAnalysis(deal) {
 function releaseAnalysis() {
   if (!analysisPending.size && !$('analysis').open) { analysisWorker?.terminate(); analysisWorker = null; analysisHandlers.clear(); }
 }
+function showHands(visible) {
+  $('analysis-hands').hidden = !visible; $('analysis-show-hands').setAttribute('aria-expanded', String(visible));
+  $('analysis-show-hands').textContent = visible ? 'Piilota kädet' : 'Näytä kaikkien kädet';
+}
+$('analysis-show-hands').onclick = () => showHands($('analysis-hands').hidden);
 $('close-analysis').onclick = () => { $('analysis').close(); analysisShown = null; releaseAnalysis(); };
 $('analysis').addEventListener?.('close', () => { analysisShown = null; releaseAnalysis(); });
 $('analyse-deal').onclick = () => openAnalysis(view?.completed?.at(-1));

@@ -8,7 +8,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icon-180.png">
-  <link rel="stylesheet" href="./styles.ea3da441d067cd0a.css">
+  <link rel="stylesheet" href="./styles.css">
   <title>Tuppi</title>
 </head>
 <body>
@@ -105,7 +105,7 @@
     <h3>Ohjaus</h3><p>Valitse kortti napauttamalla ja vahvista painikkeella. Näppäimistöllä H, D, C ja S valitsevat maan, arvo kortin, nuolet vaihtavat valintaa ja Enter vahvistaa; tarjotessa N valitsee NOLOn ja R RAMIn.</p>
     <h3>Verkkopeli</h3><p>Huoneen luoja voi lisätä botteja, pitää tauon ja aloittaa ottelun jälkeen uuden samalla porukalla. Yhteyden katketessa paikkasi säilyy, ja lukittu tarjous säilyy myös palvelimen uudelleenkäynnistyksessä.</p>
   </dialog>
-  <dialog id="analysis" aria-labelledby="analysis-title"><button id="close-analysis">Sulje</button><h2 id="analysis-title">Jaon analyysi</h2><p id="analysis-status" role="status"></p><progress id="analysis-progress" max="1" value="0" aria-label="Analyysin eteneminen" hidden></progress><p id="analysis-summary" class="analysis-summary"></p><ol id="analysis-list" class="analysis-list"></ol><p class="analysis-note">Arvio on botin täysi haku (1024 maailmaa) sinun näkökulmastasi: vain se, minkä tiesit siirron hetkellä. Ero on ottelun odotusarvoa (−1…+1); alle 0,01 eroja haku ei erota. Analyysi tehdään tällä laitteella.</p></dialog>
+  <dialog id="analysis" aria-labelledby="analysis-title"><button id="close-analysis">Sulje</button><h2 id="analysis-title">Jaon analyysi</h2><p id="analysis-status" role="status"></p><progress id="analysis-progress" max="1" value="0" aria-label="Analyysin eteneminen" hidden></progress><button id="analysis-show-hands" aria-expanded="false" aria-controls="analysis-hands">Näytä kaikkien kädet</button><div id="analysis-hands" class="analysis-hands" hidden></div><p id="analysis-summary" class="analysis-summary"></p><ol id="analysis-list" class="analysis-list"></ol><p class="analysis-note">Arvio on botin täysi haku (1024 maailmaa) sinun näkökulmastasi: vain se, minkä tiesit siirron hetkellä. Ero on ottelun odotusarvoa (−1…+1); alle 0,01 eroja haku ei erota. Analyysi tehdään tällä laitteella.</p></dialog>
   <dialog id="replay" aria-labelledby="replay-title"><button id="close-replay">Sulje</button><h2 id="replay-title">Jaon toisto</h2><div id="replay-trick" class="trick replay-trick"></div><p id="replay-info"></p><div class="controls"><button id="replay-prev">Edellinen tikki</button><button id="replay-next">Seuraava tikki</button></div></dialog>
   <dialog id="network-dialog" aria-labelledby="network-title"><button id="close-network">Sulje</button><h2 id="network-title">Pelaa ystävien kanssa</h2>
     <p id="network-status" role="status">Verkkopeliä valmistellaan.</p>
@@ -127,6 +127,6 @@
       <details id="network-leaderboard" class="leaderboard" hidden><summary id="network-leaderboard-title">Tulostaulu</summary><ol id="network-leaderboard-list"></ol><p class="muted">Voitot ja tappiot nimimerkin mukaan tämän palvelimen verkko-otteluista. Nimimerkkejä ei varmenneta.</p></details></div>
     <button id="network-local" class="text-button" hidden>Pelaa botteja vastaan</button>
   </dialog>
-  <script type="module" src="./bootstrap.9b34e9740d1b20b8.mjs"></script>
+  <script type="module" src="./bootstrap.mjs"></script>
 </body>
 </html>

@@ -5,7 +5,7 @@ import {OfflineSetup, packagedRuntimeIdentity} from './offline.mjs';
 import {seatNames, suitNames, suitSVG, cardRank, cardLabel, cardAction, legalCards, sortedHand,
   TableKeyboardSelection, bidRevealFrame, revealTiming} from './table.mjs';
 import {HandView} from './hand.mjs';
-import {seatPresentation, matchSummary, offlineResultReport, analysisPresentation} from './presentation.mjs';
+import {seatPresentation, matchSummary, offlineResultReport, analysisPresentation, dealHands} from './presentation.mjs';
 import {networkEnabled} from './capabilities.mjs';
 import {LobbyView, lobbyPresentation, invitationURL, roomCodeFromInput} from './lobby.mjs';
 import {loadPreferences, savePreferences} from './preferences.mjs';
@@ -818,6 +818,13 @@ function openAnalysis(deal) {
   const request = analysisRequest(deal);
   if (!request) return;
   $('analysis-title').textContent = `Jaon ${deal.index + 1} analyysi`;
+  // Everyone's dealt hand, on request; available before the analysis finishes.
+  $('analysis-hands').replaceChildren(...dealHands(request.deal, request.seat).map(hand => {
+    const row = document.createElement('div'), name = document.createElement('strong'), cards = document.createElement('span');
+    row.className = 'analysis-hand'; name.textContent = `${hand.label} · ${hand.highCardPoints} HCP`; cards.textContent = hand.text;
+    row.append(name, cards); return row;
+  }));
+  showHands(false);
   analysisShown = request.key; openDialog('analysis');
   if (analysisCache.has(request.key)) { showAnalysis(analysisCache.get(request.key)); return; }
   $('analysis-list').replaceChildren(); $('analysis-summary').textContent = '';
@@ -851,6 +858,11 @@ function openAnalysis(deal) {
 function releaseAnalysis() {
   if (!analysisPending.size && !$('analysis').open) { analysisWorker?.terminate(); analysisWorker = null; analysisHandlers.clear(); }
 }
+function showHands(visible) {
+  $('analysis-hands').hidden = !visible; $('analysis-show-hands').setAttribute('aria-expanded', String(visible));
+  $('analysis-show-hands').textContent = visible ? 'Piilota kädet' : 'Näytä kaikkien kädet';
+}
+$('analysis-show-hands').onclick = () => showHands($('analysis-hands').hidden);
 $('close-analysis').onclick = () => { $('analysis').close(); analysisShown = null; releaseAnalysis(); };
 $('analysis').addEventListener?.('close', () => { analysisShown = null; releaseAnalysis(); });
 $('analyse-deal').onclick = () => openAnalysis(view?.completed?.at(-1));
