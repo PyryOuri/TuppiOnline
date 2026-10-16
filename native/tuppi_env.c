@@ -731,8 +731,10 @@ static int belief_applies(const TcEnv *e, const TcObs *o) {
 }
 
 // Fills out[0..w) with worlds resampled by likelihood; -1 if no world can be drawn.
+// Candidates are scored in batches of BATCH, so memory stays bounded at any
+// world count; the order of draws, and so the result, does not depend on it.
 static int belief_worlds(const TcEnv *e, const TcObs *o, int w, uint64_t *rng, TcDeal *out) {
-  enum { MAXR = 64 };
+  enum { MAXR = 64, BATCH = 256 };
   const TcMlp *net = e->belief_net;
   const double inv_t = e->belief_inv_t, eps = e->belief_eps;
   const int M = w * e->belief_mult, enc = tc_mlp_encoder(net), dim = tc_feature_dim_v(enc);
@@ -740,19 +742,22 @@ static int belief_worlds(const TcEnv *e, const TcObs *o, int w, uint64_t *rng, T
   const int seats = e->belief_all ? (0xF & ~(1 << o->seat)) : opp;
   TcDeal *cand = malloc(sizeof(TcDeal) * (size_t)M);
   double *logw = calloc((size_t)M, sizeof(double));
-  uint8_t *feat = malloc((size_t)M * MAXR * dim), *mask = malloc((size_t)M * MAXR * TC_NUM_ACTIONS);
-  int32_t *act = malloc(sizeof(int32_t) * (size_t)M * MAXR), *owner = malloc(sizeof(int32_t) * (size_t)M * MAXR);
-  int rows = 0, status = 0;
-  for (int i = 0; i < M; i++) {
-    if (tc_sample_world_sooli(o, rng, &cand[i], e->sooli_belief, e->sooli_lambda) != 0) { status = -1; break; }
-    int r = tc_history_rows(&cand[i], seats, enc, MAXR, feat + (size_t)rows * dim,
-                            mask + (size_t)rows * TC_NUM_ACTIONS, act + rows);
-    if (r < 0) { logw[i] = -1e300; continue; }  // the history cannot be replayed in this world
-    for (int j = 0; j < r; j++) owner[rows + j] = i;
-    rows += r;
-  }
-  if (status == 0 && rows) {
-    float *q = malloc(sizeof(float) * (size_t)rows * TC_NUM_ACTIONS);
+  uint8_t *feat = malloc((size_t)BATCH * MAXR * dim), *mask = malloc((size_t)BATCH * MAXR * TC_NUM_ACTIONS);
+  int32_t *act = malloc(sizeof(int32_t) * (size_t)BATCH * MAXR), *owner = malloc(sizeof(int32_t) * (size_t)BATCH * MAXR);
+  float *q = malloc(sizeof(float) * (size_t)BATCH * MAXR * TC_NUM_ACTIONS);
+  int status = 0;
+  for (int first = 0; first < M && status == 0; first += BATCH) {
+    const int last = first + BATCH < M ? first + BATCH : M;
+    int rows = 0;
+    for (int i = first; i < last; i++) {
+      if (tc_sample_world_sooli(o, rng, &cand[i], e->sooli_belief, e->sooli_lambda) != 0) { status = -1; break; }
+      int r = tc_history_rows(&cand[i], seats, enc, MAXR, feat + (size_t)rows * dim,
+                              mask + (size_t)rows * TC_NUM_ACTIONS, act + rows);
+      if (r < 0) { logw[i] = -1e300; continue; }  // the history cannot be replayed in this world
+      for (int j = 0; j < r; j++) owner[rows + j] = i;
+      rows += r;
+    }
+    if (status != 0 || !rows) continue;
     tc_mlp_forward(net, feat, rows, q);
     for (int r = 0; r < rows; r++) {
       const float *qr = q + (size_t)r * TC_NUM_ACTIONS;
@@ -764,7 +769,6 @@ static int belief_worlds(const TcEnv *e, const TcObs *o, int w, uint64_t *rng, T
       double p = exp((qr[act[r]] - top) * inv_t) / sum;
       logw[owner[r]] += log((1.0 - eps) * p + eps / legal);
     }
-    free(q);
   }
   if (status == 0) {
     double top = -1e300, total = 0.0;
@@ -779,7 +783,7 @@ static int belief_worlds(const TcEnv *e, const TcObs *o, int w, uint64_t *rng, T
       out[j] = cand[i];
     }
   }
-  free(cand); free(logw); free(feat); free(mask); free(act); free(owner);
+  free(cand); free(logw); free(feat); free(mask); free(act); free(owner); free(q);
   return status;
 }
 
