@@ -75,6 +75,15 @@ export class OfflineSetup {
       if (!this.state.ready) { this.state = {...this.state, state: 'error', error: error.message}; this.onChange(this.state); }
     }
   }
+  // After the game server returns from a restart (perhaps a new release),
+  // look for a newer browser release, at most every ten minutes. It installs
+  // in the background and never activates beneath an open Tuppi.
+  async checkForUpdate(now = Date.now()) {
+    if (!this.registration || now - (this.lastUpdateCheck ?? -Infinity) < 600000) return false;
+    this.lastUpdateCheck = now;
+    try { await this.registration.update(); } catch { return false; }
+    await this.refresh(); return true;
+  }
   async compatible(identity) {
     return (await this.release(identity))?.launch ?? null;
   }

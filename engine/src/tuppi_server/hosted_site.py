@@ -21,6 +21,7 @@ class HostedSite:
         manifest = json.loads((self.web/'offline-manifest.json').read_text())
         self.allowed = {r['path'] for r in manifest['files']+manifest.get('network_files',[])}
         self.allowed |= {'sw.mjs','offline-manifest.json','deployment.json'}
+        game.release = manifest.get('release')
 
     async def __call__(self, scope, receive, send):
         if scope['type']!='http' or scope.get('path','').startswith('/v1/') or scope.get('path')=='/healthz':

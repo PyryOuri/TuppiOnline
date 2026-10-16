@@ -1,8 +1,8 @@
 {
   "schema": "tuppi.hosted.source.v1",
   "commits": {
-    "browser": "e8736fd0db19a1aaecb71d7b4c401cb5b654cccb",
-    "engine": "9f62215abe8b44edb90cb01f02bf23ab16cc048c",
+    "browser": "49c0b22495f95e2e0ab99b4a02aab97bc12b16b1",
+    "engine": "0adf53a08c48acdd45484941f4b9b08173bc34bc",
     "ai": "d573b635fe41cbd74c16f4f9b3b3d337410571ff"
   },
   "files": [
@@ -2263,8 +2263,8 @@
     },
     {
       "path": "engine/src/tuppi_server/hosted.py",
-      "bytes": 21909,
-      "sha256": "402ebbf22385a23f0854bfdaf23c85c647522af4aff8ac7ff4dd5dbbc17a3be4"
+      "bytes": 26050,
+      "sha256": "531cea4a3d8ccfa360570c2ef8260691c037251fb9639105080b324552448b6c"
     },
     {
       "path": "engine/src/tuppi_server/hosted_bot.py",
@@ -2273,8 +2273,8 @@
     },
     {
       "path": "engine/src/tuppi_server/hosted_site.py",
-      "bytes": 2878,
-      "sha256": "59ecfc6d09b702cc5432913e0cae457be710ed1168d369c17509f8da71fc7930"
+      "bytes": 2925,
+      "sha256": "e2fce29e8676f9d4260152e44aa35b6a39d42cb60b349f3c7714ded2a1d9ad97"
     },
     {
       "path": "engine/src/tuppi_server/leaderboard.py",
@@ -2320,6 +2320,11 @@
       "path": "engine/src/tuppi_server/training_analysis.py",
       "bytes": 20841,
       "sha256": "a87afeaad8279e228040249c36b5994bc40e2faae74edcae763d31c7413d50ec"
+    },
+    {
+      "path": "engine/src/tuppi_server/usage.py",
+      "bytes": 3835,
+      "sha256": "abc04a31433f5438d9e0524db260d26836fdf0357b681a130b64582a2fe8c017"
     },
     {
       "path": "engine/src/tuppi_ui_fixtures/__init__.py",
@@ -2393,13 +2398,13 @@
     },
     {
       "path": "web/app.mjs",
-      "bytes": 57318,
-      "sha256": "afb985c17447821f394881a7063433935b9820d8860e00762ad66ae09bc1122b"
+      "bytes": 57610,
+      "sha256": "f6c86e2f77e921e2d2bd98213432f963cae9ab81bcc5c673f41081ef20127c5b"
     },
     {
-      "path": "web/bootstrap.4cfcb6c41a55d0bb.mjs",
+      "path": "web/bootstrap.b59c5a98b6492ea3.mjs",
       "bytes": 2520,
-      "sha256": "4cfcb6c41a55d0bbdbcd948342b1a37c63facb514acc226af8677fa4dc2df6a6"
+      "sha256": "b59c5a98b6492ea36e38e08e7882b2d1e4c8456714c06975c8bd91b78c9119b4"
     },
     {
       "path": "web/bootstrap.mjs",
@@ -2412,14 +2417,14 @@
       "sha256": "e19671e943b5bbb1e8bc299e746b9654ddd8c3bf6202809a59a677b5e72b26c0"
     },
     {
-      "path": "web/client.b1dd07f7b95344aa.mjs",
-      "bytes": 103821,
-      "sha256": "b1dd07f7b95344aa335edccadc8469796a6410e4e331f682da3ef325195a2b57"
+      "path": "web/client.50c9f0777a85b97a.mjs",
+      "bytes": 105339,
+      "sha256": "50c9f0777a85b97aa4a3b4cada59908d4490a127e86587491b133d95b69ee677"
     },
     {
       "path": "web/current-release.json",
       "bytes": 690,
-      "sha256": "45c51d4d6591802f2c93778c73bd6cdc475886cc64c0708d8025eaa36f8ab0b5"
+      "sha256": "40de4617381eac7816e3231e543bccd12da4d31c1b32c431a1af92b0f0efc181"
     },
     {
       "path": "web/deployment.json",
@@ -2432,14 +2437,14 @@
       "sha256": "ba679a5bb2e66563e9be5e290e891df55fa2e4e321281da7cafc44cfbc0e7c56"
     },
     {
-      "path": "web/frontend.328b7506dfc9f6bf.json",
+      "path": "web/frontend.c16860d3cd5b0b02.json",
       "bytes": 690,
-      "sha256": "45c51d4d6591802f2c93778c73bd6cdc475886cc64c0708d8025eaa36f8ab0b5"
+      "sha256": "40de4617381eac7816e3231e543bccd12da4d31c1b32c431a1af92b0f0efc181"
     },
     {
       "path": "web/frontend.json",
       "bytes": 690,
-      "sha256": "45c51d4d6591802f2c93778c73bd6cdc475886cc64c0708d8025eaa36f8ab0b5"
+      "sha256": "40de4617381eac7816e3231e543bccd12da4d31c1b32c431a1af92b0f0efc181"
     },
     {
       "path": "web/hand.mjs",
@@ -2472,9 +2477,9 @@
       "sha256": "0ac4ee17091da4cc27622cb71c8bd63c422dea73857d488b798ffec49159286a"
     },
     {
-      "path": "web/launch.328b7506dfc9f6bf.html",
+      "path": "web/launch.c16860d3cd5b0b02.html",
       "bytes": 16173,
-      "sha256": "fa95328a02c680a39d25518c78aa9b668bb0863658ed7a4cd3565505b21eda9a"
+      "sha256": "c33b368f48ea41818d51db37b361602118a08152889469422c67495abd695019"
     },
     {
       "path": "web/lobby.mjs",
@@ -2488,13 +2493,13 @@
     },
     {
       "path": "web/network.mjs",
-      "bytes": 23387,
-      "sha256": "a46ebbc3caa60a84c8e3cdddfa1af7c21ae19486ceb62d23e8a75567847a2509"
+      "bytes": 24110,
+      "sha256": "61e4902f3ba8d6663f0a53a1ba34f23e9f143a09b8e3b1c30b50d301d0b44fd5"
     },
     {
       "path": "web/offline-manifest.json",
       "bytes": 8220,
-      "sha256": "728fb0ea853945af5143ad8ffe35ead27cf5ef15ef39ef7cef5d027bc3f9a7df"
+      "sha256": "e8b183a15ff4ec2462a2a441e3cc3210a4bb1fd77c31400545e3e66596e99b75"
     },
     {
       "path": "web/offline-shell.0ac4ee17091da4cc.txt",
@@ -2507,14 +2512,14 @@
       "sha256": "482b90f06d06e4acf23c4475ee2ae46c55ac7b0646959680afa85e899d15617c"
     },
     {
-      "path": "web/offline-shell.fa95328a02c680a3.txt",
+      "path": "web/offline-shell.c33b368f48ea4181.txt",
       "bytes": 16173,
-      "sha256": "fa95328a02c680a39d25518c78aa9b668bb0863658ed7a4cd3565505b21eda9a"
+      "sha256": "c33b368f48ea41818d51db37b361602118a08152889469422c67495abd695019"
     },
     {
       "path": "web/offline.mjs",
-      "bytes": 6052,
-      "sha256": "c58d43dc43ad22089cae7018d03f4e15fc643173120e62c3a570ede46d6fe53f"
+      "bytes": 6555,
+      "sha256": "f407a453c9024f4464b2f7803b4907ce55d0f7831574e21f65e2b518269b91ab"
     },
     {
       "path": "web/preferences.mjs",
@@ -2594,7 +2599,7 @@
     {
       "path": "web/sw.mjs",
       "bytes": 20856,
-      "sha256": "9f570f2e09c8862404ea06625f69f257220a1c4c5938419b872cf87a7efea4da"
+      "sha256": "4cb7b7578c53925aa32833e5c1807a693d4cf1382e869ff18f294e60e2fc2e82"
     },
     {
       "path": "web/table.mjs",
@@ -2607,6 +2612,6 @@
       "sha256": "95f78f20a7859ea3f59954975468bd910798fe11d178b963c857d7b28c5a370e"
     }
   ],
-  "release": "9e99b6c370bea969be7d8a57dc38fed5aea03aec45d8295cfdc498920bb2755e",
+  "release": "0f064aa9f94326067f797ce7e1901ec1fe9e18a2c80ace8ec6dcf28cc62a24b8",
   "linux_image_executed": false
 }

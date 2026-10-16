@@ -77,8 +77,8 @@ export function networkView(payload, completed = [], summary = null) {
 
 export class NetworkSession {
   constructor({persist, onView = () => {}, onLobby = () => {}, onStatus = () => {}, onConnection = () => {},
-    fetcher = (...args) => globalThis.fetch(...args), Socket = globalThis.WebSocket, timers = globalThis} = {}) {
-    Object.assign(this, {persist, onView, onLobby, onStatus, onConnection, fetcher, Socket, timers});
+    onReconnect = () => {}, fetcher = (...args) => globalThis.fetch(...args), Socket = globalThis.WebSocket, timers = globalThis} = {}) {
+    Object.assign(this, {persist, onView, onLobby, onStatus, onConnection, onReconnect, fetcher, Socket, timers});
     this.session = null; this.socket = null; this.connected = false; this.stopped = true;
     this.queue = Promise.resolve(); this.retryCount = 0; this.epoch = 0; this.completed = new Map();
     this.authRequired = false; this.configuring = false; this.lobbyRevision = 0;
@@ -87,6 +87,10 @@ export class NetworkSession {
     this.placed = null;
     // Optional host commands the server accepts (hello_ack.features).
     this.features = new Set();
+    // A server restart (close 1012/1001, e.g. an update) is shown as such
+    // until the seat is authorised again; onReconnect then lets the app
+    // look for a newer browser release.
+    this.restarting = false; this.interrupted = false;
   }
   // The server broadcasts an accepted move before the paced bot replies and
   // acknowledges it after them. Only this seat's own move can advance the
@@ -94,6 +98,7 @@ export class NetworkSession {
   placedPending() { return Boolean(this.session?.pending) && this.placed === this.session.pending.client_action_id; }
   connection(phase) {
     if (phase === 'connected' && (!this.connected || this.stopped)) phase = 'synchronising';
+    if (phase === 'reconnecting' && this.restarting) phase = 'restarting';
     const state = {phase: this.authRequired ? 'authentication' : phase,
       pending: Boolean(this.session?.pending), connected: this.connected && !this.stopped};
     const key = JSON.stringify(state);
@@ -178,8 +183,11 @@ export class NetworkSession {
       this.pendingSent = false; this.emitView();
       this.timers.clearTimeout(this.deadline); this.timers.clearTimeout(this.heartbeat);
       if (event.code === 4001) { this.stopped = true; this.connection('superseded'); this.onStatus('Tämä paikka avattiin toisessa välilehdessä.', true); return; }
+      this.interrupted = true;
+      if ([1001, 1012].includes(event.code)) this.restarting = true;
       this.connection('reconnecting');
-      this.onStatus('Yhteys katkesi. Paikkasi säilyy; yhdistetään uudelleen…', false);
+      this.onStatus(this.restarting ? 'Palvelin käynnistyy uudelleen, esimerkiksi päivityksen vuoksi. Paikkasi säilyy; peli jatkuu hetken kuluttua…' :
+        'Yhteys katkesi. Paikkasi säilyy; yhdistetään uudelleen…', false);
       const delay = Math.min(30000, 500 * 2 ** this.retryCount++) * (0.8 + Math.random() * 0.4);
       this.retry = this.timers.setTimeout(() => this.connect(), delay);
     };
@@ -201,6 +209,8 @@ export class NetworkSession {
       if (payload.protocol_version !== networkProtocol || payload.seat !== this.session.seat || payload.room_code !== this.session.room_code)
         throw new Error('Verkkopelin paikka tai versio muuttui.');
       this.retryCount = 0; this.timers.clearTimeout(this.deadline); this.beat();
+      const resumed = this.interrupted; this.restarting = this.interrupted = false;
+      if (resumed) this.onReconnect();
       this.features = new Set(Array.isArray(payload.features) ? payload.features : []);
       // The browser never reads the full terminal match result; skip it.
       if (this.features.has('compact_results')) this.send('client_options', {omit_match_result: true});

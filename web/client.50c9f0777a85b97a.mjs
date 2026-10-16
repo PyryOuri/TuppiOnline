@@ -364,6 +364,15 @@ class OfflineSetup {
       if (!this.state.ready) { this.state = {...this.state, state: 'error', error: error.message}; this.onChange(this.state); }
     }
   }
+  // After the game server returns from a restart (perhaps a new release),
+  // look for a newer browser release, at most every ten minutes. It installs
+  // in the background and never activates beneath an open Tuppi.
+  async checkForUpdate(now = Date.now()) {
+    if (!this.registration || now - (this.lastUpdateCheck ?? -Infinity) < 600000) return false;
+    this.lastUpdateCheck = now;
+    try { await this.registration.update(); } catch { return false; }
+    await this.refresh(); return true;
+  }
   async compatible(identity) {
     return (await this.release(identity))?.launch ?? null;
   }
@@ -478,8 +487,8 @@ function networkView(payload, completed = [], summary = null) {
 
 class NetworkSession {
   constructor({persist, onView = () => {}, onLobby = () => {}, onStatus = () => {}, onConnection = () => {},
-    fetcher = (...args) => globalThis.fetch(...args), Socket = globalThis.WebSocket, timers = globalThis} = {}) {
-    Object.assign(this, {persist, onView, onLobby, onStatus, onConnection, fetcher, Socket, timers});
+    onReconnect = () => {}, fetcher = (...args) => globalThis.fetch(...args), Socket = globalThis.WebSocket, timers = globalThis} = {}) {
+    Object.assign(this, {persist, onView, onLobby, onStatus, onConnection, onReconnect, fetcher, Socket, timers});
     this.session = null; this.socket = null; this.connected = false; this.stopped = true;
     this.queue = Promise.resolve(); this.retryCount = 0; this.epoch = 0; this.completed = new Map();
     this.authRequired = false; this.configuring = false; this.lobbyRevision = 0;
@@ -488,6 +497,10 @@ class NetworkSession {
     this.placed = null;
     // Optional host commands the server accepts (hello_ack.features).
     this.features = new Set();
+    // A server restart (close 1012/1001, e.g. an update) is shown as such
+    // until the seat is authorised again; onReconnect then lets the app
+    // look for a newer browser release.
+    this.restarting = false; this.interrupted = false;
   }
   // The server broadcasts an accepted move before the paced bot replies and
   // acknowledges it after them. Only this seat's own move can advance the
@@ -495,6 +508,7 @@ class NetworkSession {
   placedPending() { return Boolean(this.session?.pending) && this.placed === this.session.pending.client_action_id; }
   connection(phase) {
     if (phase === 'connected' && (!this.connected || this.stopped)) phase = 'synchronising';
+    if (phase === 'reconnecting' && this.restarting) phase = 'restarting';
     const state = {phase: this.authRequired ? 'authentication' : phase,
       pending: Boolean(this.session?.pending), connected: this.connected && !this.stopped};
     const key = JSON.stringify(state);
@@ -579,8 +593,11 @@ class NetworkSession {
       this.pendingSent = false; this.emitView();
       this.timers.clearTimeout(this.deadline); this.timers.clearTimeout(this.heartbeat);
       if (event.code === 4001) { this.stopped = true; this.connection('superseded'); this.onStatus('Tämä paikka avattiin toisessa välilehdessä.', true); return; }
+      this.interrupted = true;
+      if ([1001, 1012].includes(event.code)) this.restarting = true;
       this.connection('reconnecting');
-      this.onStatus('Yhteys katkesi. Paikkasi säilyy; yhdistetään uudelleen…', false);
+      this.onStatus(this.restarting ? 'Palvelin käynnistyy uudelleen, esimerkiksi päivityksen vuoksi. Paikkasi säilyy; peli jatkuu hetken kuluttua…' :
+        'Yhteys katkesi. Paikkasi säilyy; yhdistetään uudelleen…', false);
       const delay = Math.min(30000, 500 * 2 ** this.retryCount++) * (0.8 + Math.random() * 0.4);
       this.retry = this.timers.setTimeout(() => this.connect(), delay);
     };
@@ -602,6 +619,8 @@ class NetworkSession {
       if (payload.protocol_version !== networkProtocol || payload.seat !== this.session.seat || payload.room_code !== this.session.room_code)
         throw new Error('Verkkopelin paikka tai versio muuttui.');
       this.retryCount = 0; this.timers.clearTimeout(this.deadline); this.beat();
+      const resumed = this.interrupted; this.restarting = this.interrupted = false;
+      if (resumed) this.onReconnect();
       this.features = new Set(Array.isArray(payload.features) ? payload.features : []);
       // The browser never reads the full terminal match result; skip it.
       if (this.features.has('compact_results')) this.send('client_options', {omit_match_result: true});
@@ -1486,6 +1505,7 @@ function networkFailure(error) {
 function renderConnection() {
   const labels = {connecting: 'Yhdistetään…', synchronising: 'Päivitetään pelitilannetta…',
     connected: 'Yhteys kunnossa', pending: 'Varmistetaan siirtoasi…', reconnecting: 'Yhteys katkesi · yhdistetään uudelleen…',
+    restarting: 'Palvelin päivittyy · peli jatkuu hetken kuluttua…',
     authentication: 'Kirjautuminen tarvitsee vahvistuksen · huoneesi säilyy',
     failed: 'Yhteys tarvitsee huomiota', superseded: 'Paikkasi on avoinna toisessa välilehdessä'};
   const phase = connectionState.phase;
@@ -1493,7 +1513,7 @@ function renderConnection() {
   $('connection-label').textContent = labels[phase] || 'Yhdistetään…';
   $('network-connection').dataset.phase = phase;
   for (const id of ['network-retry', 'network-retry-lobby']) {
-    $(id).hidden = !['reconnecting', 'failed', 'superseded'].includes(phase);
+    $(id).hidden = !['reconnecting', 'restarting', 'failed', 'superseded'].includes(phase);
     $(id).disabled = !networkClient?.session;
   }
   for (const id of ['network-reauth', 'network-reauth-lobby']) {
@@ -1590,6 +1610,9 @@ async function startNetwork(command) {
   networkClient?.close(); view = null; render(); startup({ready: true});
   networkClient = new NetworkSession({persist: async session => { await storeNetwork(session); savedNetwork = structuredClone(session); },
     onConnection: state => { connectionState = state; renderConnection(); },
+    // The server may have restarted for an update: fetch a newer release in
+    // the background; it is used after Tuppi is closed and opened again.
+    onReconnect: () => { offline.checkForUpdate(); },
     onLobby: showNetworkLobby,
     onStatus: (message, error) => {
       $('network-status').textContent = message; status(message, error);

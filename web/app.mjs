@@ -687,6 +687,7 @@ function networkFailure(error) {
 function renderConnection() {
   const labels = {connecting: 'Yhdistetään…', synchronising: 'Päivitetään pelitilannetta…',
     connected: 'Yhteys kunnossa', pending: 'Varmistetaan siirtoasi…', reconnecting: 'Yhteys katkesi · yhdistetään uudelleen…',
+    restarting: 'Palvelin päivittyy · peli jatkuu hetken kuluttua…',
     authentication: 'Kirjautuminen tarvitsee vahvistuksen · huoneesi säilyy',
     failed: 'Yhteys tarvitsee huomiota', superseded: 'Paikkasi on avoinna toisessa välilehdessä'};
   const phase = connectionState.phase;
@@ -694,7 +695,7 @@ function renderConnection() {
   $('connection-label').textContent = labels[phase] || 'Yhdistetään…';
   $('network-connection').dataset.phase = phase;
   for (const id of ['network-retry', 'network-retry-lobby']) {
-    $(id).hidden = !['reconnecting', 'failed', 'superseded'].includes(phase);
+    $(id).hidden = !['reconnecting', 'restarting', 'failed', 'superseded'].includes(phase);
     $(id).disabled = !networkClient?.session;
   }
   for (const id of ['network-reauth', 'network-reauth-lobby']) {
@@ -791,6 +792,9 @@ async function startNetwork(command) {
   networkClient?.close(); view = null; render(); startup({ready: true});
   networkClient = new NetworkSession({persist: async session => { await storeNetwork(session); savedNetwork = structuredClone(session); },
     onConnection: state => { connectionState = state; renderConnection(); },
+    // The server may have restarted for an update: fetch a newer release in
+    // the background; it is used after Tuppi is closed and opened again.
+    onReconnect: () => { offline.checkForUpdate(); },
     onLobby: showNetworkLobby,
     onStatus: (message, error) => {
       $('network-status').textContent = message; status(message, error);
