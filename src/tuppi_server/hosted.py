@@ -25,6 +25,10 @@ ROOM_ROUTE = re.compile(r"^/v1/rooms/([A-Z0-9]{6})/(join|configure|settings|read
 MAX_PASSCODE_FAILURES_PER_MINUTE = 20
 #: How often idle rooms are archived and old archives pruned.
 MAINTENANCE_INTERVAL_SECONDS = 3600
+#: An unfinished room nobody is connected to stops counting towards the
+#: active-room and bot-room limits after this long without activity. It stays
+#: resumable; abandoned lobbies and matches must not lock others out.
+IDLE_ROOM_SECONDS = 1800
 
 
 def storage_limits_from_environment() -> dict:
@@ -164,7 +168,7 @@ class HostedBoundary:
         def ready(*, code, token, auto_run_ai=True):
             room, _ = game.rooms.session(code=code, token=token)
             active = sum(other.runner is not None and not other.runner.terminal and bool(other.ai_seats)
-                for other in game.rooms._rooms.values() if other.code != room.code)
+                and self.in_use(other.code) for other in game.rooms._rooms.values() if other.code != room.code)
             if room.runner is None and room.ai_seats and active >= self.max_bot_rooms:
                 from .rooms import RoomError
                 raise RoomError("server_busy")
@@ -270,6 +274,11 @@ class HostedBoundary:
 
     def _lock(self, code):
         return self.room_locks.setdefault(code, asyncio.Lock())
+
+    def in_use(self, code) -> bool:
+        """Someone is connected, or the room was active within IDLE_ROOM_SECONDS
+        (a room whose activity is unknown counts as in use)."""
+        return bool(self.game._connections.get(code)) or time.time() - self.activity.get(code, time.time()) < IDLE_ROOM_SECONDS
 
     def _mtime(self, code):
         store = self.game.rooms._store
@@ -421,14 +430,21 @@ class HostedBoundary:
             async with self.creation_lock:
                 self.expire_idle_rooms()
                 self.created = [t for t in self.created if time.time() - t < 60]
-                active_rooms = sum(r.runner is None or not r.runner.terminal for r in self.game.rooms._rooms.values())
+                active_rooms = sum((r.runner is None or not r.runner.terminal) and self.in_use(code)
+                                   for code, r in self.game.rooms._rooms.items())
                 if active_rooms >= self.max_rooms or len(self.created) >= 12:
                     await self.game._json_response(cors_send, 503, {"error": "server_busy"})
                     return
                 if len(self.game.rooms._rooms) >= self.max_retained_rooms:
-                    candidates = sorted((code for code, room in self.game.rooms._rooms.items()
-                        if room.runner is not None and room.runner.terminal and not self.game._connections.get(code)),
-                        key=lambda code: self.activity.get(code, 0))
+                    # Archive the longest-idle finished room, else the longest-idle
+                    # room nobody is using; never one with a running bot task.
+                    def idle(code, room):
+                        task = self.game._ai_tasks.get(code)
+                        return not self.in_use(code) and (task is None or task.done()) and not self.room_locks.get(code, asyncio.Lock()).locked()
+                    finished = [code for code, room in self.game.rooms._rooms.items()
+                                if room.runner is not None and room.runner.terminal and not self.game._connections.get(code)]
+                    candidates = sorted(finished or [code for code, room in self.game.rooms._rooms.items() if idle(code, room)],
+                                        key=lambda code: self.activity.get(code, 0))
                     if not candidates:
                         await self.game._json_response(cors_send, 503, {"error": "server_busy"})
                         return
@@ -444,3 +460,5 @@ class HostedBoundary:
                 return
             async with self._lock(route[1].upper()):
                 await self._http_game(scope, limited_body, cors_send)
+                if route[1].upper() in self.game.rooms._rooms:
+                    self.activity[route[1].upper()] = time.time()

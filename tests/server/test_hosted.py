@@ -295,3 +295,36 @@ def test_bot_level_is_validated_and_lite_admits_bots_in_every_room(monkeypatch):
         assert room.runner is not None
     identity=verify_bot_identity('lite')
     assert identity['profile']=='tuppi_ai_lite_v1' and identity['search'] is None
+
+
+def test_abandoned_rooms_stop_counting_towards_capacity_but_stay_resumable(tmp_path):
+    async def scenario():
+        rooms=RoomManager(tmp_path,ruleset_id=RulesetId.PROJECT_TARGET_V3,ai_profile_key=TEST_AI_PROFILE_KEY)
+        app=HostedBoundary(TuppiASGIApp(rooms),origins={'https://tuppi.example'},max_rooms=2,max_bot_rooms=1,max_retained_rooms=3)
+        made=[]
+        for name in ('One','Two'):
+            status,body=await http(app,'/v1/rooms',{'display_name':name,'ai_seats':[1,2,3]})
+            assert status['status']==200; made.append(body)
+        status,body=await http(app,'/v1/rooms',{'display_name':'Third','ai_seats':[]})
+        assert body=={'error':'server_busy'}, 'two rooms in use fill a two-room server'
+        rooms.mark_ready(code=made[0]['room_code'],token=made[0]['session_token'],auto_run_ai=False)
+        with pytest.raises(RoomError,match='server_busy'):
+            rooms.mark_ready(code=made[1]['room_code'],token=made[1]['session_token'],auto_run_ai=False)
+        # Both rooms are left: a lobby and an unfinished bot match, idle and unconnected.
+        for room in made: app.activity[room['room_code']]=time.time()-31*60
+        rooms.mark_ready(code=made[1]['room_code'],token=made[1]['session_token'],auto_run_ai=False)
+        app.activity[made[1]['room_code']]=time.time()-31*60
+        status,body=await http(app,'/v1/rooms',{'display_name':'Third','ai_seats':[]})
+        assert status['status']==200, 'idle rooms no longer lock others out'
+        assert {room['room_code'] for room in made}<=set(rooms._rooms), 'and they stay resumable'
+        # Connecting to an idle room makes it count again.
+        app.game._connections[made[0]['room_code']]={made[0]['session_token']:object()}
+        assert app.in_use(made[0]['room_code']) and not app.in_use(made[1]['room_code'])
+        # At the retained-room limit, the longest-idle unused room is archived, never a connected one.
+        third=next(code for code in rooms._rooms if code not in {room['room_code'] for room in made})
+        app.activity[third]=time.time()-3600; app.activity[made[1]['room_code']]=time.time()-2*3600
+        status,body=await http(app,'/v1/rooms',{'display_name':'Fourth','ai_seats':[]})
+        assert status['status']==200 and len(rooms._rooms)==3
+        assert made[0]['room_code'] in rooms._rooms and made[1]['room_code'] not in rooms._rooms
+        assert len(list((tmp_path/'expired').glob(f"room-{made[1]['room_code']}-*.json")))==1
+    asyncio.run(scenario())
