@@ -19,6 +19,7 @@ import time
 from urllib.parse import urlsplit
 
 from .persistence import PersistenceError
+from .usage import USAGE_INTERVAL_SECONDS, Usage, resident_megabytes
 
 ROOM_ROUTE = re.compile(r"^/v1/rooms/([A-Z0-9]{6})/(join|configure|settings|ready|leaderboard)$", re.I)
 #: Wrong room-creation passcodes accepted per minute before refusing all tries.
@@ -145,6 +146,9 @@ class HostedBoundary:
         self.archive_days, self.archive_max_bytes = archive_days, archive_max_bytes
         self.min_free_bytes = min_free_bytes
         self.maintenance_task = None
+        self.usage_task = None
+        #: The served browser release, set by HostedSite; logged at startup.
+        self.release = None
         self.room_passcode = room_passcode
         self.passcode_failures = []
         self.origins = frozenset(origins)
@@ -158,6 +162,25 @@ class HostedBoundary:
         self.creation_lock = asyncio.Lock()
         self.executor = None
         self.activity = {code: self._mtime(code) for code in game.rooms._rooms}
+        self.usage = Usage()
+        self.usage.baseline(game.rooms._rooms)
+        store = game.rooms._store
+        if store is not None:
+            original_save = store.save
+            def timed_save(record):
+                started = time.perf_counter()
+                original_save(record)
+                try:
+                    size = (store.root / f"room-{record['room_code']}.json").stat().st_size
+                except OSError:
+                    size = 0
+                self.usage.saved(time.perf_counter() - started, size)
+            store.save = timed_save
+        original_error = game._send_error
+        async def counted_error(send, code):
+            self.usage.error(code)
+            await original_error(send, code)
+        game._send_error = counted_error
         # Core authentication and client commands share the same room lock as
         # HTTP configuration and continuation. A long native bid cannot allow
         # a second connection to observe a half-applied reveal.
@@ -184,12 +207,15 @@ class HostedBoundary:
             async with self._lock(code):
                 connection = await original_auth(request, send)
                 self.activity[code] = time.time()
+                self.usage.counts["opens"] += 1
                 return connection
 
         async def message(connection, request):
             if game.rooms.storage_failed and request.get("message_type") != "ping":
                 from .rooms import RoomError
                 raise RoomError("storage_unavailable")
+            if request.get("message_type") == "action_submission":
+                self.usage.counts["moves"] += 1
             async with self._lock(connection.room_code):
                 await original_message(connection, request)
                 self.activity[connection.room_code] = time.time()
@@ -260,6 +286,31 @@ class HostedBoundary:
             except Exception:  # never let housekeeping stop the authority
                 pass
 
+    def usage_gauges(self) -> dict[str, object]:
+        rooms = self.game.rooms._rooms
+        in_use = {code for code in rooms if self.in_use(code)}
+        try:
+            free = self.game.rooms._store.free_bytes() // 2**20 if self.game.rooms._store is not None else None
+        except OSError:
+            free = None
+        return {"in_play": sum(rooms[code].runner is not None and not rooms[code].runner.terminal for code in in_use),
+                "connections": self.connections, "rooms": len(rooms), "in_use": len(in_use),
+                "rss_mb": resident_megabytes(), "disk_free_mb": free, "storage": self.storage_state()}
+
+    def usage_line(self, *, force: bool = False) -> str | None:
+        self.usage.observe_matches(self.game.rooms._rooms)
+        return self.usage.line(self.usage_gauges(), force=force)
+
+    async def _usage_loop(self):
+        while True:
+            await asyncio.sleep(USAGE_INTERVAL_SECONDS)
+            try:
+                line = self.usage_line()
+                if line:
+                    print(line, flush=True)
+            except Exception:  # never let reporting stop the authority
+                pass
+
     async def _http_game(self, scope, receive, send):
         started = False
         async def tracked(message):
@@ -325,12 +376,19 @@ class HostedBoundary:
                         await asyncio.to_thread(warm)
                         self.maintain()
                         self.maintenance_task = asyncio.create_task(self._maintenance_loop())
+                        self.usage_task = asyncio.create_task(self._usage_loop())
+                        print(f"tuppi started release={str(self.release)[:12]} rooms={len(self.game.rooms._rooms)}", flush=True)
                         await send({"type": "lifespan.startup.complete"})
                     except Exception as exc:
                         await send({"type": "lifespan.startup.failed", "message": str(exc)})
                 elif message["type"] == "lifespan.shutdown":
-                    if self.maintenance_task is not None:
-                        self.maintenance_task.cancel()
+                    for task in (self.maintenance_task, self.usage_task):
+                        if task is not None:
+                            task.cancel()
+                    try:
+                        print(f"tuppi stopping {self.usage_line(force=True)}", flush=True)
+                    except Exception:
+                        pass
                     for task in self.game._ai_tasks.values():
                         task.cancel()
                     await asyncio.gather(*self.game._ai_tasks.values(), return_exceptions=True)
@@ -454,6 +512,7 @@ class HostedBoundary:
                 await self._http_game(scope, creation_body, cors_send)
                 for code in set(self.game.rooms._rooms) - before:
                     self.activity[code] = time.time()
+                    self.usage.counts["created"] += 1
         else:
             if route[1].upper() not in self.game.rooms._rooms:
                 await self.game._json_response(cors_send, 404, {"error": "room_not_found"})
