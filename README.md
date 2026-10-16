@@ -7,28 +7,23 @@ them, or a player that talks to them only through `PlayerObservation`.
 
 ## Current best agent
 
-`tuppi_ai/best.py` (`best_agents()`, or `--checkpoint best` in the evaluators).
-Its two model files are tracked in `models/`: `rollout_clone_small.pt` (the
-behaviour clone used for play-outs) and `equity_incumbent.json` (match-equity
-table). At every decision (showing and card play), 128 hidden-hand layouts are
-drawn uniformly from those consistent
-with the seat's observation, every legal action is played out in each by a
-behaviour clone of `partner_aware_lead_v2`, the last 6 tricks are solved
-exactly, and the action with the best mean match-equity change is chosen.
-Against the incumbent: +0.0150 equity per deal over 512 fresh base deals
-(+0.0013 +- 0.0011 over 64 worlds on the same deals). The match figures were
-measured with 64 worlds: 94.5% of complete matches (228 won / 28 tied / 0 lost
-over 256 duplicate pairs on two seeds).
-The search runs in C (`native/tuppi_env.c: tc_search_values`, network forward
-in `native/tuppi_mlp.c`); a decision takes ~13 ms (card play, median) to ~36 ms
-(showing) using all cores. See
-`docs/STATUS.md` for every result, including what failed.
+`tuppi_ai/best.py` defines `best_agents()` and the evaluator's `best`
+checkpoint. The current product uses VRPO1 for opponent and team rollouts,
+VRPO3 for the anchor, and `equity_incumbent.json` for match equity. The
+factory default is 128 worlds; the live server requests 1,024. Search includes
+the six-trick exact tail, adaptive bidding, the showing-fallback sampler fix,
+and separate anchor margins for bids and play.
+
+The [current product map](../PRODUCT.md) lists the settings and source roles.
+The dated `docs/STATUS.md` entries retain measured results and rejected work;
+their historical timings are not a current performance guarantee. Native
+search and inference use C with macOS dispatch and Accelerate.
 
 ## Layout
 
 | Path | What |
 | --- | --- |
-| `native/tuppi_core.c` | Rules, deal state machine, scoring, match transition, observation-only feature encoder (1223 binary features) |
+| `native/tuppi_core.c` | Rules, deal state machine, scoring, match transition, observation-only feature encoders (1,223 and 1,951 binary features) |
 | `native/tuppi_env.c` | Batched self-play environment (N matches in lockstep, per-deal match-equity reward) |
 | `native/tuppi_search.c` | Exactly uniform sampler of hidden hands under hard public constraints |
 | `native/tuppi_dd.c` | Perfect-information solver for late positions (RAMI and NOLO polarity) |

@@ -148,7 +148,96 @@ models, the rule bidder and the play test; start with
 sooli-settings leak in `SearchAgent.choose_action` is left unfixed by the
 owner's decision (minor); the database resets it per game.
 
-## Suggested order (to decide with the owner)
+## T6 — Returned C0–C5 research implementation package
+
+**Status: received and integrity-checked; implementation NOT_STARTED
+(2026-09-25).** The owner requested discoverability markings for the next
+implementation LLM, not execution in this registration step.
+
+Start at [the implementation handoff](../../audit_deliverables/TUPPI_IMPLEMENTATION_HANDOFF.md).
+The immutable package is in `../../audit_deliverables/tuppi_implementation_plan/`;
+its `EXECUTION_PLAN.json` defines 27 tasks and their dependencies.
+The first milestone is **C0+C1 contract completion and pilot readiness**.
+Follow that graph for this programme; keep pilots, training, confirmation and
+live deployment gated. This does not start T5's separate bidding pilot or
+replace the earlier T1–T5 records.
+
+## T7 — Faster search at the same strength
+
+**Status (2026-09-29): E0-E5 done and installed. E7 (adaptive bids) was
+adopted and committed (`da299a3`); it takes effect on the live server after
+its next restart. E6 was not adopted, E9 was closed, and E8 was not started.
+Value nets VN1 and VN2 were tested and neither was adopted (branch
+`vn/value-net`, `docs/VALUE_NET_PLAN.md` there).** The
+owner asked for a review of the native core and the bot for speed-ups that
+keep the strength.
+
+E0-E5 are commit `7388c36` on `main`. The live server was restarted on the
+new library (`3d07008f`) on 2026-09-29.
+Every move and searched value is identical, and the measured gains are:
+
+- search 2.16x (W=128) and 2.17x (W=1024) in wall time;
+- the 12-worker evaluator 2.32x.
+
+The results are in `docs/STATUS.md`.
+
+The C0–C5 research identity checks accept the upgrade (owner's request,
+2026-09-29). The audit values are unchanged. A HEAD that descends from the
+audited one is accepted, and an installed library is accepted if it is
+registered in `POST_AUDIT_UPGRADES` (`tuppi_ai/research/identity.py`) with its
+reason. All 109 research tests pass. Register each later library the same
+way.
+Profile, evidence and gates are in `docs/EFFICIENCY_PLAN.md`.
+
+At W=1024 (live) busy CPU splits into:
+
+- the sooli solver, 39%: almost all of it is the offer heuristic inside the
+  bid rollouts;
+- the endgame solver, 27%;
+- the rollout network, 26%: mostly its sparse first layer;
+- the sampler, 5%.
+
+Bids take about half of all decision time. The Python engine takes 0.4%.
+
+**Exact tasks** (same moves bit for bit, gated by a move fingerprint):
+
+- **E0** baseline and fingerprint harness, first;
+- **E1** faster sooli solver;
+- **E2** sampler DP built once per observation; coordinate with the unmerged
+  B0-S1 sampler fix in `../tuppi_execution_sampler_v1`;
+- **E3** faster endgame solver;
+- **E4** network first layer from an active-index list;
+- **E5** rollout chunk 128 in the evaluators.
+
+**Approximate tasks** (paired strength test, owner-approved compute):
+
+- **E6** one card per rank-equivalent group: 22% of card-play actions, and
+  9% of searches skipped;
+- **E7** adaptive world allocation, mainly for the noise-dominated bids;
+- **E8** a cheaper offer model in rollouts;
+- **E9** solver-tail depth by cost.
+
+Build to a separate library path until the gates pass. The live server and
+the C0–C5 research pins (`tuppi_ai/research/identity.py`) use the installed
+`native/libtuppi.dylib`.
+
+## T8 — Self-play strength research: returned planning packet
+
+**Status: planning handoff registered 2026-09-29; no implementation or
+experiment is authorised by this registration.** For the first 100M self-play
+programme and subsequent methods, start with the
+[Strength-Maximisation Research Packet](../../audit_deliverables/tuppi_selfplay_research_20260929/TUPPI_SELFPLAY_STRENGTH_MAXIMISATION_PACKET.md).
+It updates the adjacent `SELFPLAY_NEXT_METHODS_HANDOFF.md`; preserve both.
+
+The proposed comparison is repaired SP1 versus privileged-Q VRPO, with a
+PPO-V reference, matched total compute, complete-match evaluation and search
+transfer. First refresh and freeze the actual SP1 checkpoint, configuration,
+binary identity and 100M accounting, then independently verify its result
+when assigned execution. The packet's scientific proposals remain unvalidated
+here. Record future progress separately from the returned packet and the
+earlier source snapshot. The inspected self-play checkout was `TuppiAI-sp/`.
+
+## Earlier suggested order (T1–T3; to decide with the owner)
 
 T3 changes the rules underneath T1 and T2, so specifying it first avoids
 redoing the other two. T2 depends on T1 only where it touches the client UI.

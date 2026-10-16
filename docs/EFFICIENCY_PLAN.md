@@ -1,12 +1,18 @@
 # Efficiency plan: faster search at the same strength
 
+Current status on 2026-10-13: the product includes E0–E5 and adaptive bidding
+E7. The original task descriptions and measurements below remain historical.
+Use [the product map](../../PRODUCT.md) for current configuration and the
+[maintenance programme](../../audit_deliverables/tuppi_maturity_plan_20261013/PLAN.md)
+for fresh profiling and portable-runtime work.
+
 Written 2026-09-29 from a read of the native core and search
 (`native/*.c`, `tuppi_ai/search.py`, `best.py`, `evaluate.py`) and a
 profile of the best agent playing v3 (the real game). Task list:
 `docs/TASKS.md`, T7.
 
 **Status 2026-09-29: E0-E5 done** on branch `perf/e0-e5` (worktree
-`~/Developer/TuppiAI-perf`, not installed). All five changes are exact: the
+`~/Developer/TuppiAI-perf`, subsequently installed). All five changes are exact: the
 same moves and the same searched values. Measured gains:
 
 - search 2.16x (W=128) and 2.17x (W=1024) in wall time;
