@@ -519,7 +519,7 @@ static int sample_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, const int pl
 // Returns the number of rows written (at most max_rows).
 int tc_history_rows(const TcDeal *world, int seat_mask, int encoder, int max_rows,
                     uint8_t *feat, uint8_t *mask, int32_t *action) {
-  if (world->n_decisions || world->soolaaja >= 0) return -1;  // sooli histories are not replayed here
+  if (world->soolaaja >= 0) return -1;  // played soolis are not replayed here (declined offers are)
   uint64_t init[4];
   for (int s = 0; s < 4; s++) init[s] = world->hand[s];
   for (int i = 0; i < world->n_played; i++) init[world->play_seat[i]] |= 1ULL << world->play_card[i];
@@ -530,7 +530,15 @@ int tc_history_rows(const TcDeal *world, int seat_mask, int encoder, int max_row
   int dim = tc_feature_dim_v(encoder), rows = 0, acts[TC_NUM_ACTIONS];
   int n_actions = world->n_shows + world->n_played;
   TcObs o;
+  int decided = 0;
   for (int t = 0; t < n_actions && rows < max_rows; t++) {
+    // Declined sooli offers sit between the showing and the first card. They are
+    // replayed but not emitted: the card policy does not score offers.
+    while (d.phase == TC_PH_SOOLI_OFFER) {
+      if (decided >= world->n_decisions || world->decision_accept[decided]) return -1;
+      if (tc_apply(&d, TC_ACT_SOOLI_DECLINE) != 0) return -1;
+      decided++;
+    }
     int a = t < world->n_shows
       ? 52 + 52 * world->show_contract[t] + world->show_card[t]
       : world->play_card[t - world->n_shows];
