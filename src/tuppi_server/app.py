@@ -25,7 +25,7 @@ from .rooms import RoomError, RoomManager
 Send = Callable[[dict[str, Any]], Awaitable[None]]
 #: Optional commands this server accepts; clients show their controls only
 #: when the server lists them.
-FEATURES = ("pause", "rematch", "leaderboard", "compact_results", "rename", "release_seat", "concede")
+FEATURES = ("pause", "rematch", "leaderboard", "compact_results", "rename", "release_seat", "concede", "results")
 #: Close code sent to a player whose seat the host released.
 SEAT_RELEASED_CLOSE_CODE = 4002
 #: A player whose connection does not take an update within this time is

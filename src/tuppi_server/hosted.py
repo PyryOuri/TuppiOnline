@@ -24,6 +24,8 @@ from .usage import USAGE_INTERVAL_SECONDS, Usage, resident_megabytes
 ROOM_ROUTE = re.compile(r"^/v1/rooms/([A-Z0-9]{6})/(join|configure|settings|ready|leaderboard|name|release)$", re.I)
 #: Wrong room-creation passcodes accepted per minute before refusing all tries.
 MAX_PASSCODE_FAILURES_PER_MINUTE = 20
+#: Offline match reports accepted per minute (all browsers together).
+MAX_RESULTS_PER_MINUTE = 30
 #: How often idle rooms are archived and old archives pruned.
 MAINTENANCE_INTERVAL_SECONDS = 3600
 #: An unfinished room nobody is connected to stops counting towards the
@@ -151,6 +153,7 @@ class HostedBoundary:
         self.release = None
         self.room_passcode = room_passcode
         self.passcode_failures = []
+        self.result_posts = []
         self.origins = frozenset(origins)
         self.bot_identity = bot_identity or {"profile": "test"}
         self.max_rooms, self.max_connections = max_rooms, max_connections
@@ -256,6 +259,36 @@ class HostedBoundary:
                 self.passcode_failures.append(now)
                 raise PasscodeRefused("invalid_room_passcode", 403)
         return json.dumps(payload).encode() if type(payload) is dict else body
+
+    async def _offline_result(self, receive, send) -> None:
+        """A browser reports a finished offline match (anonymous; see results.py)."""
+
+        from .results import ResultRejected, offline_row, today
+        now = time.time()
+        self.result_posts = [t for t in self.result_posts if now - t < 60]
+        if len(self.result_posts) >= MAX_RESULTS_PER_MINUTE:
+            await self.game._json_response(send, 429, {"error": "too_many_attempts"})
+            return
+        self.result_posts.append(now)
+        body, size = b"", 0
+        try:
+            while True:
+                message = await asyncio.wait_for(receive(), timeout=10)
+                body += message.get("body", b""); size = len(body)
+                if size > 2048:
+                    raise ResultRejected("request_too_large")
+                if not message.get("more_body", False):
+                    break
+            recorded = self.game.rooms.results.record(offline_row(json.loads(body or b"null"), day=today()))
+        except (ResultRejected, ValueError, asyncio.TimeoutError) as exc:
+            code = str(exc) if isinstance(exc, ResultRejected) else "invalid_result"
+            await self.game._json_response(send, 507 if code == "results_full" else 400, {"error": code})
+            return
+        except PersistenceError:
+            await self.game._json_response(send, 503, {"error": "storage_unavailable"})
+            return
+        self.usage.counts["results"] += 1
+        await self.game._json_response(send, 200, {"recorded": recorded})
 
     def storage_state(self) -> str:
         """failed: a save failed, so changes stop until a restart recovers the
@@ -453,6 +486,12 @@ class HostedBoundary:
                 "protocol_version": "tuppi.network.v1", "ruleset_id": "project_target_v3",
                 "status": "storage_failed" if storage == "failed" else "ok", "storage": storage,
                 "bot": self.bot_identity})
+            return
+        if path == "/v1/results/summary" and scope.get("method") == "GET":
+            await self.game._json_response(cors_send, 200, self.game.rooms.results.summary())
+            return
+        if path == "/v1/results" and scope.get("method") == "POST":
+            await self._offline_result(receive, cors_send)
             return
         if scope.get("method") == "POST" and self.game.rooms.storage_failed:
             await self.game._json_response(cors_send, 503, {"error": "storage_unavailable"})

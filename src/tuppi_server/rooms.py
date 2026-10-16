@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+
 from collections.abc import Iterable, Mapping
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -52,6 +54,7 @@ from .persistence import (
     FileRoomStore,
     PersistenceError,
 )
+from .results import ResultRejected, Results, today as results_today
 from .leaderboard import LEADERBOARD_RESPONSE_SCHEMA_VERSION, Leaderboard
 from .projection import project_event_batch, project_match_result
 from tuppi_engine import match_observation_for
@@ -260,6 +263,7 @@ class RoomManager:
         #: changes, because in-memory state is ahead of what is durable.
         self.storage_failed = False
         self.leaderboard = Leaderboard(None if self._store is None else self._store.root / "leaderboard.json")
+        self.results = Results(None if self._store is None else self._store.root)
         if self._store is not None:
             self._store.remove_stale_temporaries()
             self._load_persisted_rooms()
@@ -475,9 +479,21 @@ class RoomManager:
         if runner is None or not runner.terminal or not runner._deals:
             return False
         seats = {s.seat: s.display_name for s in room.sessions.values() if s.seat not in room.ai_seats}
+        key = f"{runner.match_ref}:{runner._deals[0].deal_id}"
+        result = project_match_result(runner.state)
+        if seats:
+            # Research row (no names or codes); best effort, never stops play.
+            people = [sum(1 for seat in seats if seat % 2 == team) for team in (0, 1)]
+            try:
+                self.results.record({"bot": os.environ.get("TUPPI_HOSTED_BOT_LEVEL") or "server",
+                    "conceded": len(runner.conceded_deals()), "day": results_today(),
+                    "deals": len(runner.state.completed_deals), "final_score": list(result["final_score"]),
+                    "id": "online-" + hashlib.sha256(key.encode()).hexdigest()[:32], "source": "online",
+                    "team_humans": people, "winner_team": result["winner_team"]})
+            except (ResultRejected, PersistenceError):
+                pass
         try:
-            return self.leaderboard.record(match_key=f"{runner.match_ref}:{runner._deals[0].deal_id}", seats=seats,
-                                           winner_team=project_match_result(runner.state)["winner_team"])
+            return self.leaderboard.record(match_key=key, seats=seats, winner_team=result["winner_team"])
         except PersistenceError:
             self.storage_failed = True
             raise
