@@ -524,7 +524,9 @@ int tc_history_rows(const TcDeal *world, int seat_mask, int encoder, int max_row
   for (int s = 0; s < 4; s++) init[s] = world->hand[s];
   for (int i = 0; i < world->n_played; i++) init[world->play_seat[i]] |= 1ULL << world->play_card[i];
   TcDeal d;
-  tc_deal_init(&d, init, world->dealer, world->score[0], world->score[1]);
+  // The world's own rules: under project_target_v3 the showing is locked, so a
+  // bidder saw no earlier bid (ruleset 1 would replay it with them visible).
+  tc_deal_init_v(&d, init, world->dealer, world->score[0], world->score[1], world->ruleset);
   int dim = tc_feature_dim_v(encoder), rows = 0, acts[TC_NUM_ACTIONS];
   int n_actions = world->n_shows + world->n_played;
   TcObs o;
