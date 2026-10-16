@@ -12,7 +12,8 @@ const networkErrors = {room_not_found:'Huonetta ei löydy. Tarkista huonekoodi.'
   storage_unavailable:'Palvelimen tallennus ei juuri nyt toimi. Siirtoasi ei tallennettu; peli jatkuu, kun palvelu on käynnistynyt uudelleen.',
   storage_low:'Palvelimen tallennustila on vähissä, joten uusia huoneita ei nyt voi luoda. Käynnissä olevat pelit jatkuvat.',
   match_not_active:'Ottelu ei ole käynnissä.', match_not_complete:'Uuden ottelun voi aloittaa, kun ottelu on päättynyt.',
-  invalid_display_name:'Kirjoita nimimerkki (1–40 merkkiä).'};
+  invalid_display_name:'Kirjoita nimimerkki (1–40 merkkiä).',
+  seat_not_releasable:'Tätä paikkaa ei voi vapauttaa.'};
 export function networkBase(value) {
   const url = new URL(value);
   const local = ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
@@ -40,7 +41,15 @@ export function networkActionID(action) {
 export function networkSeat(seat, observingSeat) {
   return seat === null || seat === undefined || seat < 0 ? -1 : (seat - observingSeat + 4) % 4;
 }
-export function networkView(payload, completed = [], summary = null) {
+// The deal's result is already 0-0 (same rule as session.mjs decidedForZero
+// and the server's concede_available): in NOLO the team ahead has 7 tricks,
+// in RAMI the team behind has 7. Own-team-first scores and tricks.
+export function networkDecided(view) {
+  if (view.phase !== 1 || (!view.score0 && !view.score1)) return false;
+  const tricks = [view.tricks0, view.tricks1], ahead = view.score0 > 0 ? 0 : 1;
+  return view.contract === 1 ? tricks[1 - ahead] >= 7 : tricks[ahead] >= 7;
+}
+export function networkView(payload, completed = [], summary = null, conceded = new Map()) {
   const observation = payload.observation, own = observation.observing_seat;
   if (!Number.isInteger(own) || own < 0 || own > 3 || observation.ruleset_id !== 'project_target_v3' ||
       !(observation.phase in networkPhases)) throw new Error('Verkkopelin säännöt tai paikka eivät vastaa tätä versiota.');
@@ -59,7 +68,9 @@ export function networkView(payload, completed = [], summary = null) {
     history: deal.tricks.flatMap(trick => trick.plays).map(play),
     result: {contract: deal.contract === 'RAMI' ? 1 : 0,
       soolaaja: networkSeat(deal.sooli?.soolaaja, own), trickSize: deal.sooli?.soolaaja === null || !deal.sooli ? 4 : 3,
-      winnerTeam: deal.deal_score.winner_team === team ? 0 : 1, points: deal.deal_score.points}}));
+      winnerTeam: deal.deal_score.winner_team === team ? 0 : 1, points: deal.deal_score.points},
+    conceded: conceded.has(deal.deal_number) ? {afterTricks: conceded.get(deal.deal_number).after_tricks,
+      seat: networkSeat(conceded.get(deal.deal_number).seat, own)} : null}));
   const currentCompleted = completed.find(deal => deal.deal_ref === observation.deal_ref);
   return {phase, hand, legal, waitingHuman: legal.length > 0, thinking: false, revealing: false,
     actor: phase === 0 && legal.length ? 0 : networkSeat(observation.current_actor, own),
@@ -91,6 +102,8 @@ export class NetworkSession {
     // until the seat is authorised again; onReconnect then lets the app
     // look for a newer browser release.
     this.restarting = false; this.interrupted = false;
+    // Deals finished by concession (the server's conceded_deals), by number.
+    this.conceded = new Map();
   }
   // The server broadcasts an accepted move before the paced bot replies and
   // acknowledges it after them. Only this seat's own move can advance the
@@ -157,7 +170,7 @@ export class NetworkSession {
         !Number.isInteger(session.seat) || session.seat < 0 || session.seat > 3)
       throw new Error('Verkkopelin tallennus ei ole yhteensopiva.');
     networkBase(session.base);
-    this.close(); this.session = structuredClone(session); this.completed.clear(); this.latest = null;
+    this.close(); this.session = structuredClone(session); this.completed.clear(); this.conceded.clear(); this.latest = null;
     await this.persist(this.session); this.stopped = false;
     this.onLobby(this.session.lobby); this.connect();
   }
@@ -183,6 +196,12 @@ export class NetworkSession {
       this.pendingSent = false; this.emitView();
       this.timers.clearTimeout(this.deadline); this.timers.clearTimeout(this.heartbeat);
       if (event.code === 4001) { this.stopped = true; this.connection('superseded'); this.onStatus('Tämä paikka avattiin toisessa välilehdessä.', true); return; }
+      if (event.code === 4002) {
+        // The host freed this seat; its credential no longer works.
+        this.stopped = true; this.session.active = false; this.session.released = true;
+        this.persist(this.session).catch(() => {});
+        this.connection('released'); this.onStatus('Huoneen luoja vapautti paikkasi. Voit liittyä huoneeseen uudelleen kutsulinkillä.', true); return;
+      }
       this.interrupted = true;
       if ([1001, 1012].includes(event.code)) this.restarting = true;
       this.connection('reconnecting');
@@ -221,7 +240,7 @@ export class NetworkSession {
       if (this.latest && !['playing','completed'].includes(payload.lifecycle)) {
         // The host started a rematch: the finished match's view and cursor
         // belong to the previous match. The next match starts from event 0.
-        this.latest = null; this.completed.clear(); this.placed = null;
+        this.latest = null; this.completed.clear(); this.conceded.clear(); this.placed = null;
         Object.assign(this.session, {cursor: -1, match_ref: null, pending: null, summaryDeal: null, summary: null});
       }
       this.session.lobby = payload; await this.persist(this.session); this.onLobby(payload);
@@ -230,6 +249,7 @@ export class NetworkSession {
     } else if (['match_update','reconnect_result'].includes(message.message_type)) {
       if (payload.observation.observing_seat !== this.session.seat) throw new Error('Palvelin lähetti väärän paikan havainnon.');
       for (const deal of payload.completed_deals ?? []) this.completed.set(deal.deal_number, deal);
+      for (const item of payload.conceded_deals ?? []) this.conceded.set(item.deal_number, item);
       this.latest = payload;
       const events = payload.event_batch ?? payload.event_delta ?? [];
       this.session.cursor = payload.last_event_index ?? events.at(-1)?.event_index ?? this.session.cursor;
@@ -263,10 +283,12 @@ export class NetworkSession {
   emitView() {
     if (!this.latest) return;
     const view = networkView(this.latest, [...this.completed.values()].sort((a,b) => a.deal_number-b.deal_number),
-      this.session.summaryDeal === this.latest.observation.deal_ref ? this.session.summary : null);
+      this.session.summaryDeal === this.latest.observation.deal_ref ? this.session.summary : null, this.conceded);
     const paused = Boolean(this.session.lobby?.paused) && !view.terminal;
     if (!this.connected || this.stopped || this.session.pending || paused) view.waitingHuman = false;
     view.paused = paused;
+    view.concedeAvailable = this.features.has('concede') && this.connected && !this.stopped && !this.session.pending &&
+      !paused && networkDecided(view);
     if (!this.connected) view.prompt = 'Yhdistetään verkkopeliin…';
     else if (paused) view.prompt = this.session.host ? 'Peli on tauolla. Jatka, kun kaikki ovat valmiita.' : 'Peli on tauolla. Huoneen luoja jatkaa peliä.';
     else if (this.session.pending && view.phase !== 2 &&
@@ -303,6 +325,11 @@ export class NetworkSession {
     const result = await this.request(`/v1/rooms/${this.session.room_code}/leaderboard`, {session_token: this.session.session_token});
     return Array.isArray(result.entries) ? result.entries : [];
   }
+  // Any player: finish a deal whose result is already 0-0.
+  concede() {
+    if (!this.features.has('concede') || !this.connected || this.stopped || this.session.pending || !this.latest) return false;
+    return this.send('concede', {});
+  }
   pause() { return this.hostCommand('pause'); }
   resume() { return this.hostCommand('resume'); }
   rematch() { return this.hostCommand('rematch'); }
@@ -324,6 +351,32 @@ export class NetworkSession {
       // its captured response; do not overwrite another player's readiness.
       if (revision === this.lobbyRevision) { this.session.lobby = result.lobby; await this.persist(this.session); }
     } finally { this.configuring = false; if (epoch === this.epoch && !this.stopped) this.onLobby(this.session.lobby); }
+  }
+  // Lobby commands answered with the new lobby; a newer WebSocket snapshot
+  // received meanwhile wins (as for bot configuration).
+  async lobbyCommand(command, payload) {
+    if (!this.connected || this.stopped || this.configuring || this.authRequired) return false;
+    const epoch = this.epoch, revision = this.lobbyRevision;
+    this.configuring = true; this.onLobby(this.session.lobby);
+    try {
+      const result = await this.request(`/v1/rooms/${this.session.room_code}/${command}`,
+        {session_token: this.session.session_token, ...payload});
+      if (epoch !== this.epoch || this.stopped) return false;
+      if (revision === this.lobbyRevision) { this.session.lobby = result.lobby; await this.persist(this.session); }
+      return true;
+    } finally { this.configuring = false; if (epoch === this.epoch && !this.stopped) this.onLobby(this.session.lobby); }
+  }
+  // Your own nickname, before the match starts.
+  async rename(displayName) {
+    const name = String(displayName ?? '').trim();
+    if (!name || name.length > 40) throw new Error(networkErrors.invalid_display_name);
+    if (!this.features.has('rename')) return false;
+    return this.lobbyCommand('name', {display_name: name});
+  }
+  // Host: free another player's seat, e.g. one left behind after rejoining.
+  async releaseSeat(seat) {
+    if (!this.session?.host || !this.features.has('release_seat') || seat === this.session.seat) return false;
+    return this.lobbyCommand('release', {seat});
   }
   async toggleBot(seat) {
     const current = this.session.lobby.seats.find(s => s.seat === seat);

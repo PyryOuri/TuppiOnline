@@ -25,12 +25,13 @@
       <div class="dialog-heading"><div><p class="eyebrow">OMA LAITE</p><h2 id="settings-title">Asetukset</h2></div><button id="close-settings">Sulje</button></div>
       <p id="settings-status" class="error" role="status"></p>
       <section class="settings-group" aria-labelledby="settings-play"><h3 id="settings-play">Paikallinen peli</h3>
-        <div class="settings-fields"><label>Botti <select id="worlds"><option value="1024">Täysi haku</option><option value="128">Nopeampi haku</option></select></label>
+        <div class="settings-fields"><label>Botti <select id="worlds"><option value="128" selected>Nopea</option><option value="1024">Täysi haku (hitaampi)</option></select></label>
         <label>Pelin rytmi <select id="pacing"><option value="350">Rauhallinen</option><option value="0">Nopea</option><option value="1000">Hidas</option></select></label></div>
         <p>Bottiasetuksen vaihto aloittaa uuden paikallisen ottelun. Verkkopelin asetukset määrää huoneen palvelin.</p>
         <button id="new-game">Uusi ottelu</button>
       </section>
       <details class="settings-group offline-guide"><summary>Pelaa ilman verkkoyhteyttä</summary><p id="offline-status" role="status">Lataa pelitiedostot tälle laitteelle, kun haluat pelata ilman verkkoa.</p><button id="offline-prepare">Lataa peli tälle laitteelle</button><div id="offline-download" hidden><progress id="offline-progress" max="1" value="0" aria-label="Pelitiedostojen lataus"></progress><button id="offline-retry" hidden>Jatka latausta</button></div><p>Kun peli on valmis offline-käyttöön, voit katkaista verkkoyhteyden. iPhonella avaa Safarin jakovalikko ja valitse Lisää Koti-valikkoon. Avaa peli kuvakkeesta ja tarkista offline-valmius myös siellä.</p></details>
+      <section class="settings-group" aria-labelledby="settings-research"><h3 id="settings-research">Tutkimus</h3><label class="toggle"><input id="share-results" type="checkbox"> Lähetä offline-otteluiden tulokset nimettömästi</label><p>Palvelimelle tallentuu vain päivä, bottitaso, voittaja, loppupisteet sekä jakojen ja luovutusten määrä: ei nimiä, kortteja eikä käsiä. Tuloksilla tutkitaan botin tasoa ihmisiä vastaan.</p></section>
       <section class="settings-group" aria-labelledby="settings-audio"><h3 id="settings-audio">Äänet</h3><label class="toggle"><input id="turn-sound" type="checkbox"> Äänimerkki, kun on vuorosi</label><p>Lyhyt merkki auttaa huomaamaan oman vuoron paikallisessa pelissä ja verkkopelissä.</p></section>
       <details class="settings-group"><summary id="settings-saves">Tallennukset ja varmuuskopiot</summary><p>Paikallinen ottelu säilyy tässä selaimessa. Lataa varmuuskopio, kun haluat siirtää sen toiselle laitteelle.</p>
         <div class="controls"><button id="export">Lataa tallennus</button><label class="file-label">Avaa tallennus<input id="import" type="file" accept="application/json,.json"></label></div>
@@ -66,6 +67,7 @@
           <div class="action-copy"><h2 id="prompt" aria-live="polite">Ladataan paikallinen botti…</h2><p id="selection-info" class="selection-info"></p><p id="network-rematch-note" class="selection-info" hidden>Huoneen luoja voi aloittaa uuden ottelun samalla porukalla.</p></div>
           <div id="bid-controls" class="controls" hidden><div class="segmented" role="group" aria-label="Sopimus"><button data-contract="0" class="choice selected" aria-pressed="true">NOLO</button><button data-contract="1" class="choice" aria-pressed="false">RAMI</button></div><button id="lock-bid" class="primary" disabled>Lukitse NOLO</button></div>
           <div id="card-controls" class="controls" hidden><button id="play-card" class="primary" disabled>Pelaa kortti</button></div>
+          <div id="concede-controls" class="controls" hidden><button id="concede" aria-describedby="concede-note">Luovuta jako</button><p id="concede-note" class="selection-info">Jako päättyy joka tapauksessa tulokseen 0–0. Loput kortit pelataan heti.</p></div>
           <div id="sooli-controls" class="controls" hidden><button data-action="156">Ei soolia</button><button data-action="157" class="primary">Pelaa sooli</button></div>
           <div id="next-controls" class="controls" hidden><button id="next-deal" class="primary">Seuraava jako</button></div>
           <div id="network-controls" class="controls" hidden><button id="network-pause">Tauko</button><button id="network-unpause" class="primary">Jatka peliä</button><button id="network-rematch" class="primary">Pelaa uudelleen samalla porukalla</button></div>

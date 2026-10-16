@@ -175,12 +175,24 @@ class Runtime {
 }
 
 // Source: session.mjs
+// The deal's result is already 0-0: in the rising score a deal won by the team
+// behind resets the match, and that is certain once, in NOLO (contract 0), the
+// team ahead has 7 tricks or, in RAMI (1), the team behind has 7. Normal trick
+// play (phase 1) only. The server's rule is match_runner.concede_available;
+// network.mjs keeps the same rule for online views (separate bundles).
+function decidedForZero({phase, contract, tricks0, tricks1, score0, score1}) {
+  if (phase !== 1 || (!score0 && !score1)) return false;
+  const tricks = [tricks0, tricks1], ahead = score0 > 0 ? 0 : 1;
+  return contract === 1 ? tricks[1 - ahead] >= 7 : tricks[ahead] >= 7;
+}
+
 /* LocalSession is independent of DOM, workers and persistence adapters. */
 class LocalSession {
   constructor(runtime, {checkpoint = () => {}, update = () => {}, pause = async () => {}, reveal = async () => {}} = {}) {
     this.runtime = runtime; this.checkpoint = checkpoint; this.update = update; this.pause = pause;
     this.reveal = reveal; this.revealing = false;
     this.completed = []; this.humanBid = null; this.actions = []; this.archived = false;
+    this.concession = null;
   }
 
   start(cards, dealer = 0, score = [0, 0]) {
@@ -221,8 +233,12 @@ class LocalSession {
       this.runtime.init(deal.cards, deal.dealer, deal.score);
       deal.actions.forEach(action => this.runtime.apply(action));
       if (this.runtime.state().phase !== 2) throw new Error('Historian jako ei ole valmis.');
+      // Optional (older saves have none): a deal finished by concession.
+      if (deal.conceded !== undefined && (deal.conceded === null || !Number.isInteger(deal.conceded.afterTricks) ||
+          deal.conceded.afterTricks < 0 || deal.conceded.afterTricks > 12)) throw new Error('Jaon tallennus on virheellinen.');
       return {cards: [...deal.cards], dealer: deal.dealer, score: [...deal.score], actions: [...deal.actions],
-        result: this.runtime.state(), history: this.runtime.history()};
+        result: this.runtime.state(), history: this.runtime.history(),
+        ...(deal.conceded ? {conceded: {afterTricks: deal.conceded.afterTricks}} : {})};
     });
     this.runtime.init(save.cards, save.dealer, save.score);
     this.captureStartingHand();
@@ -240,11 +256,13 @@ class LocalSession {
   view(thinking = false) {
     const snapshot = this.runtime.snapshot(0);
     return {...snapshot, thinking, revealing: this.revealing, humanBidLocked: this.humanBid !== null,
+      concedeAvailable: !thinking && this.concedeAvailable(),
       startingHandSummary: structuredClone(this.startingHandSummary),
       waitingHuman: !thinking && !this.revealing && snapshot.phase !== 2 &&
         (snapshot.phase === 0 ? this.humanBid === null : snapshot.actor === 0),
       dealNumber: this.completed.length + (this.archived ? 0 : 1),
-      completed: this.completed.map((deal, i) => ({index: i, result: deal.result, history: deal.history}))};
+      completed: this.completed.map((deal, i) => ({index: i, result: deal.result, history: deal.history,
+        conceded: deal.conceded ?? null}))};
   }
 
   emit(thinking = false) { this.checkpoint(this.save()); this.update(this.view(thinking)); }
@@ -254,12 +272,16 @@ class LocalSession {
     this.runtime.apply(action); this.actions.push(action);
     if (wasShowing && this.runtime.state().phase !== 0) this.revealing = true;
     if (this.runtime.state().phase !== 0) this.humanBid = null;
-    if (this.runtime.state().phase === 2 && !this.archived) {
-      this.completed.push({cards: [...this.cards], dealer: this.dealer, score: [...this.score],
-        actions: [...this.actions], result: this.runtime.state(), history: this.runtime.history()});
-      this.archived = true;
-    }
+    this.archiveIfComplete();
     this.emit();
+  }
+
+  archiveIfComplete() {
+    if (this.runtime.state().phase !== 2 || this.archived) return;
+    this.completed.push({cards: [...this.cards], dealer: this.dealer, score: [...this.score],
+      actions: [...this.actions], result: this.runtime.state(), history: this.runtime.history(),
+      ...(this.concession ? {conceded: this.concession} : {})});
+    this.archived = true; this.concession = null;
   }
 
   async submit(action) {
@@ -273,6 +295,25 @@ class LocalSession {
       this.apply(action);
     }
     await this.advance();
+  }
+
+  concedeAvailable() {
+    const state = this.runtime.state();
+    return !this.revealing && !this.archived && decidedForZero({...state, score0: this.score[0], score1: this.score[1]});
+  }
+
+  // Finish a decided deal at once: every seat plays its first legal card. The
+  // bots are not asked, so their random state (the saved context) is unchanged;
+  // the plays are ordinary saved actions, so a restore replays them exactly.
+  concede() {
+    if (!this.concedeAvailable()) throw new Error('Jakoa ei voi luovuttaa nyt.');
+    const state = this.runtime.state();
+    this.concession = {afterTricks: state.tricks0 + state.tricks1};
+    while (this.runtime.state().phase === 1) {
+      const action = this.runtime.legalActions(this.runtime.state().actor)[0];
+      this.runtime.apply(action); this.actions.push(action);
+    }
+    this.archiveIfComplete(); this.emit();
   }
 
   async advance() {
@@ -361,6 +402,8 @@ self.onmessage = async ({data}) => {
       throw new Error('Peli ei ole vielä valmis.');
     } else if (data.type === 'submit') {
       await session.submit(data.action);
+    } else if (data.type === 'concede') {
+      session.concede();
     } else if (data.type === 'next') {
       session.next(shuffledDeck());
     }

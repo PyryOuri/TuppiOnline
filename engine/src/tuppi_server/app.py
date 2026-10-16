@@ -25,7 +25,9 @@ from .rooms import RoomError, RoomManager
 Send = Callable[[dict[str, Any]], Awaitable[None]]
 #: Optional commands this server accepts; clients show their controls only
 #: when the server lists them.
-FEATURES = ("pause", "rematch", "leaderboard", "compact_results")
+FEATURES = ("pause", "rematch", "leaderboard", "compact_results", "rename", "release_seat", "concede", "results")
+#: Close code sent to a player whose seat the host released.
+SEAT_RELEASED_CLOSE_CODE = 4002
 #: A player whose connection does not take an update within this time is
 #: dropped (and reconnects), so one stalled phone cannot hold up the room.
 SEND_TIMEOUT_SECONDS = 10.0
@@ -54,6 +56,8 @@ class TuppiASGIApp:
         self.rooms = rooms or RoomManager()
         self._connections: dict[str, dict[str, Connection]] = {}
         self._ai_tasks: dict[str, asyncio.Task[None]] = {}
+        #: Seats released by the host, whose sockets close after the response.
+        self._released: list[tuple[str, str]] = []
 
     async def __call__(self, scope: dict[str, Any], receive: Receive, send: Send) -> None:
         scope_type = scope.get("type")
@@ -107,7 +111,15 @@ class TuppiASGIApp:
             await self._json_response(send, 400, {"error": str(exc) or "invalid_request"})
             return
         await self._json_response(send, 200, response)
-        if path.endswith(("/settings", "/configure", "/join", "/ready")):
+        while self._released:
+            code, token = self._released.pop()
+            connection = self._connections.get(code, {}).pop(token, None)
+            if connection is not None:
+                try:
+                    await asyncio.wait_for(connection.send({"type": "websocket.close", "code": SEAT_RELEASED_CLOSE_CODE}), 1)
+                except Exception:
+                    pass
+        if path.endswith(("/settings", "/configure", "/join", "/ready", "/name", "/release")):
             parts = [part for part in path.split("/") if part]
             if len(parts) == 4:
                 await self._broadcast_lobby(parts[2].upper())
@@ -209,6 +221,17 @@ class TuppiASGIApp:
                     host_token=self._string(payload, "session_token"),
                     ai_seats=self._ai_seats(payload.get("ai_seats", [])),
                 )
+                return {"lobby": room.snapshot()}
+            if command == "name":
+                self._require_fields(payload, required={"session_token", "display_name"})
+                room = self.rooms.rename(code=code, token=self._string(payload, "session_token"),
+                                         display_name=payload.get("display_name"))  # type: ignore[arg-type]
+                return {"lobby": room.snapshot()}
+            if command == "release":
+                self._require_fields(payload, required={"session_token", "seat"})
+                room, released = self.rooms.release_seat(code=code, host_token=self._string(payload, "session_token"),
+                                                         seat=payload.get("seat"))
+                self._released.append((room.code, released))
                 return {"lobby": room.snapshot()}
             if command == "settings":
                 self._require_fields(
@@ -374,6 +397,18 @@ class TuppiASGIApp:
             for other in self._connections.get(room.code, {}).values():
                 other.last_event_index = -1
             await self._broadcast_lobby(room.code)
+            return
+        if message_type == "concede":
+            # Any player may finish a deal whose result is already 0-0. If it
+            # no longer is (the deal ended meanwhile), the update says so.
+            self._require_fields(payload, required=set())
+            runner = self._require_runner(room)
+            if not room.paused and runner.concede(seat=session.seat):
+                self.rooms.persist(room)
+                await self._broadcast_match(room.code)
+                self._schedule_ai_continuation(room.code)
+            else:
+                await self._send_match_update(connection)
             return
         if message_type == "client_options":
             self._require_fields(payload, required={"omit_match_result"})
@@ -579,6 +614,8 @@ class TuppiASGIApp:
         if "bidding" in reconnect:
             # project_target_v3 showing: lock status and this seat's own bid only.
             payload["bidding"] = reconnect["bidding"]
+        if "conceded_deals" in reconnect:
+            payload["conceded_deals"] = reconnect["conceded_deals"]
         if runner.terminal and not connection.omit_match_result:
             payload["match_result"] = reconnect.get("match_result")
         connection.last_event_index = runner.event_cursor

@@ -4,10 +4,12 @@ const networkEnabled = true;
 
 // Source: preferences.mjs
 const preferenceKey = 'tuppi.ui.preferences.v1';
-const defaults = {nickname: 'Pelaaja', expandedHand: false, turnSound: false};
+const defaults = {nickname: 'Pelaaja', expandedHand: false, turnSound: false, shareResults: true};
 function cleanPreferences(value) {
   return {nickname: typeof value?.nickname === 'string' && value.nickname.trim() ? value.nickname.trim().slice(0, 40) : defaults.nickname,
-    expandedHand: value?.expandedHand === true, turnSound: value?.turnSound === true};
+    expandedHand: value?.expandedHand === true, turnSound: value?.turnSound === true,
+    // Anonymous offline match results for research (opt-out).
+    shareResults: value?.shareResults !== false};
 }
 // Optional UI preferences cannot prevent a match from opening. They never
 // contain room credentials, actions, cards or an offline save.
@@ -273,6 +275,19 @@ function seatPresentation(view, seat, nickname = seatNames[seat]) {
     active: view.phase !== 2 && view.actor === seat};
 }
 
+// An anonymous report of a finished offline match for the server's research
+// results (no names, cards or hands): the bot level, the winner and final
+// score from the player's team's view, deal and concession counts. Its id is
+// a hash of the first deal's shuffled deck, so a match is reported once.
+async function offlineResultReport(save) {
+  const deals = save?.completed ?? [], last = deals.at(-1)?.result;
+  if (!last?.terminal || ![128, 1024].includes(save.worlds) || !deals[0]?.cards) return null;
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([deals[0].cards, deals[0].dealer])));
+  const id = [...new Uint8Array(digest)].slice(0, 16).map(byte => byte.toString(16).padStart(2, '0')).join('');
+  return {id, worlds: save.worlds, winner_team: last.score0 >= 52 ? 0 : 1, final_score: [last.score0, last.score1],
+    deals: deals.length, conceded: deals.filter(deal => deal.conceded).length};
+}
+
 // End-of-match summary from the public completed-deal results only.
 function matchSummary(view) {
   if (!view?.terminal) return null;
@@ -283,7 +298,8 @@ function matchSummary(view) {
   return {won, title: `${won ? 'Voititte ottelun' : 'Vastustajat voittivat ottelun'} ${view.score0}–${view.score1}`,
     lines: [`${deals.length} ${deals.length === 1 ? 'jako' : 'jakoa'}: voititte ${ours.length}, vastustajat ${deals.length - ours.length}.`,
       `RAMI ${count(r => r.soolaaja < 0 && r.contract === 1)} · NOLO ${count(r => r.soolaaja < 0 && r.contract === 0)} · SOOLI ${count(r => r.soolaaja >= 0)}`,
-      ...(best ? [`Suurin jakovoittonne: ${best} pistettä.`] : [])]};
+      ...(best ? [`Suurin jakovoittonne: ${best} pistettä.`] : []),
+      ...(deals.some(deal => deal.conceded) ? [`Luovutettuja jakoja: ${deals.filter(deal => deal.conceded).length}.`] : [])]};
 }
 
 // Source: offline.mjs
@@ -422,7 +438,8 @@ const networkErrors = {room_not_found:'Huonetta ei löydy. Tarkista huonekoodi.'
   storage_unavailable:'Palvelimen tallennus ei juuri nyt toimi. Siirtoasi ei tallennettu; peli jatkuu, kun palvelu on käynnistynyt uudelleen.',
   storage_low:'Palvelimen tallennustila on vähissä, joten uusia huoneita ei nyt voi luoda. Käynnissä olevat pelit jatkuvat.',
   match_not_active:'Ottelu ei ole käynnissä.', match_not_complete:'Uuden ottelun voi aloittaa, kun ottelu on päättynyt.',
-  invalid_display_name:'Kirjoita nimimerkki (1–40 merkkiä).'};
+  invalid_display_name:'Kirjoita nimimerkki (1–40 merkkiä).',
+  seat_not_releasable:'Tätä paikkaa ei voi vapauttaa.'};
 function networkBase(value) {
   const url = new URL(value);
   const local = ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
@@ -450,7 +467,15 @@ function networkActionID(action) {
 function networkSeat(seat, observingSeat) {
   return seat === null || seat === undefined || seat < 0 ? -1 : (seat - observingSeat + 4) % 4;
 }
-function networkView(payload, completed = [], summary = null) {
+// The deal's result is already 0-0 (same rule as session.mjs decidedForZero
+// and the server's concede_available): in NOLO the team ahead has 7 tricks,
+// in RAMI the team behind has 7. Own-team-first scores and tricks.
+function networkDecided(view) {
+  if (view.phase !== 1 || (!view.score0 && !view.score1)) return false;
+  const tricks = [view.tricks0, view.tricks1], ahead = view.score0 > 0 ? 0 : 1;
+  return view.contract === 1 ? tricks[1 - ahead] >= 7 : tricks[ahead] >= 7;
+}
+function networkView(payload, completed = [], summary = null, conceded = new Map()) {
   const observation = payload.observation, own = observation.observing_seat;
   if (!Number.isInteger(own) || own < 0 || own > 3 || observation.ruleset_id !== 'project_target_v3' ||
       !(observation.phase in networkPhases)) throw new Error('Verkkopelin säännöt tai paikka eivät vastaa tätä versiota.');
@@ -469,7 +494,9 @@ function networkView(payload, completed = [], summary = null) {
     history: deal.tricks.flatMap(trick => trick.plays).map(play),
     result: {contract: deal.contract === 'RAMI' ? 1 : 0,
       soolaaja: networkSeat(deal.sooli?.soolaaja, own), trickSize: deal.sooli?.soolaaja === null || !deal.sooli ? 4 : 3,
-      winnerTeam: deal.deal_score.winner_team === team ? 0 : 1, points: deal.deal_score.points}}));
+      winnerTeam: deal.deal_score.winner_team === team ? 0 : 1, points: deal.deal_score.points},
+    conceded: conceded.has(deal.deal_number) ? {afterTricks: conceded.get(deal.deal_number).after_tricks,
+      seat: networkSeat(conceded.get(deal.deal_number).seat, own)} : null}));
   const currentCompleted = completed.find(deal => deal.deal_ref === observation.deal_ref);
   return {phase, hand, legal, waitingHuman: legal.length > 0, thinking: false, revealing: false,
     actor: phase === 0 && legal.length ? 0 : networkSeat(observation.current_actor, own),
@@ -501,6 +528,8 @@ class NetworkSession {
     // until the seat is authorised again; onReconnect then lets the app
     // look for a newer browser release.
     this.restarting = false; this.interrupted = false;
+    // Deals finished by concession (the server's conceded_deals), by number.
+    this.conceded = new Map();
   }
   // The server broadcasts an accepted move before the paced bot replies and
   // acknowledges it after them. Only this seat's own move can advance the
@@ -567,7 +596,7 @@ class NetworkSession {
         !Number.isInteger(session.seat) || session.seat < 0 || session.seat > 3)
       throw new Error('Verkkopelin tallennus ei ole yhteensopiva.');
     networkBase(session.base);
-    this.close(); this.session = structuredClone(session); this.completed.clear(); this.latest = null;
+    this.close(); this.session = structuredClone(session); this.completed.clear(); this.conceded.clear(); this.latest = null;
     await this.persist(this.session); this.stopped = false;
     this.onLobby(this.session.lobby); this.connect();
   }
@@ -593,6 +622,12 @@ class NetworkSession {
       this.pendingSent = false; this.emitView();
       this.timers.clearTimeout(this.deadline); this.timers.clearTimeout(this.heartbeat);
       if (event.code === 4001) { this.stopped = true; this.connection('superseded'); this.onStatus('Tämä paikka avattiin toisessa välilehdessä.', true); return; }
+      if (event.code === 4002) {
+        // The host freed this seat; its credential no longer works.
+        this.stopped = true; this.session.active = false; this.session.released = true;
+        this.persist(this.session).catch(() => {});
+        this.connection('released'); this.onStatus('Huoneen luoja vapautti paikkasi. Voit liittyä huoneeseen uudelleen kutsulinkillä.', true); return;
+      }
       this.interrupted = true;
       if ([1001, 1012].includes(event.code)) this.restarting = true;
       this.connection('reconnecting');
@@ -631,7 +666,7 @@ class NetworkSession {
       if (this.latest && !['playing','completed'].includes(payload.lifecycle)) {
         // The host started a rematch: the finished match's view and cursor
         // belong to the previous match. The next match starts from event 0.
-        this.latest = null; this.completed.clear(); this.placed = null;
+        this.latest = null; this.completed.clear(); this.conceded.clear(); this.placed = null;
         Object.assign(this.session, {cursor: -1, match_ref: null, pending: null, summaryDeal: null, summary: null});
       }
       this.session.lobby = payload; await this.persist(this.session); this.onLobby(payload);
@@ -640,6 +675,7 @@ class NetworkSession {
     } else if (['match_update','reconnect_result'].includes(message.message_type)) {
       if (payload.observation.observing_seat !== this.session.seat) throw new Error('Palvelin lähetti väärän paikan havainnon.');
       for (const deal of payload.completed_deals ?? []) this.completed.set(deal.deal_number, deal);
+      for (const item of payload.conceded_deals ?? []) this.conceded.set(item.deal_number, item);
       this.latest = payload;
       const events = payload.event_batch ?? payload.event_delta ?? [];
       this.session.cursor = payload.last_event_index ?? events.at(-1)?.event_index ?? this.session.cursor;
@@ -673,10 +709,12 @@ class NetworkSession {
   emitView() {
     if (!this.latest) return;
     const view = networkView(this.latest, [...this.completed.values()].sort((a,b) => a.deal_number-b.deal_number),
-      this.session.summaryDeal === this.latest.observation.deal_ref ? this.session.summary : null);
+      this.session.summaryDeal === this.latest.observation.deal_ref ? this.session.summary : null, this.conceded);
     const paused = Boolean(this.session.lobby?.paused) && !view.terminal;
     if (!this.connected || this.stopped || this.session.pending || paused) view.waitingHuman = false;
     view.paused = paused;
+    view.concedeAvailable = this.features.has('concede') && this.connected && !this.stopped && !this.session.pending &&
+      !paused && networkDecided(view);
     if (!this.connected) view.prompt = 'Yhdistetään verkkopeliin…';
     else if (paused) view.prompt = this.session.host ? 'Peli on tauolla. Jatka, kun kaikki ovat valmiita.' : 'Peli on tauolla. Huoneen luoja jatkaa peliä.';
     else if (this.session.pending && view.phase !== 2 &&
@@ -713,6 +751,11 @@ class NetworkSession {
     const result = await this.request(`/v1/rooms/${this.session.room_code}/leaderboard`, {session_token: this.session.session_token});
     return Array.isArray(result.entries) ? result.entries : [];
   }
+  // Any player: finish a deal whose result is already 0-0.
+  concede() {
+    if (!this.features.has('concede') || !this.connected || this.stopped || this.session.pending || !this.latest) return false;
+    return this.send('concede', {});
+  }
   pause() { return this.hostCommand('pause'); }
   resume() { return this.hostCommand('resume'); }
   rematch() { return this.hostCommand('rematch'); }
@@ -734,6 +777,32 @@ class NetworkSession {
       // its captured response; do not overwrite another player's readiness.
       if (revision === this.lobbyRevision) { this.session.lobby = result.lobby; await this.persist(this.session); }
     } finally { this.configuring = false; if (epoch === this.epoch && !this.stopped) this.onLobby(this.session.lobby); }
+  }
+  // Lobby commands answered with the new lobby; a newer WebSocket snapshot
+  // received meanwhile wins (as for bot configuration).
+  async lobbyCommand(command, payload) {
+    if (!this.connected || this.stopped || this.configuring || this.authRequired) return false;
+    const epoch = this.epoch, revision = this.lobbyRevision;
+    this.configuring = true; this.onLobby(this.session.lobby);
+    try {
+      const result = await this.request(`/v1/rooms/${this.session.room_code}/${command}`,
+        {session_token: this.session.session_token, ...payload});
+      if (epoch !== this.epoch || this.stopped) return false;
+      if (revision === this.lobbyRevision) { this.session.lobby = result.lobby; await this.persist(this.session); }
+      return true;
+    } finally { this.configuring = false; if (epoch === this.epoch && !this.stopped) this.onLobby(this.session.lobby); }
+  }
+  // Your own nickname, before the match starts.
+  async rename(displayName) {
+    const name = String(displayName ?? '').trim();
+    if (!name || name.length > 40) throw new Error(networkErrors.invalid_display_name);
+    if (!this.features.has('rename')) return false;
+    return this.lobbyCommand('name', {display_name: name});
+  }
+  // Host: free another player's seat, e.g. one left behind after rejoining.
+  async releaseSeat(seat) {
+    if (!this.session?.host || !this.features.has('release_seat') || seat === this.session.seat) return false;
+    return this.lobbyCommand('release', {seat});
   }
   async toggleBot(seat) {
     const current = this.session.lobby.seats.find(s => s.seat === seat);
@@ -798,7 +867,9 @@ function lobbyPresentation(lobby, ownSeat = 0) {
     `${open} ${open === 1 ? 'vapaa paikka' : 'vapaata paikkaa'}. Kutsu ystävä tai lisää botti ennen valmiuden vahvistamista.` :
     waiting.length ? `Valmiutta odotetaan: ${waiting.map(label).join(', ')}.` : 'Kaikki ovat valmiina. Ottelu alkaa…';
   return {teams, humans: humans.length, bots: seats.filter(seat => seat.kind === 'ai').length,
-    open, playing, readyText, configuration: JSON.stringify(seats.map(seat => [seat.seat, seat.kind, seat.display_name])),
+    // Seat kinds only: a renamed player does not change the seating, and the
+    // server keeps everyone's readiness through a rename.
+    open, playing, readyText, configuration: JSON.stringify(seats.map(seat => [seat.seat, seat.kind])),
     ownReady: Boolean(humans.find(seat => seat.seat === ownSeat)?.ready)};
 }
 
@@ -809,9 +880,21 @@ function invitationURL(page, room) {
   return link.href;
 }
 
+// Per seat: the host adds/removes bots on open seats and frees other
+// players' seats; each player renames their own seat. Only before the match,
+// and only what the server lists in its features.
+function seatAction(seat, {host, playing, features = new Set()}) {
+  if (playing) return null;
+  if (seat.kind === 'human' && seat.position === 0) return features.has('rename') ? 'rename' : null;
+  if (seat.kind === 'human') return host && features.has('release_seat') ? 'release' : null;
+  return host ? 'toggle' : null;
+}
+
 class LobbyView {
-  constructor(teams, onToggle) { this.teams = teams; this.onToggle = onToggle; this.nodes = new Map(); }
-  render(model, {host, connected, configuring = false}) {
+  constructor(teams, onToggle, {onRename = () => {}, onRelease = () => {}} = {}) {
+    this.teams = teams; this.onToggle = onToggle; this.onRename = onRename; this.onRelease = onRelease; this.nodes = new Map();
+  }
+  render(model, {host, connected, configuring = false, features = new Set()}) {
     model.teams.forEach((seats, index) => {
       const nodes = seats.map(seat => {
         if (!this.nodes.has(seat.seat)) {
@@ -820,7 +903,12 @@ class LobbyView {
           const name = document.createElement('strong'); name.className = 'lobby-name';
           const state = document.createElement('span'); state.className = 'lobby-state';
           const button = document.createElement('button'); button.type = 'button';
-          button.onclick = () => this.onToggle(seat.seat);
+          button.onclick = () => {
+            const node = this.nodes.get(seat.seat);
+            if (node.action === 'rename') return this.onRename(node.seat);
+            if (node.action === 'release') return this.onRelease(node.seat);
+            if (node.action === 'toggle') return this.onToggle(seat.seat);
+          };
           item.append(position, name, state, button);
           this.nodes.set(seat.seat, {item, position, name, state, button});
         }
@@ -829,9 +917,11 @@ class LobbyView {
         node.name.textContent = seat.display_name || (seat.kind === 'ai' ? 'Botti' : 'Vapaa paikka');
         node.state.textContent = seat.kind === 'ai' ? 'Botti' : seat.kind === 'open' ? 'Odottaa pelaajaa' : seat.ready ? 'Pelaaja · valmis' : 'Pelaaja · ei vielä valmis';
         node.item.dataset.kind = seat.kind;
-        node.button.hidden = !host || model.playing || !['open', 'ai'].includes(seat.kind);
+        node.action = seatAction(seat, {host, playing: model.playing, features}); node.seat = seat;
+        node.button.hidden = !node.action;
         node.button.disabled = !connected || configuring;
-        node.button.textContent = seat.kind === 'ai' ? 'Avaa ystävälle' : 'Lisää botti';
+        node.button.textContent = node.action === 'rename' ? 'Vaihda nimi' : node.action === 'release' ? 'Vapauta paikka' :
+          seat.kind === 'ai' ? 'Avaa ystävälle' : 'Lisää botti';
         node.button.setAttribute('aria-label', `${node.button.textContent}: ${label}`);
         return node.item;
       });
@@ -875,7 +965,7 @@ async function readNetworkConfiguration() {
 }
 const networkConfiguration = readNetworkConfiguration();
 const networkReady = networkConfiguration.then(address => {
-  networkAddress = address; networkResolved = true;
+  networkAddress = address; networkResolved = true; sendOfflineResults();
   if (!writeAccess) return address;
   renderHome();
   if (!$('network-entry').hidden) renderRoomEntry();
@@ -1094,7 +1184,8 @@ function renderHistory(completed) {
       row.append(label, button); historyRows.set(deal.index, row);
     }
     const row = historyRows.get(deal.index); row.deal = deal;
-    row.children[0].textContent = `Jako ${deal.index + 1} · ${deal.result.soolaaja >= 0 ? 'SOOLI' : deal.result.contract ? 'RAMI' : 'NOLO'} · ${deal.result.winnerTeam === 0 ? 'meille' : 'vastustajille'} ${deal.result.points} p`;
+    row.children[0].textContent = `Jako ${deal.index + 1} · ${deal.result.soolaaja >= 0 ? 'SOOLI' : deal.result.contract ? 'RAMI' : 'NOLO'} · ${deal.result.winnerTeam === 0 ? 'meille' : 'vastustajille'} ${deal.result.points} p` +
+      (deal.conceded ? ` · luovutettu ${deal.conceded.afterTricks} tikin jälkeen` : '');
     row.children[1].setAttribute('aria-label', `Toista jako ${deal.index + 1}`);
     return row;
   });
@@ -1116,7 +1207,7 @@ function render() {
     handView.render([], {allowed: []}); layoutHand(); $('bid-reveal').replaceChildren(); $('trick').replaceChildren(); delete $('trick').dataset.cards;
     $('own-seat-details').disabled = $('hand-details').disabled = true;
     $('starting-hand').hidden = true;
-    for (const id of ['bid-controls', 'card-controls', 'sooli-controls', 'next-controls', 'trick-panel']) $(id).hidden = true;
+    for (const id of ['bid-controls', 'card-controls', 'concede-controls', 'sooli-controls', 'next-controls', 'trick-panel']) $(id).hidden = true;
     $('action-row').classList.toggle('card-action', false);
     for (const name of ['rami', 'sooli', 'revealing']) $('table').classList.toggle(name, false);
     for (let seat = 0; seat < 4; seat++) {
@@ -1199,6 +1290,9 @@ function render() {
   $('play-card').disabled = !canSelect() || selectedCard === null || !legalCards(view, bidContract).includes(selectedCard);
   $('sooli-controls').hidden = view.phase !== 3 || view.actor !== 0 || revealing;
   $('next-controls').hidden = Boolean(networkClient) || view.phase !== 2 || Boolean(view.terminal);
+  // A decided deal (result 0-0 whatever is played) can be conceded: online by
+  // any player at any time, offline on the player's turn (the bots are idle).
+  $('concede-controls').hidden = !view.concedeAvailable || revealing || (!networkClient && !canSelect());
   $('lock-bid').textContent = bidContract ? 'Lukitse RAMI' : 'Lukitse NOLO';
   $('lock-bid').disabled = !canSelect() || selectedCard === null || !view.legal.includes(52 + bidContract * 52 + selectedCard);
   $('next-deal').disabled = busy;
@@ -1237,6 +1331,7 @@ function render() {
   $('keyboard-prompt').classList.toggle('armed', Boolean(keyboard.prompt || keyboardFeedback));
   renderHistory(view.completed);
   const result = matchSummary(view);
+  if (result && !networkClient && lastSave) queueOfflineResult(lastSave);
   // The request waits for the room's lock, which the server holds until it has credited this match.
   if (result && networkClient && !matchEndCounted) { matchEndCounted = true; refreshLeaderboard(true); }
   if (!result) matchEndCounted = false;
@@ -1249,6 +1344,45 @@ function render() {
     }));
   }
   announceTurn();
+}
+// Anonymous offline results (Settings › Tutkimus, on unless turned off): queued
+// on this device and sent to this site's server when it accepts them.
+const resultsKey = 'tuppi.results.v1';
+function resultsQueue() {
+  try { const value = JSON.parse(globalThis.localStorage?.getItem(resultsKey) ?? 'null');
+    return {pending: Array.isArray(value?.pending) ? value.pending.slice(-20) : [], sent: Array.isArray(value?.sent) ? value.sent.slice(-100) : []}; }
+  catch { return {pending: [], sent: []}; }
+}
+function storeResults(queue) { try { globalThis.localStorage?.setItem(resultsKey, JSON.stringify(queue)); } catch {} }
+let reportedResult = null, resultsSending = false;
+async function queueOfflineResult(save) {
+  if (!preferences.shareResults) return;
+  const report = await offlineResultReport(save).catch(() => null);
+  if (!report || report.id === reportedResult) return;
+  reportedResult = report.id;
+  const queue = resultsQueue();
+  if (!queue.sent.includes(report.id) && !queue.pending.some(item => item.id === report.id)) {
+    queue.pending.push(report); storeResults(queue);
+  }
+  sendOfflineResults();
+}
+async function sendOfflineResults() {
+  if (resultsSending || !networkAddress || !preferences.shareResults) return;
+  resultsSending = true;
+  try {
+    for (const report of resultsQueue().pending) {
+      let status;
+      try {
+        status = (await fetch(new URL('/v1/results', networkAddress), {method: 'POST', cache: 'no-store', credentials: 'same-origin',
+          headers: {'Content-Type': 'application/json'}, body: JSON.stringify(report)})).status;
+      } catch { break; }  // offline: try again later
+      if (status === 429 || status >= 500) break;
+      const queue = resultsQueue();  // sent (200) or refused (4xx, e.g. an older server): never retried
+      queue.pending = queue.pending.filter(item => item.id !== report.id);
+      if (status === 200) queue.sent.push(report.id);
+      storeResults(queue);
+    }
+  } finally { resultsSending = false; }
 }
 // Opt-in turn sound: once each time it becomes this player's turn.
 function announceTurn() {
@@ -1267,7 +1401,7 @@ function enableTurnAudio() {
   try { turnAudio ??= new (globalThis.AudioContext ?? globalThis.webkitAudioContext)(); turnAudio.resume?.(); } catch { turnAudio = null; }
 }
 
-function boot(save = null, {replace = false, engine = new URL('./engine.ba679a5bb2e66563.mjs', import.meta.url), identity = save?.identity ?? packagedRuntimeIdentity} = {}) {
+function boot(save = null, {replace = false, engine = new URL('./engine.28ab7a0a2563fd12.mjs', import.meta.url), identity = save?.identity ?? packagedRuntimeIdentity} = {}) {
   if (!writeAccess) { status('Peli on avoinna toisessa välilehdessä tai selain ei tue turvallista paikallistallennusta.', true); return; }
   if (save) lastSave = structuredClone(save);
   activeIdentity = identity;
@@ -1348,6 +1482,12 @@ document.querySelectorAll('[data-action]').forEach(button => { button.onclick = 
 $('lock-bid').onclick = submitSelected;
 $('play-card').onclick = submitSelected;
 $('next-deal').onclick = () => { if (!busy && view?.phase === 2 && !view.terminal) post('next'); };
+$('concede').onclick = () => {
+  if (!view?.concedeAvailable) return;
+  selectedCard = null; keyboard.reset();
+  if (networkClient) { if (networkClient.concede()) { $('concede-controls').hidden = true; } return; }
+  if (canSelect()) post('concede');
+};
 document.addEventListener('keydown', event => {
   if (event.defaultPrevented || event.repeat || event.isComposing || event.metaKey || event.ctrlKey || event.altKey ||
       event.target?.closest('input, textarea, select, [contenteditable="true"], #settings, dialog, .masthead, .history-section') ||
@@ -1584,7 +1724,8 @@ async function ownMatch(lock) {
     startup({message: 'Avataan tämän laitteen tallennus…'});
     await reloadLocalSave(); if (!writeAccess) return;
     const saved = lastSave;
-    if (networkEnabled) try { savedNetwork = await loadNetwork(); } catch (error) { $('network-status').textContent = error.message; }
+    // A seat the host freed is not offered for resuming; join again instead.
+    if (networkEnabled) try { savedNetwork = await loadNetwork(); if (savedNetwork?.released) savedNetwork = null; } catch (error) { $('network-status').textContent = error.message; }
     if (!writeAccess) return;
     $('network-code').value = (networkEntry.get('room') || '').toUpperCase();
     entryReady = true; $('home-status').textContent = ''; renderHome(); startup({ready: true});
@@ -1608,7 +1749,7 @@ async function ownMatch(lock) {
 }
 addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
 const offline = new OfflineSetup({paths: [globalThis.location?.pathname ?? '/', new URL(import.meta.url).pathname,
-  new URL('./engine.ba679a5bb2e66563.mjs', import.meta.url).pathname], onChange: state => {
+  new URL('./engine.28ab7a0a2563fd12.mjs', import.meta.url).pathname], onChange: state => {
   const downloading = state.state === 'downloading', failed = state.state === 'error';
   const bytes = (state.completedBytes ?? 0) + (state.receivedBytes ?? 0), total = state.totalBytes ?? 1;
   $('offline-progress').max = total; $('offline-progress').value = bytes;
@@ -1652,7 +1793,16 @@ offline.onChange = state => {
 offline.refresh();
 
 const lobbyView = new LobbyView([$('network-our-team'), $('network-their-team')], seat =>
-  networkClient?.toggleBot(seat).catch(networkFailure));
+  networkClient?.toggleBot(seat).catch(networkFailure), {
+  onRename: seat => {
+    const name = globalThis.prompt?.('Uusi nimimerkki', seat.display_name ?? '');
+    if (name === null || name === undefined || name.trim() === seat.display_name) return;
+    return networkClient?.rename(name).catch(networkFailure);
+  },
+  onRelease: seat => {
+    if (globalThis.confirm && !globalThis.confirm(`Vapautetaanko paikka ${seat.display_name ?? ''}? Pelaaja voi liittyä uudelleen kutsulinkillä.`)) return;
+    return networkClient?.releaseSeat(seat.seat).catch(networkFailure);
+  }});
 function networkFailure(error) {
   $('network-status').textContent = error.message; status(error.message, true); renderConnection();
 }
@@ -1661,7 +1811,8 @@ function renderConnection() {
     connected: 'Yhteys kunnossa', pending: 'Varmistetaan siirtoasi…', reconnecting: 'Yhteys katkesi · yhdistetään uudelleen…',
     restarting: 'Palvelin päivittyy · peli jatkuu hetken kuluttua…',
     authentication: 'Kirjautuminen tarvitsee vahvistuksen · huoneesi säilyy',
-    failed: 'Yhteys tarvitsee huomiota', superseded: 'Paikkasi on avoinna toisessa välilehdessä'};
+    failed: 'Yhteys tarvitsee huomiota', superseded: 'Paikkasi on avoinna toisessa välilehdessä',
+    released: 'Huoneen luoja vapautti paikkasi'};
   const phase = connectionState.phase;
   $('network-connection').hidden = !networkEnabled || phase === 'local';
   $('connection-label').textContent = labels[phase] || 'Yhdistetään…';
@@ -1734,14 +1885,14 @@ function showNetworkLobby(lobby) {
   $('network-room').textContent = lobby.match_number ? `Huone ${lobby.room_code} · ottelu ${lobby.match_number}` : `Huone ${lobby.room_code}`;
   const available = Boolean(networkClient?.connected && !networkClient.authRequired);
   const configuring = Boolean(networkClient?.configuring);
-  lobbyView.render(model, {host: networkClient?.session.host, connected: available, configuring});
+  lobbyView.render(model, {host: networkClient?.session.host, connected: available, configuring, features: networkClient?.features});
   if (lobbyRoom === lobby.room_code && lobbyConfiguration && lobbyConfiguration !== model.configuration && !playing) {
     $('network-changed').textContent = 'Paikkajako muuttui. Vahvistakaa valmius uudelleen.';
   }
   if (lobbyRoom !== lobby.room_code || model.ownReady || playing) $('network-changed').textContent = '';
   lobbyRoom = lobby.room_code; lobbyConfiguration = model.configuration;
   $('network-summary').textContent = `${model.humans} ${model.humans === 1 ? 'pelaaja' : 'pelaajaa'} · ${model.bots} ${model.bots === 1 ? 'botti' : 'bottia'}`;
-  $('network-readiness').textContent = configuring ? 'Päivitetään bottipaikkoja…' : model.readyText;
+  $('network-readiness').textContent = configuring ? 'Päivitetään huonetta…' : model.readyText;
   $('network-fill').hidden = $('network-open').hidden = !networkClient?.session.host || playing;
   $('network-fill').disabled = $('network-open').disabled = !available || configuring;
   $('network-ready').hidden = playing;
@@ -1780,7 +1931,7 @@ async function startNetwork(command) {
   lobbyConfiguration = null; lobbyRoom = null;
   pendingWrites = 0; saveFailed = false;
   networkClient?.close(); view = null; render(); startup({ready: true});
-  networkClient = new NetworkSession({persist: async session => { await storeNetwork(session); savedNetwork = structuredClone(session); },
+  networkClient = new NetworkSession({persist: async session => { await storeNetwork(session); savedNetwork = session.released ? null : structuredClone(session); },
     onConnection: state => {
       connectionState = state; renderConnection();
       if (networkClient?.session && !networkClient.session.lobby) {
@@ -1839,7 +1990,7 @@ async function returnToLocal() {
   const session = networkClient?.session ?? savedNetwork;
   networkClient?.close(); networkClient = null;
   connectionState = {phase: 'local'}; renderConnection();
-  if (session) { session.active = false; await storeNetwork(session); savedNetwork = session; }
+  if (session) { session.active = false; await storeNetwork(session); savedNetwork = session.released ? null : session; }
   $('network-dialog').close(); $('network-entry').hidden = false; $('network-lobby').hidden = true;
   $('network-local').hidden = true; $('network-resume').hidden = !savedNetwork;
   if (!offlineStarted) { offlineStarted = true; offline.start(); }
@@ -1874,6 +2025,12 @@ $('network-name').value = preferences.nickname;
 $('turn-sound').checked = preferences.turnSound;
 $('help-toggle').onclick = () => openDialog('help');
 $('close-help').onclick = () => $('help').close();
+$('share-results').checked = preferences.shareResults;
+$('share-results').onchange = () => {
+  preferences = savePreferences({...preferences, shareResults: Boolean($('share-results').checked)});
+  if (preferences.shareResults) sendOfflineResults();
+  else storeResults({pending: [], sent: resultsQueue().sent});
+};
 $('turn-sound').onchange = () => {
   preferences = savePreferences({...preferences, turnSound: Boolean($('turn-sound').checked)});
   if (preferences.turnSound) enableTurnAudio();

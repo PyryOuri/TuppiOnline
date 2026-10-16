@@ -19,6 +19,12 @@
       "$ref": "#/$defs/roomSettingsRequest"
     },
     {
+      "$ref": "#/$defs/renameRequest"
+    },
+    {
+      "$ref": "#/$defs/releaseSeatRequest"
+    },
+    {
       "$ref": "#/$defs/sessionRequest"
     },
     {
@@ -38,6 +44,9 @@
     },
     {
       "$ref": "https://example.invalid/tuppi/schemas/network/training_analysis.schema.json"
+    },
+    {
+      "$ref": "#/$defs/offlineResultRequest"
     }
   ],
   "$defs": {
@@ -235,7 +244,11 @@
               "pause",
               "rematch",
               "leaderboard",
-              "compact_results"
+              "compact_results",
+              "rename",
+              "release_seat",
+              "concede",
+              "results"
             ]
           },
           "$comment": "Optional commands this server accepts; absent on servers without them."
@@ -473,6 +486,91 @@
         }
       },
       "$comment": "Finished online matches on this server, per unverified nickname; human seats only. POST /v1/rooms/{code}/leaderboard with a sessionRequest."
+    },
+    "renameRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_token",
+        "display_name"
+      ],
+      "properties": {
+        "session_token": {
+          "$ref": "#/$defs/sessionToken"
+        },
+        "display_name": {
+          "$ref": "#/$defs/displayName"
+        }
+      },
+      "$comment": "POST /v1/rooms/{code}/name: a player renames their own seat before the match starts (feature rename)."
+    },
+    "releaseSeatRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_token",
+        "seat"
+      ],
+      "properties": {
+        "session_token": {
+          "$ref": "#/$defs/sessionToken"
+        },
+        "seat": {
+          "$ref": "#/$defs/seat"
+        }
+      },
+      "$comment": "POST /v1/rooms/{code}/release: the host frees another player's seat before the match starts (feature release_seat); that player's socket closes with code 4002."
+    },
+    "offlineResultRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "conceded",
+        "deals",
+        "final_score",
+        "id",
+        "winner_team",
+        "worlds"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9-]{16,64}$"
+        },
+        "worlds": {
+          "enum": [
+            128,
+            1024
+          ]
+        },
+        "winner_team": {
+          "enum": [
+            0,
+            1
+          ]
+        },
+        "final_score": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 200
+          }
+        },
+        "deals": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "conceded": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 999
+        }
+      },
+      "$comment": "POST /v1/results (feature results): an anonymous finished offline match, from the person's team's view (team 0). No names, cards or hands."
     }
   }
 }

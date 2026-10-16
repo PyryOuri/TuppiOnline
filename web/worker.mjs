@@ -47,6 +47,8 @@ self.onmessage = async ({data}) => {
       throw new Error('Peli ei ole vielä valmis.');
     } else if (data.type === 'submit') {
       await session.submit(data.action);
+    } else if (data.type === 'concede') {
+      session.concede();
     } else if (data.type === 'next') {
       session.next(shuffledDeck());
     }

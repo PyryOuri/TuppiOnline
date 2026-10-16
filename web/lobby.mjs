@@ -28,7 +28,9 @@ export function lobbyPresentation(lobby, ownSeat = 0) {
     `${open} ${open === 1 ? 'vapaa paikka' : 'vapaata paikkaa'}. Kutsu ystävä tai lisää botti ennen valmiuden vahvistamista.` :
     waiting.length ? `Valmiutta odotetaan: ${waiting.map(label).join(', ')}.` : 'Kaikki ovat valmiina. Ottelu alkaa…';
   return {teams, humans: humans.length, bots: seats.filter(seat => seat.kind === 'ai').length,
-    open, playing, readyText, configuration: JSON.stringify(seats.map(seat => [seat.seat, seat.kind, seat.display_name])),
+    // Seat kinds only: a renamed player does not change the seating, and the
+    // server keeps everyone's readiness through a rename.
+    open, playing, readyText, configuration: JSON.stringify(seats.map(seat => [seat.seat, seat.kind])),
     ownReady: Boolean(humans.find(seat => seat.seat === ownSeat)?.ready)};
 }
 
@@ -39,9 +41,21 @@ export function invitationURL(page, room) {
   return link.href;
 }
 
+// Per seat: the host adds/removes bots on open seats and frees other
+// players' seats; each player renames their own seat. Only before the match,
+// and only what the server lists in its features.
+export function seatAction(seat, {host, playing, features = new Set()}) {
+  if (playing) return null;
+  if (seat.kind === 'human' && seat.position === 0) return features.has('rename') ? 'rename' : null;
+  if (seat.kind === 'human') return host && features.has('release_seat') ? 'release' : null;
+  return host ? 'toggle' : null;
+}
+
 export class LobbyView {
-  constructor(teams, onToggle) { this.teams = teams; this.onToggle = onToggle; this.nodes = new Map(); }
-  render(model, {host, connected, configuring = false}) {
+  constructor(teams, onToggle, {onRename = () => {}, onRelease = () => {}} = {}) {
+    this.teams = teams; this.onToggle = onToggle; this.onRename = onRename; this.onRelease = onRelease; this.nodes = new Map();
+  }
+  render(model, {host, connected, configuring = false, features = new Set()}) {
     model.teams.forEach((seats, index) => {
       const nodes = seats.map(seat => {
         if (!this.nodes.has(seat.seat)) {
@@ -50,7 +64,12 @@ export class LobbyView {
           const name = document.createElement('strong'); name.className = 'lobby-name';
           const state = document.createElement('span'); state.className = 'lobby-state';
           const button = document.createElement('button'); button.type = 'button';
-          button.onclick = () => this.onToggle(seat.seat);
+          button.onclick = () => {
+            const node = this.nodes.get(seat.seat);
+            if (node.action === 'rename') return this.onRename(node.seat);
+            if (node.action === 'release') return this.onRelease(node.seat);
+            if (node.action === 'toggle') return this.onToggle(seat.seat);
+          };
           item.append(position, name, state, button);
           this.nodes.set(seat.seat, {item, position, name, state, button});
         }
@@ -59,9 +78,11 @@ export class LobbyView {
         node.name.textContent = seat.display_name || (seat.kind === 'ai' ? 'Botti' : 'Vapaa paikka');
         node.state.textContent = seat.kind === 'ai' ? 'Botti' : seat.kind === 'open' ? 'Odottaa pelaajaa' : seat.ready ? 'Pelaaja · valmis' : 'Pelaaja · ei vielä valmis';
         node.item.dataset.kind = seat.kind;
-        node.button.hidden = !host || model.playing || !['open', 'ai'].includes(seat.kind);
+        node.action = seatAction(seat, {host, playing: model.playing, features}); node.seat = seat;
+        node.button.hidden = !node.action;
         node.button.disabled = !connected || configuring;
-        node.button.textContent = seat.kind === 'ai' ? 'Avaa ystävälle' : 'Lisää botti';
+        node.button.textContent = node.action === 'rename' ? 'Vaihda nimi' : node.action === 'release' ? 'Vapauta paikka' :
+          seat.kind === 'ai' ? 'Avaa ystävälle' : 'Lisää botti';
         node.button.setAttribute('aria-label', `${node.button.textContent}: ${label}`);
         return node.item;
       });
