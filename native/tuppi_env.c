@@ -48,6 +48,11 @@ typedef struct {
   uint16_t *inc_list;
   int16_t *inc_len;
   int exact_speed;       // per-controller compact128 settings; calloc defaults off
+  // Play inference (tc_env_set_belief; NULL = off): this controller's searches
+  // resample their worlds by belief_net's likelihood of the other seats' play.
+  const struct TcMlpS *belief_net;
+  int belief_mult, belief_all;
+  double belief_inv_t, belief_eps;
 } TcEnv;
 #define INC_MAXA 320
 
@@ -710,29 +715,29 @@ static void play_out(TcEnv *e, const TcMlp *m, int n, int dd_left, uint64_t *rng
 // model's likelihood of the other seats' past unforced choices, replayed in each
 // world under its own rules: prod_t [(1 - eps) softmax(logits_t / T)[a_t] +
 // eps / k_t]. Only after the bidding (a locked showing reveals nothing while it
-// runs) and not in sooli play. Off unless tc_set_belief is called.
+// runs) and not in sooli play. Per controller: off unless tc_env_set_belief.
 int tc_history_rows(const TcDeal *world, int seat_mask, int encoder, int max_rows,
                     uint8_t *feat, uint8_t *mask, int32_t *action);
-static struct { const TcMlp *m; int mult, all; double inv_t, eps; } belief;
-
-void tc_set_belief(const TcMlp *m, int mult, double temperature, double eps, int all_seats) {
-  belief.m = mult > 1 ? m : NULL;
-  belief.mult = mult;
-  belief.inv_t = temperature > 0 ? 1.0 / temperature : 1.0;
-  belief.eps = eps;
-  belief.all = all_seats;
+void tc_env_set_belief(TcEnv *e, const TcMlp *m, int mult, double temperature, double eps, int all_seats) {
+  e->belief_net = mult > 1 ? m : NULL;
+  e->belief_mult = mult;
+  e->belief_inv_t = temperature > 0 ? 1.0 / temperature : 1.0;
+  e->belief_eps = eps;
+  e->belief_all = all_seats;
 }
 
-static int belief_applies(const TcObs *o) {
-  return belief.m && o->soolaaja < 0 && (o->phase == TC_PH_PLAY || o->phase == TC_PH_SOOLI_OFFER);
+static int belief_applies(const TcEnv *e, const TcObs *o) {
+  return e->belief_net && o->soolaaja < 0 && (o->phase == TC_PH_PLAY || o->phase == TC_PH_SOOLI_OFFER);
 }
 
 // Fills out[0..w) with worlds resampled by likelihood; -1 if no world can be drawn.
 static int belief_worlds(const TcEnv *e, const TcObs *o, int w, uint64_t *rng, TcDeal *out) {
   enum { MAXR = 64 };
-  const int M = w * belief.mult, enc = tc_mlp_encoder(belief.m), dim = tc_feature_dim_v(enc);
+  const TcMlp *net = e->belief_net;
+  const double inv_t = e->belief_inv_t, eps = e->belief_eps;
+  const int M = w * e->belief_mult, enc = tc_mlp_encoder(net), dim = tc_feature_dim_v(enc);
   const int opp = (1 << ((o->seat + 1) & 3)) | (1 << ((o->seat + 3) & 3));
-  const int seats = belief.all ? (0xF & ~(1 << o->seat)) : opp;
+  const int seats = e->belief_all ? (0xF & ~(1 << o->seat)) : opp;
   TcDeal *cand = malloc(sizeof(TcDeal) * (size_t)M);
   double *logw = calloc((size_t)M, sizeof(double));
   uint8_t *feat = malloc((size_t)M * MAXR * dim), *mask = malloc((size_t)M * MAXR * TC_NUM_ACTIONS);
@@ -748,16 +753,16 @@ static int belief_worlds(const TcEnv *e, const TcObs *o, int w, uint64_t *rng, T
   }
   if (status == 0 && rows) {
     float *q = malloc(sizeof(float) * (size_t)rows * TC_NUM_ACTIONS);
-    tc_mlp_forward(belief.m, feat, rows, q);
+    tc_mlp_forward(net, feat, rows, q);
     for (int r = 0; r < rows; r++) {
       const float *qr = q + (size_t)r * TC_NUM_ACTIONS;
       const uint8_t *mr = mask + (size_t)r * TC_NUM_ACTIONS;
       double top = -1e300, sum = 0.0;
       int legal = 0;
       for (int a = 0; a < TC_NUM_ACTIONS; a++) if (mr[a] && qr[a] > top) top = qr[a];
-      for (int a = 0; a < TC_NUM_ACTIONS; a++) if (mr[a]) { sum += exp((qr[a] - top) * belief.inv_t); legal++; }
-      double p = exp((qr[act[r]] - top) * belief.inv_t) / sum;
-      logw[owner[r]] += log((1.0 - belief.eps) * p + belief.eps / legal);
+      for (int a = 0; a < TC_NUM_ACTIONS; a++) if (mr[a]) { sum += exp((qr[a] - top) * inv_t); legal++; }
+      double p = exp((qr[act[r]] - top) * inv_t) / sum;
+      logw[owner[r]] += log((1.0 - eps) * p + eps / legal);
     }
     free(q);
   }
@@ -781,7 +786,7 @@ static int belief_worlds(const TcEnv *e, const TcObs *o, int w, uint64_t *rng, T
 // Test hook: the w worlds the search would use at this observation (with the
 // belief when it applies, else uniform). Returns 0, or -1.
 int tc_search_worlds(TcEnv *e, const TcObs *o, int w, uint64_t *rng, TcDeal *out) {
-  if (belief_applies(o)) return belief_worlds(e, o, w, rng, out);
+  if (belief_applies(e, o)) return belief_worlds(e, o, w, rng, out);
   for (int i = 0; i < w; i++)
     if (tc_sample_world_sooli(o, rng, &out[i], e->sooli_belief, e->sooli_lambda) != 0) return -1;
   return 0;
@@ -792,7 +797,7 @@ static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *
   const int n = w * k;
   if (n > e->n) return -2;
   TcDeal world, *picked = NULL;
-  if (belief_applies(o)) {
+  if (belief_applies(e, o)) {
     picked = malloc(sizeof(TcDeal) * (size_t)w);
     if (belief_worlds(e, o, w, rng, picked) != 0) { free(picked); return -1; }
   }

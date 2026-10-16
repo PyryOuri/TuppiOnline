@@ -69,9 +69,9 @@ def test_belief_worlds_are_repeatable_consistent_and_closer_to_the_truth(policy)
         gains = []
         for deal, owner in positions:
             obs = native.observe(deal, deal.cur)
-            native.set_belief(None)
+            native.set_belief(env, None)
             uniform = native.search_worlds(env, obs, 256, C.c_uint64(7))
-            native.set_belief(policy, mult=4, temperature=2.0, eps=0.5)
+            native.set_belief(env, policy, mult=4, temperature=2.0, eps=0.5)
             weighted = native.search_worlds(env, obs, 256, C.c_uint64(7))
             again = native.search_worlds(env, obs, 256, C.c_uint64(7))
             assert all(bytes(a) == bytes(b) for a, b in zip(weighted, again)), "repeatable for a seed"
@@ -84,7 +84,7 @@ def test_belief_worlds_are_repeatable_consistent_and_closer_to_the_truth(policy)
             gains.append(nll(uniform, deal, owner) - nll(weighted, deal, owner))
         assert np.mean(gains) > 0.05, f"weighted worlds predict hidden cards better ({np.mean(gains):.3f})"
     finally:
-        native.set_belief(None)
+        native.set_belief(env, None)
         native.set_showing_fix(False)
 
 
@@ -94,11 +94,27 @@ def test_off_by_default_and_not_while_bidding(policy):
     hands = [sum(1 << c for c in deck[s * 13:(s + 1) * 13]) for s in range(4)]
     deal = native.new_deal(hands, 0, 0, 0, ruleset=3)
     obs = native.observe(deal, deal.cur)  # showing: nothing to read
-    native.set_belief(policy, mult=4)
+    native.set_belief(env, policy, mult=4)
     try:
         a = native.search_worlds(env, obs, 16, C.c_uint64(5))
-        native.set_belief(None)
+        native.set_belief(env, None)
         b = native.search_worlds(env, obs, 16, C.c_uint64(5))
         assert all(bytes(x) == bytes(y) for x, y in zip(a, b)), "the showing is sampled uniformly either way"
     finally:
-        native.set_belief(None)
+        native.set_belief(env, None)
+
+
+def test_controllers_are_independent(policy):
+    """One team's searches can read the play while the other team's do not."""
+    env_a, env_b = native.Env(8, 1), native.Env(8, 1)
+    deal, _ = played_positions(policy, 1, 11)[0]
+    obs = native.observe(deal, deal.cur)
+    native.set_belief(env_a, policy, mult=4)
+    try:
+        uniform = native.search_worlds(env_b, obs, 32, C.c_uint64(9))
+        native.set_belief(env_a, None)
+        assert all(bytes(x) == bytes(y) for x, y in zip(uniform, native.search_worlds(env_a, obs, 32, C.c_uint64(9))))
+        native.set_belief(env_a, policy, mult=4)
+        assert any(bytes(x) != bytes(y) for x, y in zip(uniform, native.search_worlds(env_a, obs, 32, C.c_uint64(9))))
+    finally:
+        native.set_belief(env_a, None)

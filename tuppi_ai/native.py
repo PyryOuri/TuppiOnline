@@ -641,19 +641,18 @@ def duplicate_eval(env: "Env", mlp_a: "Mlp", mlp_b: "Mlp", base_deals: int, rule
 _sym("tc_set_showing_fix").argtypes = [C.c_int]
 
 
-lib.tc_set_belief.argtypes = [C.c_void_p, C.c_int, C.c_double, C.c_double, C.c_int]
-lib.tc_set_belief.restype = None
-_belief_model = None  # keeps the action model alive while the search uses it
+lib.tc_env_set_belief.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_double, C.c_double, C.c_int]
+lib.tc_env_set_belief.restype = None
 
 
-def set_belief(model: "Mlp | None", mult: int = 4, temperature: float = 2.0, eps: float = 0.5,
+def set_belief(env: "Env", model: "Mlp | None", mult: int = 4, temperature: float = 2.0, eps: float = 0.5,
                all_seats: bool = True) -> None:
-    """Play inference in the native search (research/play-inference-20261016):
+    """Play inference for this controller's native searches (research/play-inference-20261016):
     draw mult * w worlds and resample w by `model`'s likelihood of the other
     seats' past choices. None (or mult <= 1) switches it off."""
-    global _belief_model
-    _belief_model = model if model is not None and mult > 1 else None
-    lib.tc_set_belief(_belief_model._h if _belief_model else None, mult, temperature, eps, int(all_seats))
+    env._belief_model = model if model is not None and mult > 1 else None  # keep the weights alive
+    lib.tc_env_set_belief(env._h, env._belief_model._h if env._belief_model else None, mult, temperature, eps,
+                          int(all_seats))
 
 
 lib.tc_search_worlds.argtypes = [C.c_void_p, _P(TcObs), C.c_int, _P(C.c_uint64), C.c_void_p]

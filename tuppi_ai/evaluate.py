@@ -72,9 +72,24 @@ def _make_candidate(spec: str) -> dict:
     `vn=<value net>[:vlb=<tricks>][:vlp=<tricks>][:vbb=1]` value-net leaves
     for bid searches (vlb, default 0 = start of play; -1 off) and card-play
     searches (vlp, default -1 = off) (docs/VALUE_NET_PLAN.md)."""
-    if spec == "best":
+    # `best[:pib=<k>][:pibt=<T>][:pibe=<eps>][:pibs=all|opp][:pibp=<policy>]`: the live
+    # bot, optionally with play inference in its searches (k x worlds resampled).
+    if spec == "best" or spec.startswith("best:"):
         from .best import best_agents
-        return best_agents()
+        agents = best_agents()
+        opts = dict(part.split("=") for part in spec.split(":")[1:])
+        if "pib" in opts:  # play inference (research/play-inference-20261016): pib=<oversampling>
+            from . import model as qmodel
+            from . import native
+            from .best import ANCHOR
+            policy = native.Mlp(qmodel.load(opts.get("pibp", str(ANCHOR)), "cpu"))
+            for agent in agents.values():
+                for searcher in (agent.searcher, agent.show_searcher):
+                    if searcher is not None:
+                        native.set_belief(searcher.env, policy, mult=int(opts["pib"]),
+                                          temperature=float(opts.get("pibt", 2.0)), eps=float(opts.get("pibe", 0.5)),
+                                          all_seats=opts.get("pibs", "all") == "all")
+        return agents
     if spec.startswith("profile:"):
         from .incumbent import incumbent_agents
         return incumbent_agents(spec.split(":", 1)[1])
