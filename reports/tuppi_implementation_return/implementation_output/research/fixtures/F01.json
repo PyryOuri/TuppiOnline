@@ -1,0 +1,293 @@
+{
+ "cases": [
+  {
+   "case_id": "F01",
+   "cluster_id": "deal:8f5ba17ef281ff593e45699e9cc1c90c",
+   "kind": "DecisionCase",
+   "observation": {
+    "bids_locked": 2,
+    "completed_tricks": [],
+    "contract": null,
+    "current_actor": 3,
+    "current_trick": [],
+    "deal_ref": "research-fixture/deal:0",
+    "deal_terminal": false,
+    "dealer": 0,
+    "declarer": null,
+    "first_leader": null,
+    "forehand": 1,
+    "legal_actions": [
+     {
+      "declared_contract": "NOLO",
+      "seat": 3,
+      "shown_card": "4H",
+      "type": "show"
+     },
+     {
+      "declared_contract": "NOLO",
+      "seat": 3,
+      "shown_card": "5D",
+      "type": "show"
+     },
+     {
+      "declared_contract": "NOLO",
+      "seat": 3,
+      "shown_card": "7D",
+      "type": "show"
+     },
+     {
+      "declared_contract": "RAMI",
+      "seat": 3,
+      "shown_card": "4H",
+      "type": "show"
+     },
+     {
+      "declared_contract": "RAMI",
+      "seat": 3,
+      "shown_card": "5D",
+      "type": "show"
+     },
+     {
+      "declared_contract": "RAMI",
+      "seat": 3,
+      "shown_card": "7D",
+      "type": "show"
+     }
+    ],
+    "match_ref": "research-fixture",
+    "match_score": [
+     0,
+     0
+    ],
+    "match_terminal": false,
+    "observing_seat": 3,
+    "own_hand": [
+     "JC",
+     "AD",
+     "KC",
+     "JS",
+     "JH",
+     "JD",
+     "4H",
+     "2D",
+     "5D",
+     "KS",
+     "QD",
+     "10D",
+     "7D"
+    ],
+    "partner_seat": 1,
+    "phase": "SHOWING",
+    "publicly_shown_cards": [],
+    "ruleset_id": "project_target_v3",
+    "schema_version": "tuppi.engine.player_observation.v1",
+    "show_actions": [],
+    "sooli": {
+     "decisions": [],
+     "exchanged": false,
+     "given_card": null,
+     "partner": null,
+     "returned_card": null,
+     "soolaaja": null
+    },
+    "team": 1,
+    "team_tricks": [
+     0,
+     0
+    ],
+    "visibility": "player_private"
+   },
+   "ordered_action_ids": [
+    54,
+    68,
+    70,
+    106,
+    120,
+    122
+   ],
+   "policy_snapshot_ref": null,
+   "population": {
+    "population": "clone predecessors, reached focal call"
+   },
+   "schema": "tuppi.research.records.v1",
+   "split": "DEV"
+  },
+  {
+   "case_id": "F01-forehand",
+   "cluster_id": "deal:8f5ba17ef281ff593e45699e9cc1c90c",
+   "kind": "DecisionCase",
+   "observation": {
+    "bids_locked": 0,
+    "completed_tricks": [],
+    "contract": null,
+    "current_actor": 1,
+    "current_trick": [],
+    "deal_ref": "research-fixture/deal:0",
+    "deal_terminal": false,
+    "dealer": 0,
+    "declarer": null,
+    "first_leader": null,
+    "forehand": 1,
+    "legal_actions": [
+     {
+      "declared_contract": "NOLO",
+      "seat": 1,
+      "shown_card": "5S",
+      "type": "show"
+     },
+     {
+      "declared_contract": "NOLO",
+      "seat": 1,
+      "shown_card": "3C",
+      "type": "show"
+     },
+     {
+      "declared_contract": "NOLO",
+      "seat": 1,
+      "shown_card": "9C",
+      "type": "show"
+     },
+     {
+      "declared_contract": "NOLO",
+      "seat": 1,
+      "shown_card": "5C",
+      "type": "show"
+     },
+     {
+      "declared_contract": "RAMI",
+      "seat": 1,
+      "shown_card": "7H",
+      "type": "show"
+     },
+     {
+      "declared_contract": "RAMI",
+      "seat": 1,
+      "shown_card": "5H",
+      "type": "show"
+     },
+     {
+      "declared_contract": "RAMI",
+      "seat": 1,
+      "shown_card": "3D",
+      "type": "show"
+     },
+     {
+      "declared_contract": "RAMI",
+      "seat": 1,
+      "shown_card": "8H",
+      "type": "show"
+     },
+     {
+      "declared_contract": "RAMI",
+      "seat": 1,
+      "shown_card": "8D",
+      "type": "show"
+     },
+     {
+      "declared_contract": "RAMI",
+      "seat": 1,
+      "shown_card": "9H",
+      "type": "show"
+     }
+    ],
+    "match_ref": "research-fixture",
+    "match_score": [
+     0,
+     0
+    ],
+    "match_terminal": false,
+    "observing_seat": 1,
+    "own_hand": [
+     "5S",
+     "3C",
+     "7H",
+     "QH",
+     "9C",
+     "10C",
+     "5H",
+     "QS",
+     "3D",
+     "5C",
+     "8H",
+     "8D",
+     "9H"
+    ],
+    "partner_seat": 3,
+    "phase": "SHOWING",
+    "publicly_shown_cards": [],
+    "ruleset_id": "project_target_v3",
+    "schema_version": "tuppi.engine.player_observation.v1",
+    "show_actions": [],
+    "sooli": {
+     "decisions": [],
+     "exchanged": false,
+     "given_card": null,
+     "partner": null,
+     "returned_card": null,
+     "soolaaja": null
+    },
+    "team": 1,
+    "team_tricks": [
+     0,
+     0
+    ],
+    "visibility": "player_private"
+   },
+   "ordered_action_ids": [
+    94,
+    79,
+    85,
+    81,
+    109,
+    107,
+    118,
+    110,
+    123,
+    111
+   ],
+   "policy_snapshot_ref": null,
+   "population": {
+    "population": "forehand control (E = 1)"
+   },
+   "schema": "tuppi.research.records.v1",
+   "split": "DEV"
+  }
+ ],
+ "checks": {
+  "F01": {
+   "actor_to_move": true,
+   "alternative": {
+    "attempt": 5,
+    "event_all_earlier_nolo": false,
+    "focal_observation_identical": true,
+    "found": true,
+    "predecessor_bids": [
+     {
+      "bid": {
+       "declared_contract": "RAMI",
+       "seat": 1,
+       "shown_card": "4D",
+       "type": "show"
+      },
+      "seat": 1
+     }
+    ]
+   },
+   "bids_locked": 2,
+   "forehand_bids_locked": 0,
+   "legal_declarations": 6,
+   "own_cards": 13,
+   "replay_reproduces_observation": true,
+   "ruleset": "project_target_v3",
+   "visible_shows": 0,
+   "wire_roundtrip": true
+  }
+ },
+ "deals_generated": [
+  "deck:30419f25ce04299a936b8813"
+ ],
+ "fixture_id": "F01",
+ "status": "VALIDATED",
+ "truth_extras_ref": "truth/F01.extras.json",
+ "truth_ref": "truth/deal_8f5ba17ef281ff593e45699e9cc1c90c.truth.json"
+}

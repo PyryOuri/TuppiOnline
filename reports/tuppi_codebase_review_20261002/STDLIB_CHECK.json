@@ -1,0 +1,48 @@
+{
+  "evidence": "Agent transcription of successful observed exec session 17143; not a signed CI log",
+  "command": "python3 -B -m unittest discover -s tests -p 'test_*_stdlib.py' -v",
+  "cwd": "/Users/pyryouri/Developer/TuppiAI-prior",
+  "observed_summary": {
+    "tests": 63,
+    "elapsed_seconds": 228.393,
+    "status": "OK",
+    "exit_code": 0
+  },
+  "ending_head": "0799508ad5a48a5db9eca99693534f998f0ebcf2",
+  "ending_status": "",
+  "scope": "standard-library logic and temporary/dummy-process fixtures; no native/Torch/game execution",
+  "ending_inventoried_test_files": [
+    {
+      "path": "TuppiAI-prior/tests/test_evaluate_configuration_stdlib.py",
+      "sha256": "7c611bad0f944ba66dd2d650522bbb851b39213c7450da23652bb031ed4c41ff"
+    },
+    {
+      "path": "TuppiAI-prior/tests/test_experiment_process_stdlib.py",
+      "sha256": "f813cf05a040863c1b54ec194558979c3d9d7b9c37e268156d408b47a3b8dbd6"
+    },
+    {
+      "path": "TuppiAI-prior/tests/test_experiment_queue_stdlib.py",
+      "sha256": "bcddb2bea9c11fd5b0c48b68bc93537074a5d6387e87b7224982aa0004c0675f"
+    },
+    {
+      "path": "TuppiAI-prior/tests/test_match_statistics_stdlib.py",
+      "sha256": "5dd0a2ab57280aad09c71300b02f66e1ac1d42caf5303e871052fe4fb7531819"
+    },
+    {
+      "path": "TuppiAI-prior/tests/test_paired_results_stdlib.py",
+      "sha256": "9c0d81296f7f4f79ff1be2818c145806ece59fa5ef697cdf02b6db0e31a8aa70"
+    },
+    {
+      "path": "TuppiAI-prior/tests/test_policy_prior_stdlib.py",
+      "sha256": "bf03b313af80a909f3ee128e246e5f6862861f3a1f7e41430c7fea61ae03aebd"
+    },
+    {
+      "path": "TuppiAI-prior/tests/test_prior_replay_stdlib.py",
+      "sha256": "27c67f2ffb504da97482ca9bd20bccd90a5e9a05560278068f666262b319f44c"
+    },
+    {
+      "path": "TuppiAI-prior/tests/test_timing_report_stdlib.py",
+      "sha256": "df06a21eff0733cbff4d2968a41c521dac6307ec1b10f34e63e1e7a94ee857c0"
+    }
+  ]
+}

@@ -1,0 +1,437 @@
+{
+ "schema_version": "tuppi.implementation_return.v1",
+ "date": "2026-09-26",
+ "responds_to": {
+  "package": "Tuppi_Implementation_Package (IMPLEMENTATION_SPEC v1.0; EXECUTION_PLAN tuppi.implementation_plan.v1)",
+  "audit": "tuppi_design_20260925_184608"
+ },
+ "workspace_identity": {
+  "AI": "4220f249e351905deb3a3754de812a01acf152d7",
+  "ENGINE": "1347153f7d6e7bed95edddce9d35d28a3df91750",
+  "RESEARCH": "622d5599318e4f1b2a82ef53bfc141970edc24de",
+  "CLIENT": "7ba8ca283f01794170d105ba08c5a799f7bd7909",
+  "source_drift_vs_audit": 0,
+  "installed_dylib": "02d9b4fad98ebb342e12cd9ecb4723aaee1406c6c6b539a1dc4a5b2b002c1ab8",
+  "B0_source_byte_identical_to_installed": true,
+  "research_build_api_v3": "221fe0415b275cd46651e0f9a8d109af294f5b4e18a1a186e4f8c08f1564ca85"
+ },
+ "tasks": [
+  {
+   "id": "C0.01",
+   "title": "Pin source/import/asset identities and protected paths",
+   "status": "CONTRACT_PASS",
+   "evidence": [
+    "research/baseline_manifest.json (immutable)",
+    "research/source_drift.json (62/62 evidence files unchanged)",
+    "research/protected_snapshot_before.json",
+    "logs/protect_check.json (unchanged)",
+    "tests/research/test_c0_identity_native.py::test_A01_* (4), test_A02_*, test_A12_*"
+   ],
+   "note": null,
+   "owner_approval": null
+  },
+  {
+   "id": "C0.02",
+   "title": "Typed legal records, observation keys and split lineage",
+   "status": "CONTRACT_PASS",
+   "evidence": [
+    "tuppi_ai/research/records.py, observation.py",
+    "builds/parity_report.json (A03: 13 probes + 6-call sequence, B0-installed == B0-source == R0-parity bitwise)",
+    "tests/research/test_c0_identity_native.py::test_A04_* (4)",
+    "tests/research/test_c0_observation.py::test_A05_* (4), test_A10_*"
+   ],
+   "note": null,
+   "owner_approval": null
+  },
+  {
+   "id": "C0.03",
+   "title": "ReplayFork and isolated lifecycle/state accounting",
+   "status": "CONTRACT_PASS",
+   "evidence": [
+    "tuppi_ai/research/lifecycle.py, streams.py",
+    "tests/research/test_c0_lifecycle.py::test_A06_* (3), test_A07_*, test_A08_*, test_A09_* (2)"
+   ],
+   "note": "ReplayFork and NativeFork both implemented; NativeFork imports Python RNGs and the research-build environment configuration; slot states/RNGs documented as search scratch and covered by a digest.",
+   "owner_approval": null
+  },
+  {
+   "id": "C0.04",
+   "title": "Separate native build and explicit-world ordinary NOLO evaluator",
+   "status": "CONTRACT_PASS",
+   "evidence": [
+    "native/research/{build_research.sh,overlay.patch,research_api.c,research_api.h}",
+    "builds/build_manifest.txt (B0-source byte-identical to installed)",
+    "tuppi_ai/research/native_api.py",
+    "tests/research/test_c0_identity_native.py::test_A02_*",
+    "tests/research/test_c0_lifecycle.py::test_A10_*, test_A11_*",
+    "tests/research/test_c1.py::test_V06_*, test_V07_*"
+   ],
+   "note": null,
+   "owner_approval": null
+  },
+  {
+   "id": "C0.05",
+   "title": "Bounded legal fixture builder",
+   "status": "CONTRACT_PASS",
+   "evidence": [
+    "research/fixtures/{F01..F06}.json + truth/ (all VALIDATED; fixtures_manifest.json; 10 distinct decks)",
+    "tuppi_ai/research/fixtures.py"
+   ],
+   "note": "F02/F05/F06 use scripted NOLO contracts (synthetic development states); F03 acceptance is the heuristic offer policy's natural choice, not the W128 searched offer.",
+   "owner_approval": null
+  },
+  {
+   "id": "C0.06",
+   "title": "Authoritative v3 duplicate-deal and retained-state match runner",
+   "status": "CONTRACT_PASS",
+   "evidence": [
+    "tuppi_ai/research/runner_v3.py",
+    "tests/research/test_c0_runner_statistics.py::test_R01_* .. test_R06_*"
+   ],
+   "note": "Search teams on both sides accepted: constructed and driven for 2 legal actions (R02) plus the complete search-played A06 deal through play_deal; no third complete search game was run (cap 2).",
+   "owner_approval": null
+  },
+  {
+   "id": "C0.07",
+   "title": "Paired statistics, failure/censor bounds and manifests",
+   "status": "CONTRACT_PASS",
+   "evidence": [
+    "tuppi_ai/research/statistics.py, cli.py, ledger.py",
+    "tests/research/test_c0_runner_statistics.py::test_R04_* (2), test_R05_*, test_statistics_*, test_V11_*",
+    "tests/research/test_c1.py::test_V08_*"
+   ],
+   "note": null,
+   "owner_approval": null
+  },
+  {
+   "id": "C1.01",
+   "title": "Independent contested-round world proxy",
+   "status": "CONTRACT_PASS",
+   "evidence": [
+    "tuppi_ai/research/c1_control_variate.py (proxy)",
+    "tests/research/test_c1.py::test_V01_* (5), test_V02_*, test_V05_*",
+    "tests/research/oracle_research_suits.py (isolated RESEARCH oracle: 400 layouts, 9 exact-law cases)"
+   ],
+   "note": null,
+   "owner_approval": null
+  },
+  {
+   "id": "C1.02",
+   "title": "Fixed-coefficient independent-batch gap estimator",
+   "status": "CONTRACT_PASS",
+   "evidence": [
+    "tuppi_ai/research/c1_control_variate.py (estimator, beta fit, allocation)",
+    "tests/research/test_c1.py::test_V03_*, test_V04_*, test_V03_V04_* (2), test_V05_*, test_V08_*",
+    "tests/research/test_c0_runner_statistics.py::test_V11_*"
+   ],
+   "note": null,
+   "owner_approval": null
+  },
+  {
+   "id": "C1.03",
+   "title": "C1 branch dispatcher, shadow advancement and pilot readiness",
+   "status": "PILOT_READY",
+   "evidence": [
+    "tuppi_ai/research/c1_dispatch.py",
+    "research/c1_contract_report.md",
+    "research/c1_pilot_manifest.json (execution_enabled false; validate-manifest NOT_LAUNCHABLE)",
+    "tests/research/test_c1.py (V01-V10 all pass)",
+    "logs/c1_cost_calibration.json"
+   ],
+   "note": "Pilot-ready instrument only; P.C1 remains NOT_AUTHORISED until the owner approves numeric caps. SET ASIDE by owner decision 2026-09-26 after the bounded f measurement (f = 1.3%, total saving <= ~2%); not to be piloted unless the owner reopens it.",
+   "owner_approval": null
+  },
+  {
+   "id": "C3b.01",
+   "title": "Conservative utility-equivalence certificate",
+   "status": "CONTRACT_PASS",
+   "evidence": [
+    "native/research/overlay.patch (utility_certificate, switch RESEARCH_OPT_UTILITY_STOP; API v2)",
+    "tuppi_ai/research/c3_utility_stop.py (independent oracle through tuppi_rules)",
+    "tests/research/test_c3b.py::test_K01_* (2), test_K02_*, test_K03_*, test_K02_K04_*, test_K04_*",
+    "builds/parity_report.json (API v2 R0 d6c62316 == B0-source with switches off)",
+    "logs/c3b_diagnostics.json"
+   ],
+   "note": "K04: on F02b at 0-48 with a 2-trick tail 146/256 rows certified mid-rollout and all per-world values stayed bitwise equal (no batching effect observed on this case). With the as-is 6-trick tail no row certified on the tested case: the solver takes over where certificates begin, so the as-is gain is likely small; P.C3b must measure the natural eligible-row rate.",
+   "owner_approval": null
+  },
+  {
+   "id": "C2.01",
+   "title": "Joint clone-predecessor precommitment model and ablations",
+   "status": "CONTRACT_PASS",
+   "evidence": [
+    "tuppi_ai/research/c2_blind_bids.py (F/R/RC on joint layouts; clone predecessors; exact controls)",
+    "tuppi_ai/research/clone_policy.py",
+    "tests/research/test_c2.py::test_B01_* .. test_B08_* (8 tests)"
+   ],
+   "note": "Model experiment with deterministic clone predecessors only. B02 checks each predecessor's native precommit observation byte-for-byte against the engine's own observation (placeholder earlier bids) and the clone's bid on both. On the F01 focal position the clone predecessors passed in 23/23 sampled layouts, so R ~ F there; the unreached row in the batch is F01's constructed alternative layout. Reach frequencies by seat/score are a P.C2 quantity.",
+   "owner_approval": null
+  },
+  {
+   "id": "C2.02",
+   "title": "Searching-predecessor lifecycle extension",
+   "status": "CONTRACT_PASS",
+   "evidence": [
+    "tuppi_ai/research/c2_blind_bids.py::SearchPredecessor, evaluate_with_search_predecessors",
+    "research/c2_search_predecessor_contract.md",
+    "tests/research/test_c2_search.py (B02, B06, B07, B08)"
+   ],
+   "note": "Contract only: fork-isolated searching predecessors with state-exact caching. No literal cancellation is claimed; the live reached-only call schedule is untouched by construction. P.C2 gated.",
+   "owner_approval": null
+  },
+  {
+   "id": "C4.01",
+   "title": "Stage-specific legal exchange features/scorers and replay",
+   "status": "CONTRACT_PASS",
+   "evidence": [
+    "tuppi_ai/research/c4_exchange.py (52-card stage scorers, legal features, switch-off wrapper, 169-branch payoff tables, population guards)",
+    "tests/research/test_c4.py::test_X01_* (2), test_X02_*, test_X03_*, test_X07_*, test_X09_*, test_X10_*"
+   ],
+   "note": "Payoff tables use frozen masked HEURISTIC play controllers (contract fixture) with the perfect-information survival kept as a labelled proxy; the four-arm replay's controller is a fresh W32 best agent (cold) at the pre-give point. No scorer was trained (C4.02/P.C4).",
+   "owner_approval": null
+  },
+  {
+   "id": "C4.02",
+   "title": "Giver-weighted joint objective and bounded synthetic optimiser checks",
+   "status": "CONTRACT_PASS",
+   "evidence": [
+    "tuppi_ai/research/c4_training.py (giver-weighted joint objective, capped alternation, importance-weighted sampled messages, greedy recalibration, simultaneous four-arm analysis, X12 guard)",
+    "tests/research/test_c4_training.py::test_X04_*, test_X05_*, test_X06_*, test_X08_*, test_X11_*, test_X12_*"
+   ],
+   "note": "Exact tabular fixtures only, per the gate. No scorer was trained on real states; the torch scorers of C4.01 are initialised, not fitted. Convention-aware defence: UNRESOLVED by design until proposal weights or a validated sampler exist.",
+   "owner_approval": null
+  },
+  {
+   "id": "C5.01",
+   "title": "v3-preserving complete support and legal information-group adapter",
+   "status": "CONTRACT_PASS",
+   "evidence": [
+    "tuppi_ai/research/c5_option.py (eligibility, counted complete support, strict/native agreement, v3-preserving reconstruction, information-group optimiser)",
+    "tests/research/test_c5.py::test_O01_*, test_O02_*, test_O03_*, test_O04_*, test_O09_*"
+   ],
+   "note": null,
+   "owner_approval": null
+  },
+  {
+   "id": "C5.02",
+   "title": "Contingent option store and full-policy comparator",
+   "status": "CONTRACT_PASS",
+   "evidence": [
+    "tuppi_ai/research/c5_option.py (C5Agent contingent option store, fallbacks, comparators, clairvoyant bound)",
+    "research/c5_contract_report.md",
+    "logs/c5_diagnostics.json",
+    "tests/research/test_c5.py::test_O05_O06_O07_*, test_O08_*, test_O10_*"
+   ],
+   "note": "Contract pass stands. P.C5 stage 1 found no transfer gain against real W128 opponents; the fixed-clone v1 design is not recommended for promotion.",
+   "owner_approval": null
+  },
+  {
+   "id": "C3a.01",
+   "title": "Mode-state sufficiency report and pure kernel solver",
+   "status": "CONTRACT_PASS",
+   "evidence": [
+    "tuppi_ai/research/c3_kernel.py",
+    "research/c3_state_sufficiency.md",
+    "tests/research/test_c3a.py::test_K05_* (3), test_K06_* (2), test_K07_*, test_K08_*, test_K09_*",
+    "tests/research/test_c0_lifecycle.py::test_A06_sequence_covers_* (mode trace vs native config)"
+   ],
+   "note": "Contract scope only: solver + sufficiency evidence. The proposed marginal-RNG mode model is NOT validated against B0; tested reduction C==P gives 1600 nominal states. P.C3a (row sampling and direct-match validation) remains gated.",
+   "owner_approval": null
+  },
+  {
+   "id": "P.C1",
+   "title": "C1 planning and independent screening",
+   "status": "NOT_AUTHORISED",
+   "evidence": [
+    "research/c1_f_measurement_manifest.json",
+    "research/c1_f_measurement_results.md",
+    "logs/c1_branch_fraction.json"
+   ],
+   "note": "Owner approved only a bounded pre-pilot measurement of f (2026-09-26): 12 deals, 116.8 CPU-s. f = 1.3% [0, 3.8%]; total saving bound <= 1.9% even at r = 0.5. The full P.C1 pilot is not recommended and remains unauthorised.",
+   "owner_approval": null
+  },
+  {
+   "id": "P.C3b",
+   "title": "Utility-stop cost/parity screen",
+   "status": "NOT_AUTHORISED",
+   "evidence": [],
+   "note": null,
+   "owner_approval": null
+  },
+  {
+   "id": "P.C2",
+   "title": "Consequential-bid independent screen",
+   "status": "PILOT_COMPLETE",
+   "evidence": [
+    "research/c2_screen_manifest.json",
+    "research/c2_screen_stage1_results.md",
+    "logs/c2_screen_stage1.json",
+    "logs/c2_screen_smoke.json",
+    "research/c2_stage2_manifest.json",
+    "research/c2_screen_stage2_results.md",
+    "logs/c2_screen_stage2.json",
+    "logs/c2_screen_stage2_smoke.json"
+   ],
+   "note": "Stage 1 only. Exclusion rate 22-38% by position (premise holds; clone vs W128 predecessor agreement 96%), but reweighting at a FIXED 64-world budget made validated picks worse (R -0.005 over 11 changed positions; winner's curse toward high-variance RAMI bids). Stage 2 (equal effective 128 worlds via rejection) proposed, not run. STAGE 2 (fresh 30 deals, 44 bids, 548 CPU-s): at an equal effective 128-world sample, conditioning did not improve validated picks (RC128 - F128c control -0.00048 +- 0.00028 per reached call; RC128 - live -0.00013 +- 0.00030). A fresh W128 resample alone changes the bid in 57% of positions. Not recommended for a whole-game test.",
+   "owner_approval": "owner chat 2026-09-26: 'Please do that' for C2 stage 1 at about 12 CPU-minutes; stage 2: owner chat 2026-09-26 'please run it' (about 10-12 CPU-minutes)"
+  },
+  {
+   "id": "P.C4",
+   "title": "Joint exchange training and four-arm screen",
+   "status": "NOT_AUTHORISED",
+   "evidence": [],
+   "note": null,
+   "owner_approval": null
+  },
+  {
+   "id": "P.C5",
+   "title": "Exact-option coverage, cost and transfer screen",
+   "status": "PILOT_COMPLETE",
+   "evidence": [
+    "research/c5_screen_manifest.json",
+    "research/c5_screen_stage1_results.md",
+    "logs/c5_screen_stage1.json",
+    "logs/c5_screen_smoke.json"
+   ],
+   "note": "Stage 1 screen only (64 positions). Coverage 25% (100-world cap); 11 of 14 started options fell back off-support against real W128 opponents (clone-model mismatch); transfer -0.0014 [-0.0040, +0.0013], the one changed outcome lost 0.087. Recommend: do not promote C5 v1.",
+   "owner_approval": "owner chat 2026-09-26: 'move to the next target' after setting C1 aside; stage-1 caps 80 deals / 1200 CPU-s / 400 s stated before the run"
+  },
+  {
+   "id": "P.C3a",
+   "title": "State-row experiment and direct-match validation",
+   "status": "NOT_AUTHORISED",
+   "evidence": [],
+   "note": null,
+   "owner_approval": null
+  },
+  {
+   "id": "CONFIRM",
+   "title": "Independent full-game confirmation of a nominated survivor",
+   "status": "NOT_AUTHORISED",
+   "evidence": [],
+   "note": null,
+   "owner_approval": null
+  },
+  {
+   "id": "COMPOSE",
+   "title": "One-at-a-time composition and interaction tests",
+   "status": "NOT_AUTHORISED",
+   "evidence": [],
+   "note": null,
+   "owner_approval": null
+  },
+  {
+   "id": "DEPLOY",
+   "title": "Separately authorised live integration and restoration validation",
+   "status": "NOT_AUTHORISED",
+   "evidence": [],
+   "note": null,
+   "owner_approval": null
+  }
+ ],
+ "contract_tests": {
+  "total": 109,
+  "passed": 109,
+  "failed": 0,
+  "skipped": 0,
+  "acceptance_ids_covered": 74,
+  "log": "implementation_output/logs/pytest_research_final.log"
+ },
+ "resources": {
+  "contract_stage": {
+   "wall_s": 273.1,
+   "cpu_s": 484.5,
+   "caps": {
+    "wall_s": 900,
+    "cpu_s": 1800
+   },
+   "fixture_decks": 11,
+   "all_cheap_policy_decks": 27,
+   "search_probes": 30,
+   "search_smoke_games": 2
+  },
+  "owner_approved_runs": {
+   "wall_s": 389.0,
+   "cpu_s": 2114.8
+  }
+ },
+ "headline_results": {
+  "C1_branch_fraction": {
+   "f": 0.0131,
+   "f_ci95": [
+    0.0,
+    0.0379
+   ],
+   "total_saving_bound_r_0.5": 0.019,
+   "cpu_share": {
+    "bids": 0.531,
+    "rami_early_leads": 0.198,
+    "rami_early_follows": 0.124,
+    "nolo_play": 0.07
+   },
+   "disposition": "set aside"
+  },
+  "C5_stage1": {
+   "positions": 64,
+   "coverage_exact_le_100_worlds": 0.25,
+   "options_started": 14,
+   "off_support_at_next_decision": 11,
+   "transfer_diff_per_position": -0.00135,
+   "transfer_ci95": [
+    -0.004,
+    0.0013
+   ],
+   "changed_outcomes": 1,
+   "changed_outcome_value": -0.0865,
+   "latency_ms": {
+    "p50": 3.9,
+    "p95": 92.8,
+    "max": 105.9
+   },
+   "disposition": "not promoted"
+  },
+  "C2_stage1": {
+   "positions": 50,
+   "exclusion_rate_by_k": {
+    "1": 0.217,
+    "2": 0.378,
+    "3": 0.378
+   },
+   "clone_vs_w128_event_agreement": 0.958,
+   "validated_R_changed_picks_mean": -0.0051,
+   "validated_R_better_worse": [
+    0,
+    3
+   ]
+  },
+  "C2_stage2": {
+   "positions": 44,
+   "noise_control_flip_rate": 0.568,
+   "RC128_minus_live": [
+    -0.00013,
+    0.0003
+   ],
+   "RC128_minus_F128c": [
+    -0.00048,
+    0.00028
+   ],
+   "R128_minus_F128c": [
+    -0.00063,
+    0.0004
+   ],
+   "disposition": "not recommended for a whole-game test"
+  },
+  "C3b": {
+   "grid_states_certified": [
+    13216,
+    45500
+   ],
+   "as_is_6_trick_tail_certified_rows_on_tested_case": 0
+  },
+  "C3a": {
+   "nominal_states_after_C_equals_P": 1600
+  }
+ },
+ "owner_decision": "stop the package's pilots after C1, C5 and C2 (2026-09-26)",
+ "main_document": "RETURN_TO_PLANNER.md"
+}

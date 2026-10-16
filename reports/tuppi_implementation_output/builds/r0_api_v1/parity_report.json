@@ -1,0 +1,634 @@
+{
+ "chunk32_vs_chunk128_bitwise_equal_on_F02": {
+  "non_discriminating": "F02 has five tricks left, so every rollout goes straight to the solver (0 MLP rows)",
+  "value": true
+ },
+ "chunk_invariance_on_mlp_cases": {
+  "B0-source": {
+   "F02b-discard-pos3-chunk128": {
+    "mlp_rows_at_chunk32": 4096,
+    "per_world_bitwise_equal": true,
+    "rng_after_equal": true
+   },
+   "F02deck-nolo-lead-chunk128": {
+    "mlp_rows_at_chunk32": 44928,
+    "per_world_bitwise_equal": true,
+    "rng_after_equal": true
+   }
+  },
+  "R0-parity": {
+   "F02b-discard-pos3-chunk128": {
+    "mlp_rows_at_chunk32": 4096,
+    "per_world_bitwise_equal": true,
+    "rng_after_equal": true
+   },
+   "F02deck-nolo-lead-chunk128": {
+    "mlp_rows_at_chunk32": 44928,
+    "per_world_bitwise_equal": true,
+    "rng_after_equal": true
+   }
+  }
+ },
+ "imports": {
+  "B0-installed": {
+   "engine_resolves_to_v3_checkout": true,
+   "executable": "/Users/pyryouri/.venvs/tuppi-v2/bin/python",
+   "prefix": "/Users/pyryouri/.venvs/tuppi-v2",
+   "python": "3.14.2 (v3.14.2:df793163d58, Dec  5 2025, 12:18:06) [Clang 16.0.0 (clang-1600.0.26.6)]",
+   "research_modules_loaded": [],
+   "tuppi_engine": "/Users/pyryouri/Developer/TuppiProject-current/src/tuppi_engine/__init__.py",
+   "tuppi_rules": "/Users/pyryouri/Developer/TuppiProject-current/src/tuppi_rules/__init__.py"
+  },
+  "B0-source": {
+   "engine_resolves_to_v3_checkout": true,
+   "executable": "/Users/pyryouri/.venvs/tuppi-v2/bin/python",
+   "prefix": "/Users/pyryouri/.venvs/tuppi-v2",
+   "python": "3.14.2 (v3.14.2:df793163d58, Dec  5 2025, 12:18:06) [Clang 16.0.0 (clang-1600.0.26.6)]",
+   "research_modules_loaded": [],
+   "tuppi_engine": "/Users/pyryouri/Developer/TuppiProject-current/src/tuppi_engine/__init__.py",
+   "tuppi_rules": "/Users/pyryouri/Developer/TuppiProject-current/src/tuppi_rules/__init__.py"
+  },
+  "R0-parity": {
+   "engine_resolves_to_v3_checkout": true,
+   "executable": "/Users/pyryouri/.venvs/tuppi-v2/bin/python",
+   "prefix": "/Users/pyryouri/.venvs/tuppi-v2",
+   "python": "3.14.2 (v3.14.2:df793163d58, Dec  5 2025, 12:18:06) [Clang 16.0.0 (clang-1600.0.26.6)]",
+   "research_modules_loaded": [],
+   "tuppi_engine": "/Users/pyryouri/Developer/TuppiProject-current/src/tuppi_engine/__init__.py",
+   "tuppi_rules": "/Users/pyryouri/Developer/TuppiProject-current/src/tuppi_rules/__init__.py"
+  }
+ },
+ "libraries": {
+  "B0-installed": {
+   "mapped_tuppi_images": [
+    "/Users/pyryouri/Developer/TuppiAI/native/libtuppi.dylib"
+   ],
+   "path": "/Users/pyryouri/Developer/TuppiAI/native/libtuppi.dylib",
+   "sha256": "02d9b4fad98ebb342e12cd9ecb4723aaee1406c6c6b539a1dc4a5b2b002c1ab8",
+   "struct_sizes": {
+    "TcDeal": 184,
+    "TcObs": 152
+   }
+  },
+  "B0-source": {
+   "mapped_tuppi_images": [
+    "/Users/pyryouri/Developer/TuppiAI/native/research/build/source/libtuppi.dylib"
+   ],
+   "path": "/Users/pyryouri/Developer/TuppiAI/native/research/build/source/libtuppi.dylib",
+   "sha256": "02d9b4fad98ebb342e12cd9ecb4723aaee1406c6c6b539a1dc4a5b2b002c1ab8",
+   "struct_sizes": {
+    "TcDeal": 184,
+    "TcObs": 152
+   }
+  },
+  "R0-parity": {
+   "mapped_tuppi_images": [
+    "/Users/pyryouri/Developer/TuppiAI/native/research/build/research/libtuppi_research.dylib"
+   ],
+   "path": "/Users/pyryouri/Developer/TuppiAI/native/research/build/research/libtuppi_research.dylib",
+   "sha256": "103528066219c03cea949ae306ac10ba29661cd587878efcfee4f554ae5a41bc",
+   "struct_sizes": {
+    "TcDeal": 184,
+    "TcObs": 152
+   }
+  }
+ },
+ "probe_parity_all_libraries": true,
+ "probes": [
+  {
+   "B0-installed": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "B0-source": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0-parity": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0_research_exports": {
+    "all_cells_valid": true,
+    "explicit_cont_rng_equals_original_final": true,
+    "explicit_equals_original": true,
+    "row_status_counts": {
+     "1": 640
+    },
+    "sample_only_equals_trace": true,
+    "trace_equals_original": true
+   },
+   "id": "F02-discard-pos2",
+   "work": {
+    "dd_solves": 640,
+    "first_actions": 640,
+    "mlp_batches": 0,
+    "mlp_rows": 0,
+    "plies": 0,
+    "rounds": 1,
+    "sooli_resolutions": 0
+   }
+  },
+  {
+   "B0-installed": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "B0-source": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0-parity": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0_research_exports": {
+    "all_cells_valid": true,
+    "explicit_cont_rng_equals_original_final": true,
+    "explicit_equals_original": true,
+    "row_status_counts": {
+     "1": 1024
+    },
+    "sample_only_equals_trace": true,
+    "trace_equals_original": true
+   },
+   "id": "F02b-discard-pos3",
+   "work": {
+    "dd_solves": 1024,
+    "first_actions": 1024,
+    "mlp_batches": 128,
+    "mlp_rows": 4096,
+    "plies": 4096,
+    "rounds": 5,
+    "sooli_resolutions": 0
+   }
+  },
+  {
+   "B0-installed": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "B0-source": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0-parity": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0_research_exports": {
+    "all_cells_valid": true,
+    "explicit_cont_rng_equals_original_final": true,
+    "explicit_equals_original": true,
+    "row_status_counts": {
+     "1": 384
+    },
+    "sample_only_equals_trace": true,
+    "trace_equals_original": true
+   },
+   "id": "F05-three-card-lead",
+   "work": {
+    "dd_solves": 384,
+    "first_actions": 384,
+    "mlp_batches": 0,
+    "mlp_rows": 0,
+    "plies": 0,
+    "rounds": 1,
+    "sooli_resolutions": 0
+   }
+  },
+  {
+   "B0-installed": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "B0-source": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0-parity": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0_research_exports": {
+    "all_cells_valid": true,
+    "explicit_cont_rng_equals_original_final": true,
+    "explicit_equals_original": true,
+    "row_status_counts": {
+     "1": 768
+    },
+    "sample_only_equals_trace": true,
+    "trace_equals_original": true
+   },
+   "id": "F01-bid-cold",
+   "work": {
+    "dd_solves": 749,
+    "first_actions": 768,
+    "mlp_batches": 684,
+    "mlp_rows": 21356,
+    "plies": 21356,
+    "rounds": 30,
+    "sooli_resolutions": 411
+   }
+  },
+  {
+   "B0-installed": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "B0-source": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0-parity": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0_research_exports": {
+    "all_cells_valid": true,
+    "explicit_cont_rng_equals_original_final": true,
+    "explicit_equals_original": true,
+    "row_status_counts": {
+     "1": 768
+    },
+    "sample_only_equals_trace": true,
+    "trace_equals_original": true
+   },
+   "id": "F01-bid-offer-mode",
+   "work": {
+    "dd_solves": 758,
+    "first_actions": 768,
+    "mlp_batches": 684,
+    "mlp_rows": 21608,
+    "plies": 21608,
+    "rounds": 30,
+    "sooli_resolutions": 432
+   }
+  },
+  {
+   "B0-installed": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "B0-source": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0-parity": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0_research_exports": {
+    "all_cells_valid": true,
+    "explicit_cont_rng_equals_original_final": true,
+    "explicit_equals_original": true,
+    "row_status_counts": {
+     "1": 1280
+    },
+    "sample_only_equals_trace": true,
+    "trace_equals_original": true
+   },
+   "id": "F01-forehand-bid-play-mode",
+   "work": {
+    "dd_solves": 1231,
+    "first_actions": 1280,
+    "mlp_batches": 1123,
+    "mlp_rows": 35412,
+    "plies": 35412,
+    "rounds": 32,
+    "sooli_resolutions": 1244
+   }
+  },
+  {
+   "B0-installed": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "B0-source": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0-parity": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0_research_exports": {
+    "all_cells_valid": true,
+    "explicit_cont_rng_equals_original_final": true,
+    "explicit_equals_original": true,
+    "row_status_counts": {
+     "1": 1664
+    },
+    "sample_only_equals_trace": true,
+    "trace_equals_original": true
+   },
+   "id": "F03-give",
+   "work": {
+    "dd_solves": 0,
+    "first_actions": 1664,
+    "mlp_batches": 0,
+    "mlp_rows": 0,
+    "plies": 0,
+    "rounds": 1,
+    "sooli_resolutions": 1664
+   }
+  },
+  {
+   "B0-installed": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "B0-source": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0-parity": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0_research_exports": {
+    "all_cells_valid": true,
+    "explicit_cont_rng_equals_original_final": true,
+    "explicit_equals_original": true,
+    "row_status_counts": {
+     "1": 80
+    },
+    "sample_only_equals_trace": true,
+    "trace_equals_original": true
+   },
+   "id": "F02-discard-pos2-W16",
+   "work": {
+    "dd_solves": 80,
+    "first_actions": 80,
+    "mlp_batches": 0,
+    "mlp_rows": 0,
+    "plies": 0,
+    "rounds": 1,
+    "sooli_resolutions": 0
+   }
+  },
+  {
+   "B0-installed": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "B0-source": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0-parity": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0_research_exports": {
+    "all_cells_valid": true,
+    "explicit_cont_rng_equals_original_final": true,
+    "explicit_equals_original": true,
+    "row_status_counts": {
+     "1": 640
+    },
+    "sample_only_equals_trace": true,
+    "trace_equals_original": true
+   },
+   "id": "F02-discard-pos2-chunk128",
+   "work": {
+    "dd_solves": 640,
+    "first_actions": 640,
+    "mlp_batches": 0,
+    "mlp_rows": 0,
+    "plies": 0,
+    "rounds": 1,
+    "sooli_resolutions": 0
+   }
+  },
+  {
+   "B0-installed": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "B0-source": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0-parity": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0_research_exports": {
+    "all_cells_valid": true,
+    "explicit_cont_rng_equals_original_final": true,
+    "explicit_equals_original": true,
+    "row_status_counts": {
+     "1": 1664
+    },
+    "sample_only_equals_trace": true,
+    "trace_equals_original": true
+   },
+   "id": "F02deck-nolo-lead",
+   "work": {
+    "dd_solves": 1664,
+    "first_actions": 1664,
+    "mlp_batches": 1404,
+    "mlp_rows": 44928,
+    "plies": 44928,
+    "rounds": 28,
+    "sooli_resolutions": 0
+   }
+  },
+  {
+   "B0-installed": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "B0-source": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0-parity": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0_research_exports": {
+    "all_cells_valid": true,
+    "explicit_cont_rng_equals_original_final": true,
+    "explicit_equals_original": true,
+    "row_status_counts": {
+     "1": 256
+    },
+    "sample_only_equals_trace": true,
+    "trace_equals_original": true
+   },
+   "id": "F03deck-offer",
+   "work": {
+    "dd_solves": 128,
+    "first_actions": 256,
+    "mlp_batches": 112,
+    "mlp_rows": 3584,
+    "plies": 3584,
+    "rounds": 29,
+    "sooli_resolutions": 256
+   }
+  },
+  {
+   "B0-installed": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "B0-source": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0-parity": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0_research_exports": {
+    "all_cells_valid": true,
+    "explicit_cont_rng_equals_original_final": true,
+    "explicit_equals_original": true,
+    "row_status_counts": {
+     "1": 384
+    },
+    "sample_only_equals_trace": true,
+    "trace_equals_original": true
+   },
+   "id": "F03deck-soolaaja-play",
+   "work": {
+    "dd_solves": 0,
+    "first_actions": 384,
+    "mlp_batches": 0,
+    "mlp_rows": 0,
+    "plies": 0,
+    "rounds": 1,
+    "sooli_resolutions": 384
+   }
+  },
+  {
+   "B0-installed": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "B0-source": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0-parity": {
+    "same_as_B0_source": true,
+    "status": "ok"
+   },
+   "R0_research_exports": {
+    "all_cells_valid": true,
+    "explicit_cont_rng_equals_original_final": true,
+    "explicit_equals_original": true,
+    "row_status_counts": {
+     "1": 1664
+    },
+    "sample_only_equals_trace": true,
+    "trace_equals_original": true
+   },
+   "id": "F03deck-ordinary-rami-after-declines",
+   "work": {
+    "dd_solves": 1664,
+    "first_actions": 1664,
+    "mlp_batches": 1404,
+    "mlp_rows": 44928,
+    "plies": 44928,
+    "rounds": 28,
+    "sooli_resolutions": 0
+   }
+  }
+ ],
+ "research_exports_all_equal": true,
+ "schema": "tuppi.research.parity_report.v1",
+ "scope": "tested equivalence on these fixed cases only; not a universal proof",
+ "sequence_parity": true,
+ "sequences": [
+  {
+   "B0-installed": true,
+   "B0-source": true,
+   "R0-parity": true,
+   "R0_native_config_trace": [
+    {
+     "encoder": 2,
+     "n": 3328,
+     "p_random_start": 0.0,
+     "rollout_chunk": 32,
+     "single_deal": 1,
+     "slot_digest": 6135232648965353807,
+     "sooli_belief": 0,
+     "sooli_lambda": 0.0,
+     "sooli_play_heur": 0,
+     "sooli_return_pi": 0,
+     "version": 1
+    },
+    {
+     "encoder": 2,
+     "n": 3328,
+     "p_random_start": 0.0,
+     "rollout_chunk": 32,
+     "single_deal": 1,
+     "slot_digest": 6135232648965353807,
+     "sooli_belief": 0,
+     "sooli_lambda": 0.0,
+     "sooli_play_heur": 0,
+     "sooli_return_pi": 0,
+     "version": 1
+    },
+    {
+     "encoder": 2,
+     "n": 3328,
+     "p_random_start": 0.0,
+     "rollout_chunk": 32,
+     "single_deal": 1,
+     "slot_digest": 6135232648965353807,
+     "sooli_belief": 0,
+     "sooli_lambda": 0.0,
+     "sooli_play_heur": 0,
+     "sooli_return_pi": 0,
+     "version": 1
+    },
+    {
+     "encoder": 2,
+     "n": 3328,
+     "p_random_start": 0.0,
+     "rollout_chunk": 32,
+     "single_deal": 1,
+     "slot_digest": 6135232648965353807,
+     "sooli_belief": 0,
+     "sooli_lambda": 0.0,
+     "sooli_play_heur": 0,
+     "sooli_return_pi": 0,
+     "version": 1
+    },
+    {
+     "encoder": 2,
+     "n": 3328,
+     "p_random_start": 0.0,
+     "rollout_chunk": 32,
+     "single_deal": 1,
+     "slot_digest": 6135232648965353807,
+     "sooli_belief": 0,
+     "sooli_lambda": 0.0,
+     "sooli_play_heur": 0,
+     "sooli_return_pi": 0,
+     "version": 1
+    },
+    {
+     "encoder": 2,
+     "n": 3328,
+     "p_random_start": 0.0,
+     "rollout_chunk": 32,
+     "single_deal": 1,
+     "slot_digest": 6135232648965353807,
+     "sooli_belief": 0,
+     "sooli_lambda": 0.0,
+     "sooli_play_heur": 0,
+     "sooli_return_pi": 0,
+     "version": 1
+    }
+   ],
+   "calls": 6,
+   "id": "best-seat3-F02deck"
+  }
+ ]
+}

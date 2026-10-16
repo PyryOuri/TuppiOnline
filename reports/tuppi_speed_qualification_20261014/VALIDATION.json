@@ -1,0 +1,301 @@
+{
+  "schema": "tuppi.speed_qualification.final_validation.v1",
+  "status": "QUALIFICATION_COMPLETE",
+  "selected_variant": "compact128",
+  "package_sha256": "b0740b48c241377271510ae4e9f03bb8a46b5e9e39861de755d048c3a867325a",
+  "sealed_files": 337,
+  "all_stages_complete_exact": true,
+  "aggregate_child_cpu_charged_seconds": 2754.249533,
+  "original_packages_verified": true,
+  "production_source_drift": [],
+  "source_write_scope": "New qualification directory only",
+  "scientific_costing_plans_executed": false,
+  "new_strength_result": false,
+  "deployment": false,
+  "cli_previews_pass": true,
+  "default_run_created_no_outputs": true,
+  "python_sources_compile": true,
+  "local_links_checked": 33,
+  "broken_links": [],
+  "commands": [
+    {
+      "args": [
+        "verify"
+      ],
+      "output": {
+        "status": "VERIFIED",
+        "baseline": "compact128"
+      }
+    },
+    {
+      "args": [
+        "preview",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_speed_qualification_20261014/configs/heuristic_guard_costing.json"
+      ],
+      "output": {
+        "name": "heuristic_guard_costing",
+        "stage": "costing",
+        "jobs": 3,
+        "workers": 1,
+        "cpu_reserved_seconds": 1800,
+        "wall_reserved_seconds": 2160,
+        "status": "PREPARED_NOT_EXECUTED",
+        "automatic_confirmation": false,
+        "qualified_baseline": "compact128"
+      }
+    },
+    {
+      "args": [
+        "run",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_speed_qualification_20261014/configs/heuristic_guard_costing.json"
+      ],
+      "output": {
+        "name": "heuristic_guard_costing",
+        "stage": "costing",
+        "jobs": 3,
+        "workers": 1,
+        "cpu_reserved_seconds": 1800,
+        "wall_reserved_seconds": 2160,
+        "status": "PREPARED_NOT_EXECUTED",
+        "automatic_confirmation": false,
+        "qualified_baseline": "compact128"
+      }
+    },
+    {
+      "args": [
+        "preview",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_speed_qualification_20261014/configs/match_costing.json"
+      ],
+      "output": {
+        "name": "match_costing",
+        "stage": "costing",
+        "jobs": 1,
+        "workers": 1,
+        "cpu_reserved_seconds": 600,
+        "wall_reserved_seconds": 660,
+        "status": "PREPARED_NOT_EXECUTED",
+        "automatic_confirmation": false,
+        "qualified_baseline": "compact128"
+      }
+    },
+    {
+      "args": [
+        "run",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_speed_qualification_20261014/configs/match_costing.json"
+      ],
+      "output": {
+        "name": "match_costing",
+        "stage": "costing",
+        "jobs": 1,
+        "workers": 1,
+        "cpu_reserved_seconds": 600,
+        "wall_reserved_seconds": 660,
+        "status": "PREPARED_NOT_EXECUTED",
+        "automatic_confirmation": false,
+        "qualified_baseline": "compact128"
+      }
+    },
+    {
+      "args": [
+        "preview",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_speed_qualification_20261014/configs/strength_costing.json"
+      ],
+      "output": {
+        "name": "strength_costing",
+        "stage": "costing",
+        "jobs": 6,
+        "workers": 1,
+        "cpu_reserved_seconds": 3600,
+        "wall_reserved_seconds": 4320,
+        "status": "PREPARED_NOT_EXECUTED",
+        "automatic_confirmation": false,
+        "qualified_baseline": "compact128"
+      }
+    },
+    {
+      "args": [
+        "run",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_speed_qualification_20261014/configs/strength_costing.json"
+      ],
+      "output": {
+        "name": "strength_costing",
+        "stage": "costing",
+        "jobs": 6,
+        "workers": 1,
+        "cpu_reserved_seconds": 3600,
+        "wall_reserved_seconds": 4320,
+        "status": "PREPARED_NOT_EXECUTED",
+        "automatic_confirmation": false,
+        "qualified_baseline": "compact128"
+      }
+    }
+  ],
+  "links": [
+    {
+      "source": "README.md",
+      "target": "REPORT.md",
+      "exists": true
+    },
+    {
+      "source": "README.md",
+      "target": "../tuppi_cheap_wins_preparation_20261014/README.md",
+      "exists": true
+    },
+    {
+      "source": "README.md",
+      "target": "../tuppi_additional_exact_wins_20261014/REPORT.md",
+      "exists": true
+    },
+    {
+      "source": "README.md",
+      "target": "../tuppi_cheap_wins_preparation_20261014/PROTOCOL.md",
+      "exists": true
+    },
+    {
+      "source": "README.md",
+      "target": "QUALIFIED_BASELINE.json",
+      "exists": true
+    },
+    {
+      "source": "README.md",
+      "target": "SUMMARY.json",
+      "exists": true
+    },
+    {
+      "source": "README.md",
+      "target": "GATES.json",
+      "exists": true
+    },
+    {
+      "source": "README.md",
+      "target": "BUILD.json",
+      "exists": true
+    },
+    {
+      "source": "README.md",
+      "target": "PLAN.json",
+      "exists": true
+    },
+    {
+      "source": "README.md",
+      "target": "bindings.py",
+      "exists": true
+    },
+    {
+      "source": "README.md",
+      "target": "FACTORY_CHECK.json",
+      "exists": true
+    },
+    {
+      "source": "README.md",
+      "target": "WRAPPER_CHECK.json",
+      "exists": true
+    },
+    {
+      "source": "README.md",
+      "target": "PACKAGE.json",
+      "exists": true
+    },
+    {
+      "source": "README.md",
+      "target": "VALIDATION.json",
+      "exists": true
+    },
+    {
+      "source": "REPORT.md",
+      "target": "SUMMARY.json",
+      "exists": true
+    },
+    {
+      "source": "REPORT.md",
+      "target": "analyse.py",
+      "exists": true
+    },
+    {
+      "source": "REPORT.md",
+      "target": "PARALLEL_CROSS_CHECK.json",
+      "exists": true
+    },
+    {
+      "source": "REPORT.md",
+      "target": "ZERO_CHECK.json",
+      "exists": true
+    },
+    {
+      "source": "REPORT.md",
+      "target": "GATES.json",
+      "exists": true
+    },
+    {
+      "source": "REPORT.md",
+      "target": "QUALIFIED_BASELINE.json",
+      "exists": true
+    },
+    {
+      "source": "REPORT.md",
+      "target": "BUILD.json",
+      "exists": true
+    },
+    {
+      "source": "REPORT.md",
+      "target": "bindings.py",
+      "exists": true
+    },
+    {
+      "source": "REPORT.md",
+      "target": "FACTORY_CHECK.json",
+      "exists": true
+    },
+    {
+      "source": "REPORT.md",
+      "target": "WRAPPER_CHECK.json",
+      "exists": true
+    },
+    {
+      "source": "REPORT.md",
+      "target": "launch_analysis.py",
+      "exists": true
+    },
+    {
+      "source": "REPORT.md",
+      "target": "PLAN.json",
+      "exists": true
+    },
+    {
+      "source": "REPORT.md",
+      "target": "PARALLEL_PARITY_PLAN.json",
+      "exists": true
+    },
+    {
+      "source": "REPORT.md",
+      "target": "ZERO_PLAN.json",
+      "exists": true
+    },
+    {
+      "source": "REPORT.md",
+      "target": "BUILD.json",
+      "exists": true
+    },
+    {
+      "source": "REPORT.md",
+      "target": "FIXTURES.json",
+      "exists": true
+    },
+    {
+      "source": "REPORT.md",
+      "target": "PACKAGE.json",
+      "exists": true
+    },
+    {
+      "source": "REPORT.md",
+      "target": "VALIDATION.json",
+      "exists": true
+    },
+    {
+      "source": "REPORT.md",
+      "target": "README.md",
+      "exists": true
+    }
+  ],
+  "validation_scope": "Frozen Mac controller and recorded synthetic fixed inputs; no end-to-end app, portable/device or general strength acceptance."
+}

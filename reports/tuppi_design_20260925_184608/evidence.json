@@ -1,0 +1,4827 @@
+[
+  {
+    "evidence_id": "E001",
+    "repo": "AI",
+    "path": "tuppi_ai/best.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      36
+    ],
+    "sha256": "bdec3507cbf2bfaa248d513244353c4a02aad36650f368c5ecc8e2aa1f7568db",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "best_agents",
+        "lines": [
+          28,
+          36
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E002",
+    "repo": "AI",
+    "path": "tuppi_ai/search.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      316
+    ],
+    "sha256": "ec43cb390dd1ba571991de1523995791df936292f5a4408c8207e90c73366612",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "Searcher",
+        "lines": [
+          28,
+          199
+        ]
+      },
+      {
+        "symbol": "SearchAgent",
+        "lines": [
+          214,
+          316
+        ]
+      },
+      {
+        "symbol": "__init__",
+        "lines": [
+          35,
+          66
+        ]
+      },
+      {
+        "symbol": "action_values",
+        "lines": [
+          68,
+          116
+        ]
+      },
+      {
+        "symbol": "_direct_belief_worlds",
+        "lines": [
+          118,
+          130
+        ]
+      },
+      {
+        "symbol": "_learned_belief_worlds",
+        "lines": [
+          132,
+          155
+        ]
+      },
+      {
+        "symbol": "sample_worlds",
+        "lines": [
+          157,
+          194
+        ]
+      },
+      {
+        "symbol": "_collect",
+        "lines": [
+          196,
+          199
+        ]
+      },
+      {
+        "symbol": "__init__",
+        "lines": [
+          220,
+          245
+        ]
+      },
+      {
+        "symbol": "_sooli_action",
+        "lines": [
+          247,
+          270
+        ]
+      },
+      {
+        "symbol": "choose_action",
+        "lines": [
+          272,
+          316
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E003",
+    "repo": "AI",
+    "path": "tuppi_ai/native.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      385
+    ],
+    "sha256": "3c6c13f50a710aee52dcc0a4b8f0b89d68c499b04cd2a6fb8726aa2325b4ef84",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "TcDeal",
+        "lines": [
+          25,
+          42
+        ]
+      },
+      {
+        "symbol": "TcObs",
+        "lines": [
+          45,
+          59
+        ]
+      },
+      {
+        "symbol": "feature_dim",
+        "lines": [
+          147,
+          148
+        ]
+      },
+      {
+        "symbol": "dd_team0_tricks",
+        "lines": [
+          151,
+          153
+        ]
+      },
+      {
+        "symbol": "history_rows",
+        "lines": [
+          156,
+          160
+        ]
+      },
+      {
+        "symbol": "sample_world_weighted",
+        "lines": [
+          163,
+          169
+        ]
+      },
+      {
+        "symbol": "sample_world",
+        "lines": [
+          172,
+          176
+        ]
+      },
+      {
+        "symbol": "legal",
+        "lines": [
+          179,
+          182
+        ]
+      },
+      {
+        "symbol": "sooli_solve",
+        "lines": [
+          185,
+          187
+        ]
+      },
+      {
+        "symbol": "sooli_move_values",
+        "lines": [
+          190,
+          195
+        ]
+      },
+      {
+        "symbol": "sooli_policy",
+        "lines": [
+          198,
+          203
+        ]
+      },
+      {
+        "symbol": "legal_obs",
+        "lines": [
+          206,
+          209
+        ]
+      },
+      {
+        "symbol": "encode",
+        "lines": [
+          212,
+          216
+        ]
+      },
+      {
+        "symbol": "observe",
+        "lines": [
+          219,
+          222
+        ]
+      },
+      {
+        "symbol": "new_deal",
+        "lines": [
+          225,
+          229
+        ]
+      },
+      {
+        "symbol": "Env",
+        "lines": [
+          232,
+          318
+        ]
+      },
+      {
+        "symbol": "Mlp",
+        "lines": [
+          321,
+          350
+        ]
+      },
+      {
+        "symbol": "search_world_values",
+        "lines": [
+          358,
+          368
+        ]
+      },
+      {
+        "symbol": "search_values",
+        "lines": [
+          371,
+          379
+        ]
+      },
+      {
+        "symbol": "set_rollout_chunk",
+        "lines": [
+          382,
+          385
+        ]
+      },
+      {
+        "symbol": "__init__",
+        "lines": [
+          235,
+          250
+        ]
+      },
+      {
+        "symbol": "set_sooli",
+        "lines": [
+          252,
+          255
+        ]
+      },
+      {
+        "symbol": "set_equity",
+        "lines": [
+          257,
+          259
+        ]
+      },
+      {
+        "symbol": "observe",
+        "lines": [
+          261,
+          264
+        ]
+      },
+      {
+        "symbol": "step",
+        "lines": [
+          266,
+          269
+        ]
+      },
+      {
+        "symbol": "set_deal",
+        "lines": [
+          271,
+          273
+        ]
+      },
+      {
+        "symbol": "dd_finish",
+        "lines": [
+          275,
+          276
+        ]
+      },
+      {
+        "symbol": "observe_live",
+        "lines": [
+          278,
+          283
+        ]
+      },
+      {
+        "symbol": "step_live",
+        "lines": [
+          285,
+          290
+        ]
+      },
+      {
+        "symbol": "set_state_repeat",
+        "lines": [
+          292,
+          293
+        ]
+      },
+      {
+        "symbol": "park_all",
+        "lines": [
+          295,
+          296
+        ]
+      },
+      {
+        "symbol": "set_state",
+        "lines": [
+          298,
+          299
+        ]
+      },
+      {
+        "symbol": "deal",
+        "lines": [
+          301,
+          302
+        ]
+      },
+      {
+        "symbol": "hands",
+        "lines": [
+          304,
+          309
+        ]
+      },
+      {
+        "symbol": "reset_all",
+        "lines": [
+          311,
+          312
+        ]
+      },
+      {
+        "symbol": "__del__",
+        "lines": [
+          314,
+          318
+        ]
+      },
+      {
+        "symbol": "__init__",
+        "lines": [
+          324,
+          338
+        ]
+      },
+      {
+        "symbol": "forward",
+        "lines": [
+          340,
+          344
+        ]
+      },
+      {
+        "symbol": "__del__",
+        "lines": [
+          346,
+          350
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E004",
+    "repo": "AI",
+    "path": "native/tuppi_env.c",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      447
+    ],
+    "sha256": "243a4fea05410e6699b9770450059424b695a54fc4b3b23c2b8c27fee3949a2e",
+    "type": "CODE",
+    "symbols": [],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E005",
+    "repo": "AI",
+    "path": "native/tuppi_search.c",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      561
+    ],
+    "sha256": "c23b311ca10a04db1df64ffd3adef55dcb3a8b7ce6275d4b659176b0896bcb45",
+    "type": "CODE",
+    "symbols": [],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E006",
+    "repo": "AI",
+    "path": "native/tuppi_core.h",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      131
+    ],
+    "sha256": "7f38088fc44f5b67997a7b616aea4caea78fe07e18393c9b2cd3e7e59767837b",
+    "type": "CODE",
+    "symbols": [],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E007",
+    "repo": "AI",
+    "path": "native/tuppi_core.c",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      450
+    ],
+    "sha256": "2c3f0a539f6569d0927aea0d08fc8911304a88108e84667826b5c8a0c810ecbf",
+    "type": "CODE",
+    "symbols": [],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E008",
+    "repo": "AI",
+    "path": "native/tuppi_sooli_policy.c",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      320
+    ],
+    "sha256": "3e0f7b839220559f0d66ed28b7a00b76550654ec8fda090abbc6db01f962e702",
+    "type": "CODE",
+    "symbols": [],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E009",
+    "repo": "AI",
+    "path": "native/tuppi_dd.c",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      170
+    ],
+    "sha256": "156ea39dbef442dcdf8229af9495a50b9b6fea02f10d5b77dff1d7e129f88898",
+    "type": "CODE",
+    "symbols": [],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E010",
+    "repo": "AI",
+    "path": "native/tuppi_sooli.c",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      244
+    ],
+    "sha256": "5a867cacf552578a9b3b73b3352684825c524b27986aa03fd2221a60be47cb85",
+    "type": "CODE",
+    "symbols": [],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E011",
+    "repo": "AI",
+    "path": "tuppi_ai/bridge.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      111
+    ],
+    "sha256": "f2d24345e289c78dbf9efb07f0c7007519b638beb15b414446aaa78ffda429d2",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "mask_of",
+        "lines": [
+          31,
+          35
+        ]
+      },
+      {
+        "symbol": "action_id",
+        "lines": [
+          38,
+          47
+        ]
+      },
+      {
+        "symbol": "engine_action",
+        "lines": [
+          50,
+          59
+        ]
+      },
+      {
+        "symbol": "obs_from_player_observation",
+        "lines": [
+          62,
+          111
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E012",
+    "repo": "AI",
+    "path": "tuppi_ai/equity.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      130
+    ],
+    "sha256": "c03de75eb6f249f77d5066226fb68d3f6a1b48452a6cafc6202a543d925e3976",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "DealModel",
+        "lines": [
+          23,
+          50
+        ]
+      },
+      {
+        "symbol": "_outcomes",
+        "lines": [
+          53,
+          57
+        ]
+      },
+      {
+        "symbol": "solve",
+        "lines": [
+          60,
+          92
+        ]
+      },
+      {
+        "symbol": "native_table",
+        "lines": [
+          95,
+          102
+        ]
+      },
+      {
+        "symbol": "Equity",
+        "lines": [
+          105,
+          130
+        ]
+      },
+      {
+        "symbol": "from_outcomes",
+        "lines": [
+          29,
+          39
+        ]
+      },
+      {
+        "symbol": "to_json",
+        "lines": [
+          41,
+          44
+        ]
+      },
+      {
+        "symbol": "from_json",
+        "lines": [
+          47,
+          50
+        ]
+      },
+      {
+        "symbol": "__init__",
+        "lines": [
+          108,
+          111
+        ]
+      },
+      {
+        "symbol": "team0",
+        "lines": [
+          113,
+          119
+        ]
+      },
+      {
+        "symbol": "delta0",
+        "lines": [
+          121,
+          122
+        ]
+      },
+      {
+        "symbol": "save",
+        "lines": [
+          124,
+          126
+        ]
+      },
+      {
+        "symbol": "load",
+        "lines": [
+          129,
+          130
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E013",
+    "repo": "AI",
+    "path": "tuppi_ai/evaluate.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      218
+    ],
+    "sha256": "b133798fcb65a6ba8337e7da6bd346735b4d2d90762b6195d198060ae3a21d3b",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "_with_sooli",
+        "lines": [
+          32,
+          37
+        ]
+      },
+      {
+        "symbol": "_init",
+        "lines": [
+          40,
+          50
+        ]
+      },
+      {
+        "symbol": "_make_candidate",
+        "lines": [
+          53,
+          86
+        ]
+      },
+      {
+        "symbol": "_score_for",
+        "lines": [
+          89,
+          96
+        ]
+      },
+      {
+        "symbol": "_play",
+        "lines": [
+          99,
+          139
+        ]
+      },
+      {
+        "symbol": "measure",
+        "lines": [
+          142,
+          161
+        ]
+      },
+      {
+        "symbol": "summarise",
+        "lines": [
+          168,
+          178
+        ]
+      },
+      {
+        "symbol": "evaluate",
+        "lines": [
+          181,
+          194
+        ]
+      },
+      {
+        "symbol": "main",
+        "lines": [
+          197,
+          214
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E014",
+    "repo": "AI",
+    "path": "tuppi_ai/match_eval.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      104
+    ],
+    "sha256": "eca0f709d010b9e1df0e23938718443480de3dcd9ea2ffab8b3ea6feb24c34d9",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "_leg",
+        "lines": [
+          29,
+          52
+        ]
+      },
+      {
+        "symbol": "measure_pair",
+        "lines": [
+          55,
+          62
+        ]
+      },
+      {
+        "symbol": "evaluate_matches",
+        "lines": [
+          65,
+          83
+        ]
+      },
+      {
+        "symbol": "main",
+        "lines": [
+          86,
+          100
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E015",
+    "repo": "AI",
+    "path": "tuppi_ai/review.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      170
+    ],
+    "sha256": "eac6d53a0555afaa8e31cdc01edc8dd8aa5b1964f68fd2898752ff53d8c6d6db",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "ReviewedDecision",
+        "lines": [
+          38,
+          46
+        ]
+      },
+      {
+        "symbol": "decision_kind",
+        "lines": [
+          49,
+          68
+        ]
+      },
+      {
+        "symbol": "DealReviewer",
+        "lines": [
+          71,
+          144
+        ]
+      },
+      {
+        "symbol": "ServerReviewer",
+        "lines": [
+          147,
+          170
+        ]
+      },
+      {
+        "symbol": "__init__",
+        "lines": [
+          76,
+          87
+        ]
+      },
+      {
+        "symbol": "best",
+        "lines": [
+          90,
+          95
+        ]
+      },
+      {
+        "symbol": "_values",
+        "lines": [
+          97,
+          103
+        ]
+      },
+      {
+        "symbol": "_gap",
+        "lines": [
+          105,
+          111
+        ]
+      },
+      {
+        "symbol": "review_one",
+        "lines": [
+          113,
+          135
+        ]
+      },
+      {
+        "symbol": "review",
+        "lines": [
+          137,
+          144
+        ]
+      },
+      {
+        "symbol": "__init__",
+        "lines": [
+          152,
+          153
+        ]
+      },
+      {
+        "symbol": "review_decisions",
+        "lines": [
+          155,
+          170
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E016",
+    "repo": "ENGINE",
+    "path": "src/tuppi_engine/observations.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      245
+    ],
+    "sha256": "b0b9dee374a0857d63d59ef3e5c7e0d40f70ba6ad07f35b0eaa0086c4717a1dc",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "PlayerObservation",
+        "lines": [
+          34,
+          112
+        ]
+      },
+      {
+        "symbol": "legal_actions_for",
+        "lines": [
+          115,
+          117
+        ]
+      },
+      {
+        "symbol": "_show_options",
+        "lines": [
+          120,
+          129
+        ]
+      },
+      {
+        "symbol": "locked_bid_options",
+        "lines": [
+          132,
+          147
+        ]
+      },
+      {
+        "symbol": "_legal_actions_for_validated",
+        "lines": [
+          150,
+          188
+        ]
+      },
+      {
+        "symbol": "observation_for",
+        "lines": [
+          191,
+          195
+        ]
+      },
+      {
+        "symbol": "_observation_for_validated",
+        "lines": [
+          198,
+          241
+        ]
+      },
+      {
+        "symbol": "_knows_exchange",
+        "lines": [
+          244,
+          245
+        ]
+      },
+      {
+        "symbol": "__post_init__",
+        "lines": [
+          74,
+          112
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E017",
+    "repo": "ENGINE",
+    "path": "src/tuppi_engine/serialization.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      844
+    ],
+    "sha256": "73344ed1c52cfac03196a3ca14824e9b2fcf20462624622079f17857a2b1cae5",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "canonical_json_bytes",
+        "lines": [
+          69,
+          79
+        ]
+      },
+      {
+        "symbol": "canonical_json_text",
+        "lines": [
+          82,
+          83
+        ]
+      },
+      {
+        "symbol": "_digest",
+        "lines": [
+          86,
+          87
+        ]
+      },
+      {
+        "symbol": "_score_data",
+        "lines": [
+          90,
+          91
+        ]
+      },
+      {
+        "symbol": "_played_card_data",
+        "lines": [
+          94,
+          95
+        ]
+      },
+      {
+        "symbol": "_show_data",
+        "lines": [
+          98,
+          104
+        ]
+      },
+      {
+        "symbol": "action_to_data",
+        "lines": [
+          107,
+          125
+        ]
+      },
+      {
+        "symbol": "completed_trick_to_data",
+        "lines": [
+          128,
+          134
+        ]
+      },
+      {
+        "symbol": "event_to_data",
+        "lines": [
+          137,
+          222
+        ]
+      },
+      {
+        "symbol": "public_event_log_to_data",
+        "lines": [
+          225,
+          228
+        ]
+      },
+      {
+        "symbol": "_event_sequence_to_data",
+        "lines": [
+          231,
+          258
+        ]
+      },
+      {
+        "symbol": "_sooli_observation_data",
+        "lines": [
+          261,
+          275
+        ]
+      },
+      {
+        "symbol": "observation_to_data",
+        "lines": [
+          278,
+          298
+        ]
+      },
+      {
+        "symbol": "_observation_data",
+        "lines": [
+          301,
+          333
+        ]
+      },
+      {
+        "symbol": "deal_result_to_data",
+        "lines": [
+          336,
+          396
+        ]
+      },
+      {
+        "symbol": "match_result_to_data",
+        "lines": [
+          399,
+          414
+        ]
+      },
+      {
+        "symbol": "explicit_deal_to_data",
+        "lines": [
+          417,
+          427
+        ]
+      },
+      {
+        "symbol": "ExplicitMatchInput",
+        "lines": [
+          431,
+          486
+        ]
+      },
+      {
+        "symbol": "match_input_to_data",
+        "lines": [
+          489,
+          500
+        ]
+      },
+      {
+        "symbol": "research_deal_result_to_data",
+        "lines": [
+          503,
+          512
+        ]
+      },
+      {
+        "symbol": "research_run_result_to_data",
+        "lines": [
+          515,
+          541
+        ]
+      },
+      {
+        "symbol": "_reject_duplicate_keys",
+        "lines": [
+          544,
+          550
+        ]
+      },
+      {
+        "symbol": "_reject_constant",
+        "lines": [
+          553,
+          554
+        ]
+      },
+      {
+        "symbol": "strict_json_loads",
+        "lines": [
+          557,
+          569
+        ]
+      },
+      {
+        "symbol": "strict_json_load_file",
+        "lines": [
+          572,
+          584
+        ]
+      },
+      {
+        "symbol": "_require_object",
+        "lines": [
+          587,
+          590
+        ]
+      },
+      {
+        "symbol": "_require_keys",
+        "lines": [
+          593,
+          600
+        ]
+      },
+      {
+        "symbol": "_parse_card",
+        "lines": [
+          603,
+          614
+        ]
+      },
+      {
+        "symbol": "explicit_deal_from_data",
+        "lines": [
+          617,
+          656
+        ]
+      },
+      {
+        "symbol": "_parse_score",
+        "lines": [
+          659,
+          665
+        ]
+      },
+      {
+        "symbol": "match_input_from_data",
+        "lines": [
+          668,
+          698
+        ]
+      },
+      {
+        "symbol": "action_from_data",
+        "lines": [
+          701,
+          744
+        ]
+      },
+      {
+        "symbol": "agent_script_to_data",
+        "lines": [
+          747,
+          759
+        ]
+      },
+      {
+        "symbol": "agent_script_from_data",
+        "lines": [
+          762,
+          782
+        ]
+      },
+      {
+        "symbol": "_validate_output_target",
+        "lines": [
+          785,
+          796
+        ]
+      },
+      {
+        "symbol": "atomic_write_canonical_json_bundle",
+        "lines": [
+          799,
+          840
+        ]
+      },
+      {
+        "symbol": "atomic_write_canonical_json",
+        "lines": [
+          843,
+          844
+        ]
+      },
+      {
+        "symbol": "__init__",
+        "lines": [
+          440,
+          486
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E018",
+    "repo": "ENGINE",
+    "path": "src/tuppi_engine/match.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      370
+    ],
+    "sha256": "bdf4eb2a5a9c967e66e6242aab9a8befead2b420b57710cffc7198eafd02a94e",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "MatchState",
+        "lines": [
+          39,
+          63
+        ]
+      },
+      {
+        "symbol": "create_match",
+        "lines": [
+          66,
+          98
+        ]
+      },
+      {
+        "symbol": "begin_explicit_deal",
+        "lines": [
+          101,
+          135
+        ]
+      },
+      {
+        "symbol": "apply_match_action",
+        "lines": [
+          138,
+          183
+        ]
+      },
+      {
+        "symbol": "match_observation_for",
+        "lines": [
+          186,
+          198
+        ]
+      },
+      {
+        "symbol": "play_active_deal",
+        "lines": [
+          201,
+          235
+        ]
+      },
+      {
+        "symbol": "match_result_from_state",
+        "lines": [
+          238,
+          253
+        ]
+      },
+      {
+        "symbol": "validate_match_state",
+        "lines": [
+          256,
+          260
+        ]
+      },
+      {
+        "symbol": "_validate_match_state",
+        "lines": [
+          263,
+          370
+        ]
+      },
+      {
+        "symbol": "__post_init__",
+        "lines": [
+          51,
+          55
+        ]
+      },
+      {
+        "symbol": "current_actor",
+        "lines": [
+          58,
+          59
+        ]
+      },
+      {
+        "symbol": "terminal",
+        "lines": [
+          62,
+          63
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E019",
+    "repo": "ENGINE",
+    "path": "src/tuppi_rules/match.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      69
+    ],
+    "sha256": "985c5596582baa99002fc7e803d98dceb2ce340cd0b75f5d505d0f6961178f22",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "_validate_match_score",
+        "lines": [
+          14,
+          17
+        ]
+      },
+      {
+        "symbol": "is_match_terminal",
+        "lines": [
+          20,
+          22
+        ]
+      },
+      {
+        "symbol": "match_winner",
+        "lines": [
+          25,
+          31
+        ]
+      },
+      {
+        "symbol": "match_transition_value",
+        "lines": [
+          34,
+          50
+        ]
+      },
+      {
+        "symbol": "transition_rising_score",
+        "lines": [
+          53,
+          69
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E020",
+    "repo": "ENGINE",
+    "path": "src/tuppi_server/match_runner.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      1189
+    ],
+    "sha256": "4ac6e656b3a69292f04d36eeabddb6f9cdbd7c51e4665996c34ec0e77fe5be58",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "tuppi_ai_available",
+        "lines": [
+          85,
+          86
+        ]
+      },
+      {
+        "symbol": "_configured_ai_delay",
+        "lines": [
+          89,
+          97
+        ]
+      },
+      {
+        "symbol": "_configured_reveal_pause",
+        "lines": [
+          103,
+          111
+        ]
+      },
+      {
+        "symbol": "reveal_pause",
+        "lines": [
+          123,
+          124
+        ]
+      },
+      {
+        "symbol": "_for_ruleset",
+        "lines": [
+          127,
+          138
+        ]
+      },
+      {
+        "symbol": "_construct_ai_agents",
+        "lines": [
+          141,
+          165
+        ]
+      },
+      {
+        "symbol": "AcceptedActionRecord",
+        "lines": [
+          169,
+          178
+        ]
+      },
+      {
+        "symbol": "_LockedBid",
+        "lines": [
+          182,
+          191
+        ]
+      },
+      {
+        "symbol": "_PendingHumanSubmission",
+        "lines": [
+          195,
+          202
+        ]
+      },
+      {
+        "symbol": "LiveMatchRunner",
+        "lines": [
+          205,
+          1189
+        ]
+      },
+      {
+        "symbol": "__init__",
+        "lines": [
+          208,
+          252
+        ]
+      },
+      {
+        "symbol": "from_persistence_record",
+        "lines": [
+          255,
+          474
+        ]
+      },
+      {
+        "symbol": "match_ref",
+        "lines": [
+          477,
+          478
+        ]
+      },
+      {
+        "symbol": "event_cursor",
+        "lines": [
+          481,
+          482
+        ]
+      },
+      {
+        "symbol": "terminal",
+        "lines": [
+          485,
+          486
+        ]
+      },
+      {
+        "symbol": "current_actor",
+        "lines": [
+          489,
+          490
+        ]
+      },
+      {
+        "symbol": "observation",
+        "lines": [
+          492,
+          493
+        ]
+      },
+      {
+        "symbol": "training_analysis",
+        "lines": [
+          495,
+          511
+        ]
+      },
+      {
+        "symbol": "contract_evaluations_for_deal",
+        "lines": [
+          513,
+          525
+        ]
+      },
+      {
+        "symbol": "persistence_record",
+        "lines": [
+          527,
+          560
+        ]
+      },
+      {
+        "symbol": "reconnect",
+        "lines": [
+          562,
+          582
+        ]
+      },
+      {
+        "symbol": "collecting_bids",
+        "lines": [
+          586,
+          593
+        ]
+      },
+      {
+        "symbol": "_human_seats",
+        "lines": [
+          595,
+          596
+        ]
+      },
+      {
+        "symbol": "bidding",
+        "lines": [
+          598,
+          616
+        ]
+      },
+      {
+        "symbol": "_lock_bid",
+        "lines": [
+          618,
+          640
+        ]
+      },
+      {
+        "symbol": "_all_bids_locked",
+        "lines": [
+          642,
+          643
+        ]
+      },
+      {
+        "symbol": "_resolve_locked_showing",
+        "lines": [
+          645,
+          695
+        ]
+      },
+      {
+        "symbol": "_maybe_resolve_showing",
+        "lines": [
+          697,
+          705
+        ]
+      },
+      {
+        "symbol": "submit",
+        "lines": [
+          707,
+          741
+        ]
+      },
+      {
+        "symbol": "submit_async",
+        "lines": [
+          743,
+          790
+        ]
+      },
+      {
+        "symbol": "run_ai_async",
+        "lines": [
+          792,
+          803
+        ]
+      },
+      {
+        "symbol": "_submit_locked_bid",
+        "lines": [
+          805,
+          842
+        ]
+      },
+      {
+        "symbol": "_prepare_human_submission",
+        "lines": [
+          844,
+          952
+        ]
+      },
+      {
+        "symbol": "_complete_human_submission",
+        "lines": [
+          954,
+          993
+        ]
+      },
+      {
+        "symbol": "_run_ai_until_human_or_terminal",
+        "lines": [
+          995,
+          1004
+        ]
+      },
+      {
+        "symbol": "_run_ai_until_human_or_terminal_async",
+        "lines": [
+          1006,
+          1037
+        ]
+      },
+      {
+        "symbol": "_choose_ai_action",
+        "lines": [
+          1039,
+          1060
+        ]
+      },
+      {
+        "symbol": "_apply_ai_action",
+        "lines": [
+          1062,
+          1108
+        ]
+      },
+      {
+        "symbol": "_ensure_deal_started",
+        "lines": [
+          1110,
+          1121
+        ]
+      },
+      {
+        "symbol": "_validate_submission_fields",
+        "lines": [
+          1123,
+          1140
+        ]
+      },
+      {
+        "symbol": "_acknowledgement",
+        "lines": [
+          1142,
+          1160
+        ]
+      },
+      {
+        "symbol": "_rejected",
+        "lines": [
+          1162,
+          1170
+        ]
+      },
+      {
+        "symbol": "_stale",
+        "lines": [
+          1172,
+          1189
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E021",
+    "repo": "ENGINE",
+    "path": "src/tuppi_server/rooms.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      878
+    ],
+    "sha256": "7b16536bfe4e1a09437691e8656c2b64d9256091e3a94693fd840bab939f6d3e",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "configured_ruleset",
+        "lines": [
+          63,
+          75
+        ]
+      },
+      {
+        "symbol": "RoomError",
+        "lines": [
+          78,
+          79
+        ]
+      },
+      {
+        "symbol": "Session",
+        "lines": [
+          100,
+          104
+        ]
+      },
+      {
+        "symbol": "Room",
+        "lines": [
+          108,
+          191
+        ]
+      },
+      {
+        "symbol": "RoomManager",
+        "lines": [
+          194,
+          878
+        ]
+      },
+      {
+        "symbol": "session_for_seat",
+        "lines": [
+          124,
+          125
+        ]
+      },
+      {
+        "symbol": "snapshot",
+        "lines": [
+          127,
+          163
+        ]
+      },
+      {
+        "symbol": "persistence_record",
+        "lines": [
+          165,
+          191
+        ]
+      },
+      {
+        "symbol": "__init__",
+        "lines": [
+          202,
+          231
+        ]
+      },
+      {
+        "symbol": "from_environment",
+        "lines": [
+          234,
+          262
+        ]
+      },
+      {
+        "symbol": "create_room",
+        "lines": [
+          264,
+          281
+        ]
+      },
+      {
+        "symbol": "join_room",
+        "lines": [
+          283,
+          298
+        ]
+      },
+      {
+        "symbol": "set_ai_seats",
+        "lines": [
+          300,
+          317
+        ]
+      },
+      {
+        "symbol": "set_ai_action_delay",
+        "lines": [
+          319,
+          340
+        ]
+      },
+      {
+        "symbol": "mark_ready",
+        "lines": [
+          342,
+          365
+        ]
+      },
+      {
+        "symbol": "persist",
+        "lines": [
+          367,
+          369
+        ]
+      },
+      {
+        "symbol": "set_post_match_analysis",
+        "lines": [
+          371,
+          401
+        ]
+      },
+      {
+        "symbol": "record_post_match_analyses",
+        "lines": [
+          403,
+          444
+        ]
+      },
+      {
+        "symbol": "post_match_analysis_for_session",
+        "lines": [
+          446,
+          472
+        ]
+      },
+      {
+        "symbol": "training_analysis_for_session",
+        "lines": [
+          474,
+          504
+        ]
+      },
+      {
+        "symbol": "completed_deal_analysis_for_session",
+        "lines": [
+          506,
+          575
+        ]
+      },
+      {
+        "symbol": "_real_game_deal_analysis",
+        "lines": [
+          577,
+          634
+        ]
+      },
+      {
+        "symbol": "_review_or_none",
+        "lines": [
+          636,
+          653
+        ]
+      },
+      {
+        "symbol": "deal_review_for_session",
+        "lines": [
+          655,
+          689
+        ]
+      },
+      {
+        "symbol": "get",
+        "lines": [
+          691,
+          695
+        ]
+      },
+      {
+        "symbol": "session",
+        "lines": [
+          697,
+          699
+        ]
+      },
+      {
+        "symbol": "_ready_to_start",
+        "lines": [
+          701,
+          711
+        ]
+      },
+      {
+        "symbol": "_validate_name",
+        "lines": [
+          714,
+          720
+        ]
+      },
+      {
+        "symbol": "_validate_ai_seats",
+        "lines": [
+          723,
+          725
+        ]
+      },
+      {
+        "symbol": "_session",
+        "lines": [
+          728,
+          732
+        ]
+      },
+      {
+        "symbol": "_load_persisted_rooms",
+        "lines": [
+          734,
+          764
+        ]
+      },
+      {
+        "symbol": "_room_from_record",
+        "lines": [
+          767,
+          867
+        ]
+      },
+      {
+        "symbol": "_new_code",
+        "lines": [
+          869,
+          874
+        ]
+      },
+      {
+        "symbol": "_new_token",
+        "lines": [
+          877,
+          878
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E022",
+    "repo": "RESEARCH",
+    "path": "src/tuppi_valuation/suits.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      897
+    ],
+    "sha256": "e8f8dcddc83d6353dd4b13c820479afc13540a3cb47994a702594971723e86f0",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "SuitPolicy",
+        "lines": [
+          87,
+          91
+        ]
+      },
+      {
+        "symbol": "_check_length",
+        "lines": [
+          94,
+          97
+        ]
+      },
+      {
+        "symbol": "_total_deals",
+        "lines": [
+          100,
+          103
+        ]
+      },
+      {
+        "symbol": "_layout_weight",
+        "lines": [
+          106,
+          117
+        ]
+      },
+      {
+        "symbol": "split_distribution",
+        "lines": [
+          121,
+          140
+        ]
+      },
+      {
+        "symbol": "pattern_distribution",
+        "lines": [
+          144,
+          155
+        ]
+      },
+      {
+        "symbol": "opponent_count_distribution",
+        "lines": [
+          158,
+          172
+        ]
+      },
+      {
+        "symbol": "any_void_probability",
+        "lines": [
+          175,
+          185
+        ]
+      },
+      {
+        "symbol": "rounds_survived_distribution",
+        "lines": [
+          189,
+          201
+        ]
+      },
+      {
+        "symbol": "bottom_holding_trick_distribution",
+        "lines": [
+          204,
+          229
+        ]
+      },
+      {
+        "symbol": "probability_stuck_after",
+        "lines": [
+          232,
+          246
+        ]
+      },
+      {
+        "symbol": "general_split_distribution",
+        "lines": [
+          249,
+          306
+        ]
+      },
+      {
+        "symbol": "general_rounds_survived",
+        "lines": [
+          309,
+          323
+        ]
+      },
+      {
+        "symbol": "expected_length_winners",
+        "lines": [
+          326,
+          348
+        ]
+      },
+      {
+        "symbol": "expected_suit_tricks",
+        "lines": [
+          352,
+          395
+        ]
+      },
+      {
+        "symbol": "layouts",
+        "lines": [
+          398,
+          425
+        ]
+      },
+      {
+        "symbol": "play_out",
+        "lines": [
+          428,
+          462
+        ]
+      },
+      {
+        "symbol": "play_out_curve",
+        "lines": [
+          465,
+          499
+        ]
+      },
+      {
+        "symbol": "trick_curve",
+        "lines": [
+          502,
+          532
+        ]
+      },
+      {
+        "symbol": "ducking_round_probabilities",
+        "lines": [
+          535,
+          570
+        ]
+      },
+      {
+        "symbol": "SuitTrickAnalysis",
+        "lines": [
+          574,
+          626
+        ]
+      },
+      {
+        "symbol": "trick_distribution",
+        "lines": [
+          629,
+          657
+        ]
+      },
+      {
+        "symbol": "compare_holdings",
+        "lines": [
+          660,
+          671
+        ]
+      },
+      {
+        "symbol": "_capped_compositions",
+        "lines": [
+          689,
+          701
+        ]
+      },
+      {
+        "symbol": "_conditioned_outstanding",
+        "lines": [
+          704,
+          717
+        ]
+      },
+      {
+        "symbol": "_check_conditioning",
+        "lines": [
+          720,
+          739
+        ]
+      },
+      {
+        "symbol": "conditional_layouts",
+        "lines": [
+          742,
+          793
+        ]
+      },
+      {
+        "symbol": "conditional_ducking_round_probabilities",
+        "lines": [
+          796,
+          869
+        ]
+      },
+      {
+        "symbol": "expected_tricks",
+        "lines": [
+          587,
+          592
+        ]
+      },
+      {
+        "symbol": "probability_none",
+        "lines": [
+          595,
+          598
+        ]
+      },
+      {
+        "symbol": "probability_at_least",
+        "lines": [
+          600,
+          605
+        ]
+      },
+      {
+        "symbol": "probability_all",
+        "lines": [
+          608,
+          611
+        ]
+      },
+      {
+        "symbol": "summary",
+        "lines": [
+          613,
+          626
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E023",
+    "repo": "RESEARCH",
+    "path": "src/tuppi_agents/nolo_discard.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      364
+    ],
+    "sha256": "260bd4f4544075e0b1eaac16bfe740e73fd02ed5b33095f2d420e8a77363a44d",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "_multinomial",
+        "lines": [
+          75,
+          81
+        ]
+      },
+      {
+        "symbol": "_capped_compositions",
+        "lines": [
+          84,
+          92
+        ]
+      },
+      {
+        "symbol": "ducking_probabilities",
+        "lines": [
+          96,
+          162
+        ]
+      },
+      {
+        "symbol": "expected_ducking_tricks",
+        "lines": [
+          165,
+          181
+        ]
+      },
+      {
+        "symbol": "card_liability",
+        "lines": [
+          184,
+          203
+        ]
+      },
+      {
+        "symbol": "_played_cards",
+        "lines": [
+          209,
+          216
+        ]
+      },
+      {
+        "symbol": "opponent_order",
+        "lines": [
+          219,
+          222
+        ]
+      },
+      {
+        "symbol": "public_conditioning",
+        "lines": [
+          225,
+          268
+        ]
+      },
+      {
+        "symbol": "is_nolo_discard",
+        "lines": [
+          271,
+          282
+        ]
+      },
+      {
+        "symbol": "priced_discard",
+        "lines": [
+          285,
+          315
+        ]
+      },
+      {
+        "symbol": "_suit_order",
+        "lines": [
+          318,
+          319
+        ]
+      },
+      {
+        "symbol": "LiabilityDiscardPolicy",
+        "lines": [
+          322,
+          334
+        ]
+      },
+      {
+        "symbol": "liability_discard_agent_from_specification",
+        "lines": [
+          340,
+          352
+        ]
+      },
+      {
+        "symbol": "liability_discard_agents_for_seats",
+        "lines": [
+          355,
+          364
+        ]
+      },
+      {
+        "symbol": "score_play_actions",
+        "lines": [
+          325,
+          334
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E024",
+    "repo": "RESEARCH",
+    "path": "tests/agents/test_nolo_discard.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      145
+    ],
+    "sha256": "52f234aa5c6417df709e9fbdd5b9cc362b65f1396937a209f6a95ada0fe42a27",
+    "type": "TEST",
+    "symbols": [
+      {
+        "symbol": "_outstanding",
+        "lines": [
+          43,
+          47
+        ]
+      },
+      {
+        "symbol": "test_local_ducking_law_matches_the_canonical_implementation",
+        "lines": [
+          51,
+          63
+        ]
+      },
+      {
+        "symbol": "test_contested_rounds_match_a_brute_force_walk",
+        "lines": [
+          67,
+          91
+        ]
+      },
+      {
+        "symbol": "test_liability_is_nonnegative_and_prices_the_exhausted_suit_at_zero",
+        "lines": [
+          94,
+          100
+        ]
+      },
+      {
+        "symbol": "test_a_nine_can_outrank_an_ace_in_liability",
+        "lines": [
+          103,
+          118
+        ]
+      },
+      {
+        "symbol": "test_liability_ignores_which_opponent_is_which",
+        "lines": [
+          122,
+          137
+        ]
+      },
+      {
+        "symbol": "test_opponent_order_is_clockwise_and_excludes_the_observer",
+        "lines": [
+          140,
+          145
+        ]
+      }
+    ],
+    "test_execution": "NOT RUN"
+  },
+  {
+    "evidence_id": "E025",
+    "repo": "RESEARCH",
+    "path": "src/tuppi_nolo/support.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      330
+    ],
+    "sha256": "c984fe4084c26aa4f551ef5632c14ea24a2c687dfd3f47dbe85826295dd546c2",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "SupportStatus",
+        "lines": [
+          50,
+          55
+        ]
+      },
+      {
+        "symbol": "SupportInvariantError",
+        "lines": [
+          58,
+          59
+        ]
+      },
+      {
+        "symbol": "SupportBudget",
+        "lines": [
+          63,
+          74
+        ]
+      },
+      {
+        "symbol": "_public_value",
+        "lines": [
+          77,
+          84
+        ]
+      },
+      {
+        "symbol": "semantic_observation_key",
+        "lines": [
+          96,
+          107
+        ]
+      },
+      {
+        "symbol": "ResearchWorld",
+        "lines": [
+          111,
+          119
+        ]
+      },
+      {
+        "symbol": "SupportResult",
+        "lines": [
+          123,
+          149
+        ]
+      },
+      {
+        "symbol": "_TransitionLimit",
+        "lines": [
+          152,
+          153
+        ]
+      },
+      {
+        "symbol": "_ReplayMeter",
+        "lines": [
+          156,
+          176
+        ]
+      },
+      {
+        "symbol": "_assignments",
+        "lines": [
+          179,
+          210
+        ]
+      },
+      {
+        "symbol": "_validate_public_record",
+        "lines": [
+          213,
+          269
+        ]
+      },
+      {
+        "symbol": "build_support",
+        "lines": [
+          272,
+          330
+        ]
+      },
+      {
+        "symbol": "__post_init__",
+        "lines": [
+          68,
+          74
+        ]
+      },
+      {
+        "symbol": "content_key",
+        "lines": [
+          116,
+          119
+        ]
+      },
+      {
+        "symbol": "__post_init__",
+        "lines": [
+          135,
+          140
+        ]
+      },
+      {
+        "symbol": "diagnostics",
+        "lines": [
+          142,
+          149
+        ]
+      },
+      {
+        "symbol": "__init__",
+        "lines": [
+          157,
+          176
+        ]
+      },
+      {
+        "symbol": "visit",
+        "lines": [
+          187,
+          208
+        ]
+      },
+      {
+        "symbol": "unresolved",
+        "lines": [
+          288,
+          289
+        ]
+      },
+      {
+        "symbol": "counted_apply",
+        "lines": [
+          167,
+          171
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E026",
+    "repo": "RESEARCH",
+    "path": "src/tuppi_nolo/security.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      392
+    ],
+    "sha256": "38c06318d9369f476eeb33b6721d83c17d35f18f7dae7a00f4998267ec52813f",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "SecurityStatus",
+        "lines": [
+          52,
+          57
+        ]
+      },
+      {
+        "symbol": "SecurityInvariantError",
+        "lines": [
+          60,
+          61
+        ]
+      },
+      {
+        "symbol": "RootValue",
+        "lines": [
+          65,
+          69
+        ]
+      },
+      {
+        "symbol": "SecurityResult",
+        "lines": [
+          73,
+          117
+        ]
+      },
+      {
+        "symbol": "_Budget",
+        "lines": [
+          120,
+          121
+        ]
+      },
+      {
+        "symbol": "_Meter",
+        "lines": [
+          124,
+          138
+        ]
+      },
+      {
+        "symbol": "_terminal_value",
+        "lines": [
+          141,
+          144
+        ]
+      },
+      {
+        "symbol": "_ranked_actions",
+        "lines": [
+          147,
+          153
+        ]
+      },
+      {
+        "symbol": "_preference_index",
+        "lines": [
+          156,
+          160
+        ]
+      },
+      {
+        "symbol": "_search",
+        "lines": [
+          163,
+          238
+        ]
+      },
+      {
+        "symbol": "_search_cached",
+        "lines": [
+          241,
+          263
+        ]
+      },
+      {
+        "symbol": "solve_security",
+        "lines": [
+          266,
+          392
+        ]
+      },
+      {
+        "symbol": "diagnostics",
+        "lines": [
+          88,
+          117
+        ]
+      },
+      {
+        "symbol": "__init__",
+        "lines": [
+          125,
+          132
+        ]
+      },
+      {
+        "symbol": "step",
+        "lines": [
+          134,
+          138
+        ]
+      },
+      {
+        "symbol": "prefer",
+        "lines": [
+          252,
+          254
+        ]
+      },
+      {
+        "symbol": "unresolved",
+        "lines": [
+          295,
+          299
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E027",
+    "repo": "ENGINE",
+    "path": "src/tuppi_exact/constraints.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      532
+    ],
+    "sha256": "cfc71ed53e6dcae5acc922f5381751d3b1a4cce8cb4b67ec958574165ebab1f3",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "show_exclusion_for",
+        "lines": [
+          94,
+          110
+        ]
+      },
+      {
+        "symbol": "derive_show_exclusions",
+        "lines": [
+          113,
+          144
+        ]
+      },
+      {
+        "symbol": "HardConstraintModel",
+        "lines": [
+          148,
+          394
+        ]
+      },
+      {
+        "symbol": "_refine",
+        "lines": [
+          397,
+          492
+        ]
+      },
+      {
+        "symbol": "_card_key",
+        "lines": [
+          495,
+          496
+        ]
+      },
+      {
+        "symbol": "own_show_exclusion_is_consistent",
+        "lines": [
+          499,
+          526
+        ]
+      },
+      {
+        "symbol": "contract_normal_colour",
+        "lines": [
+          529,
+          532
+        ]
+      },
+      {
+        "symbol": "__post_init__",
+        "lines": [
+          171,
+          224
+        ]
+      },
+      {
+        "symbol": "build",
+        "lines": [
+          229,
+          241
+        ]
+      },
+      {
+        "symbol": "from_inference",
+        "lines": [
+          244,
+          255
+        ]
+      },
+      {
+        "symbol": "_from_facts",
+        "lines": [
+          258,
+          294
+        ]
+      },
+      {
+        "symbol": "unknown_seats",
+        "lines": [
+          299,
+          302
+        ]
+      },
+      {
+        "symbol": "allowed_seats",
+        "lines": [
+          304,
+          313
+        ]
+      },
+      {
+        "symbol": "proven_owner",
+        "lines": [
+          315,
+          323
+        ]
+      },
+      {
+        "symbol": "equivalence_classes",
+        "lines": [
+          325,
+          343
+        ]
+      },
+      {
+        "symbol": "hall_deficiency",
+        "lines": [
+          345,
+          366
+        ]
+      },
+      {
+        "symbol": "is_structurally_feasible",
+        "lines": [
+          368,
+          378
+        ]
+      },
+      {
+        "symbol": "identity_data",
+        "lines": [
+          380,
+          394
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E028",
+    "repo": "ENGINE",
+    "path": "src/tuppi_exact/continuation.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      285
+    ],
+    "sha256": "4da5ceeff4a340133230ddf4431713cad8726d4260949a3991010f64852c7d9a",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "HypotheticalContinuation",
+        "lines": [
+          62,
+          111
+        ]
+      },
+      {
+        "symbol": "reconstruct_initial_hands",
+        "lines": [
+          114,
+          175
+        ]
+      },
+      {
+        "symbol": "hypothetical_continuation",
+        "lines": [
+          178,
+          229
+        ]
+      },
+      {
+        "symbol": "continuations_for",
+        "lines": [
+          232,
+          243
+        ]
+      },
+      {
+        "symbol": "_default_match_ref",
+        "lines": [
+          246,
+          260
+        ]
+      },
+      {
+        "symbol": "_require_same_decision_point",
+        "lines": [
+          263,
+          285
+        ]
+      },
+      {
+        "symbol": "__post_init__",
+        "lines": [
+          79,
+          87
+        ]
+      },
+      {
+        "symbol": "current_actor",
+        "lines": [
+          90,
+          91
+        ]
+      },
+      {
+        "symbol": "provenance",
+        "lines": [
+          93,
+          111
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E029",
+    "repo": "ENGINE",
+    "path": "src/tuppi_search/fast_trick.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      284
+    ],
+    "sha256": "de687c25d1bfd3c7ed1af91d7c2ce8d4d6f3d84741ebba911b5d1fe7fbcdf92f",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "FastTrickError",
+        "lines": [
+          46,
+          47
+        ]
+      },
+      {
+        "symbol": "FastTrickState",
+        "lines": [
+          51,
+          284
+        ]
+      },
+      {
+        "symbol": "from_observation_assignment",
+        "lines": [
+          75,
+          113
+        ]
+      },
+      {
+        "symbol": "from_deal_state",
+        "lines": [
+          116,
+          155
+        ]
+      },
+      {
+        "symbol": "complete",
+        "lines": [
+          158,
+          159
+        ]
+      },
+      {
+        "symbol": "terminal",
+        "lines": [
+          162,
+          163
+        ]
+      },
+      {
+        "symbol": "observation_for",
+        "lines": [
+          165,
+          195
+        ]
+      },
+      {
+        "symbol": "_legal_actions_for",
+        "lines": [
+          197,
+          206
+        ]
+      },
+      {
+        "symbol": "apply",
+        "lines": [
+          208,
+          284
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E030",
+    "repo": "AI",
+    "path": "tools/sooli_bank.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      109
+    ],
+    "sha256": "adb670c2577fd60c54aac6e7bca622180f74ef36c49ff43f31b17b3280947d87",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "_init",
+        "lines": [
+          28,
+          40
+        ]
+      },
+      {
+        "symbol": "_greedy",
+        "lines": [
+          43,
+          47
+        ]
+      },
+      {
+        "symbol": "_search",
+        "lines": [
+          50,
+          53
+        ]
+      },
+      {
+        "symbol": "chunk",
+        "lines": [
+          56,
+          87
+        ]
+      },
+      {
+        "symbol": "main",
+        "lines": [
+          90,
+          105
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E031",
+    "repo": "AI",
+    "path": "tools/sooli_play_eval.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      144
+    ],
+    "sha256": "a0b0ba0bb52a1fd20f5bd53bc244a058bc9e30a9af1e5de3f75444cc3564ee45",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "_opts",
+        "lines": [
+          33,
+          35
+        ]
+      },
+      {
+        "symbol": "_init",
+        "lines": [
+          38,
+          49
+        ]
+      },
+      {
+        "symbol": "_move",
+        "lines": [
+          52,
+          89
+        ]
+      },
+      {
+        "symbol": "play",
+        "lines": [
+          92,
+          104
+        ]
+      },
+      {
+        "symbol": "evaluate",
+        "lines": [
+          107,
+          116
+        ]
+      },
+      {
+        "symbol": "main",
+        "lines": [
+          119,
+          140
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E032",
+    "repo": "AI",
+    "path": "tools/gen_game_db.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      237
+    ],
+    "sha256": "0f05251e954820ff7d6678853d4fcadbf4cb9c14fc65d425b848ecb5d47bfdba",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "bot_identity",
+        "lines": [
+          54,
+          70
+        ]
+      },
+      {
+        "symbol": "_score",
+        "lines": [
+          73,
+          78
+        ]
+      },
+      {
+        "symbol": "reseed",
+        "lines": [
+          81,
+          98
+        ]
+      },
+      {
+        "symbol": "play_chunk",
+        "lines": [
+          101,
+          183
+        ]
+      },
+      {
+        "symbol": "load_games",
+        "lines": [
+          186,
+          191
+        ]
+      },
+      {
+        "symbol": "main",
+        "lines": [
+          194,
+          233
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E033",
+    "repo": "AI",
+    "path": "tuppi_ai/bc.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      96
+    ],
+    "sha256": "26c3a8159628e8478aa0dbdbb58937f1afe8066a0af7ab23ae653a655f20bf61",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "load",
+        "lines": [
+          24,
+          29
+        ]
+      },
+      {
+        "symbol": "batch",
+        "lines": [
+          32,
+          35
+        ]
+      },
+      {
+        "symbol": "main",
+        "lines": [
+          38,
+          92
+        ]
+      },
+      {
+        "symbol": "held_out",
+        "lines": [
+          64,
+          76
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E034",
+    "repo": "AI",
+    "path": "tuppi_ai/distill.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      128
+    ],
+    "sha256": "1d4aa27a2c8e6cb4125ff71ef0177964c0673547432ad62c80802c29cec03ff3",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "load_search",
+        "lines": [
+          25,
+          32
+        ]
+      },
+      {
+        "symbol": "main",
+        "lines": [
+          35,
+          124
+        ]
+      },
+      {
+        "symbol": "unpack",
+        "lines": [
+          70,
+          71
+        ]
+      },
+      {
+        "symbol": "held_out",
+        "lines": [
+          73,
+          85
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E035",
+    "repo": "AI",
+    "path": "tuppi_ai/model.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      59
+    ],
+    "sha256": "07527cbf1eb97a13f3b5510078e4bc07053da2ad56057b393f141787741c7c16",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "ResBlock",
+        "lines": [
+          18,
+          26
+        ]
+      },
+      {
+        "symbol": "QNet",
+        "lines": [
+          29,
+          42
+        ]
+      },
+      {
+        "symbol": "masked_argmax",
+        "lines": [
+          45,
+          46
+        ]
+      },
+      {
+        "symbol": "save",
+        "lines": [
+          49,
+          51
+        ]
+      },
+      {
+        "symbol": "load",
+        "lines": [
+          54,
+          59
+        ]
+      },
+      {
+        "symbol": "__init__",
+        "lines": [
+          19,
+          23
+        ]
+      },
+      {
+        "symbol": "forward",
+        "lines": [
+          25,
+          26
+        ]
+      },
+      {
+        "symbol": "__init__",
+        "lines": [
+          30,
+          37
+        ]
+      },
+      {
+        "symbol": "forward",
+        "lines": [
+          39,
+          42
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E036",
+    "repo": "AI",
+    "path": "tools/fit_equity.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      78
+    ],
+    "sha256": "16aeb0fbbd2247dc47db5fde7691d7c01705150e5943aabd8ca77de16abc6c46",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "_play",
+        "lines": [
+          20,
+          43
+        ]
+      },
+      {
+        "symbol": "main",
+        "lines": [
+          46,
+          74
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E037",
+    "repo": "AI",
+    "path": "docs/STATUS.md",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      499
+    ],
+    "sha256": "911bf188d7d3745383e89813dcffaa5e8e00ff0002d59b470a981f9fd071f4ae",
+    "type": "REPORT",
+    "symbols": [],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E038",
+    "repo": "AI",
+    "path": "tests/test_sampler.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      182
+    ],
+    "sha256": "0edf6155966a32f13b237c12f0ab3d9be033d35f0ed746ffd8e7cb536f8ce4e9",
+    "type": "TEST",
+    "symbols": [
+      {
+        "symbol": "_bits",
+        "lines": [
+          18,
+          19
+        ]
+      },
+      {
+        "symbol": "_random_position",
+        "lines": [
+          22,
+          31
+        ]
+      },
+      {
+        "symbol": "_constraints",
+        "lines": [
+          34,
+          44
+        ]
+      },
+      {
+        "symbol": "test_worlds_satisfy_public_constraints",
+        "lines": [
+          47,
+          78
+        ]
+      },
+      {
+        "symbol": "test_sampling_is_uniform_over_enumerated_worlds",
+        "lines": [
+          81,
+          127
+        ]
+      },
+      {
+        "symbol": "test_weighted_sampler_matches_enumerated_product_distribution",
+        "lines": [
+          130,
+          182
+        ]
+      }
+    ],
+    "test_execution": "NOT RUN"
+  },
+  {
+    "evidence_id": "E039",
+    "repo": "AI",
+    "path": "tests/test_sampler_v2.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      237
+    ],
+    "sha256": "49e5cd5d690727e59261a95a836c050871bc87504b690209ddbab2a0ca6dbf61",
+    "type": "TEST",
+    "symbols": [
+      {
+        "symbol": "_bits",
+        "lines": [
+          17,
+          18
+        ]
+      },
+      {
+        "symbol": "_drive",
+        "lines": [
+          21,
+          51
+        ]
+      },
+      {
+        "symbol": "_replay",
+        "lines": [
+          54,
+          83
+        ]
+      },
+      {
+        "symbol": "_check_worlds",
+        "lines": [
+          86,
+          100
+        ]
+      },
+      {
+        "symbol": "test_return_phase_worlds",
+        "lines": [
+          103,
+          108
+        ]
+      },
+      {
+        "symbol": "test_sooli_play_worlds_for_every_actor",
+        "lines": [
+          111,
+          120
+        ]
+      },
+      {
+        "symbol": "test_rami_observer_exchange_odds",
+        "lines": [
+          123,
+          149
+        ]
+      },
+      {
+        "symbol": "_exposure",
+        "lines": [
+          152,
+          161
+        ]
+      },
+      {
+        "symbol": "_tilted",
+        "lines": [
+          164,
+          167
+        ]
+      },
+      {
+        "symbol": "test_tilted_worlds_are_valid_worlds",
+        "lines": [
+          170,
+          183
+        ]
+      },
+      {
+        "symbol": "test_exact_tilt_matches_rejection",
+        "lines": [
+          186,
+          206
+        ]
+      },
+      {
+        "symbol": "test_locked_bid_worlds_generate_legal_earlier_bids",
+        "lines": [
+          209,
+          237
+        ]
+      }
+    ],
+    "test_execution": "NOT RUN"
+  },
+  {
+    "evidence_id": "E040",
+    "repo": "AI",
+    "path": "tests/test_sooli_solver.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      97
+    ],
+    "sha256": "3ba888daa7b811a11c3f8202bb4dcc0f1fa645c1956534c8e32e71b71da8866c",
+    "type": "TEST",
+    "symbols": [
+      {
+        "symbol": "_to_sooli_play",
+        "lines": [
+          10,
+          26
+        ]
+      },
+      {
+        "symbol": "_brute",
+        "lines": [
+          29,
+          44
+        ]
+      },
+      {
+        "symbol": "_advance_randomly",
+        "lines": [
+          47,
+          61
+        ]
+      },
+      {
+        "symbol": "test_solver_matches_brute_force_late",
+        "lines": [
+          64,
+          82
+        ]
+      },
+      {
+        "symbol": "test_solver_is_consistent_at_every_step",
+        "lines": [
+          85,
+          97
+        ]
+      }
+    ],
+    "test_execution": "NOT RUN"
+  },
+  {
+    "evidence_id": "E041",
+    "repo": "ENGINE",
+    "path": "tests/engine/test_locked_bids_engine.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      166
+    ],
+    "sha256": "bfcdb3fb586e67de99435c2cd2afe0637330a2f06a10aa1b41fe56ac577a8f41",
+    "type": "TEST",
+    "symbols": [
+      {
+        "symbol": "_deal",
+        "lines": [
+          31,
+          34
+        ]
+      },
+      {
+        "symbol": "_start",
+        "lines": [
+          37,
+          40
+        ]
+      },
+      {
+        "symbol": "_chooser",
+        "lines": [
+          43,
+          54
+        ]
+      },
+      {
+        "symbol": "test_bids_are_hidden_until_showing_resolves",
+        "lines": [
+          57,
+          90
+        ]
+      },
+      {
+        "symbol": "test_v3_plays_exactly_like_v2",
+        "lines": [
+          93,
+          110
+        ]
+      },
+      {
+        "symbol": "test_sooli_offers_follow_a_locked_rami",
+        "lines": [
+          113,
+          123
+        ]
+      },
+      {
+        "symbol": "test_later_bids_never_exist",
+        "lines": [
+          126,
+          137
+        ]
+      },
+      {
+        "symbol": "test_v1_and_v2_keep_sequential_showing",
+        "lines": [
+          140,
+          148
+        ]
+      },
+      {
+        "symbol": "test_locked_bid_options_match_the_turn_options",
+        "lines": [
+          151,
+          166
+        ]
+      },
+      {
+        "symbol": "choose",
+        "lines": [
+          44,
+          53
+        ]
+      }
+    ],
+    "test_execution": "NOT RUN"
+  },
+  {
+    "evidence_id": "E042",
+    "repo": "ENGINE",
+    "path": "tests/engine/test_sooli_engine.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      263
+    ],
+    "sha256": "bb650a40a262b3fe61b3558000fdc515db16c601f215a3a4b28c04ce2dd49ec2",
+    "type": "TEST",
+    "symbols": [
+      {
+        "symbol": "_deal",
+        "lines": [
+          33,
+          36
+        ]
+      },
+      {
+        "symbol": "_start",
+        "lines": [
+          39,
+          42
+        ]
+      },
+      {
+        "symbol": "_declare_rami_at",
+        "lines": [
+          45,
+          52
+        ]
+      },
+      {
+        "symbol": "_random_play",
+        "lines": [
+          55,
+          66
+        ]
+      },
+      {
+        "symbol": "test_random_v2_deals_are_valid_throughout",
+        "lines": [
+          69,
+          77
+        ]
+      },
+      {
+        "symbol": "test_nolo_has_no_sooli_and_matches_v1",
+        "lines": [
+          80,
+          96
+        ]
+      },
+      {
+        "symbol": "test_declined_sooli_continues_exactly_as_v1",
+        "lines": [
+          99,
+          123
+        ]
+      },
+      {
+        "symbol": "test_exchange_flow_and_privacy",
+        "lines": [
+          126,
+          158
+        ]
+      },
+      {
+        "symbol": "_to_sooli_play",
+        "lines": [
+          161,
+          176
+        ]
+      },
+      {
+        "symbol": "test_play_order_ace_low_and_early_end",
+        "lines": [
+          179,
+          211
+        ]
+      },
+      {
+        "symbol": "test_sure_success_scores_24_through_the_rising_score",
+        "lines": [
+          220,
+          245
+        ]
+      },
+      {
+        "symbol": "test_v1_rejects_sooli",
+        "lines": [
+          248,
+          253
+        ]
+      },
+      {
+        "symbol": "test_research_result_keeps_the_exchange_private",
+        "lines": [
+          256,
+          263
+        ]
+      }
+    ],
+    "test_execution": "NOT RUN"
+  },
+  {
+    "evidence_id": "E043",
+    "repo": "ENGINE",
+    "path": "tests/engine/test_sooli_locked_serialization.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      122
+    ],
+    "sha256": "c9a25d69f26bab96e93721d002e106dcd5920279f78da12915303f6c04123f25",
+    "type": "TEST",
+    "symbols": [
+      {
+        "symbol": "validators",
+        "lines": [
+          45,
+          56
+        ]
+      },
+      {
+        "symbol": "_choose",
+        "lines": [
+          59,
+          68
+        ]
+      },
+      {
+        "symbol": "_new_deal",
+        "lines": [
+          71,
+          74
+        ]
+      },
+      {
+        "symbol": "test_random_matches_serialize_to_valid_wire_data",
+        "lines": [
+          78,
+          112
+        ]
+      },
+      {
+        "symbol": "test_v1_wire_data_is_unchanged",
+        "lines": [
+          115,
+          122
+        ]
+      }
+    ],
+    "test_execution": "NOT RUN"
+  },
+  {
+    "evidence_id": "E044",
+    "repo": "RESEARCH",
+    "path": "docs/agents/architecture.md",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      162
+    ],
+    "sha256": "321a98e695a90587a5d39c7873b9df9ba4c34167cfa18b1c3b97f7548e54362e",
+    "type": "REPORT",
+    "symbols": [],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E045",
+    "repo": "RESEARCH",
+    "path": "docs/exact/architecture.md",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      119
+    ],
+    "sha256": "bf829cd3859016a22386d650220baefaa4b10414875fe9201d8e7973b4b39d9b",
+    "type": "REPORT",
+    "symbols": [],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E046",
+    "repo": "RESEARCH",
+    "path": "docs/match/bank_lifecycle.md",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      94
+    ],
+    "sha256": "a0953fb2ef282c6a78fb82409687864233dd751625a6c563576208b7bc971a2d",
+    "type": "REPORT",
+    "symbols": [],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E047",
+    "repo": "RESEARCH",
+    "path": "tests/agents/test_architecture.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      292
+    ],
+    "sha256": "7713aadb5d7edab793ce84668c1978c7a574102d557a5f36064de9666d38481b",
+    "type": "TEST",
+    "symbols": [
+      {
+        "symbol": "_module_paths",
+        "lines": [
+          63,
+          64
+        ]
+      },
+      {
+        "symbol": "_policy_paths",
+        "lines": [
+          67,
+          68
+        ]
+      },
+      {
+        "symbol": "test_the_module_layers_are_exactly_as_declared",
+        "lines": [
+          71,
+          74
+        ]
+      },
+      {
+        "symbol": "_imports",
+        "lines": [
+          77,
+          85
+        ]
+      },
+      {
+        "symbol": "test_the_agents_package_imports_no_randomness_or_learning_stack",
+        "lines": [
+          88,
+          90
+        ]
+      },
+      {
+        "symbol": "test_no_policy_module_touches_private_engine_state",
+        "lines": [
+          93,
+          116
+        ]
+      },
+      {
+        "symbol": "test_only_harness_modules_reach_into_the_evaluation_package",
+        "lines": [
+          119,
+          122
+        ]
+      },
+      {
+        "symbol": "test_the_evaluation_package_reaches_strategic_agents_only_lazily",
+        "lines": [
+          125,
+          136
+        ]
+      },
+      {
+        "symbol": "test_no_policy_declares_a_search_budget_or_a_checkpoint",
+        "lines": [
+          139,
+          143
+        ]
+      },
+      {
+        "symbol": "test_no_phase4_rule_claims_expert_or_simulation_validation",
+        "lines": [
+          146,
+          155
+        ]
+      },
+      {
+        "symbol": "test_every_rule_is_catalogued_with_a_stable_versioned_identifier",
+        "lines": [
+          158,
+          166
+        ]
+      },
+      {
+        "symbol": "test_every_profile_implements_at_least_one_catalogued_rule",
+        "lines": [
+          169,
+          176
+        ]
+      },
+      {
+        "symbol": "test_convention_like_rules_are_independently_disableable",
+        "lines": [
+          179,
+          189
+        ]
+      },
+      {
+        "symbol": "test_no_description_claims_expert_strength",
+        "lines": [
+          192,
+          199
+        ]
+      },
+      {
+        "symbol": "test_every_module_carries_a_docstring_explaining_its_boundary",
+        "lines": [
+          202,
+          207
+        ]
+      },
+      {
+        "symbol": "test_the_counting_nolo_rules_are_ablatable_and_fall_back_to_the_rung_below",
+        "lines": [
+          210,
+          258
+        ]
+      },
+      {
+        "symbol": "test_ablating_a_counting_rule_leaves_a_policy_that_still_plays_legally",
+        "lines": [
+          261,
+          292
+        ]
+      }
+    ],
+    "test_execution": "NOT RUN"
+  },
+  {
+    "evidence_id": "E048",
+    "repo": "RESEARCH",
+    "path": "tests/search/test_architecture.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      198
+    ],
+    "sha256": "dd94ef56b867014bd9bbc345de97fb3eb1c10c28e0fdde3f3b370c7daecf5dc6",
+    "type": "TEST",
+    "symbols": [
+      {
+        "symbol": "test_the_boundary_report_holds",
+        "lines": [
+          30,
+          35
+        ]
+      },
+      {
+        "symbol": "test_no_earlier_package_imports_the_search_layer",
+        "lines": [
+          38,
+          45
+        ]
+      },
+      {
+        "symbol": "test_frozen_phase4_agents_still_disclaim_search",
+        "lines": [
+          48,
+          54
+        ]
+      },
+      {
+        "symbol": "test_match_aware_is_not_retuned",
+        "lines": [
+          57,
+          60
+        ]
+      },
+      {
+        "symbol": "test_the_development_reference_is_still_the_committed_agent",
+        "lines": [
+          63,
+          76
+        ]
+      },
+      {
+        "symbol": "test_no_excluded_technique_family_is_present",
+        "lines": [
+          79,
+          86
+        ]
+      },
+      {
+        "symbol": "test_the_search_layer_never_imports_frozen_legacy_code",
+        "lines": [
+          89,
+          90
+        ]
+      },
+      {
+        "symbol": "test_the_sealed_promotion_bank_remains_unopened",
+        "lines": [
+          93,
+          100
+        ]
+      },
+      {
+        "symbol": "test_no_search_internals_reach_a_public_serializer",
+        "lines": [
+          103,
+          115
+        ]
+      },
+      {
+        "symbol": "test_a_public_event_log_never_carries_a_search_field",
+        "lines": [
+          118,
+          136
+        ]
+      },
+      {
+        "symbol": "test_the_exact_solver_is_reached_only_through_hypothetical_states",
+        "lines": [
+          139,
+          151
+        ]
+      },
+      {
+        "symbol": "test_require_no_full_state_guards_the_entry_points",
+        "lines": [
+          154,
+          158
+        ]
+      },
+      {
+        "symbol": "test_bulk_outputs_are_not_written_into_the_repository",
+        "lines": [
+          161,
+          169
+        ]
+      },
+      {
+        "symbol": "test_no_committed_artifact_contains_a_hypothetical_world",
+        "lines": [
+          172,
+          182
+        ]
+      },
+      {
+        "symbol": "test_the_search_package_declares_its_exclusions",
+        "lines": [
+          185,
+          198
+        ]
+      }
+    ],
+    "test_execution": "NOT RUN"
+  },
+  {
+    "evidence_id": "E049",
+    "repo": "CLIENT",
+    "path": "Sources/TuppiClient/ReferencePolicy.swift",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      43
+    ],
+    "sha256": "03c80157e9751789f5827b6117cef32b113f6d208dfe2ff101f31ecc6de9ca28",
+    "type": "CODE",
+    "symbols": [],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E050",
+    "repo": "AI",
+    "path": "native/build.sh",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      13
+    ],
+    "sha256": "be5b4eb04b71b3ed8eafaf5c284b6b6db1ad586b2f987f6c9efa7e957775178b",
+    "type": "CODE",
+    "symbols": [],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E051",
+    "repo": "ENGINE",
+    "path": "src/tuppi_engine/transitions.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      608
+    ],
+    "sha256": "014fa25be32cdb5ebdbc1ac582d15e224af0681082182daf1c41b0d4c32d0c23",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "_events",
+        "lines": [
+          65,
+          82
+        ]
+      },
+      {
+        "symbol": "apply_action",
+        "lines": [
+          85,
+          89
+        ]
+      },
+      {
+        "symbol": "_apply_action_validated",
+        "lines": [
+          92,
+          128
+        ]
+      },
+      {
+        "symbol": "_check_actor",
+        "lines": [
+          131,
+          135
+        ]
+      },
+      {
+        "symbol": "_apply_show_action",
+        "lines": [
+          138,
+          228
+        ]
+      },
+      {
+        "symbol": "_apply_play_action",
+        "lines": [
+          231,
+          399
+        ]
+      },
+      {
+        "symbol": "_apply_sooli_decision",
+        "lines": [
+          402,
+          432
+        ]
+      },
+      {
+        "symbol": "_apply_sooli_exchange",
+        "lines": [
+          435,
+          459
+        ]
+      },
+      {
+        "symbol": "_apply_sooli_play",
+        "lines": [
+          462,
+          506
+        ]
+      },
+      {
+        "symbol": "_complete_deal",
+        "lines": [
+          509,
+          541
+        ]
+      },
+      {
+        "symbol": "_score_transition_kind",
+        "lines": [
+          544,
+          551
+        ]
+      },
+      {
+        "symbol": "deal_result_from_state",
+        "lines": [
+          554,
+          598
+        ]
+      },
+      {
+        "symbol": "research_deal_result_from_state",
+        "lines": [
+          601,
+          608
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E052",
+    "repo": "ENGINE",
+    "path": "src/tuppi_rules/showing.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      176
+    ],
+    "sha256": "d6dbcbc61758e2a2285b3f011f9d8ef67acc5fb48100a91f4fb67342b1633329",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "contract_color",
+        "lines": [
+          18,
+          21
+        ]
+      },
+      {
+        "symbol": "is_show_rank_eligible",
+        "lines": [
+          24,
+          31
+        ]
+      },
+      {
+        "symbol": "valid_show_cards",
+        "lines": [
+          34,
+          45
+        ]
+      },
+      {
+        "symbol": "verbal_declaration_required",
+        "lines": [
+          48,
+          63
+        ]
+      },
+      {
+        "symbol": "validate_show_action",
+        "lines": [
+          66,
+          80
+        ]
+      },
+      {
+        "symbol": "_derive_show_action_fields",
+        "lines": [
+          83,
+          107
+        ]
+      },
+      {
+        "symbol": "resolve_showing",
+        "lines": [
+          110,
+          172
+        ]
+      },
+      {
+        "symbol": "rami_declarer",
+        "lines": [
+          175,
+          176
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E053",
+    "repo": "RESEARCH",
+    "path": "docs/nolo/results/N11.md",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      201
+    ],
+    "sha256": "a365a852e411110fd2a7fc650a6df1b503131965c6c79551ff8e725f1df7ec1a",
+    "type": "REPORT",
+    "symbols": [],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E054",
+    "repo": "RESEARCH",
+    "path": "docs/nolo/tasks/README.md",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      89
+    ],
+    "sha256": "723b3c2dc37dca38453e401bc40882cc9a000597f554f787d5896b0aaefcba41",
+    "type": "REPORT",
+    "symbols": [],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E055",
+    "repo": "ENGINE",
+    "path": "src/tuppi_exact/counting.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      363
+    ],
+    "sha256": "582ed07387a3a89869d79c886b483faa7bf2819ad5f04e328ac0ebcdc9ba3796",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "ClassAllocation",
+        "lines": [
+          42,
+          58
+        ]
+      },
+      {
+        "symbol": "CountingPlan",
+        "lines": [
+          62,
+          183
+        ]
+      },
+      {
+        "symbol": "bounded_compositions",
+        "lines": [
+          186,
+          198
+        ]
+      },
+      {
+        "symbol": "_bounded_compositions_cached",
+        "lines": [
+          202,
+          214
+        ]
+      },
+      {
+        "symbol": "multinomial",
+        "lines": [
+          217,
+          225
+        ]
+      },
+      {
+        "symbol": "_count_from",
+        "lines": [
+          229,
+          250
+        ]
+      },
+      {
+        "symbol": "count_plan",
+        "lines": [
+          253,
+          260
+        ]
+      },
+      {
+        "symbol": "feasible_assignment_count",
+        "lines": [
+          263,
+          274
+        ]
+      },
+      {
+        "symbol": "assignments_with_card_at_seat",
+        "lines": [
+          277,
+          296
+        ]
+      },
+      {
+        "symbol": "exact_ownership_counts",
+        "lines": [
+          299,
+          314
+        ]
+      },
+      {
+        "symbol": "exact_uniform_marginals",
+        "lines": [
+          317,
+          337
+        ]
+      },
+      {
+        "symbol": "count_summary",
+        "lines": [
+          340,
+          363
+        ]
+      },
+      {
+        "symbol": "__post_init__",
+        "lines": [
+          48,
+          54
+        ]
+      },
+      {
+        "symbol": "size",
+        "lines": [
+          57,
+          58
+        ]
+      },
+      {
+        "symbol": "__post_init__",
+        "lines": [
+          76,
+          90
+        ]
+      },
+      {
+        "symbol": "build",
+        "lines": [
+          93,
+          108
+        ]
+      },
+      {
+        "symbol": "positions_for",
+        "lines": [
+          110,
+          111
+        ]
+      },
+      {
+        "symbol": "without",
+        "lines": [
+          113,
+          174
+        ]
+      },
+      {
+        "symbol": "identity_key",
+        "lines": [
+          176,
+          183
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E056",
+    "repo": "ENGINE",
+    "path": "src/tuppi_exact/sampling.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      498
+    ],
+    "sha256": "a05d577f3fbcf9fb927b160d06fd8e91a4229c2e458d4533bab6f43839a43087",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "DeterministicBitSource",
+        "lines": [
+          60,
+          115
+        ]
+      },
+      {
+        "symbol": "HiddenHandAssignment",
+        "lines": [
+          119,
+          155
+        ]
+      },
+      {
+        "symbol": "UniformFeasibleSampler",
+        "lines": [
+          159,
+          410
+        ]
+      },
+      {
+        "symbol": "_unrank_combination",
+        "lines": [
+          413,
+          440
+        ]
+      },
+      {
+        "symbol": "_weighted_split_options",
+        "lines": [
+          444,
+          471
+        ]
+      },
+      {
+        "symbol": "sample_assignments",
+        "lines": [
+          474,
+          480
+        ]
+      },
+      {
+        "symbol": "uniform_sampling_summary",
+        "lines": [
+          483,
+          498
+        ]
+      },
+      {
+        "symbol": "__init__",
+        "lines": [
+          73,
+          81
+        ]
+      },
+      {
+        "symbol": "_refill",
+        "lines": [
+          83,
+          89
+        ]
+      },
+      {
+        "symbol": "_take",
+        "lines": [
+          91,
+          100
+        ]
+      },
+      {
+        "symbol": "below",
+        "lines": [
+          102,
+          115
+        ]
+      },
+      {
+        "symbol": "__post_init__",
+        "lines": [
+          133,
+          143
+        ]
+      },
+      {
+        "symbol": "hand_for",
+        "lines": [
+          145,
+          148
+        ]
+      },
+      {
+        "symbol": "content_key",
+        "lines": [
+          150,
+          155
+        ]
+      },
+      {
+        "symbol": "build",
+        "lines": [
+          176,
+          200
+        ]
+      },
+      {
+        "symbol": "for_observation",
+        "lines": [
+          203,
+          208
+        ]
+      },
+      {
+        "symbol": "sample",
+        "lines": [
+          212,
+          225
+        ]
+      },
+      {
+        "symbol": "sample_one",
+        "lines": [
+          227,
+          240
+        ]
+      },
+      {
+        "symbol": "_stream_seed",
+        "lines": [
+          242,
+          253
+        ]
+      },
+      {
+        "symbol": "_draw",
+        "lines": [
+          255,
+          282
+        ]
+      },
+      {
+        "symbol": "_skip_draw",
+        "lines": [
+          284,
+          302
+        ]
+      },
+      {
+        "symbol": "_skip_draw_class",
+        "lines": [
+          304,
+          338
+        ]
+      },
+      {
+        "symbol": "_draw_class",
+        "lines": [
+          340,
+          376
+        ]
+      },
+      {
+        "symbol": "_completions",
+        "lines": [
+          378,
+          387
+        ]
+      },
+      {
+        "symbol": "provenance",
+        "lines": [
+          391,
+          410
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E057",
+    "repo": "ENGINE",
+    "path": "configs/rules/project_target_v3.json",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      321
+    ],
+    "sha256": "0ca4212a04d2993cf4deb3024e6027423f924e9964fdd44fbee8a728b3fa7f37",
+    "type": "REPORT",
+    "symbols": [],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E058",
+    "repo": "AI",
+    "path": "docs/BIDDING_EXPLANATION_PLAN.md",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      164
+    ],
+    "sha256": "e0172b922f15d97d13e6b571dee2ca7db40803e11b7442e0af9fa868ded0848a",
+    "type": "REPORT",
+    "symbols": [],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E059",
+    "repo": "AI",
+    "path": "tools/serve_human.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      85
+    ],
+    "sha256": "168032daa3a262d5105de78e4f6486a40ee0d140d5c404f2021909120abc9955",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "_plan",
+        "lines": [
+          46,
+          54
+        ]
+      },
+      {
+        "symbol": "main",
+        "lines": [
+          57,
+          81
+        ]
+      },
+      {
+        "symbol": "construct",
+        "lines": [
+          66,
+          70
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E060",
+    "repo": "AI",
+    "path": "tuppi_ai/incumbent.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      19
+    ],
+    "sha256": "4ea9a7521c4ee2de7853f0d1d7f493656a37233fc08371e6c3e177e0c7522b80",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "incumbent_agents",
+        "lines": [
+          8,
+          19
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E061",
+    "repo": "ENGINE",
+    "path": "src/tuppi_server/real_game_deal_analysis.py",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      260
+    ],
+    "sha256": "decf2a53bbb9e63c4ec51a7c06b415a7c64a5b256757476a48bbd8ecae895473",
+    "type": "CODE",
+    "symbols": [
+      {
+        "symbol": "RealGameAnalysisError",
+        "lines": [
+          73,
+          74
+        ]
+      },
+      {
+        "symbol": "bot_policy_for",
+        "lines": [
+          77,
+          88
+        ]
+      },
+      {
+        "symbol": "generate_real_game_deal_analysis",
+        "lines": [
+          91,
+          138
+        ]
+      },
+      {
+        "symbol": "validate_real_game_deal_analysis",
+        "lines": [
+          141,
+          199
+        ]
+      },
+      {
+        "symbol": "_completed_research_deal",
+        "lines": [
+          202,
+          217
+        ]
+      },
+      {
+        "symbol": "_initial_state",
+        "lines": [
+          220,
+          235
+        ]
+      },
+      {
+        "symbol": "_hands_data",
+        "lines": [
+          238,
+          239
+        ]
+      },
+      {
+        "symbol": "_exchange_data",
+        "lines": [
+          242,
+          247
+        ]
+      },
+      {
+        "symbol": "_summary",
+        "lines": [
+          250,
+          260
+        ]
+      }
+    ],
+    "test_execution": null
+  },
+  {
+    "evidence_id": "E062",
+    "repo": "AI",
+    "path": "docs/HUMAN_BENCHMARK.md",
+    "symbol": "file; symbols below",
+    "lines": [
+      1,
+      65
+    ],
+    "sha256": "c4c0b74fd2cd55c888889d0a6f17ef1d7b5cc51d91cd775e7fbc6a98e5dc6cd0",
+    "type": "REPORT",
+    "symbols": [],
+    "test_execution": null
+  }
+]

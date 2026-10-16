@@ -1,0 +1,184 @@
+{
+ "approval": null,
+ "baseline_id": "B0-source best_agents(worlds=128) dd_left=6 search_showing=1, seed map seed+2*seat",
+ "candidate_id": {
+  "primary": "C1-shadow-v1 (beta frozen on FIT; M, n frozen on PLAN)",
+  "separate_variant": "C1-natural-v1 (own-stream advancement; a different complete policy)"
+ },
+ "checkpoint_frequency": "per base deal",
+ "cluster_unit": "originating_deal",
+ "contract_calibration": {
+  "F02-discard-pos2": {
+   "c1_M256_n32": {
+    "expensive_cpu_s": 0.0033810000000000784,
+    "proxy_cpu_s": 0.007842000000000016,
+    "reference_cpu_s": 0.00010100000000001774,
+    "sampling_cpu_s": 0.001170999999999922,
+    "shadow_cpu_s": 0.0005209999999999937,
+    "total_cpu_s": 0.013070000000000026,
+    "total_wall_s": 0.010717375000240281
+   },
+   "k": 5,
+   "w128": {
+    "cpu_s": 0.025017999999999985,
+    "wall_s": 0.003648500016424805
+   }
+  },
+  "F02b-discard-pos3": {
+   "c1_M256_n32": {
+    "expensive_cpu_s": 0.07070299999999996,
+    "proxy_cpu_s": 0.015042999999999918,
+    "reference_cpu_s": 9.299999999989872e-05,
+    "sampling_cpu_s": 0.003654999999999964,
+    "shadow_cpu_s": 0.0016320000000000778,
+    "total_cpu_s": 0.09117699999999984,
+    "total_wall_s": 0.040740084019489586
+   },
+   "k": 8,
+   "w128": {
+    "cpu_s": 0.2979339999999999,
+    "wall_s": 0.02861224999651313
+   }
+  }
+ },
+ "cpu_seconds_cap": null,
+ "do_not_launch_reason": "Disabled: no owner approval and no numeric CPU/wall/memory caps; CONFIRM size unset; futility rule is only proposed",
+ "equity_noninferiority_margin": -0.0005,
+ "estimator_version": {
+  "allocation": "min over integer n of max_a(A_a/M + B_a/n) at the W128 baseline's measured CPU, from PLAN data only",
+  "beta": "single scalar: slope from fit_beta_on_split (FIT only; within-case/action centred, equal case weights), frozen as optimal_beta(slope, M, n) once M, n are fixed on PLAN",
+  "estimator": "c1.fixed_beta.independent_batches.v1",
+  "proxy": "c1.contested_duck_liability.v1",
+  "reference_action": "clone preferred legal discard, engine tie order"
+ },
+ "execution_enabled": false,
+ "failure_policy": "retain failures; no complete-case deletion or unlabelled replacement",
+ "futility_rule": null,
+ "independent_reference_plan": {
+  "replicates": 2,
+  "rule": "all legal actions on fresh explicit worlds, independent of the candidate, baseline and selection streams",
+  "stream_namespace": "reference",
+  "worlds": 2048
+ },
+ "lifecycle_contract": {
+  "case_harvest": "independent_cold_bundle v3 deals, B0-source best agents at every seat",
+  "mechanism_endpoint": "decision-case replay: every case evaluated from a fresh cold agent fork (ReplayFork/NativeFork); no controller state carried between cases"
+ },
+ "manifest_id": "c1-pilot-proposal-v1",
+ "match_censoring_policy": "record unresolved and bounds; no automatic half-win",
+ "max_native_concurrency": null,
+ "max_workers": null,
+ "mechanism": "C1",
+ "memory_bytes_cap": null,
+ "multiplicity_plan": "one nominated candidate (shadow); the natural variant is reported descriptively",
+ "native_build_ids": {
+  "B0-installed": "02d9b4fad98ebb342e12cd9ecb4723aaee1406c6c6b539a1dc4a5b2b002c1ab8",
+  "B0-source": "02d9b4fad98ebb342e12cd9ecb4723aaee1406c6c6b539a1dc4a5b2b002c1ab8",
+  "R0-parity": "221fe0415b275cd46651e0f9a8d109af294f5b4e18a1a186e4f8c08f1564ca85",
+  "note": "B0-source is byte-identical to B0-installed (builds/build_manifest.txt)"
+ },
+ "one_final_look": true,
+ "opponent_population": "the same frozen W128 family at every other seat (case harvesting)",
+ "per_decision_deadline_ms": null,
+ "planning_constraint": "Measured on fixtures: a W128 NOLO discard costs 0.03-0.3 s CPU while a bid search costs 2-6 s (builds/parity_B0-source.json). The discard branch is therefore likely a small CPU fraction f, and the total saving is bounded by f*r (statistics.total_saving_bound). Measure f first; if f < 0.2 the full-game '20% total CPU' promotion route is arithmetically unreachable for C1 and only the local MSE endpoint or a separately powered strength test remains.",
+ "policy_factories_by_seat": {
+  "0": "best(worlds=128, seed=bundle seat seed)",
+  "1": "best(worlds=128, seed=bundle seat seed)",
+  "2": "best(worlds=128, seed=bundle seat seed)",
+  "3": "best(worlds=128, seed=bundle seat seed)"
+ },
+ "population": "ordinary_nolo_discard",
+ "primary_endpoint": "gap_MSE_at_equal_total_CPU",
+ "proposed_futility_rule": "stop C1 after PLAN if the upper 95% bound of the reference-noise-corrected MSE ratio at equal CPU is >= 0.9 (proposal; needs approval)",
+ "proposed_resource_shape": {
+  "max_native_concurrency": 1,
+  "max_workers": 1,
+  "note": "native search already uses every core; nested concurrency untested"
+ },
+ "provisional_meaningful_target": 0.2,
+ "reference_noise_adjustment": "statistics.mse_endpoints: corrected ratio and MSE difference",
+ "required_contract_task": "C1.03",
+ "required_sample_size": null,
+ "result_path": "research_runs/<run_id>/c1_results.json",
+ "sample_size_basis": "PLAN paired-cluster SD of the MSE-difference endpoint -> statistics.power_n; not historical SDs",
+ "score_distribution": {
+  "law": "zero",
+  "note": "one declared law; legacy 'uniform' is not uniform over 25 states",
+  "weights": {
+   "0-0": 1.0
+  }
+ },
+ "secondary_endpoints": [
+  "recommendation disagreement with W128",
+  "paired selected-value difference on fresh common validation worlds",
+  "estimator variance",
+  "branch frequency and CPU fraction f",
+  "CPU/wall including sampling, shadow, proxy and reference"
+ ],
+ "seed_namespace": {
+  "agents": "per-bundle seat seeds (runner_v3.bundle_seed); cases forked from them",
+  "cases": "deal|c1-<split>-v1|<index>",
+  "cheap": "cheap|<run>|seat|<seat>|pre-call-rng|<agent scalar RNG before the call>",
+  "expensive": "expensive|<run>|seat|<seat>|pre-call-rng|<agent scalar RNG before the call>",
+  "reference": "reference|<run>|<case>",
+  "validation": "validation|<run>|<case>"
+ },
+ "source_hashes": {
+  "native/research/build_research.sh": "e9ebc6dd579d814af3c14c79ec8f0d411549e8b00f073e62378903b9901fcec4",
+  "native/research/overlay.patch": "92a477c19c337c98c8406a21b841aa1c0c335e5edbae401173c902bbf07b368b",
+  "native/research/pinned_sources.sha256": "88913ad13e91f031d1cc3a2a638b7b32b6e66c7e1886b5df183fc4a311226dd7",
+  "native/research/research_api.c": "897b57d97507d1ec5282057b7aac30b93e79771f14f0e8b75a931d383bbb8ac3",
+  "native/research/research_api.h": "89e569347a0c5b215a7f8420843d07d435f842c15fc272ce4c6f1f83a151281e",
+  "tuppi_ai/best.py": "bdec3507cbf2bfaa248d513244353c4a02aad36650f368c5ecc8e2aa1f7568db",
+  "tuppi_ai/bridge.py": "f2d24345e289c78dbf9efb07f0c7007519b638beb15b414446aaa78ffda429d2",
+  "tuppi_ai/native.py": "3c6c13f50a710aee52dcc0a4b8f0b89d68c499b04cd2a6fb8726aa2325b4ef84",
+  "tuppi_ai/research/c1_control_variate.py": "cbd5228e46c472de19af611a567c4d6b543e5137fd987f9e0ed9e340bdff82da",
+  "tuppi_ai/research/c1_dispatch.py": "ada78150b3d7b33692a8433560308dba2a39b8c9f5c4d804ad8d3fee3953c8b2",
+  "tuppi_ai/research/c2_blind_bids.py": "423d708e109d59975a6ee75a8d4c9c1abe0813bf61e492e028e63978ae99e650",
+  "tuppi_ai/research/c3_kernel.py": "4a86fbb53dead3593c5162b674d5bd364f1bb22cc7c75f9add81c540e6e84561",
+  "tuppi_ai/research/c3_utility_stop.py": "dcfc21b7611237311ff17482ca6696d2227ed95a66606dbf5a44091a884bf4d2",
+  "tuppi_ai/research/cli.py": "92dde07028eac72d892be37ba1e2fc17a8fa7f00afc5590ab78ab7fb312eb69b",
+  "tuppi_ai/research/clone_policy.py": "630bd6521bf52cacb1380a8ba639efc8eb27a9c5597ec327e43e84c79b36b329",
+  "tuppi_ai/research/fixtures.py": "57f99b019aba146bddb391583033d4a181efc764b0195c0b1fbf20329cb879f0",
+  "tuppi_ai/research/identity.py": "cea135f6992ab3a7a6099ddd671f7ed3d8af2cc722ccc425911f326b6f15f4f6",
+  "tuppi_ai/research/ledger.py": "9b1108da4a917fde09fffe9061ca1562cef0ebbefe6ced2b8ae3416bba9a24df",
+  "tuppi_ai/research/lifecycle.py": "fb02a3072ca0a22e7da1ec70849a83f2e71fba3a0bbfe58f52b5886a95728e17",
+  "tuppi_ai/research/manifests.py": "8f4927f182e2019f15f797fd7854941de5fb16ef034a1066f383356e2c499f8f",
+  "tuppi_ai/research/native_api.py": "163582c4b2bc91506d26b30424c4dd0f866a2ae354cf54a05a4c85defe16ac8a",
+  "tuppi_ai/research/observation.py": "3458a3c9e3707427eceee34afeabea0fc40352d17cf02b53adc48382e568642f",
+  "tuppi_ai/research/parity.py": "f3e20bb85b5d8bf81fff62f975a6fe1a5b031e935c31635d332cdaf54a9b6fdd",
+  "tuppi_ai/research/probe.py": "b2fa128dae0e44ba9cd47b0b171bdca631b8fdcb748b901e5a0e2f0d2271cc89",
+  "tuppi_ai/research/records.py": "bdbb9ca2d035d47bfe609345a9eb7f83b9020ff0e14fe5b0839ce6b728a46a3d",
+  "tuppi_ai/research/runner_v3.py": "91f96a4c7a47acec84d23390476cbf5696dd9e3d9e1d53fd54e426d1d6c54d4e",
+  "tuppi_ai/research/statistics.py": "d04b8623020d08e177b69746e5c766b74339b4b9f760adc987d490e15d39b660",
+  "tuppi_ai/research/streams.py": "d9b16fc91f7f986b084700a877e74318f99803ae6f5d6529672ea14f024a8d1f",
+  "tuppi_ai/research/testing.py": "6d579f736b31043fdbcdb542f160f9cc59c7c11d1fab9fae99fb824f8efb8088",
+  "tuppi_ai/search.py": "ec43cb390dd1ba571991de1523995791df936292f5a4408c8207e90c73366612"
+ },
+ "splits": {
+  "CONFIRM": {
+   "parent_namespace": "c1-confirm-v1",
+   "proposed_base_deals": null,
+   "rule": "sized from PLAN variance after a candidate is nominated; opened once"
+  },
+  "FIT": {
+   "parent_namespace": "c1-fit-v1",
+   "proposed_base_deals": 64
+  },
+  "PLAN": {
+   "parent_namespace": "c1-plan-v1",
+   "proposed_base_deals": 128
+  },
+  "SCREEN": {
+   "parent_namespace": "c1-screen-v1",
+   "proposed_base_deals": 256
+  },
+  "parent_overlap_allowed": false,
+  "split_key": "original_parent_deal_id"
+ },
+ "stream_protocol": "shadow advancement: candidate streams hash a copy of the agent's pre-call scalar RNG state (actor-local, distinct per agent and call, reproduced by forks); the persistent RNG is then advanced by W root draws exactly as W128 (V09)",
+ "target_is_user_approved": false,
+ "target_scale": "relative_reduction",
+ "variance_estimate": null,
+ "wall_seconds_cap": null
+}

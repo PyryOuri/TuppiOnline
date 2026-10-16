@@ -1,0 +1,15 @@
+{
+  "schema": "tuppi.speed_qualification.gates.v1",
+  "frozen_before_W1024_timing": true,
+  "exact_required": "Every action, searched value, RNG state, legal input and recorded sooli-option trace must match on all qualification jobs.",
+  "overall_median_serial_cpu_reduction_min": 0.1,
+  "incremental_median_serial_cpu_reduction_min": 0.02,
+  "native_parallel_p95_ratio_max": 1.05,
+  "native_parallel_bid_p95_ratio_max": 1.05,
+  "order": [
+    "combo32",
+    "combo128",
+    "compact128"
+  ],
+  "scope": "Technical qualification on the fixed bank. Native dispatch plus one Torch/BLAS lane, not end-to-end app or device acceptance."
+}

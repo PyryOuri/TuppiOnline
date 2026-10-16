@@ -1,0 +1,151 @@
+{
+  "schema": "tuppi.compact128.integration.build.v1",
+  "commands": {
+    "macos_blas": [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang",
+      "-O3",
+      "-Wall",
+      "-Wextra",
+      "-Wno-unused-parameter",
+      "-isysroot",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-ffp-contract=off",
+      "-DTC_PORTABLE",
+      "-dynamiclib",
+      "-o",
+      "libtuppi.dylib.tmp",
+      "tuppi_core.c",
+      "tuppi_env.c",
+      "tuppi_search.c",
+      "tuppi_dd.c",
+      "tuppi_mlp.c",
+      "tuppi_sooli.c",
+      "tuppi_sooli_policy.c",
+      "-lm",
+      "-DTC_HOSTED_BLAS",
+      "-framework",
+      "Accelerate"
+    ]
+  },
+  "native_source_directory": "/Users/pyryouri/Developer/TuppiAI-speed-port/native",
+  "native_sources": {
+    "showing_constraints.h": "f641aa73bfe8373c8b88329f842d268a12d64b87791a9c501c1f0a911975afea",
+    "tuppi_browser.c": "5307321d28bdc6ed40720e2cc5836ecd2ffce4772c81c5f3e2fafef373846c37",
+    "tuppi_core.c": "2c3f0a539f6569d0927aea0d08fc8911304a88108e84667826b5c8a0c810ecbf",
+    "tuppi_core.h": "fc301b9484d6bc1e6af5dacd4937542ff429eab51ca3cbfe6380220f8571033b",
+    "tuppi_dd.c": "3525c76009aee73d62d77e15ba896946a298d14b0377ac45c8d7cf2e3f09d5ca",
+    "tuppi_env.c": "68603ec64cb9f76f5454dedc27916078d36680fb37f63fa9addc7cdde0d67d19",
+    "tuppi_matrix.h": "1cefd87247b5d5597ac5daf7816721498eef0b1bc088141e45a79155a6e774f9",
+    "tuppi_mlp.c": "e04b7a602f04ca9536fa8715c2c0da125e1dc201ddb2d4e4f7dbbfa008fe1015",
+    "tuppi_mlp.h": "89f7b352ba52edfedc289f9e47dc134957907568c481500412714e368f92f372",
+    "tuppi_parallel.h": "8b62620403697646f7b51cf945f6c6cdcaca69c61d44c8efb18c29f6143aa2f9",
+    "tuppi_search.c": "3031e7b6db2d308ab618597f6b4da02e0a3764a8a0a3d2a7f96e109a41aa71db",
+    "tuppi_sooli.c": "8068068831552abadbf1776aa3b5b51d60f294ac0b438befd5105f567186d02d",
+    "tuppi_sooli_policy.c": "d8b9f88e30d359c7e785b28de95886e80486d1e4046c9eb28a3d9d1605e625d8"
+  },
+  "candidate_macos_library_sha256": "5c48ec2b2f7f9fbc6ac7724a0654a523142028266316e62de74b0b412afeca39",
+  "baseline_macos_library_sha256": "dc6d428b01c31cd9f945c63e185798d8904d7d34af1af04b789f69a53febcb33",
+  "wasm": {
+    "schema": "tuppi.browser.build.v1",
+    "compiler": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.12 (5488e0871d46d19a3209988190fa6a653126256f)",
+    "command": [
+      "/Users/pyryouri/.venvs/tuppi-v2/bin/python",
+      "/Users/pyryouri/Developer/toolchains/emsdk/upstream/emscripten/emcc.py",
+      "/Users/pyryouri/Developer/TuppiAI-speed-port/native/tuppi_core.c",
+      "/Users/pyryouri/Developer/TuppiAI-speed-port/native/tuppi_env.c",
+      "/Users/pyryouri/Developer/TuppiAI-speed-port/native/tuppi_search.c",
+      "/Users/pyryouri/Developer/TuppiAI-speed-port/native/tuppi_dd.c",
+      "/Users/pyryouri/Developer/TuppiAI-speed-port/native/tuppi_mlp.c",
+      "/Users/pyryouri/Developer/TuppiAI-speed-port/native/tuppi_sooli.c",
+      "/Users/pyryouri/Developer/TuppiAI-speed-port/native/tuppi_sooli_policy.c",
+      "/Users/pyryouri/Developer/TuppiAI-speed-port/native/tuppi_browser.c",
+      "-O3",
+      "-msimd128",
+      "-ffp-contract=off",
+      "-DTC_PORTABLE=1",
+      "-I",
+      "/Users/pyryouri/Developer/TuppiAI-speed-port/native",
+      "-sMODULARIZE=1",
+      "-sEXPORT_ES6=1",
+      "-sENVIRONMENT=web,worker,node",
+      "-sALLOW_MEMORY_GROWTH=1",
+      "-sINITIAL_MEMORY=67108864",
+      "-sMAXIMUM_MEMORY=268435456",
+      "-sSTACK_SIZE=4194304",
+      "-sEXPORTED_FUNCTIONS=[\"_malloc\", \"_free\", \"_tb_api_version\", \"_tb_load_model\", \"_tb_configure\", \"_tb_init\", \"_tb_legal\", \"_tb_apply\", \"_tb_state\", \"_tb_hand\", \"_tb_history\", \"_tb_bids\", \"_tb_choose\", \"_tb_values\", \"_tb_context\", \"_tb_restore_context\", \"_tb_observation_size\", \"_tb_observation\", \"_tb_features\", \"_tb_inference\"]",
+      "-sEXPORTED_RUNTIME_METHODS=[\"HEAPU8\", \"HEAP32\", \"HEAPF32\", \"HEAPF64\"]",
+      "-o",
+      "/Users/pyryouri/Developer/TuppiBrowser-speed-port/web/assets/tuppi.mjs"
+    ],
+    "sources": [
+      {
+        "path": "TuppiAI-speed-port/native/tuppi_core.c",
+        "sha256": "2c3f0a539f6569d0927aea0d08fc8911304a88108e84667826b5c8a0c810ecbf"
+      },
+      {
+        "path": "TuppiAI-speed-port/native/tuppi_env.c",
+        "sha256": "68603ec64cb9f76f5454dedc27916078d36680fb37f63fa9addc7cdde0d67d19"
+      },
+      {
+        "path": "TuppiAI-speed-port/native/tuppi_search.c",
+        "sha256": "3031e7b6db2d308ab618597f6b4da02e0a3764a8a0a3d2a7f96e109a41aa71db"
+      },
+      {
+        "path": "TuppiAI-speed-port/native/tuppi_dd.c",
+        "sha256": "3525c76009aee73d62d77e15ba896946a298d14b0377ac45c8d7cf2e3f09d5ca"
+      },
+      {
+        "path": "TuppiAI-speed-port/native/tuppi_mlp.c",
+        "sha256": "e04b7a602f04ca9536fa8715c2c0da125e1dc201ddb2d4e4f7dbbfa008fe1015"
+      },
+      {
+        "path": "TuppiAI-speed-port/native/tuppi_sooli.c",
+        "sha256": "8068068831552abadbf1776aa3b5b51d60f294ac0b438befd5105f567186d02d"
+      },
+      {
+        "path": "TuppiAI-speed-port/native/tuppi_sooli_policy.c",
+        "sha256": "d8b9f88e30d359c7e785b28de95886e80486d1e4046c9eb28a3d9d1605e625d8"
+      },
+      {
+        "path": "TuppiAI-speed-port/native/tuppi_browser.c",
+        "sha256": "5307321d28bdc6ed40720e2cc5836ecd2ffce4772c81c5f3e2fafef373846c37"
+      },
+      {
+        "path": "TuppiAI-speed-port/native/tuppi_core.h",
+        "sha256": "fc301b9484d6bc1e6af5dacd4937542ff429eab51ca3cbfe6380220f8571033b"
+      },
+      {
+        "path": "TuppiAI-speed-port/native/tuppi_matrix.h",
+        "sha256": "1cefd87247b5d5597ac5daf7816721498eef0b1bc088141e45a79155a6e774f9"
+      },
+      {
+        "path": "TuppiAI-speed-port/native/tuppi_parallel.h",
+        "sha256": "8b62620403697646f7b51cf945f6c6cdcaca69c61d44c8efb18c29f6143aa2f9"
+      },
+      {
+        "path": "TuppiAI-speed-port/native/showing_constraints.h",
+        "sha256": "f641aa73bfe8373c8b88329f842d268a12d64b87791a9c501c1f0a911975afea"
+      },
+      {
+        "path": "TuppiAI-speed-port/native/tuppi_mlp.h",
+        "sha256": "89f7b352ba52edfedc289f9e47dc134957907568c481500412714e368f92f372"
+      }
+    ],
+    "outputs": [
+      {
+        "file": "tuppi.mjs",
+        "bytes": 8153,
+        "sha256": "1fdc0bb286a965c9b4daf8d54f80b1100b95db549affa52be96289eb170471c9"
+      },
+      {
+        "file": "tuppi.wasm",
+        "bytes": 87227,
+        "sha256": "9d04dfd0e27a6af20b17594d1669422d4f5393515cf6e04c14e0c39389ced616"
+      }
+    ]
+  },
+  "source_commits": {
+    "TuppiAI-speed-port": "e8bb6b8cb28b7e64345cb7eaef64bdbd75a7c52d",
+    "TuppiBrowser-speed-port": "6b8ce21c54b82bdfeee1a42aed09a5ada88aa21c"
+  }
+}

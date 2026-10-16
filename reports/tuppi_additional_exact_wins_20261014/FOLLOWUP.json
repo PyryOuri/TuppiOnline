@@ -1,0 +1,42 @@
+{
+  "schema": "tuppi.additional_exact_wins.followup.v1",
+  "compact_root_parity": {
+    "same_net_only": true,
+    "compact_rows": true
+  },
+  "compact_W128_trace_parity": true,
+  "compact_W1024_trace_parity": true,
+  "compact_W128_cpu_seconds": 10.734484,
+  "same_net_W128_cpu_seconds": 11.178988,
+  "compact_W128_incremental_cpu_reduction": 0.03976245434738812,
+  "compact_W128_mlp_rows": 583193,
+  "same_net_W128_mlp_rows": 693081,
+  "batch_size_pairs": [
+    {
+      "order": [
+        "reference",
+        "chunk128"
+      ],
+      "cpu_base": 11.063543000000001,
+      "cpu_chunk128": 10.274735
+    },
+    {
+      "order": [
+        "chunk128",
+        "reference"
+      ],
+      "cpu_base": 12.100288,
+      "cpu_chunk128": 10.871107
+    },
+    {
+      "order": [
+        "reference",
+        "chunk128"
+      ],
+      "cpu_base": 12.388369,
+      "cpu_chunk128": 11.49459
+    }
+  ],
+  "batch128_median_cpu_reduction": 0.07214662398254368,
+  "qualification": "Three short W128 timing pairs for chunk128. One compacted W128 pair and one W1024 trace qualification; W1024 timing is not paired here. No strength result."
+}

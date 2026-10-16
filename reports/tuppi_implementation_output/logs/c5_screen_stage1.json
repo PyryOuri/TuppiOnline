@@ -1,0 +1,2272 @@
+{
+ "manifest": "/Users/pyryouri/Developer/audit_deliverables/tuppi_implementation_output/research/c5_screen_manifest.json",
+ "run": {
+  "stopped_early": null,
+  "total_cpu_s": 886.2584400000001,
+  "total_wall_s": 195.14380437499494
+ },
+ "summary": {
+  "source_deals": 68,
+  "eligible_positions": 64,
+  "gate_failures": {
+   "no ordinary three-card lead boundary": 4
+  },
+  "ineligible_contracts": [
+   [
+    "RAMI",
+    true
+   ],
+   [
+    "RAMI",
+    true
+   ],
+   [
+    "RAMI",
+    true
+   ],
+   [
+    "RAMI",
+    true
+   ]
+  ],
+  "support_status": {
+   "EXACT_COMPLETE": 16,
+   "TOO_LARGE": 48
+  },
+  "coverage_exact": 0.25,
+  "support_sizes": [
+   10,
+   20,
+   20,
+   20,
+   20,
+   30,
+   40,
+   48,
+   48,
+   50,
+   70,
+   80,
+   80,
+   92,
+   100,
+   100
+  ],
+  "options_started_in_transfer": 14,
+  "options_followed_later": 1,
+  "off_support_fallbacks_in_transfer": 11,
+  "lead_disagreement_model": 2,
+  "model_gain_option_minus_w128_policy": {
+   "n": 16,
+   "mean": 0.00026582317368592674,
+   "sd": 0.0007663510028541479,
+   "ci95": [
+    -0.00010968881771260573,
+    0.0006413351650844592
+   ]
+  },
+  "model_gain_nonzero_positions": 2,
+  "transfer_diff_c5_minus_w128": {
+   "n": 64,
+   "mean": -0.0013511793733498034,
+   "sd": 0.010809434986798427,
+   "ci95": [
+    -0.003999490945115418,
+    0.0012971321984158114
+   ]
+  },
+  "transfer_nonzero_positions": 1,
+  "transfer_positive": 0,
+  "transfer_negative": 1,
+  "c5_first_decision_latency_ms": {
+   "n": 64,
+   "p50": 3.895583489793353,
+   "p95": 92.79414374323092,
+   "max": 105.90212501119822
+  },
+  "nodes_max": 5892
+ },
+ "rows": [
+  {
+   "source": 0,
+   "dealer": 0,
+   "prefix_cpu_s": 16.159113,
+   "eligible": true,
+   "root": 3,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "EXACT_COMPLETE",
+   "support": 10,
+   "support_ms": 40.34133299137466,
+   "model": {
+    "q": {
+     "17": -0.02464591898024083,
+     "6": 0.03652137331664563,
+     "45": -0.024645918980240822
+    },
+    "option_lead": 6,
+    "w128_lead": 6,
+    "q_option": 0.03652137331664563,
+    "q_w128_lead_plus_option": 0.03652137331664563,
+    "v_w128_policy": 0.036521373316645615,
+    "clairvoyant": 0.036521373316645615,
+    "nodes": 533,
+    "solve_ms": 11.358624993590638,
+    "w128_later_calls": 5
+   },
+   "transfer": {
+    "u_w128": 0.048767237834324906,
+    "u_c5": 0.048767237834324906,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "option_started",
+      "support": 10,
+      "nodes": 533,
+      "wall_s": 0.010536499990848824,
+      "q": {
+       "17": -0.02464591898024083,
+       "6": 0.03652137331664563,
+       "45": -0.024645918980240822
+      },
+      "chosen": 6
+     },
+     {
+      "event": "fallback",
+      "reason": "unexpected information key (off-support)"
+     }
+    ],
+    "c5_first_decision_ms": 11.480749992188066,
+    "root_tricks_w128": 8,
+    "root_tricks_c5": 8
+   }
+  },
+  {
+   "source": 1,
+   "dealer": 1,
+   "prefix_cpu_s": 12.054186000000001,
+   "eligible": true,
+   "root": 0,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "EXACT_COMPLETE",
+   "support": 30,
+   "support_ms": 0.6038330029696226,
+   "model": {
+    "q": {
+     "37": -0.008363135531544686,
+     "38": -0.008363135531544686,
+     "48": -0.02422161214053631
+    },
+    "option_lead": 37,
+    "w128_lead": 37,
+    "q_option": -0.008363135531544686,
+    "q_w128_lead_plus_option": -0.008363135531544686,
+    "v_w128_policy": -0.008363135531544684,
+    "clairvoyant": -0.008363135531544684,
+    "nodes": 1722,
+    "solve_ms": 34.11108301952481,
+    "w128_later_calls": 5
+   },
+   "transfer": {
+    "u_w128": 0.025184545343107545,
+    "u_c5": 0.025184545343107545,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "option_started",
+      "support": 30,
+      "nodes": 1722,
+      "wall_s": 0.03400679101468995,
+      "q": {
+       "37": -0.008363135531544686,
+       "38": -0.008363135531544686,
+       "48": -0.02422161214053631
+      },
+      "chosen": 37
+     },
+     {
+      "event": "fallback",
+      "reason": "unexpected information key (off-support)"
+     }
+    ],
+    "c5_first_decision_ms": 34.61941602290608,
+    "root_tricks_w128": 7,
+    "root_tricks_c5": 7
+   }
+  },
+  {
+   "source": 2,
+   "dealer": 2,
+   "prefix_cpu_s": 12.254597000000004,
+   "eligible": true,
+   "root": 2,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "EXACT_COMPLETE",
+   "support": 20,
+   "support_ms": 1.624791999347508,
+   "model": {
+    "q": {
+     "5": -0.019640778843313455,
+     "44": -0.012424065079540011,
+     "7": -0.019336348865181208
+    },
+    "option_lead": 44,
+    "w128_lead": 44,
+    "q_option": -0.012424065079540011,
+    "q_w128_lead_plus_option": -0.012424065079540011,
+    "v_w128_policy": -0.01521970517933369,
+    "clairvoyant": -0.012424065079540018,
+    "nodes": 880,
+    "solve_ms": 18.37441697716713,
+    "w128_later_calls": 6
+   },
+   "transfer": {
+    "u_w128": 0.030728256012879207,
+    "u_c5": 0.030728256012879207,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "option_started",
+      "support": 20,
+      "nodes": 880,
+      "wall_s": 0.01773741698707454,
+      "q": {
+       "5": -0.019640778843313455,
+       "44": -0.012424065079540011,
+       "7": -0.019336348865181208
+      },
+      "chosen": 44
+     },
+     {
+      "event": "fallback",
+      "reason": "unexpected information key (off-support)"
+     }
+    ],
+    "c5_first_decision_ms": 19.35850002337247,
+    "root_tricks_w128": 7,
+    "root_tricks_c5": 7
+   }
+  },
+  {
+   "source": 3,
+   "dealer": 3,
+   "prefix_cpu_s": 9.344551000000003,
+   "eligible": true,
+   "root": 0,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "TOO_LARGE",
+   "support": 700,
+   "support_ms": 2.82845800393261,
+   "transfer": {
+    "u_w128": 0.03127314569438344,
+    "u_c5": 0.03127314569438344,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 700
+     }
+    ],
+    "c5_first_decision_ms": 3.317416994832456,
+    "root_tricks_w128": 7,
+    "root_tricks_c5": 7
+   }
+  },
+  {
+   "source": 4,
+   "dealer": 0,
+   "prefix_cpu_s": 13.935817999999998,
+   "eligible": true,
+   "root": 0,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 150,
+   "support_ms": 0.7057079928927124,
+   "transfer": {
+    "u_w128": 0.06097577105126373,
+    "u_c5": 0.06097577105126373,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 150
+     }
+    ],
+    "c5_first_decision_ms": 1.167707989225164,
+    "root_tricks_w128": 11,
+    "root_tricks_c5": 11
+   }
+  },
+  {
+   "source": 5,
+   "dealer": 1,
+   "prefix_cpu_s": 4.924909999999997,
+   "eligible": true,
+   "root": 0,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "EXACT_COMPLETE",
+   "support": 92,
+   "support_ms": 1.2945410271640867,
+   "model": {
+    "q": {
+     "0": 0.05089975342802378,
+     "44": 0.04210876102518777,
+     "42": 0.04210876102518777
+    },
+    "option_lead": 0,
+    "w128_lead": 0,
+    "q_option": 0.05089975342802378,
+    "q_w128_lead_plus_option": 0.05089975342802378,
+    "v_w128_policy": 0.05089975342802374,
+    "clairvoyant": 0.05213175835492813,
+    "nodes": 4832,
+    "solve_ms": 93.32158300094306,
+    "w128_later_calls": 49
+   },
+   "transfer": {
+    "u_w128": 0.039427417645000906,
+    "u_c5": 0.039427417645000906,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "option_started",
+      "support": 92,
+      "nodes": 4832,
+      "wall_s": 0.09266750002279878,
+      "q": {
+       "0": 0.05089975342802378,
+       "44": 0.04210876102518777,
+       "42": 0.04210876102518777
+      },
+      "chosen": 0
+     },
+     {
+      "event": "fallback",
+      "reason": "unexpected information key (off-support)"
+     }
+    ],
+    "c5_first_decision_ms": 93.95174999372102,
+    "root_tricks_w128": 9,
+    "root_tricks_c5": 9
+   }
+  },
+  {
+   "source": 6,
+   "dealer": 2,
+   "prefix_cpu_s": 13.757675000000006,
+   "eligible": true,
+   "root": 2,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "TOO_LARGE",
+   "support": 120,
+   "support_ms": 0.7014170114416629,
+   "transfer": {
+    "u_w128": 0.04816376461923999,
+    "u_c5": 0.04816376461923999,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 120
+     }
+    ],
+    "c5_first_decision_ms": 1.2950839882250875,
+    "root_tricks_w128": 8,
+    "root_tricks_c5": 8
+   }
+  },
+  {
+   "source": 7,
+   "dealer": 3,
+   "prefix_cpu_s": 16.795575,
+   "eligible": true,
+   "root": 0,
+   "contract": "NOLO",
+   "declarer_team": null,
+   "support_status": "EXACT_COMPLETE",
+   "support": 48,
+   "support_ms": 0.5590420041698962,
+   "model": {
+    "q": {
+     "42": -0.002595937461592256,
+     "13": -0.016138058543826144,
+     "39": -0.005386128750008842
+    },
+    "option_lead": 42,
+    "w128_lead": 42,
+    "q_option": -0.002595937461592256,
+    "q_w128_lead_plus_option": -0.002595937461592256,
+    "v_w128_policy": -0.002595937461592256,
+    "clairvoyant": 0.0037691490724682817,
+    "nodes": 2311,
+    "solve_ms": 45.78179100644775,
+    "w128_later_calls": 36
+   },
+   "transfer": {
+    "u_w128": -0.024645919046708986,
+    "u_c5": -0.024645919046708986,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "option_started",
+      "support": 48,
+      "nodes": 2311,
+      "wall_s": 0.04561679202015512,
+      "q": {
+       "42": -0.002595937461592256,
+       "13": -0.016138058543826144,
+       "39": -0.005386128750008842
+      },
+      "chosen": 42
+     },
+     {
+      "event": "forced"
+     },
+     {
+      "event": "forced"
+     }
+    ],
+    "c5_first_decision_ms": 46.28187502385117,
+    "root_tricks_w128": 7,
+    "root_tricks_c5": 7
+   }
+  },
+  {
+   "source": 8,
+   "dealer": 0,
+   "prefix_cpu_s": 5.005555999999999,
+   "eligible": true,
+   "root": 2,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "TOO_LARGE",
+   "support": 400,
+   "support_ms": 2.500707982107997,
+   "transfer": {
+    "u_w128": -0.025184545343107656,
+    "u_c5": -0.025184545343107656,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 400
+     }
+    ],
+    "c5_first_decision_ms": 2.9613749939017,
+    "root_tricks_w128": 6,
+    "root_tricks_c5": 6
+   }
+  },
+  {
+   "source": 9,
+   "dealer": 1,
+   "prefix_cpu_s": 14.325884999999985,
+   "eligible": true,
+   "root": 0,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "TOO_LARGE",
+   "support": 1680,
+   "support_ms": 4.034582991153002,
+   "transfer": {
+    "u_w128": 0.048767237834324906,
+    "u_c5": 0.048767237834324906,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 1680
+     }
+    ],
+    "c5_first_decision_ms": 4.735499998787418,
+    "root_tricks_w128": 8,
+    "root_tricks_c5": 8
+   }
+  },
+  {
+   "source": 10,
+   "dealer": 2,
+   "prefix_cpu_s": 9.14587499999999,
+   "eligible": true,
+   "root": 2,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "TOO_LARGE",
+   "support": 160,
+   "support_ms": 1.8462080042809248,
+   "transfer": {
+    "u_w128": 0.04816376461923999,
+    "u_c5": 0.04816376461923999,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 160
+     }
+    ],
+    "c5_first_decision_ms": 2.4260409991256893,
+    "root_tricks_w128": 8,
+    "root_tricks_c5": 8
+   }
+  },
+  {
+   "source": 11,
+   "dealer": 3,
+   "prefix_cpu_s": 15.311496999999974,
+   "eligible": true,
+   "root": 2,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "TOO_LARGE",
+   "support": 200,
+   "support_ms": 0.9167499956674874,
+   "transfer": {
+    "u_w128": 0.03127314569438344,
+    "u_c5": 0.03127314569438344,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 200
+     }
+    ],
+    "c5_first_decision_ms": 1.4950420008972287,
+    "root_tricks_w128": 7,
+    "root_tricks_c5": 7
+   }
+  },
+  {
+   "source": 12,
+   "dealer": 0,
+   "prefix_cpu_s": 15.841266999999988,
+   "eligible": true,
+   "root": 0,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "EXACT_COMPLETE",
+   "support": 50,
+   "support_ms": 3.010749991517514,
+   "model": {
+    "q": {
+     "7": -0.03747039273381232,
+     "40": -0.015056519433856016,
+     "3": -0.03747039273381232
+    },
+    "option_lead": 40,
+    "w128_lead": 40,
+    "q_option": -0.015056519433856016,
+    "q_w128_lead_plus_option": -0.015056519433856016,
+    "v_w128_policy": -0.015056519433856011,
+    "clairvoyant": -0.015056519433856011,
+    "nodes": 2309,
+    "solve_ms": 44.375750003382564,
+    "w128_later_calls": 39
+   },
+   "transfer": {
+    "u_w128": 0.030728256012879207,
+    "u_c5": 0.030728256012879207,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "option_started",
+      "support": 50,
+      "nodes": 2309,
+      "wall_s": 0.044314041995676234,
+      "q": {
+       "7": -0.03747039273381232,
+       "40": -0.015056519433856016,
+       "3": -0.03747039273381232
+      },
+      "chosen": 40
+     },
+     {
+      "event": "fallback",
+      "reason": "unexpected information key (off-support)"
+     }
+    ],
+    "c5_first_decision_ms": 47.097790986299515,
+    "root_tricks_w128": 7,
+    "root_tricks_c5": 7
+   }
+  },
+  {
+   "source": 13,
+   "dealer": 1,
+   "prefix_cpu_s": 11.149928999999986,
+   "eligible": false,
+   "gate": "no ordinary three-card lead boundary",
+   "contract": "RAMI",
+   "sooli": true
+  },
+  {
+   "source": 14,
+   "dealer": 2,
+   "prefix_cpu_s": 12.02460400000001,
+   "eligible": true,
+   "root": 0,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "TOO_LARGE",
+   "support": 560,
+   "support_ms": 2.573667006799951,
+   "transfer": {
+    "u_w128": 0.030728256012879207,
+    "u_c5": 0.030728256012879207,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 560
+     }
+    ],
+    "c5_first_decision_ms": 3.223707986762747,
+    "root_tricks_w128": 7,
+    "root_tricks_c5": 7
+   }
+  },
+  {
+   "source": 15,
+   "dealer": 3,
+   "prefix_cpu_s": 8.41314699999998,
+   "eligible": true,
+   "root": 0,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 1120,
+   "support_ms": 3.3095830003730953,
+   "transfer": {
+    "u_w128": 0.03127314569438344,
+    "u_c5": 0.03127314569438344,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 1120
+     }
+    ],
+    "c5_first_decision_ms": 3.891792002832517,
+    "root_tricks_w128": 8,
+    "root_tricks_c5": 8
+   }
+  },
+  {
+   "source": 16,
+   "dealer": 0,
+   "prefix_cpu_s": 15.195923000000022,
+   "eligible": true,
+   "root": 3,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 200,
+   "support_ms": 0.7748329953756183,
+   "transfer": {
+    "u_w128": -0.03873887830376299,
+    "u_c5": -0.03873887830376299,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 200
+     }
+    ],
+    "c5_first_decision_ms": 1.331583014689386,
+    "root_tricks_w128": 4,
+    "root_tricks_c5": 4
+   }
+  },
+  {
+   "source": 17,
+   "dealer": 1,
+   "prefix_cpu_s": 12.177449999999993,
+   "eligible": true,
+   "root": 1,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 1120,
+   "support_ms": 3.2947500003501773,
+   "transfer": {
+    "u_w128": 0.07481658785869533,
+    "u_c5": 0.07481658785869533,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 1120
+     }
+    ],
+    "c5_first_decision_ms": 4.1379170143045485,
+    "root_tricks_w128": 9,
+    "root_tricks_c5": 9
+   }
+  },
+  {
+   "source": 18,
+   "dealer": 2,
+   "prefix_cpu_s": 13.826686999999993,
+   "eligible": true,
+   "root": 1,
+   "contract": "NOLO",
+   "declarer_team": null,
+   "support_status": "EXACT_COMPLETE",
+   "support": 20,
+   "support_ms": 2.9324170027393848,
+   "model": {
+    "q": {
+     "38": 0.0011826032772660243,
+     "28": 0.03942741826176643,
+     "2": 0.012114607449620961
+    },
+    "option_lead": 28,
+    "w128_lead": 28,
+    "q_option": 0.03942741826176643,
+    "q_w128_lead_plus_option": 0.03942741826176643,
+    "v_w128_policy": 0.03942741826176642,
+    "clairvoyant": 0.03942741826176642,
+    "nodes": 1107,
+    "solve_ms": 21.627458016155288,
+    "w128_later_calls": 14
+   },
+   "transfer": {
+    "u_w128": 0.03942741764500096,
+    "u_c5": 0.03942741764500096,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "option_started",
+      "support": 20,
+      "nodes": 1107,
+      "wall_s": 0.021540457993978634,
+      "q": {
+       "38": 0.0011826032772660243,
+       "28": 0.03942741826176643,
+       "2": 0.012114607449620961
+      },
+      "chosen": 28
+     },
+     {
+      "event": "fallback",
+      "reason": "unexpected information key (off-support)"
+     }
+    ],
+    "c5_first_decision_ms": 24.569792003603652,
+    "root_tricks_w128": 4,
+    "root_tricks_c5": 4
+   }
+  },
+  {
+   "source": 19,
+   "dealer": 3,
+   "prefix_cpu_s": 12.94087300000001,
+   "eligible": true,
+   "root": 1,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 1680,
+   "support_ms": 3.829499997664243,
+   "transfer": {
+    "u_w128": 0.07481658785869533,
+    "u_c5": 0.07481658785869533,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 1680
+     }
+    ],
+    "c5_first_decision_ms": 4.6457499847747386,
+    "root_tricks_w128": 9,
+    "root_tricks_c5": 9
+   }
+  },
+  {
+   "source": 20,
+   "dealer": 0,
+   "prefix_cpu_s": 10.736514,
+   "eligible": true,
+   "root": 0,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 560,
+   "support_ms": 2.5794170214794576,
+   "transfer": {
+    "u_w128": 0.07481658785869538,
+    "u_c5": 0.07481658785869538,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 560
+     }
+    ],
+    "c5_first_decision_ms": 3.1870419916231185,
+    "root_tricks_w128": 12,
+    "root_tricks_c5": 12
+   }
+  },
+  {
+   "source": 21,
+   "dealer": 1,
+   "prefix_cpu_s": 16.58412800000002,
+   "eligible": true,
+   "root": 3,
+   "contract": "NOLO",
+   "declarer_team": null,
+   "support_status": "EXACT_COMPLETE",
+   "support": 20,
+   "support_ms": 2.936124976258725,
+   "model": {
+    "q": {
+     "40": -0.04527758434414865,
+     "50": -0.05702273789793253,
+     "31": -0.05111541114747525
+    },
+    "option_lead": 40,
+    "w128_lead": 40,
+    "q_option": -0.04527758434414865,
+    "q_w128_lead_plus_option": -0.04527758434414865,
+    "v_w128_policy": -0.04527758434414865,
+    "clairvoyant": -0.04481059331446887,
+    "nodes": 1138,
+    "solve_ms": 23.077042016666383,
+    "w128_later_calls": 15
+   },
+   "transfer": {
+    "u_w128": -0.061642536288445515,
+    "u_c5": -0.061642536288445515,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "option_started",
+      "support": 20,
+      "nodes": 1138,
+      "wall_s": 0.022665083990432322,
+      "q": {
+       "40": -0.04527758434414865,
+       "50": -0.05702273789793253,
+       "31": -0.05111541114747525
+      },
+      "chosen": 40
+     },
+     {
+      "event": "fallback",
+      "reason": "unexpected information key (off-support)"
+     }
+    ],
+    "c5_first_decision_ms": 25.59658300015144,
+    "root_tricks_w128": 11,
+    "root_tricks_c5": 11
+   }
+  },
+  {
+   "source": 22,
+   "dealer": 2,
+   "prefix_cpu_s": 10.946767000000023,
+   "eligible": true,
+   "root": 2,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "EXACT_COMPLETE",
+   "support": 80,
+   "support_ms": 2.939666999736801,
+   "model": {
+    "q": {
+     "10": 0.0438048872165382,
+     "28": 0.04526241789571941,
+     "19": 0.04191832637879997
+    },
+    "option_lead": 28,
+    "w128_lead": 10,
+    "q_option": 0.04526241789571941,
+    "q_w128_lead_plus_option": 0.0438048872165382,
+    "v_w128_policy": 0.043804887216538246,
+    "clairvoyant": 0.05280021410435445,
+    "nodes": 3448,
+    "solve_ms": 68.69062499026768,
+    "w128_later_calls": 34
+   },
+   "transfer": {
+    "u_w128": 0.11720373590726663,
+    "u_c5": 0.030728256012879207,
+    "diff": -0.08647547989438742,
+    "c5_log": [
+     {
+      "event": "option_started",
+      "support": 80,
+      "nodes": 3448,
+      "wall_s": 0.06928191700717434,
+      "q": {
+       "10": 0.0438048872165382,
+       "28": 0.04526241789571941,
+       "19": 0.04191832637879997
+      },
+      "chosen": 28
+     },
+     {
+      "event": "forced"
+     },
+     {
+      "event": "forced"
+     }
+    ],
+    "c5_first_decision_ms": 72.29441698291339,
+    "root_tricks_w128": 10,
+    "root_tricks_c5": 7
+   }
+  },
+  {
+   "source": 23,
+   "dealer": 3,
+   "prefix_cpu_s": 25.84058600000003,
+   "eligible": false,
+   "gate": "no ordinary three-card lead boundary",
+   "contract": "RAMI",
+   "sooli": true
+  },
+  {
+   "source": 24,
+   "dealer": 0,
+   "prefix_cpu_s": 12.368814999999984,
+   "eligible": false,
+   "gate": "no ordinary three-card lead boundary",
+   "contract": "RAMI",
+   "sooli": true
+  },
+  {
+   "source": 25,
+   "dealer": 1,
+   "prefix_cpu_s": 8.849516999999992,
+   "eligible": true,
+   "root": 3,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 1680,
+   "support_ms": 4.1611250198911875,
+   "transfer": {
+    "u_w128": 0.18373379936178103,
+    "u_c5": 0.18373379936178103,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 1680
+     }
+    ],
+    "c5_first_decision_ms": 4.817999986698851,
+    "root_tricks_w128": 11,
+    "root_tricks_c5": 11
+   }
+  },
+  {
+   "source": 26,
+   "dealer": 2,
+   "prefix_cpu_s": 4.673797999999977,
+   "eligible": true,
+   "root": 3,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "TOO_LARGE",
+   "support": 1120,
+   "support_ms": 3.1923329806886613,
+   "transfer": {
+    "u_w128": 0.048767237834324906,
+    "u_c5": 0.048767237834324906,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 1120
+     }
+    ],
+    "c5_first_decision_ms": 3.8993749767541885,
+    "root_tricks_w128": 10,
+    "root_tricks_c5": 10
+   }
+  },
+  {
+   "source": 27,
+   "dealer": 3,
+   "prefix_cpu_s": 7.011833000000024,
+   "eligible": true,
+   "root": 2,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 1680,
+   "support_ms": 4.076290992088616,
+   "transfer": {
+    "u_w128": 0.039427417645000906,
+    "u_c5": 0.039427417645000906,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 1680
+     }
+    ],
+    "c5_first_decision_ms": 4.852540994761512,
+    "root_tricks_w128": 9,
+    "root_tricks_c5": 9
+   }
+  },
+  {
+   "source": 28,
+   "dealer": 0,
+   "prefix_cpu_s": 12.404851000000008,
+   "eligible": true,
+   "root": 1,
+   "contract": "NOLO",
+   "declarer_team": null,
+   "support_status": "TOO_LARGE",
+   "support": 1120,
+   "support_ms": 3.451249998761341,
+   "transfer": {
+    "u_w128": 0.025184545343107656,
+    "u_c5": 0.025184545343107656,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 1120
+     }
+    ],
+    "c5_first_decision_ms": 4.0875419799704105,
+    "root_tricks_w128": 6,
+    "root_tricks_c5": 6
+   }
+  },
+  {
+   "source": 29,
+   "dealer": 1,
+   "prefix_cpu_s": 14.515367999999967,
+   "eligible": true,
+   "root": 1,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 340,
+   "support_ms": 1.9969589775428176,
+   "transfer": {
+    "u_w128": -0.048767237834324906,
+    "u_c5": -0.048767237834324906,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 340
+     }
+    ],
+    "c5_first_decision_ms": 2.6137499953620136,
+    "root_tricks_w128": 3,
+    "root_tricks_c5": 3
+   }
+  },
+  {
+   "source": 30,
+   "dealer": 2,
+   "prefix_cpu_s": 9.693504000000019,
+   "eligible": true,
+   "root": 2,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 1680,
+   "support_ms": 4.063208005391061,
+   "transfer": {
+    "u_w128": 0.030728256012879207,
+    "u_c5": 0.030728256012879207,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 1680
+     }
+    ],
+    "c5_first_decision_ms": 4.760084004374221,
+    "root_tricks_w128": 8,
+    "root_tricks_c5": 8
+   }
+  },
+  {
+   "source": 31,
+   "dealer": 3,
+   "prefix_cpu_s": 15.927214000000049,
+   "eligible": true,
+   "root": 3,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 200,
+   "support_ms": 0.9514999983366579,
+   "transfer": {
+    "u_w128": 0.04816376461923988,
+    "u_c5": 0.04816376461923988,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 200
+     }
+    ],
+    "c5_first_decision_ms": 1.4507090090774,
+    "root_tricks_w128": 8,
+    "root_tricks_c5": 8
+   }
+  },
+  {
+   "source": 32,
+   "dealer": 0,
+   "prefix_cpu_s": 6.653811999999959,
+   "eligible": true,
+   "root": 3,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "TOO_LARGE",
+   "support": 340,
+   "support_ms": 1.9268750038463622,
+   "transfer": {
+    "u_w128": -0.030728256012879207,
+    "u_c5": -0.030728256012879207,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 340
+     }
+    ],
+    "c5_first_decision_ms": 2.4834590149112046,
+    "root_tricks_w128": 6,
+    "root_tricks_c5": 6
+   }
+  },
+  {
+   "source": 33,
+   "dealer": 1,
+   "prefix_cpu_s": 10.88464700000003,
+   "eligible": true,
+   "root": 0,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "TOO_LARGE",
+   "support": 560,
+   "support_ms": 2.2979579807724804,
+   "transfer": {
+    "u_w128": 0.07540248951847506,
+    "u_c5": 0.07540248951847506,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 560
+     }
+    ],
+    "c5_first_decision_ms": 2.9116249934304506,
+    "root_tricks_w128": 9,
+    "root_tricks_c5": 9
+   }
+  },
+  {
+   "source": 34,
+   "dealer": 2,
+   "prefix_cpu_s": 14.163065000000017,
+   "eligible": false,
+   "gate": "no ordinary three-card lead boundary",
+   "contract": "RAMI",
+   "sooli": true
+  },
+  {
+   "source": 35,
+   "dealer": 3,
+   "prefix_cpu_s": 11.535442999999987,
+   "eligible": true,
+   "root": 1,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "TOO_LARGE",
+   "support": 400,
+   "support_ms": 2.459374984027818,
+   "transfer": {
+    "u_w128": -0.03127314569438344,
+    "u_c5": -0.03127314569438344,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 400
+     }
+    ],
+    "c5_first_decision_ms": 2.9776669980492443,
+    "root_tricks_w128": 6,
+    "root_tricks_c5": 6
+   }
+  },
+  {
+   "source": 36,
+   "dealer": 0,
+   "prefix_cpu_s": 12.019651999999951,
+   "eligible": true,
+   "root": 2,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 140,
+   "support_ms": 1.9725830061361194,
+   "transfer": {
+    "u_w128": -0.031273145694383386,
+    "u_c5": -0.031273145694383386,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 140
+     }
+    ],
+    "c5_first_decision_ms": 2.54491699161008,
+    "root_tricks_w128": 6,
+    "root_tricks_c5": 6
+   }
+  },
+  {
+   "source": 37,
+   "dealer": 1,
+   "prefix_cpu_s": 17.945874000000003,
+   "eligible": true,
+   "root": 0,
+   "contract": "NOLO",
+   "declarer_team": null,
+   "support_status": "EXACT_COMPLETE",
+   "support": 40,
+   "support_ms": 1.1615839903242886,
+   "model": {
+    "q": {
+     "10": -0.03873887658119202,
+     "9": -0.03873887658119202,
+     "5": -0.03873887658119202
+    },
+    "option_lead": 10,
+    "w128_lead": 10,
+    "q_option": -0.03873887658119202,
+    "q_w128_lead_plus_option": -0.03873887658119202,
+    "v_w128_policy": -0.03873887658119201,
+    "clairvoyant": -0.03873887658119201,
+    "nodes": 2400,
+    "solve_ms": 49.31724999914877,
+    "w128_later_calls": 12
+   },
+   "transfer": {
+    "u_w128": -0.038738878303762825,
+    "u_c5": -0.038738878303762825,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "option_started",
+      "support": 40,
+      "nodes": 2400,
+      "wall_s": 0.04887179197976366,
+      "q": {
+       "10": -0.03873887658119202,
+       "9": -0.03873887658119202,
+       "5": -0.03873887658119202
+      },
+      "chosen": 10
+     },
+     {
+      "event": "option_followed",
+      "key": "(0, 544, (16, 14, 21, 19, 34, 31, 30, 27"
+     },
+     {
+      "event": "forced"
+     }
+    ],
+    "c5_first_decision_ms": 50.06050001247786,
+    "root_tricks_w128": 9,
+    "root_tricks_c5": 9
+   }
+  },
+  {
+   "source": 38,
+   "dealer": 2,
+   "prefix_cpu_s": 13.596712000000025,
+   "eligible": true,
+   "root": 2,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "TOO_LARGE",
+   "support": 1680,
+   "support_ms": 3.821583988610655,
+   "transfer": {
+    "u_w128": 0.07481658785869538,
+    "u_c5": 0.07481658785869538,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 1680
+     }
+    ],
+    "c5_first_decision_ms": 4.416499985381961,
+    "root_tricks_w128": 9,
+    "root_tricks_c5": 9
+   }
+  },
+  {
+   "source": 39,
+   "dealer": 3,
+   "prefix_cpu_s": 12.139723000000004,
+   "eligible": true,
+   "root": 2,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 147,
+   "support_ms": 1.6210000030696392,
+   "transfer": {
+    "u_w128": 0.03127314569438344,
+    "u_c5": 0.03127314569438344,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 147
+     }
+    ],
+    "c5_first_decision_ms": 2.1795000066049397,
+    "root_tricks_w128": 8,
+    "root_tricks_c5": 8
+   }
+  },
+  {
+   "source": 40,
+   "dealer": 0,
+   "prefix_cpu_s": 13.813826000000063,
+   "eligible": true,
+   "root": 3,
+   "contract": "NOLO",
+   "declarer_team": null,
+   "support_status": "TOO_LARGE",
+   "support": 700,
+   "support_ms": 2.6604159793350846,
+   "transfer": {
+    "u_w128": 0.025184545343107656,
+    "u_c5": 0.025184545343107656,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 700
+     }
+    ],
+    "c5_first_decision_ms": 3.3739589853212237,
+    "root_tricks_w128": 6,
+    "root_tricks_c5": 6
+   }
+  },
+  {
+   "source": 41,
+   "dealer": 1,
+   "prefix_cpu_s": 5.244127000000049,
+   "eligible": true,
+   "root": 3,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 1120,
+   "support_ms": 3.1571250001434237,
+   "transfer": {
+    "u_w128": -0.03127314569438344,
+    "u_c5": -0.03127314569438344,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 1120
+     }
+    ],
+    "c5_first_decision_ms": 3.84662501164712,
+    "root_tricks_w128": 5,
+    "root_tricks_c5": 5
+   }
+  },
+  {
+   "source": 42,
+   "dealer": 2,
+   "prefix_cpu_s": 10.397164999999973,
+   "eligible": true,
+   "root": 1,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 700,
+   "support_ms": 2.760208008112386,
+   "transfer": {
+    "u_w128": -0.06097577105126373,
+    "u_c5": -0.06097577105126373,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 700
+     }
+    ],
+    "c5_first_decision_ms": 3.2827919931150973,
+    "root_tricks_w128": 2,
+    "root_tricks_c5": 2
+   }
+  },
+  {
+   "source": 43,
+   "dealer": 3,
+   "prefix_cpu_s": 7.936253999999963,
+   "eligible": true,
+   "root": 1,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "TOO_LARGE",
+   "support": 300,
+   "support_ms": 2.1505840122699738,
+   "transfer": {
+    "u_w128": 0.03072825601287915,
+    "u_c5": 0.03072825601287915,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 300
+     }
+    ],
+    "c5_first_decision_ms": 2.8994159947615117,
+    "root_tricks_w128": 8,
+    "root_tricks_c5": 8
+   }
+  },
+  {
+   "source": 44,
+   "dealer": 0,
+   "prefix_cpu_s": 10.09983800000009,
+   "eligible": true,
+   "root": 2,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 1680,
+   "support_ms": 4.047333000926301,
+   "transfer": {
+    "u_w128": 0.06097577105126373,
+    "u_c5": 0.06097577105126373,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 1680
+     }
+    ],
+    "c5_first_decision_ms": 4.644749977160245,
+    "root_tricks_w128": 11,
+    "root_tricks_c5": 11
+   }
+  },
+  {
+   "source": 45,
+   "dealer": 1,
+   "prefix_cpu_s": 5.166495999999938,
+   "eligible": true,
+   "root": 2,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 1680,
+   "support_ms": 4.0843750175554305,
+   "transfer": {
+    "u_w128": -0.04816376461923988,
+    "u_c5": -0.04816376461923988,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 1680
+     }
+    ],
+    "c5_first_decision_ms": 4.784541000844911,
+    "root_tricks_w128": 5,
+    "root_tricks_c5": 5
+   }
+  },
+  {
+   "source": 46,
+   "dealer": 2,
+   "prefix_cpu_s": 6.719645000000014,
+   "eligible": true,
+   "root": 3,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "EXACT_COMPLETE",
+   "support": 80,
+   "support_ms": 3.374916996108368,
+   "model": {
+    "q": {
+     "42": 0.031273145228624344,
+     "43": 0.031273145228624344,
+     "44": 0.03127314522862435
+    },
+    "option_lead": 44,
+    "w128_lead": 42,
+    "q_option": 0.03127314522862435,
+    "q_w128_lead_plus_option": 0.031273145228624344,
+    "v_w128_policy": 0.03127314522862438,
+    "clairvoyant": 0.03127314522862438,
+    "nodes": 4800,
+    "solve_ms": 95.3436249983497,
+    "w128_later_calls": 16
+   },
+   "transfer": {
+    "u_w128": 0.031273145694383386,
+    "u_c5": 0.031273145694383386,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "option_started",
+      "support": 80,
+      "nodes": 4800,
+      "wall_s": 0.09413741700700484,
+      "q": {
+       "42": 0.031273145228624344,
+       "43": 0.031273145228624344,
+       "44": 0.03127314522862435
+      },
+      "chosen": 44
+     },
+     {
+      "event": "fallback",
+      "reason": "unexpected information key (off-support)"
+     }
+    ],
+    "c5_first_decision_ms": 97.60899998946115,
+    "root_tricks_w128": 8,
+    "root_tricks_c5": 8
+   }
+  },
+  {
+   "source": 47,
+   "dealer": 3,
+   "prefix_cpu_s": 11.21599900000001,
+   "eligible": true,
+   "root": 2,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "TOO_LARGE",
+   "support": 1120,
+   "support_ms": 3.0634169816039503,
+   "transfer": {
+    "u_w128": -0.038738878303762825,
+    "u_c5": -0.038738878303762825,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 1120
+     }
+    ],
+    "c5_first_decision_ms": 3.708624979481101,
+    "root_tricks_w128": 4,
+    "root_tricks_c5": 4
+   }
+  },
+  {
+   "source": 48,
+   "dealer": 0,
+   "prefix_cpu_s": 13.17679899999996,
+   "eligible": true,
+   "root": 0,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 1120,
+   "support_ms": 3.3248330000787973,
+   "transfer": {
+    "u_w128": 0.03873887830376299,
+    "u_c5": 0.03873887830376299,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 1120
+     }
+    ],
+    "c5_first_decision_ms": 3.9029170002322644,
+    "root_tricks_w128": 9,
+    "root_tricks_c5": 9
+   }
+  },
+  {
+   "source": 49,
+   "dealer": 1,
+   "prefix_cpu_s": 11.408181000000013,
+   "eligible": true,
+   "root": 3,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "TOO_LARGE",
+   "support": 1680,
+   "support_ms": 4.122832993743941,
+   "transfer": {
+    "u_w128": 0.024645919046708986,
+    "u_c5": 0.024645919046708986,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 1680
+     }
+    ],
+    "c5_first_decision_ms": 4.633042000932619,
+    "root_tricks_w128": 7,
+    "root_tricks_c5": 7
+   }
+  },
+  {
+   "source": 50,
+   "dealer": 2,
+   "prefix_cpu_s": 12.713689000000045,
+   "eligible": true,
+   "root": 3,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 1120,
+   "support_ms": 3.187624999554828,
+   "transfer": {
+    "u_w128": -0.04816376461923999,
+    "u_c5": -0.04816376461923999,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 1120
+     }
+    ],
+    "c5_first_decision_ms": 3.800833015702665,
+    "root_tricks_w128": 3,
+    "root_tricks_c5": 3
+   }
+  },
+  {
+   "source": 51,
+   "dealer": 3,
+   "prefix_cpu_s": 16.656830000000014,
+   "eligible": true,
+   "root": 1,
+   "contract": "NOLO",
+   "declarer_team": null,
+   "support_status": "TOO_LARGE",
+   "support": 140,
+   "support_ms": 1.7626250046305358,
+   "transfer": {
+    "u_w128": -0.025184545343107545,
+    "u_c5": -0.025184545343107545,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 140
+     }
+    ],
+    "c5_first_decision_ms": 2.210250007919967,
+    "root_tricks_w128": 7,
+    "root_tricks_c5": 7
+   }
+  },
+  {
+   "source": 52,
+   "dealer": 0,
+   "prefix_cpu_s": 10.239325000000008,
+   "eligible": true,
+   "root": 3,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 210,
+   "support_ms": 0.612833013292402,
+   "transfer": {
+    "u_w128": 0.075402489518475,
+    "u_c5": 0.075402489518475,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 210
+     }
+    ],
+    "c5_first_decision_ms": 1.1074579961132258,
+    "root_tricks_w128": 9,
+    "root_tricks_c5": 9
+   }
+  },
+  {
+   "source": 53,
+   "dealer": 1,
+   "prefix_cpu_s": 15.874393999999938,
+   "eligible": true,
+   "root": 1,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "TOO_LARGE",
+   "support": 1680,
+   "support_ms": 4.22941698343493,
+   "transfer": {
+    "u_w128": 0.038738878303762825,
+    "u_c5": 0.038738878303762825,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 1680
+     }
+    ],
+    "c5_first_decision_ms": 4.977709002560005,
+    "root_tricks_w128": 9,
+    "root_tricks_c5": 9
+   }
+  },
+  {
+   "source": 54,
+   "dealer": 2,
+   "prefix_cpu_s": 12.407608000000096,
+   "eligible": true,
+   "root": 3,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 1680,
+   "support_ms": 4.160917014814913,
+   "transfer": {
+    "u_w128": -0.024645919046709097,
+    "u_c5": -0.024645919046709097,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 1680
+     }
+    ],
+    "c5_first_decision_ms": 4.935334000037983,
+    "root_tricks_w128": 6,
+    "root_tricks_c5": 6
+   }
+  },
+  {
+   "source": 55,
+   "dealer": 3,
+   "prefix_cpu_s": 13.94366500000001,
+   "eligible": true,
+   "root": 0,
+   "contract": "NOLO",
+   "declarer_team": null,
+   "support_status": "TOO_LARGE",
+   "support": 200,
+   "support_ms": 2.209875005064532,
+   "transfer": {
+    "u_w128": -0.038738878303762825,
+    "u_c5": -0.038738878303762825,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 200
+     }
+    ],
+    "c5_first_decision_ms": 2.888666989747435,
+    "root_tricks_w128": 9,
+    "root_tricks_c5": 9
+   }
+  },
+  {
+   "source": 56,
+   "dealer": 0,
+   "prefix_cpu_s": 5.656657999999993,
+   "eligible": true,
+   "root": 1,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "TOO_LARGE",
+   "support": 560,
+   "support_ms": 2.525375020923093,
+   "transfer": {
+    "u_w128": 0.061642536288445404,
+    "u_c5": 0.061642536288445404,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 560
+     }
+    ],
+    "c5_first_decision_ms": 3.3136669953819364,
+    "root_tricks_w128": 11,
+    "root_tricks_c5": 11
+   }
+  },
+  {
+   "source": 57,
+   "dealer": 1,
+   "prefix_cpu_s": 17.671426999999994,
+   "eligible": true,
+   "root": 1,
+   "contract": "NOLO",
+   "declarer_team": null,
+   "support_status": "EXACT_COMPLETE",
+   "support": 20,
+   "support_ms": 2.7311249868944287,
+   "model": {
+    "q": {
+     "20": -0.04100516512989997,
+     "0": -0.03127314522862434,
+     "13": -0.04596529267728328
+    },
+    "option_lead": 0,
+    "w128_lead": 0,
+    "q_option": -0.03127314522862434,
+    "q_w128_lead_plus_option": -0.03127314522862434,
+    "v_w128_policy": -0.03127314522862434,
+    "clairvoyant": -0.03127314522862434,
+    "nodes": 964,
+    "solve_ms": 18.89508299063891,
+    "w128_later_calls": 14
+   },
+   "transfer": {
+    "u_w128": -0.03127314569438344,
+    "u_c5": -0.03127314569438344,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "option_started",
+      "support": 20,
+      "nodes": 964,
+      "wall_s": 0.018794542003888637,
+      "q": {
+       "20": -0.04100516512989997,
+       "0": -0.03127314522862434,
+       "13": -0.04596529267728328
+      },
+      "chosen": 0
+     },
+     {
+      "event": "fallback",
+      "reason": "unexpected information key (off-support)"
+     }
+    ],
+    "c5_first_decision_ms": 21.600000007310882,
+    "root_tricks_w128": 8,
+    "root_tricks_c5": 8
+   }
+  },
+  {
+   "source": 58,
+   "dealer": 2,
+   "prefix_cpu_s": 8.56993799999998,
+   "eligible": true,
+   "root": 1,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "EXACT_COMPLETE",
+   "support": 100,
+   "support_ms": 1.4375419996213168,
+   "model": {
+    "q": {
+     "11": -0.024645918980240815,
+     "40": -0.030221810471266503,
+     "48": -0.024645918980240815
+    },
+    "option_lead": 11,
+    "w128_lead": 11,
+    "q_option": -0.024645918980240815,
+    "q_w128_lead_plus_option": -0.024645918980240815,
+    "v_w128_policy": -0.024645918980240766,
+    "clairvoyant": -0.024645918980240766,
+    "nodes": 5576,
+    "solve_ms": 109.56145799718797,
+    "w128_later_calls": 26
+   },
+   "transfer": {
+    "u_w128": -0.024645919046709097,
+    "u_c5": -0.024645919046709097,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "deadline",
+      "nodes": 5119
+     }
+    ],
+    "c5_first_decision_ms": 102.12245798902586,
+    "root_tricks_w128": 6,
+    "root_tricks_c5": 6
+   }
+  },
+  {
+   "source": 59,
+   "dealer": 3,
+   "prefix_cpu_s": 11.655736000000047,
+   "eligible": true,
+   "root": 3,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "EXACT_COMPLETE",
+   "support": 48,
+   "support_ms": 0.5830829904880375,
+   "model": {
+    "q": {
+     "44": -0.04204935557208956,
+     "25": 0.024645918980240822,
+     "51": 0.012996113936727246
+    },
+    "option_lead": 25,
+    "w128_lead": 25,
+    "q_option": 0.024645918980240822,
+    "q_w128_lead_plus_option": 0.024645918980240822,
+    "v_w128_policy": 0.024645918980240822,
+    "clairvoyant": 0.024645918980240822,
+    "nodes": 2667,
+    "solve_ms": 52.17462498694658,
+    "w128_later_calls": 5
+   },
+   "transfer": {
+    "u_w128": -0.03127314569438344,
+    "u_c5": -0.03127314569438344,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "option_started",
+      "support": 48,
+      "nodes": 2667,
+      "wall_s": 0.052296833018772304,
+      "q": {
+       "44": -0.04204935557208956,
+       "25": 0.024645918980240822,
+       "51": 0.012996113936727246
+      },
+      "chosen": 25
+     },
+     {
+      "event": "fallback",
+      "reason": "unexpected information key (off-support)"
+     }
+    ],
+    "c5_first_decision_ms": 52.8874579758849,
+    "root_tricks_w128": 6,
+    "root_tricks_c5": 6
+   }
+  },
+  {
+   "source": 60,
+   "dealer": 0,
+   "prefix_cpu_s": 8.57502999999997,
+   "eligible": true,
+   "root": 1,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 770,
+   "support_ms": 2.625249995617196,
+   "transfer": {
+    "u_w128": -0.04816376461923999,
+    "u_c5": -0.04816376461923999,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 770
+     }
+    ],
+    "c5_first_decision_ms": 3.19612497696653,
+    "root_tricks_w128": 3,
+    "root_tricks_c5": 3
+   }
+  },
+  {
+   "source": 61,
+   "dealer": 1,
+   "prefix_cpu_s": 5.331822000000102,
+   "eligible": true,
+   "root": 1,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 200,
+   "support_ms": 0.9119170135818422,
+   "transfer": {
+    "u_w128": -0.03127314569438344,
+    "u_c5": -0.03127314569438344,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 200
+     }
+    ],
+    "c5_first_decision_ms": 1.4029580052010715,
+    "root_tricks_w128": 5,
+    "root_tricks_c5": 5
+   }
+  },
+  {
+   "source": 62,
+   "dealer": 2,
+   "prefix_cpu_s": 7.021589000000063,
+   "eligible": true,
+   "root": 2,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "TOO_LARGE",
+   "support": 300,
+   "support_ms": 1.9717919931281358,
+   "transfer": {
+    "u_w128": -0.03942741764500096,
+    "u_c5": -0.03942741764500096,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 300
+     }
+    ],
+    "c5_first_decision_ms": 2.6309160166420043,
+    "root_tricks_w128": 4,
+    "root_tricks_c5": 4
+   }
+  },
+  {
+   "source": 63,
+   "dealer": 3,
+   "prefix_cpu_s": 10.890483000000017,
+   "eligible": true,
+   "root": 2,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 560,
+   "support_ms": 1.3363340112846345,
+   "transfer": {
+    "u_w128": 0.039427417645000906,
+    "u_c5": 0.039427417645000906,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 560
+     }
+    ],
+    "c5_first_decision_ms": 1.988540985621512,
+    "root_tricks_w128": 9,
+    "root_tricks_c5": 9
+   }
+  },
+  {
+   "source": 64,
+   "dealer": 0,
+   "prefix_cpu_s": 10.111463000000072,
+   "eligible": true,
+   "root": 2,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "TOO_LARGE",
+   "support": 400,
+   "support_ms": 1.9585420086514205,
+   "transfer": {
+    "u_w128": -0.048767237834324906,
+    "u_c5": -0.048767237834324906,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 400
+     }
+    ],
+    "c5_first_decision_ms": 2.635917015140876,
+    "root_tricks_w128": 5,
+    "root_tricks_c5": 5
+   }
+  },
+  {
+   "source": 65,
+   "dealer": 1,
+   "prefix_cpu_s": 14.344747999999981,
+   "eligible": true,
+   "root": 1,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "TOO_LARGE",
+   "support": 1680,
+   "support_ms": 3.845541999908164,
+   "transfer": {
+    "u_w128": 0.04816376461923988,
+    "u_c5": 0.04816376461923988,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "TOO_LARGE",
+      "support": 1680
+     }
+    ],
+    "c5_first_decision_ms": 4.489957995247096,
+    "root_tricks_w128": 10,
+    "root_tricks_c5": 10
+   }
+  },
+  {
+   "source": 66,
+   "dealer": 2,
+   "prefix_cpu_s": 8.916488999999956,
+   "eligible": true,
+   "root": 1,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "EXACT_COMPLETE",
+   "support": 70,
+   "support_ms": 3.4442920004948974,
+   "model": {
+    "q": {
+     "11": -0.024645918980240822,
+     "46": -0.02464591898024083,
+     "32": -0.02464591898024083
+    },
+    "option_lead": 11,
+    "w128_lead": 11,
+    "q_option": -0.024645918980240822,
+    "q_w128_lead_plus_option": -0.024645918980240822,
+    "v_w128_policy": -0.02464591898024084,
+    "clairvoyant": -0.02464591898024084,
+    "nodes": 4200,
+    "solve_ms": 82.51729200128466,
+    "w128_later_calls": 12
+   },
+   "transfer": {
+    "u_w128": -0.024645919046709097,
+    "u_c5": -0.024645919046709097,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "option_started",
+      "support": 70,
+      "nodes": 4200,
+      "wall_s": 0.0828355840058066,
+      "q": {
+       "11": -0.024645918980240822,
+       "46": -0.02464591898024083,
+       "32": -0.02464591898024083
+      },
+      "chosen": 11
+     },
+     {
+      "event": "fallback",
+      "reason": "unexpected information key (off-support)"
+     }
+    ],
+    "c5_first_decision_ms": 86.23437499045394,
+    "root_tricks_w128": 6,
+    "root_tricks_c5": 6
+   }
+  },
+  {
+   "source": 67,
+   "dealer": 3,
+   "prefix_cpu_s": 13.967632000000094,
+   "eligible": true,
+   "root": 3,
+   "contract": "RAMI",
+   "declarer_team": 1,
+   "support_status": "EXACT_COMPLETE",
+   "support": 100,
+   "support_ms": 1.4040830137673765,
+   "model": {
+    "q": {
+     "10": -0.022669146023690696,
+     "20": -0.008905519545078278,
+     "22": -0.008905519545078278
+    },
+    "option_lead": 20,
+    "w128_lead": 20,
+    "q_option": -0.008905519545078278,
+    "q_w128_lead_plus_option": -0.008905519545078278,
+    "v_w128_policy": -0.008905519545078277,
+    "clairvoyant": -0.008905519545078277,
+    "nodes": 5892,
+    "solve_ms": 117.16441600583494,
+    "w128_later_calls": 13
+   },
+   "transfer": {
+    "u_w128": -0.03127314569438344,
+    "u_c5": -0.03127314569438344,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "fallback",
+      "reason": "deadline",
+      "nodes": 5048
+     }
+    ],
+    "c5_first_decision_ms": 105.90212501119822,
+    "root_tricks_w128": 6,
+    "root_tricks_c5": 6
+   }
+  }
+ ]
+}

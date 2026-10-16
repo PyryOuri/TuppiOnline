@@ -1,0 +1,165 @@
+{
+ "manifest": "/Users/pyryouri/Developer/audit_deliverables/tuppi_implementation_output/research/c5_screen_manifest.json",
+ "run": {
+  "stopped_early": null,
+  "total_cpu_s": 31.210535,
+  "total_wall_s": 7.494875333009986
+ },
+ "summary": {
+  "source_deals": 2,
+  "eligible_positions": 2,
+  "gate_failures": {},
+  "ineligible_contracts": [],
+  "support_status": {
+   "EXACT_COMPLETE": 2
+  },
+  "coverage_exact": 1.0,
+  "support_sizes": [
+   10,
+   30
+  ],
+  "options_started_in_transfer": 2,
+  "options_followed_later": 0,
+  "off_support_fallbacks_in_transfer": 2,
+  "lead_disagreement_model": 0,
+  "model_gain_option_minus_w128_policy": {
+   "n": 2,
+   "mean": 6.071532165918825e-18,
+   "sd": 1.1039712600120293e-17,
+   "ci95": [
+    -9.228728892196614e-18,
+    2.1371793224034264e-17
+   ]
+  },
+  "model_gain_nonzero_positions": 0,
+  "transfer_diff_c5_minus_w128": {
+   "n": 2,
+   "mean": 0.0,
+   "sd": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ]
+  },
+  "transfer_nonzero_positions": 0,
+  "transfer_positive": 0,
+  "transfer_negative": 0,
+  "c5_first_decision_latency_ms": {
+   "n": 2,
+   "p50": 22.88641649647616,
+   "p95": 32.997616357170045,
+   "max": 34.121083008358255
+  },
+  "nodes_max": 1722
+ },
+ "rows": [
+  {
+   "source": 0,
+   "dealer": 0,
+   "prefix_cpu_s": 16.234507,
+   "eligible": true,
+   "root": 3,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "EXACT_COMPLETE",
+   "support": 10,
+   "support_ms": 335.38420900003985,
+   "model": {
+    "q": {
+     "17": -0.02464591898024083,
+     "6": 0.03652137331664563,
+     "45": -0.024645918980240822
+    },
+    "option_lead": 6,
+    "w128_lead": 6,
+    "q_option": 0.03652137331664563,
+    "q_w128_lead_plus_option": 0.03652137331664563,
+    "v_w128_policy": 0.036521373316645615,
+    "clairvoyant": 0.036521373316645615,
+    "nodes": 533,
+    "solve_ms": 40.61708299559541,
+    "w128_later_calls": 5
+   },
+   "transfer": {
+    "u_w128": 0.048767237834324906,
+    "u_c5": 0.048767237834324906,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "option_started",
+      "support": 10,
+      "nodes": 533,
+      "wall_s": 0.010687957983464003,
+      "q": {
+       "17": -0.02464591898024083,
+       "6": 0.03652137331664563,
+       "45": -0.024645918980240822
+      },
+      "chosen": 6
+     },
+     {
+      "event": "fallback",
+      "reason": "unexpected information key (off-support)"
+     }
+    ],
+    "c5_first_decision_ms": 11.651749984594062,
+    "root_tricks_w128": 8,
+    "root_tricks_c5": 8
+   }
+  },
+  {
+   "source": 1,
+   "dealer": 1,
+   "prefix_cpu_s": 11.802648000000001,
+   "eligible": true,
+   "root": 0,
+   "contract": "RAMI",
+   "declarer_team": 0,
+   "support_status": "EXACT_COMPLETE",
+   "support": 30,
+   "support_ms": 0.6540000031236559,
+   "model": {
+    "q": {
+     "37": -0.008363135531544686,
+     "38": -0.008363135531544686,
+     "48": -0.02422161214053631
+    },
+    "option_lead": 37,
+    "w128_lead": 37,
+    "q_option": -0.008363135531544686,
+    "q_w128_lead_plus_option": -0.008363135531544686,
+    "v_w128_policy": -0.008363135531544684,
+    "clairvoyant": -0.008363135531544684,
+    "nodes": 1722,
+    "solve_ms": 34.07349999179132,
+    "w128_later_calls": 5
+   },
+   "transfer": {
+    "u_w128": 0.025184545343107545,
+    "u_c5": 0.025184545343107545,
+    "diff": 0.0,
+    "c5_log": [
+     {
+      "event": "option_started",
+      "support": 30,
+      "nodes": 1722,
+      "wall_s": 0.03351325000403449,
+      "q": {
+       "37": -0.008363135531544686,
+       "38": -0.008363135531544686,
+       "48": -0.02422161214053631
+      },
+      "chosen": 37
+     },
+     {
+      "event": "fallback",
+      "reason": "unexpected information key (off-support)"
+     }
+    ],
+    "c5_first_decision_ms": 34.121083008358255,
+    "root_tricks_w128": 7,
+    "root_tricks_c5": 7
+   }
+  }
+ ]
+}

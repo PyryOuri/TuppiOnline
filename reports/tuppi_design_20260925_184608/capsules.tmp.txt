@@ -1,0 +1,2680 @@
+## 6. Source capsules
+
+These are static source excerpts, not executed examples. Line ranges and hashes identify the original files. Comments are source claims, not audit validation. Type definitions precede the native evaluator. Python imports and unrelated functions are omitted; dependencies are identified in the interface inventory and evidence manifest. Full selected C files are included in `NATIVE_SOURCE_CAPSULES.txt` because splitting their tightly coupled helpers would obscure sampling and RNG semantics. That file is part of this bundle. No executable candidate is supplied.
+
+### E001 — best_agents, lines 28–36
+
+```python
+def best_agents(seats=range(4), worlds: int = WORLDS, seed: int = 0) -> dict:
+    from . import model as qmodel
+    from .equity import Equity
+    from .search import SearchAgent
+
+    net = qmodel.load(ROLLOUT, "cpu")
+    table = Equity.load(EQUITY).table
+    return {s: SearchAgent(net, table, s, worlds=worlds, dd_left=SOLVER_TAIL, search_showing=1, seed=seed + s)
+            for s in seats}
+```
+
+### E011 — mask_of, lines 31–35
+
+```python
+def mask_of(cards) -> int:
+    m = 0
+    for card in cards:
+        m |= 1 << card_to_index(card)
+    return m
+```
+
+### E011 — action_id, lines 38–47
+
+```python
+def action_id(action) -> int:
+    if isinstance(action, PlayCardAction):
+        return card_to_index(action.card)
+    if isinstance(action, ShowAction):
+        return 52 + 52 * _CONTRACT[action.declared_contract] + card_to_index(action.shown_card)
+    if SooliDecisionAction is not None and isinstance(action, SooliDecisionAction):
+        return ACT_SOOLI_ACCEPT if action.play_sooli else ACT_SOOLI_DECLINE
+    if SooliExchangeAction is not None and isinstance(action, SooliExchangeAction):
+        return ACT_EXCHANGE + card_to_index(action.card)
+    raise TypeError(f"unknown action {action!r}")
+```
+
+### E011 — engine_action, lines 50–59
+
+```python
+def engine_action(action: int, seat: int):
+    if action in (ACT_SOOLI_DECLINE, ACT_SOOLI_ACCEPT):
+        return SooliDecisionAction(seat=seat, play_sooli=action == ACT_SOOLI_ACCEPT)
+    if action >= ACT_EXCHANGE:
+        return SooliExchangeAction(seat=seat, card=card_from_index(action - ACT_EXCHANGE))
+    if action < 52:
+        return PlayCardAction(seat=seat, card=card_from_index(action))
+    contract, card = divmod(action - 52, 52)
+    return ShowAction(seat=seat, shown_card=card_from_index(card),
+                      declared_contract=_CONTRACTS[contract])
+```
+
+### E011 — obs_from_player_observation, lines 62–111
+
+```python
+def obs_from_player_observation(observation) -> TcObs:
+    o = TcObs()
+    o.hand = mask_of(observation.own_hand)
+    o.seat = observation.observing_seat
+    o.dealer = observation.dealer
+    o.phase = _PHASE.get(observation.phase, PH_DONE)
+    shows = observation.show_actions
+    # project_target_v3 showing: no bid is visible, only how many were taken.
+    o.n_shows = len(shows) + getattr(observation, "bids_locked", 0)
+    for i, show in enumerate(shows):
+        o.show_seat[i] = show.seat
+        o.show_card[i] = card_to_index(show.shown_card)
+        o.show_contract[i] = _CONTRACT[show.declared_contract]
+        o.show_verbal[i] = int(show.verbal_required)
+    o.contract = -1 if observation.contract is None else _CONTRACT[observation.contract]
+    o.declarer = -1 if observation.declarer is None else observation.declarer
+    o.first_leader = 0 if observation.first_leader is None else observation.first_leader
+    sooli = getattr(observation, "soolaaja", None) is not None and getattr(observation, "sooli_exchanged", False)
+    if sooli:
+        tricks, current = observation.sooli_tricks, observation.sooli_current_trick
+    else:
+        tricks, current = observation.completed_tricks, observation.current_trick
+    n = 0
+    for trick in tricks:
+        for play in trick.plays:
+            o.play_card[n] = card_to_index(play.card)
+            o.play_seat[n] = play.seat
+            n += 1
+    for play in current:
+        o.play_card[n] = card_to_index(play.card)
+        o.play_seat[n] = play.seat
+        n += 1
+    o.n_played = n
+    o.score[0] = observation.match_score.team0
+    o.score[1] = observation.match_score.team1
+    ruleset = getattr(observation, "ruleset_id", None)
+    o.ruleset = {"project_target_v2": 2, "project_target_v3": 3}.get(getattr(ruleset, "value", None), 1)
+    o.trick_size = 3 if sooli else 4
+    decisions = getattr(observation, "sooli_decisions", ())
+    o.n_decisions = len(decisions)
+    for i, (seat, accept) in enumerate(decisions):
+        o.decision_seat[i] = seat
+        o.decision_accept[i] = int(accept)
+    soolaaja = getattr(observation, "soolaaja", None)
+    o.soolaaja = -1 if soolaaja is None else soolaaja
+    given = getattr(observation, "sooli_given_card", None)
+    returned = getattr(observation, "sooli_returned_card", None)
+    o.known_given = -1 if given is None else card_to_index(given)
+    o.known_returned = -1 if returned is None else card_to_index(returned)
+    return o
+```
+
+### E059 — _plan, lines 46–54
+
+```python
+def _plan() -> dict[int, str]:
+    raw = os.environ["TUPPI_AI_SEATS"]
+    plan = {}
+    for item in filter(None, (p.strip() for p in raw.split(","))):
+        seat, kind = item.split(":")
+        if kind not in ("incumbent", "search"):
+            raise SystemExit(f"unknown seat kind {kind!r}")
+        plan[int(seat)] = kind
+    return plan
+```
+
+### E059 — main, lines 57–81
+
+```python
+def main() -> None:
+    from tuppi_server import app, match_runner
+
+    from tuppi_ai.best import ROLLOUT, WORLDS, best_agents
+
+    plan = _plan()
+    worlds = int(os.environ.get("TUPPI_AI_WORLDS", str(WORLDS)))
+    original = match_runner._construct_ai_agents
+
+    def construct(seats, *, profile_key):
+        agents = original(seats, profile_key=profile_key)
+        searched = [s for s in seats if plan.get(s) == "search"]
+        agents.update(best_agents(searched, worlds=worlds))
+        return agents
+
+    match_runner._construct_ai_agents = construct
+    if os.environ.get("TUPPI_AI_REVIEW", "1") == "1":
+        # After-deal review of the human's own decisions by the best agent's search.
+        from tuppi_ai.review import ServerReviewer
+        app.app.rooms.deal_reviewer = ServerReviewer()
+    print(f"TuppiAI seat plan: {plan}; best agent ({ROLLOUT.name}, W={worlds}); "
+          f"rules {os.environ['TUPPI_SERVER_RULESET']}; review "
+          f"{'on' if os.environ.get('TUPPI_AI_REVIEW', '1') == '1' else 'off'}")
+    print(f"server data dir: {os.environ['TUPPI_SERVER_DATA_DIR']}")
+    app.main(sys.argv[1:])
+```
+
+### E060 — incumbent_agents, lines 8–19
+
+```python
+def incumbent_agents(profile_key: str = INCUMBENT) -> dict[int, object]:
+    from tuppi_agents import construct_agent, phase4_specifications_by_profile_key
+    from tuppi_agents.improved_registry import (
+        improved_agent_from_specification, improved_specifications_by_profile_key)
+
+    improved = improved_specifications_by_profile_key()
+    if profile_key in improved:
+        spec = improved[profile_key]
+        return {s: improved_agent_from_specification(spec, profile_key=profile_key, seat=s)
+                for s in range(4)}
+    spec = phase4_specifications_by_profile_key()[profile_key]
+    return {s: construct_agent(spec, seat=s) for s in range(4)}
+```
+
+### E002 — Searcher, lines 28–199
+
+```python
+class Searcher:
+    """`belief` > 1 enables policy-based inference: that many times `worlds`
+    candidate worlds are drawn, each weighted by the blueprint's likelihood of
+    the other three seats' past unforced choices (softmax at `belief_t`, mixed
+    with uniform at `belief_eps`), and `worlds` of them are resampled by weight.
+    """
+
+    def __init__(self, net: qmodel.QNet, equity_table: np.ndarray, worlds: int = 32,
+                 dd_left: int = 0, seed: int = 0, max_actions: int = 26, belief: int = 0,
+                 belief_t: float = 1.0, belief_eps: float = 0.1, belief_seats: str = "all",
+                 belief_net=None, belief_n: int = 1024, belief_alpha: float = 0.5, team_net=None,
+                 opp_temp: float = 0.0, native_loop: bool = True):
+        self.net = net
+        self.worlds = worlds
+        self.dd_left = dd_left
+        self.belief, self.belief_t, self.belief_eps = belief, belief_t, belief_eps
+        self.belief_seats = belief_seats
+        # Learned card-location belief: uniform candidates reweighted by the
+        # product of the network's per-card probabilities, tempered by alpha.
+        self.belief_net, self.belief_n, self.belief_alpha = belief_net, belief_n, belief_alpha
+        self.last_ess = None
+        # Optional different rollout policy for the searching seat's own team.
+        self.team_net = team_net
+        # If > 0, opponents' rollout moves are sampled from softmax(logits / opp_temp)
+        # instead of taken greedily: less reliance on predicting them exactly.
+        self.opp_temp = opp_temp
+        # The whole search in C (same steps and rounding; the network's float
+        # arithmetic differs from PyTorch only in the last digits). Used when no
+        # Python-only option is active.
+        self.native_loop = (native_loop and belief <= 1 and belief_net is None and team_net is None
+                            and not opp_temp)
+        self.mlp = native.Mlp(net) if self.native_loop else None
+        self.np_rng = np.random.default_rng(seed)
+        self._hf = np.zeros((64, native.feature_dim(net.encoder)), dtype=np.uint8)
+        self._hm = np.zeros((64, native.NUM_ACTIONS), dtype=np.uint8)
+        self._ha = np.zeros(64, dtype=np.int32)
+        self.env = native.Env(worlds * max_actions, seed, equity_table, single_deal=True,
+                              encoder=net.encoder)
+        self.rng = C.c_uint64(seed * 2654435761 + 1)
+
+    def action_values(self, obs: native.TcObs, actions: list[int]) -> np.ndarray:
+        if self.mlp is not None:
+            return native.search_values(self.env, self.mlp, obs, actions, self.worlds, self.dd_left, self.rng)
+        k, w = len(actions), self.worlds
+        env = self.env
+        worlds = self.sample_worlds(obs, w)
+        n = w * k
+        for wi, world in enumerate(worlds):
+            for ai in range(k):
+                env.set_state(wi * k + ai, world)
+        for i in range(n, env.n):  # park unused slots as finished
+            env.set_state(i, worlds[0])
+            env.deal(i).phase = native.PH_DONE
+        me_team = obs.seat & 1
+        total = np.zeros(n)
+        live = np.ones(n, dtype=bool)
+        first = np.array([actions[i % k] for i in range(n)] + [0] * (env.n - n), dtype=np.int32)
+        env.step(first)
+        self._collect(total, live, n)
+        while live.any():
+            if self.dd_left:
+                env.dd_finish(self.dd_left)
+                self._collect(total, live, n)
+                if not live.any():
+                    break
+            feat, mask, seat, _ = env.observe()
+            with torch.no_grad():
+                x = torch.from_numpy(feat)
+                q = self.net(x).numpy()
+                if self.team_net is not None:
+                    mine = (seat & 1) == me_team
+                    if mine.any():
+                        q[mine] = self.team_net(torch.from_numpy(feat[mine])).numpy()
+                qm = np.where(mask == 1, q, -np.inf)
+                acts = qm.argmax(1).astype(np.int32)
+                if self.opp_temp > 0:
+                    opp = (seat & 1) != me_team
+                    if opp.any():
+                        z = qm[opp] / self.opp_temp
+                        z -= z.max(1, keepdims=True)
+                        pr = np.exp(z)
+                        pr /= pr.sum(1, keepdims=True)
+                        u = self.np_rng.random((len(pr), 1))
+                        acts[opp] = (pr.cumsum(1) < u).sum(1).astype(np.int32)
+            acts[mask.sum(axis=1) == 0] = 0
+            env.step(acts)
+            self._collect(total, live, n)
+        values = total.reshape(w, k).mean(axis=0)
+        return values if me_team == 0 else -values
+
+    def _direct_belief_worlds(self, obs: native.TcObs, w: int) -> list:
+        """Exact draws from the tempered product of the network's card marginals."""
+        feat = native.encode(obs, encoder=self.belief_net.encoder)[None]
+        with torch.no_grad():
+            p = torch.softmax(self.belief_net(torch.from_numpy(feat)), dim=2)[0].numpy()
+        wt = p ** self.belief_alpha
+        worlds = []
+        for _ in range(w):
+            world = native.sample_world_weighted(obs, wt, self.rng)
+            if world is None:  # belief and constraints disagree completely: fall back
+                world = native.sample_world(obs, self.rng)
+            worlds.append(world)
+        return worlds
+
+    def _learned_belief_worlds(self, obs: native.TcObs, w: int) -> list:
+        if self.belief_n <= 0:
+            return self._direct_belief_worlds(obs, w)
+        n = self.belief_n
+        cands = []
+        while len(cands) < n:
+            world = native.sample_world(obs, self.rng)
+            if world is None:
+                raise RuntimeError("no world consistent with the observation")
+            cands.append(world)
+        feat = native.encode(obs, encoder=self.belief_net.encoder)[None]
+        with torch.no_grad():
+            logp = torch.log_softmax(self.belief_net(torch.from_numpy(feat)), dim=2)[0].numpy()  # (52, 3)
+        hands = np.array([[c.hand[(obs.seat + r) & 3] for r in (1, 2, 3)] for c in cands], dtype=np.uint64)
+        bits = np.unpackbits(hands.view(np.uint8).reshape(n, 3, 8), axis=2, bitorder="little")[:, :, :52]
+        # log p of each candidate's placement: sum over cards held by others
+        lw = self.belief_alpha * np.einsum("nrc,cr->n", bits.astype(np.float32), logp)
+        wts = np.exp(lw - lw.max())
+        wts /= wts.sum()
+        self.last_ess = 1.0 / float(np.sum(wts ** 2))
+        # Systematic resampling keeps duplicates to the minimum the weights force.
+        u = (self.np_rng.random() + np.arange(w)) / w
+        pick = np.minimum(np.searchsorted(np.cumsum(wts), u), n - 1)
+        return [cands[i] for i in pick]
+
+    def sample_worlds(self, obs: native.TcObs, w: int) -> list:
+        if self.belief_net is not None:
+            return self._learned_belief_worlds(obs, w)
+        n = w * self.belief if self.belief > 1 else w
+        cands = []
+        while len(cands) < n:
+            world = native.sample_world(obs, self.rng)
+            if world is None:
+                raise RuntimeError("no world consistent with the observation")
+            cands.append(world)
+        if self.belief <= 1:
+            return cands
+        others = 0b1111 & ~(1 << obs.seat)
+        if self.belief_seats == "opp":
+            others &= ~(1 << ((obs.seat + 2) & 3))
+        feats, masks, acts, owner = [], [], [], []
+        for i, world in enumerate(cands):
+            r = native.history_rows(world, others, self.net.encoder, self._hf, self._hm, self._ha)
+            if r > 0:
+                feats.append(self._hf[:r].copy()); masks.append(self._hm[:r].copy())
+                acts.append(self._ha[:r].copy()); owner.append(np.full(r, i))
+        if not feats:
+            return cands[:w]
+        f, m, a, o = (np.concatenate(x) for x in (feats, masks, acts, owner))
+        with torch.no_grad():
+            logits = self.net(torch.from_numpy(f)).numpy() / self.belief_t
+        logits = np.where(m == 1, logits, -np.inf)
+        logits -= logits.max(1, keepdims=True)
+        p = np.exp(logits)
+        p /= p.sum(1, keepdims=True)
+        k = m.sum(1)
+        taken = (1 - self.belief_eps) * p[np.arange(len(a)), a] + self.belief_eps / k
+        logw = np.zeros(n)
+        np.add.at(logw, o, np.log(taken))
+        wts = np.exp(logw - logw.max())
+        wts /= wts.sum()
+        pick = self.np_rng.choice(n, size=w, replace=True, p=wts)
+        return [cands[i] for i in pick]
+
+    def _collect(self, total, live, n):
+        done = self.env.done[:n].astype(bool)
+        total[done] += self.env.delta0[:n][done]
+        live[done] = False
+```
+
+### E002 — SearchAgent, lines 214–316
+
+```python
+class SearchAgent:
+    """Engine-interface agent: blueprint for showing, search for trick play."""
+
+    #: Plays every sooli decision itself (servers must not wrap it in a fallback).
+    handles_sooli = True
+
+    def __init__(self, net, equity_table, seat: int, worlds: int = 32, dd_left: int = 0,
+                 search_showing=False, seed: int = 0, keep: float | None = None,
+                 show_worlds: int | None = None, rami_bonus: float = 0.0, sooli: dict | None = None,
+                 **belief):
+        """search_showing: False (blueprint shows), True/1 (search every legal show), or 2
+        (search only the blueprint's preferred card for each contract, then keep
+        the blueprint's card within the chosen contract)."""
+        self.seat = seat
+        self.net = net
+        self.search_showing = search_showing
+        self.keep = keep  # None: plain argmax; >= 0: keep the blueprint's action unless beaten by more
+        # Added to the value of declaring RAMI (RETURN_SCALE units): the rollouts
+        # play the rest of the deal with the clone, which undervalues contracts
+        # this agent's own (better) play would make.
+        self.rami_bonus = rami_bonus
+        self.searcher = Searcher(net, equity_table, worlds=worlds, dd_left=dd_left, seed=seed + seat, **belief)
+        self.show_searcher = None
+        if show_worlds and show_worlds != worlds:
+            self.show_searcher = Searcher(net, equity_table, worlds=show_worlds, dd_left=dd_left,
+                                          seed=seed + seat + 17, **belief)
+        self._feat = np.zeros((1, native.feature_dim(net.encoder)), dtype=np.uint8)
+        self.sooli = {**SOOLI_DEFAULTS, **(sooli or {})}
+        #: The last decision's searched values, {action id: equity change for this
+        #: seat's team}, or None when it was forced or taken by a heuristic. Read by
+        #: the game database (tools/gen_game_db.py); never affects the choice.
+        self.last_values: dict[int, float] | None = None
+
+    def _sooli_action(self, obs: native.TcObs, ids: list[int]) -> int:
+        cfg, phase = self.sooli, obs.phase
+        self.last_values = None
+        env = self.searcher.env
+        if self.searcher.mlp is None:  # only the native search loop handles sooli phases
+            a = native.sooli_policy(obs, self.searcher.rng)
+            return a
+        if phase == native.PH_SOOLI_OFFER:
+            env.set_sooli(cfg["belief"], False, cfg["offer_play_heur"], cfg["lam"])
+            order = [native.ACT_SOOLI_DECLINE, native.ACT_SOOLI_ACCEPT]
+            v = self.searcher.action_values(obs, order)
+            self.last_sooli_values = dict(zip(order, v))
+            self.last_values = {a: float(x) for a, x in zip(order, v)}
+            return native.ACT_SOOLI_ACCEPT if v[1] - v[0] > cfg["offer_margin"] else native.ACT_SOOLI_DECLINE
+        key = {native.PH_SOOLI_GIVE: "give", native.PH_SOOLI_RETURN: "return", native.PH_SOOLI_PLAY: "play"}[phase]
+        h = native.sooli_policy(obs, self.searcher.rng)
+        if cfg[key] == "heur":
+            return h
+        order = [h] + [i for i in ids if i != h]
+        env.set_sooli(cfg["belief"], False, False, cfg["lam"])
+        v = self.searcher.action_values(obs, order)
+        self.last_sooli_values = dict(zip(order, v))
+        self.last_values = {a: float(x) for a, x in zip(order, v)}
+        return order[int(np.argmax(v))]
+
+    def choose_action(self, observation):
+        legal = observation.legal_actions
+        self.last_values = None
+        if len(legal) == 1:
+            return legal[0]
+        obs = obs_from_player_observation(observation)
+        ids = [action_id(a) for a in legal]
+        if obs.phase in native.SOOLI_PHASES:
+            return legal[ids.index(self._sooli_action(obs, ids))]
+        if obs.ruleset == 2:  # soolis inside the rollouts are played as at the offer
+            cfg = self.sooli
+            for sr in {id(self.searcher): self.searcher, id(self.show_searcher): self.show_searcher}.values():
+                if sr is not None:
+                    sr.env.set_sooli(cfg["belief"], False, cfg["offer_play_heur"], cfg["lam"])
+        searcher = self.show_searcher if (obs.phase == native.PH_SHOW and self.show_searcher) else self.searcher
+        if obs.phase == native.PH_SHOW and self.search_showing != 1 and self.search_showing is not True:
+            native.encode(obs, self._feat[0], self.net.encoder)
+            with torch.no_grad():
+                q = self.net(torch.from_numpy(self._feat))[0].numpy()
+            if not self.search_showing:
+                return legal[int(np.argmax([q[i] for i in ids]))]
+            # Two-stage: one representative card per contract, chosen by the blueprint.
+            reps = []
+            for contract in (0, 1):
+                cands = [i for i in ids if (i - 52) // 52 == contract]
+                if cands:
+                    reps.append(max(cands, key=lambda i: q[i]))
+            if len(reps) == 1:
+                return legal[ids.index(reps[0])]
+            values = searcher.action_values(obs, reps)
+            self.last_values = {a: float(x) for a, x in zip(reps, values)}
+            return legal[ids.index(reps[int(np.argmax(values))])]
+        values = searcher.action_values(obs, ids)
+        self.last_values = {a: float(x) for a, x in zip(ids, values)}
+        if self.rami_bonus and obs.phase == native.PH_SHOW:
+            values = values + self.rami_bonus * np.array([1.0 if i >= 104 else 0.0 for i in ids])
+        best = int(np.argmax(values))
+        if self.keep is not None:
+            native.encode(obs, self._feat[0], self.net.encoder)
+            with torch.no_grad():
+                q = self.net(torch.from_numpy(self._feat))[0].numpy()
+            bp = int(np.argmax([q[i] for i in ids]))
+            if values[bp] >= values[best] - self.keep:
+                best = bp
+        return legal[best]
+```
+
+### E003 — TcDeal, lines 25–42
+
+```python
+class TcDeal(C.Structure):
+    _fields_ = [
+        ("hand", C.c_uint64 * 4),
+        ("dealer", C.c_uint8), ("phase", C.c_uint8), ("cur", C.c_uint8),
+        ("n_shows", C.c_uint8),
+        ("show_seat", U8x4), ("show_card", U8x4), ("show_contract", U8x4), ("show_verbal", U8x4),
+        ("contract", C.c_int8), ("declarer", C.c_int8),
+        ("first_leader", C.c_uint8),
+        ("n_played", C.c_uint8),
+        ("play_card", U8x52), ("play_seat", U8x52),
+        ("team_tricks", C.c_uint8 * 2),
+        ("score", C.c_uint8 * 2),
+        ("winner_team", C.c_int8), ("points", C.c_uint8), ("stolen", C.c_uint8),
+        ("ruleset", C.c_uint8), ("trick_size", C.c_uint8), ("n_decisions", C.c_uint8),
+        ("decision_seat", C.c_uint8 * 2), ("decision_accept", C.c_uint8 * 2),
+        ("soolaaja", C.c_int8), ("given", C.c_int8), ("returned", C.c_int8),
+        ("sooli_won", C.c_uint8),
+    ]
+```
+
+### E003 — TcObs, lines 45–59
+
+```python
+class TcObs(C.Structure):
+    _fields_ = [
+        ("hand", C.c_uint64),
+        ("seat", C.c_uint8), ("dealer", C.c_uint8), ("phase", C.c_uint8),
+        ("n_shows", C.c_uint8),
+        ("show_seat", U8x4), ("show_card", U8x4), ("show_contract", U8x4), ("show_verbal", U8x4),
+        ("contract", C.c_int8), ("declarer", C.c_int8),
+        ("first_leader", C.c_uint8),
+        ("n_played", C.c_uint8),
+        ("play_card", U8x52), ("play_seat", U8x52),
+        ("score", C.c_uint8 * 2),
+        ("ruleset", C.c_uint8), ("trick_size", C.c_uint8), ("n_decisions", C.c_uint8),
+        ("decision_seat", C.c_uint8 * 2), ("decision_accept", C.c_uint8 * 2),
+        ("soolaaja", C.c_int8), ("known_given", C.c_int8), ("known_returned", C.c_int8),
+    ]
+```
+
+### E003 — search_world_values, lines 358–368
+
+```python
+def search_world_values(env: "Env", mlp: Mlp, obs: TcObs, actions, worlds: int, dd_left: int,
+                        rng_state: C.c_uint64) -> np.ndarray:
+    """(worlds, actions) values, observer's sign; the same worlds for every action."""
+    a = np.ascontiguousarray(actions, dtype=np.int32)
+    mean = np.zeros(len(a), dtype=np.float64)
+    out = np.zeros((worlds, len(a)), dtype=np.float64)
+    rc = lib.tc_search_world_values(env._h, mlp._h, C.byref(obs), a.ctypes.data, len(a), worlds, dd_left,
+                                    C.byref(rng_state), mean.ctypes.data, out.ctypes.data)
+    if rc != 0:
+        raise RuntimeError(f"native search failed ({rc})")
+    return out
+```
+
+### E003 — search_values, lines 371–379
+
+```python
+def search_values(env: "Env", mlp: Mlp, obs: TcObs, actions, worlds: int, dd_left: int,
+                  rng_state: C.c_uint64) -> np.ndarray:
+    a = np.ascontiguousarray(actions, dtype=np.int32)
+    out = np.zeros(len(a), dtype=np.float64)
+    rc = lib.tc_search_values(env._h, mlp._h, C.byref(obs), a.ctypes.data, len(a), worlds, dd_left,
+                              C.byref(rng_state), out.ctypes.data)
+    if rc != 0:
+        raise RuntimeError(f"native search failed ({rc})")
+    return out
+```
+
+### E003 — Env, lines 232–318
+
+```python
+class Env:
+    """N parallel matches in native code, observed and stepped as numpy arrays."""
+
+    def __init__(self, n: int, seed: int, equity: np.ndarray | None = None,
+                 p_random_start: float = 0.0, single_deal: bool = False, encoder: int = 1):
+        self.n = n
+        self.encoder = encoder
+        self._h = lib.tc_env_new(n, seed)
+        lib.tc_env_set_encoder(self._h, encoder)
+        if equity is not None:
+            self.set_equity(equity)
+        lib.tc_env_set_options(self._h, float(p_random_start), int(single_deal))
+        self.feat = np.zeros((n, feature_dim(encoder)), dtype=np.uint8)
+        self.mask = np.zeros((n, NUM_ACTIONS), dtype=np.uint8)
+        self.seat = np.zeros(n, dtype=np.int32)
+        self.phase = np.zeros(n, dtype=np.int32)
+        self.done = np.zeros(n, dtype=np.int32)
+        self.delta0 = np.zeros(n, dtype=np.float32)
+        self.info = np.zeros((n, 8), dtype=np.int32)
+
+    def set_sooli(self, belief: int = 0, return_pi: bool = False, play_heur: bool = False,
+                  lam: float = 0.0) -> None:
+        """Search options for sooli decisions (see tc_sample_world_sooli, resolve_sooli)."""
+        lib.tc_env_set_sooli(self._h, belief, int(return_pi), int(play_heur), float(lam))
+
+    def set_equity(self, equity: np.ndarray) -> None:
+        eq = np.ascontiguousarray(equity, dtype=np.float64).reshape(25, 2)
+        lib.tc_env_set_equity(self._h, eq.ctypes.data_as(_P(C.c_double)))
+
+    def observe(self):
+        lib.tc_env_observe(self._h, self.feat.ctypes.data, self.mask.ctypes.data,
+                           self.seat.ctypes.data, self.phase.ctypes.data)
+        return self.feat, self.mask, self.seat, self.phase
+
+    def step(self, actions: np.ndarray) -> int:
+        a = np.ascontiguousarray(actions, dtype=np.int32)
+        return lib.tc_env_step(self._h, a.ctypes.data, self.done.ctypes.data,
+                               self.delta0.ctypes.data, self.info.ctypes.data)
+
+    def set_deal(self, i: int, hands_masks, dealer: int, score0: int, score1: int) -> None:
+        arr = (C.c_uint64 * 4)(*hands_masks)
+        lib.tc_env_set_deal(self._h, i, arr, dealer, score0, score1)
+
+    def dd_finish(self, dd_left: int) -> int:
+        return lib.tc_env_dd_finish(self._h, dd_left, self.done.ctypes.data, self.delta0.ctypes.data)
+
+    def observe_live(self):
+        """(features, masks, game indices) for live games only, compact."""
+        if not hasattr(self, "_idx"):
+            self._idx = np.zeros(self.n, dtype=np.int32)
+        k = lib.tc_env_observe_live(self._h, self.feat.ctypes.data, self.mask.ctypes.data, self._idx.ctypes.data)
+        return self.feat[:k], self.mask[:k], self._idx[:k]
+
+    def step_live(self, idx: np.ndarray, actions: np.ndarray) -> None:
+        idx = np.ascontiguousarray(idx, dtype=np.int32)
+        a = np.ascontiguousarray(actions, dtype=np.int32)
+        self.done[:] = 0
+        lib.tc_env_step_live(self._h, idx.ctypes.data, a.ctypes.data, len(idx),
+                             self.done.ctypes.data, self.delta0.ctypes.data)
+
+    def set_state_repeat(self, j: int, deal: TcDeal, count: int) -> None:
+        lib.tc_env_set_state_repeat(self._h, j, C.byref(deal), count)
+
+    def park_all(self) -> None:
+        lib.tc_env_park_all(self._h)
+
+    def set_state(self, i: int, deal: TcDeal) -> None:
+        lib.tc_env_set_state(self._h, i, C.byref(deal))
+
+    def deal(self, i: int) -> TcDeal:
+        return lib.tc_env_deal(self._h, i).contents
+
+    def hands(self) -> tuple[np.ndarray, np.ndarray]:
+        """(n, 4) uint64 hands and current actors - research labelling only."""
+        h = np.zeros((self.n, 4), dtype=np.uint64)
+        a = np.zeros(self.n, dtype=np.int32)
+        lib.tc_env_hands(self._h, h.ctypes.data, a.ctypes.data)
+        return h, a
+
+    def reset_all(self) -> None:
+        lib.tc_env_reset_all(self._h)
+
+    def __del__(self):
+        h = getattr(self, "_h", None)
+        if h:
+            lib.tc_env_free(h)
+            self._h = None
+```
+
+### E003 — Mlp, lines 321–350
+
+```python
+class Mlp:
+    """A QNet's weights in native memory, for rollouts without Python."""
+
+    def __init__(self, net):
+        sd = {k: v.detach().cpu().float().numpy() for k, v in net.state_dict().items()}
+        cfg = net.config
+        parts = [sd["inp.weight"], sd["inp.bias"]]
+        for b in range(cfg["blocks"]):
+            for name in ("norm.weight", "norm.bias", "fc1.weight", "fc1.bias", "fc2.weight", "fc2.bias"):
+                parts.append(sd[f"blocks.{b}.{name}"])
+        parts += [sd["norm.weight"], sd["norm.bias"], sd["out.weight"], sd["out.bias"]]
+        flat = np.ascontiguousarray(np.concatenate([p.ravel() for p in parts]), dtype=np.float32)
+        self.encoder = cfg.get("encoder", 1)
+        self.width = cfg["width"]
+        self._h = lib.tc_mlp_new(feature_dim(self.encoder), cfg["width"], cfg["blocks"], NUM_ACTIONS,
+                                 self.encoder, flat.ctypes.data)
+        if not self._h:
+            raise ValueError("unsupported network shape")
+
+    def forward(self, feat: np.ndarray) -> np.ndarray:
+        x = np.ascontiguousarray(feat, dtype=np.uint8)
+        out = np.zeros((len(x), NUM_ACTIONS), dtype=np.float32)
+        lib.tc_mlp_forward(self._h, x.ctypes.data, len(x), out.ctypes.data)
+        return out
+
+    def __del__(self):
+        h = getattr(self, "_h", None)
+        if h:
+            lib.tc_mlp_free(h)
+            self._h = None
+```
+
+### E012 — DealModel, lines 22–50
+
+```python
+@dataclass(frozen=True)
+class DealModel:
+    dealer_win: float
+    points_given_dealer: dict[int, float]
+    points_given_other: dict[int, float]
+
+    @classmethod
+    def from_outcomes(cls, outcomes) -> "DealModel":
+        """outcomes: iterable of (dealer_team_won: bool, points: int)."""
+        dealer: dict[int, int] = {}
+        other: dict[int, int] = {}
+        for won, points in outcomes:
+            bucket = dealer if won else other
+            bucket[points] = bucket.get(points, 0) + 1
+        nd, no = sum(dealer.values()), sum(other.values())
+        return cls(nd / (nd + no),
+                   {p: c / nd for p, c in sorted(dealer.items())},
+                   {p: c / no for p, c in sorted(other.items())})
+
+    def to_json(self) -> dict:
+        return {"dealer_win": self.dealer_win,
+                "points_given_dealer": {str(k): v for k, v in self.points_given_dealer.items()},
+                "points_given_other": {str(k): v for k, v in self.points_given_other.items()}}
+
+    @classmethod
+    def from_json(cls, data: dict) -> "DealModel":
+        return cls(data["dealer_win"],
+                   {int(k): v for k, v in data["points_given_dealer"].items()},
+                   {int(k): v for k, v in data["points_given_other"].items()})
+```
+
+### E012 — solve, lines 60–92
+
+```python
+def solve(model: DealModel, tol: float = 1e-14) -> dict[tuple[int, int, bool], float]:
+    """P(we win) from (level, sign, we_deal); sign +1 we are up, -1 they are up, 0 at 0-0."""
+    states = [(0, 0, d) for d in (False, True)] + [
+        (lv, sg, d) for d in (False, True) for lv in range(1, LEVELS) for sg in (1, -1)]
+    index = {s: i for i, s in enumerate(states)}
+    rows = []
+    for level, sign, we_deal in states:
+        const, row = 0.0, []
+        for we_won, points, p in _outcomes(model, we_deal):
+            step = points // 4
+            if level == 0:
+                target = step
+                if target >= LEVELS:
+                    const += p * (1.0 if we_won else 0.0)
+                    continue
+                row.append((index[(target, 1 if we_won else -1, not we_deal)], p))
+            elif we_won == (sign == 1):
+                target = level + step
+                if target >= LEVELS:
+                    const += p * (1.0 if we_won else 0.0)
+                    continue
+                row.append((index[(target, sign, not we_deal)], p))
+            else:
+                row.append((index[(0, 0, not we_deal)], p))
+        rows.append((const, row))
+    value = np.full(len(states), 0.5)
+    for _ in range(200_000):
+        new = np.array([c + sum(p * value[j] for j, p in r) for c, r in rows])
+        delta = np.max(np.abs(new - value))
+        value = new
+        if delta < tol:
+            break
+    return {s: float(value[i]) for s, i in index.items()}
+```
+
+### E012 — native_table, lines 95–102
+
+```python
+def native_table(values: dict[tuple[int, int, bool], float]) -> np.ndarray:
+    table = np.zeros((25, 2))
+    for col, team0_deals in ((0, False), (1, True)):
+        table[0, col] = values[(0, 0, team0_deals)]
+        for level in range(1, LEVELS):
+            table[level, col] = values[(level, 1, team0_deals)]
+            table[12 + level, col] = values[(level, -1, team0_deals)]
+    return table
+```
+
+### E012 — Equity, lines 105–130
+
+```python
+class Equity:
+    """Team-0 match equity and per-deal equity deltas."""
+
+    def __init__(self, model: DealModel):
+        self.model = model
+        self.values = solve(model)
+        self.table = native_table(self.values)
+
+    def team0(self, score0: int, score1: int, dealer: int) -> float:
+        if score0 >= 52:
+            return 1.0
+        if score1 >= 52:
+            return 0.0
+        row = 0 if score0 == 0 and score1 == 0 else (score0 // 4 if score0 else 12 + score1 // 4)
+        return float(self.table[row, 1 if dealer % 2 == 0 else 0])
+
+    def delta0(self, before: tuple[int, int], after: tuple[int, int], dealer: int) -> float:
+        return self.team0(*after, dealer + 1) - self.team0(*before, dealer)
+
+    def save(self, path: Path) -> None:
+        path.write_text(json.dumps({"model": self.model.to_json(),
+                                    "table": self.table.tolist()}, indent=1))
+
+    @classmethod
+    def load(cls, path: Path) -> "Equity":
+        return cls(DealModel.from_json(json.loads(Path(path).read_text())["model"]))
+```
+
+### E013 — _init, lines 40–50
+
+```python
+def _init(candidate: str, opponent: str, equity_path: str, ruleset: str = "v1") -> None:
+    import torch
+
+    torch.set_num_threads(1)
+    from .equity import Equity
+    from .incumbent import incumbent_agents
+
+    _W["equity"] = Equity.load(Path(equity_path))
+    _W["ruleset"] = ruleset
+    _W["opponent"] = _with_sooli(incumbent_agents(opponent), ruleset)
+    _W["candidate"] = _with_sooli(_make_candidate(candidate), ruleset)
+```
+
+### E013 — _make_candidate, lines 53–86
+
+```python
+def _make_candidate(spec: str) -> dict:
+    """`profile:<key>`, a policy spec (see policies.py), or
+    `search:<ckpt>[:w=32][:dd=6][:show=1][:belief=4][:bt=1.0][:be=0.1]`."""
+    if spec == "best":
+        from .best import best_agents
+        return best_agents()
+    if spec.startswith("profile:"):
+        from .incumbent import incumbent_agents
+        return incumbent_agents(spec.split(":", 1)[1])
+    if spec.startswith("search:"):
+        from . import model as qmodel
+        from .search import SearchAgent
+        parts = spec.split(":")[1:]
+        opts = dict(p.split("=") for p in parts[1:])
+        net = qmodel.load(parts[0], "cpu")
+        table = _W["equity"].table
+        belief = {"belief": int(opts.get("belief", 0)), "belief_t": float(opts.get("bt", 1.0)),
+                  "belief_eps": float(opts.get("be", 0.1)), "belief_seats": opts.get("bs", "all")}
+        if "ot" in opts:
+            belief["opp_temp"] = float(opts["ot"])
+        if "team" in opts:
+            belief["team_net"] = qmodel.load(opts["team"], "cpu")
+        if "bn" in opts:
+            from .belief import load as load_belief
+            belief.update(belief_net=load_belief(opts["bn"]), belief_n=int(opts.get("bN", 1024)),
+                          belief_alpha=float(opts.get("ba", 0.5)))
+        return {s: SearchAgent(net, table, s, worlds=int(opts.get("w", 32)), dd_left=int(opts.get("dd", 0)),
+                               search_showing=int(opts.get("show", "0")),
+                               keep=float(opts["keep"]) if "keep" in opts else None,
+                               rami_bonus=float(opts.get("rb", 0.0)),
+                               show_worlds=int(opts["sw"]) if "sw" in opts else None, **belief) for s in range(4)}
+    from .policies import PolicyAgent, from_spec
+    policy = from_spec(spec, "cpu")
+    return {s: PolicyAgent(policy, s) for s in range(4)}
+```
+
+### E013 — _score_for, lines 89–96
+
+```python
+def _score_for(index: int, mode: str, seed: str) -> tuple[int, int]:
+    if mode == "zero":
+        return (0, 0)
+    rng = random.Random(f"{seed}|score|{index}")
+    level = rng.randrange(13)
+    if level == 0:
+        return (0, 0)
+    return (4 * level, 0) if rng.random() < 0.5 else (0, 4 * level)
+```
+
+### E013 — _play, lines 99–139
+
+```python
+def _play(hands, score, candidate_team):
+    from tuppi_engine import (EnginePhase, ExplicitDeal, apply_match_action,
+                              begin_explicit_deal, create_match, match_observation_for)
+    from tuppi_rules import MatchScore
+
+    cand, opp = _W["candidate"], _W["opponent"]
+    ruleset = _W.get("ruleset", "v1")
+    if ruleset == "v1":
+        match = create_match(initial_score=MatchScore(*score), initial_dealer=DEALER, match_ref="tuppi-ai-eval")
+        active = (EnginePhase.SHOWING, EnginePhase.TRICK_PLAY)
+    else:
+        from tuppi_engine.state import ACTIVE_PHASES
+        from tuppi_rules import RulesetId
+        match = create_match(initial_score=MatchScore(*score), initial_dealer=DEALER, match_ref="tuppi-ai-eval",
+                             ruleset_id=RulesetId(RULESETS[ruleset]))
+        active = ACTIVE_PHASES
+    state = begin_explicit_deal(match, ExplicitDeal(dealer=DEALER, hands=hands))
+    while state.phase in active:
+        seat = state.current_actor
+        actor = cand[seat] if seat % 2 == candidate_team else opp[seat]
+        state = apply_match_action(state, actor.choose_action(match_observation_for(state, seat)))
+    r = state.completed_deals[-1].public_result
+    d0 = _W["equity"].delta0(r.score_before.as_tuple(), r.score_after.as_tuple(), DEALER)
+    value = d0 if candidate_team == 0 else -d0
+    declarer_team = None if r.declarer is None else r.declarer % 2
+    return {
+        "value": value,
+        "won": r.deal_score.winner_team.value == candidate_team,
+        "points": r.deal_score.points if r.deal_score.winner_team.value == candidate_team else -r.deal_score.points,
+        "tricks": r.team_tricks[candidate_team],
+        "rami": r.contract.value == "RAMI",
+        "cand_declared": declarer_team == candidate_team,
+        "opp_declared": declarer_team is not None and declarer_team != candidate_team,
+        "stolen": bool(getattr(r.deal_score, "stolen_rami", False)),
+        "cand_sooli": getattr(r, "soolaaja", None) is not None and r.soolaaja % 2 == candidate_team,
+        "opp_sooli": getattr(r, "soolaaja", None) is not None and r.soolaaja % 2 != candidate_team,
+        "cand_sooli_won": (getattr(r, "soolaaja", None) is not None and r.soolaaja % 2 == candidate_team
+                           and r.deal_score.winner_team.value == candidate_team),
+        "opp_sooli_won": (getattr(r, "soolaaja", None) is not None and r.soolaaja % 2 != candidate_team
+                          and r.deal_score.winner_team.value != candidate_team),
+    }
+```
+
+### E013 — measure, lines 142–161
+
+```python
+def measure(index: int, seed: str, scores: str) -> dict:
+    from tuppi_engine.trusted import trusted_transitions
+    from tuppi_rules.cards import FULL_DECK
+
+    rng = random.Random(f"{seed}|deal|{index}")
+    cards = list(FULL_DECK)
+    rng.shuffle(cards)
+    base = tuple(tuple(cards[s * 13:(s + 1) * 13]) for s in range(4))
+    score = _score_for(index, scores, seed)
+    games = []
+    with trusted_transitions():
+        for rotation in range(4):
+            hands = tuple(base[(seat + rotation) % 4] for seat in range(4))
+            for team in (0, 1):
+                games.append(_play(hands, score, team))
+    out = {"index": index, "score": score, "value": statistics.fmean(g["value"] for g in games),
+           "games": games}
+    for key in STAT_KEYS:
+        out[key] = statistics.fmean(float(g[key]) for g in games)
+    return out
+```
+
+### E013 — summarise, lines 168–178
+
+```python
+def summarise(rows: list[dict]) -> dict:
+    values = [r["value"] for r in rows]
+    n = len(values)
+    mean = statistics.fmean(values)
+    sd = statistics.stdev(values) if n > 1 else float("nan")
+    se = sd / math.sqrt(n)
+    summary = {"base_deals": n, "games": 8 * n, "equity_per_deal": mean, "sd": sd,
+               "ci95": [mean - 1.96 * se, mean + 1.96 * se]}
+    for key in STAT_KEYS:
+        summary[key] = statistics.fmean(r[key] for r in rows)
+    return summary
+```
+
+### E013 — evaluate, lines 181–194
+
+```python
+def evaluate(candidate: str, deals: int, seed: str = "tuppi-ai-eval-v1", scores: str = "zero",
+             opponent: str = "partner_aware_lead_v2", workers: int = 12,
+             equity_path: str = str(ROOT / "models" / "equity_incumbent.json"), ruleset: str = "v1") -> dict:
+    t0 = time.time()
+    with ProcessPoolExecutor(workers, initializer=_init,
+                             initargs=(candidate, opponent, equity_path, ruleset)) as pool:
+        rows = list(pool.map(measure, range(deals), [seed] * deals, [scores] * deals, chunksize=8))
+    summary = summarise(rows)
+    summary.update({"candidate": candidate, "opponent": opponent, "seed": seed, "scores": scores,
+                    "ruleset": RULESETS[ruleset],
+                    "seconds": round(time.time() - t0, 1),
+                    "values": [r["value"] for r in rows],
+                    "games": [g for r in rows for g in r["games"]]})
+    return summary
+```
+
+### E014 — _leg, lines 29–52
+
+```python
+def _leg(pair: int, seed: str, candidate_team: int, cap: int) -> dict:
+    from tuppi_engine import (EnginePhase, ExplicitDeal, apply_match_action,
+                              begin_explicit_deal, create_match, match_observation_for)
+    from tuppi_rules import MatchScore
+    from tuppi_rules.cards import FULL_DECK
+
+    cand, opp = _W["candidate"], _W["opponent"]
+    state = create_match(initial_score=MatchScore(0, 0), initial_dealer=0, match_ref="tuppi-ai-match")
+    deals = 0
+    while not state.terminal and deals < cap:
+        rng = random.Random(f"{seed}|pair|{pair}|deal|{deals}")
+        cards = list(FULL_DECK)
+        rng.shuffle(cards)
+        hands = tuple(tuple(cards[s * 13:(s + 1) * 13]) for s in range(4))
+        state = begin_explicit_deal(state, ExplicitDeal(dealer=state.dealer, hands=hands))
+        while state.phase in (EnginePhase.SHOWING, EnginePhase.TRICK_PLAY):
+            seat = state.current_actor
+            actor = cand[seat] if seat % 2 == candidate_team else opp[seat]
+            state = apply_match_action(state, actor.choose_action(match_observation_for(state, seat)))
+        deals += 1
+    if not state.terminal:
+        return {"result": 0.5, "deals": deals, "censored": True}
+    won = state.score.for_team(__import__("tuppi_rules").Team(candidate_team)) >= 52
+    return {"result": 1.0 if won else 0.0, "deals": deals, "censored": False}
+```
+
+### E014 — measure_pair, lines 55–62
+
+```python
+def measure_pair(pair: int, seed: str, cap: int) -> dict:
+    from tuppi_engine.trusted import trusted_transitions
+
+    with trusted_transitions():
+        a = _leg(pair, seed, 0, cap)
+        b = _leg(pair, seed, 1, cap)
+    return {"pair": pair, "score": (a["result"] + b["result"]) / 2,
+            "deals": a["deals"] + b["deals"], "censored": int(a["censored"]) + int(b["censored"])}
+```
+
+### E014 — evaluate_matches, lines 65–83
+
+```python
+def evaluate_matches(candidate: str, pairs: int, seed: str = "tuppi-ai-match-v1",
+                     opponent: str = "partner_aware_lead_v2", workers: int = 12,
+                     cap: int = DEFAULT_CAP, equity_path: str | None = None) -> dict:
+    from .evaluate import ROOT
+    equity_path = equity_path or str(ROOT / "models" / "equity_incumbent.json")
+    t0 = time.time()
+    with ProcessPoolExecutor(workers, initializer=_init_worker,
+                             initargs=(candidate, opponent, equity_path)) as pool:
+        rows = list(pool.map(measure_pair, range(pairs), [seed] * pairs, [cap] * pairs, chunksize=1))
+    scores = [r["score"] for r in rows]
+    mean = statistics.fmean(scores)
+    se = statistics.stdev(scores) / math.sqrt(len(scores)) if len(scores) > 1 else float("nan")
+    return {"candidate": candidate, "opponent": opponent, "pairs": pairs, "seed": seed,
+            "p_win": mean, "ci95": [mean - 1.96 * se, mean + 1.96 * se],
+            "pair_wins": sum(s == 1.0 for s in scores), "pair_ties": sum(s == 0.5 for s in scores),
+            "pair_losses": sum(s == 0.0 for s in scores),
+            "censored_legs": sum(r["censored"] for r in rows),
+            "mean_deals_per_leg": statistics.fmean(r["deals"] for r in rows) / 2,
+            "seconds": round(time.time() - t0, 1)}
+```
+
+### E016 — PlayerObservation, lines 33–112
+
+```python
+@dataclass(frozen=True, slots=True)
+class PlayerObservation:
+    match_ref: str
+    deal_ref: str
+    observing_seat: int
+    team: Team
+    partner_seat: int
+    dealer: int
+    forehand: int
+    phase: EnginePhase
+    current_actor: int | None
+    own_hand: tuple[Card, ...]
+    show_actions: tuple[RulesShowAction, ...]
+    publicly_shown_cards: tuple[tuple[int, Card], ...]
+    contract: Contract | None
+    declarer: int | None
+    first_leader: int | None
+    completed_tricks: tuple[CompletedTrick, ...]
+    current_trick: tuple[PlayedCard, ...]
+    team_tricks: tuple[int, int]
+    match_score: MatchScore
+    legal_actions: tuple[Action, ...]
+    deal_terminal: bool
+    match_terminal: bool
+    schema_version: str = field(default=OBSERVATION_SCHEMA_VERSION, init=False)
+    ruleset_id: RulesetId = RulesetId.PROJECT_TARGET_V1
+    visibility: str = field(default="player_private", init=False)
+    # project_target_v2 (sooli). The exchanged cards are visible only to the
+    # soolaaja and the partner; the RAMI pair sees that the exchange happened.
+    sooli_decisions: tuple[tuple[int, bool], ...] = ()
+    soolaaja: int | None = None
+    sooli_exchanged: bool = False
+    sooli_given_card: Card | None = None
+    sooli_returned_card: Card | None = None
+    sooli_tricks: tuple[SooliTrick, ...] = ()
+    sooli_current_trick: tuple[PlayedCard, ...] = ()
+    # project_target_v3 (locked bids): during showing no bid is visible, not
+    # even one's own; only how many bids have been taken (public through the
+    # bid_locked events). Zero in every other case.
+    bids_locked: int = 0
+
+    def __post_init__(self) -> None:
+        if not is_valid_match_ref(self.match_ref):
+            raise StateInvariantError("observation match_ref is invalid")
+        if not is_valid_deal_ref(self.deal_ref):
+            raise StateInvariantError("observation deal_ref is invalid")
+        if type(self.observing_seat) is not int or self.observing_seat not in range(4):
+            raise StateInvariantError("observing_seat must be in 0..3")
+        if self.team is not team_for_seat(self.observing_seat):
+            raise StateInvariantError("observation team disagrees with seat")
+        if self.partner_seat != partner_for_seat(self.observing_seat):
+            raise StateInvariantError("observation partner disagrees with seat")
+        if type(self.own_hand) is not tuple:
+            raise StateInvariantError("own_hand must be an immutable tuple")
+        if type(self.show_actions) is not tuple or type(self.completed_tricks) is not tuple:
+            raise StateInvariantError("public histories must be immutable tuples")
+        if type(self.current_trick) is not tuple or type(self.legal_actions) is not tuple:
+            raise StateInvariantError("partial trick and legal actions must be tuples")
+        if self.current_actor != self.observing_seat and self.legal_actions:
+            raise StateInvariantError("nonacting observation cannot contain legal actions")
+        if self.deal_terminal and self.legal_actions:
+            raise StateInvariantError("terminal observation cannot contain legal actions")
+        if type(self.deal_terminal) is not bool or type(self.match_terminal) is not bool:
+            raise StateInvariantError("terminal fields must be booleans")
+        if self.publicly_shown_cards != tuple(
+            (action.seat, action.shown_card) for action in self.show_actions
+        ):
+            raise StateInvariantError("public shown-card list disagrees with show history")
+        if self.match_terminal and not self.deal_terminal:
+            raise StateInvariantError("match-terminal observation must be deal-terminal")
+        hidden = self.ruleset_id in LOCKED_BID_RULESETS and self.phase is EnginePhase.SHOWING
+        if type(self.bids_locked) is not int or not 0 <= self.bids_locked <= 3:
+            raise StateInvariantError("bids_locked must be an integer in 0..3")
+        if hidden and self.show_actions:
+            raise StateInvariantError("locked bids are hidden until showing resolves")
+        if self.bids_locked and not hidden:
+            raise StateInvariantError("bids_locked is only for locked-bid showing")
+        in_exchange = self.soolaaja is not None and self.observing_seat in (self.soolaaja, (self.soolaaja + 2) % 4)
+        if not in_exchange and (self.sooli_given_card is not None or self.sooli_returned_card is not None):
+            raise StateInvariantError("exchanged cards are private to the soolaaja and the partner")
+```
+
+### E016 — _observation_for_validated, lines 198–241
+
+```python
+def _observation_for_validated(state: DealState, seat: int) -> PlayerObservation:
+    """Project a state the immediate caller just validated, for a checked seat.
+
+    ``match_observation_for`` reuses its own match validation - which already
+    revalidates the active deal - through this helper and the legal-action
+    helper above, so one public observation performs one full deal validation.
+    """
+
+    current_score = state.ending_score or state.starting_score
+    hidden = state.ruleset_id in LOCKED_BID_RULESETS and state.phase is EnginePhase.SHOWING
+    visible_shows = () if hidden else tuple(state.show_actions)
+    return PlayerObservation(
+        match_ref=state.match_ref,
+        deal_ref=state.deal_ref,
+        observing_seat=seat,
+        team=team_for_seat(seat),
+        partner_seat=partner_for_seat(seat),
+        dealer=state.dealer,
+        forehand=state.forehand,
+        phase=state.phase,
+        current_actor=state.current_actor,
+        own_hand=tuple(state.hands[seat]),
+        show_actions=visible_shows,
+        publicly_shown_cards=tuple((action.seat, action.shown_card) for action in visible_shows),
+        contract=state.contract,
+        declarer=state.declarer,
+        first_leader=state.first_leader,
+        completed_tricks=tuple(state.completed_tricks),
+        current_trick=tuple(state.current_trick),
+        team_tricks=state.team_tricks,
+        match_score=current_score,
+        legal_actions=_legal_actions_for_validated(state, seat),
+        deal_terminal=state.complete,
+        match_terminal=state.terminal,
+        ruleset_id=state.ruleset_id,
+        sooli_decisions=tuple(state.sooli_decisions),
+        soolaaja=state.soolaaja,
+        sooli_exchanged=state.sooli_returned is not None,
+        sooli_given_card=state.sooli_given if _knows_exchange(state, seat) else None,
+        sooli_returned_card=state.sooli_returned if _knows_exchange(state, seat) else None,
+        sooli_tricks=tuple(state.sooli_tricks),
+        sooli_current_trick=tuple(state.sooli_current),
+        bids_locked=len(state.show_actions) if hidden else 0,
+    )
+```
+
+### E017 — action_to_data, lines 107–125
+
+```python
+def action_to_data(action: Action) -> dict[str, object]:
+    if isinstance(action, ShowAction):
+        return {
+            "declared_contract": action.declared_contract.value,
+            "seat": action.seat,
+            "shown_card": card_to_code(action.shown_card),
+            "type": "show",
+        }
+    if isinstance(action, PlayCardAction):
+        return {
+            "card": card_to_code(action.card),
+            "seat": action.seat,
+            "type": "play",
+        }
+    if isinstance(action, SooliDecisionAction):
+        return {"play_sooli": action.play_sooli, "seat": action.seat, "type": "sooli_decision"}
+    if isinstance(action, SooliExchangeAction):
+        return {"card": card_to_code(action.card), "seat": action.seat, "type": "sooli_exchange"}
+    raise SerializationError("cannot serialize a non-engine action")
+```
+
+### E017 — _sooli_observation_data, lines 261–275
+
+```python
+def _sooli_observation_data(observation: PlayerObservation) -> dict[str, object]:
+    return {
+        "decisions": [
+            {"play_sooli": accepted, "seat": seat} for seat, accepted in observation.sooli_decisions
+        ],
+        "exchanged": observation.sooli_exchanged,
+        "given_card": (
+            None if observation.sooli_given_card is None else card_to_code(observation.sooli_given_card)
+        ),
+        "partner": None if observation.soolaaja is None else (observation.soolaaja + 2) % 4,
+        "returned_card": (
+            None if observation.sooli_returned_card is None else card_to_code(observation.sooli_returned_card)
+        ),
+        "soolaaja": observation.soolaaja,
+    }
+```
+
+### E017 — observation_to_data, lines 278–298
+
+```python
+def observation_to_data(observation: PlayerObservation) -> dict[str, object]:
+    """Wire form of an observation.
+
+    project_target_v1 observations keep their original keys. Under the sooli
+    rulesets a ``sooli`` block is added, and a sooli deal's three-card tricks
+    are reported in ``completed_tricks`` and ``current_trick`` (the four-card
+    trick lists are empty in a sooli deal). Under locked bids ``bids_locked``
+    counts the hidden bids taken during showing.
+    """
+
+    if not isinstance(observation, PlayerObservation):
+        raise SerializationError("observation must be a PlayerObservation")
+    sooli_deal = observation.sooli_exchanged
+    completed = observation.sooli_tricks if sooli_deal else observation.completed_tricks
+    current = observation.sooli_current_trick if sooli_deal else observation.current_trick
+    data = _observation_data(observation, completed, current)
+    if observation.ruleset_id in SOOLI_RULESETS:
+        data["sooli"] = _sooli_observation_data(observation)
+    if observation.ruleset_id in LOCKED_BID_RULESETS:
+        data["bids_locked"] = observation.bids_locked
+    return data
+```
+
+### E017 — _observation_data, lines 301–333
+
+```python
+def _observation_data(observation: PlayerObservation, completed, current) -> dict[str, object]:
+    return {
+        "completed_tricks": [
+            completed_trick_to_data(trick) for trick in completed
+        ],
+        "contract": None if observation.contract is None else observation.contract.value,
+        "current_actor": observation.current_actor,
+        "current_trick": [_played_card_data(play) for play in current],
+        "deal_ref": observation.deal_ref,
+        "deal_terminal": observation.deal_terminal,
+        "dealer": observation.dealer,
+        "declarer": observation.declarer,
+        "first_leader": observation.first_leader,
+        "forehand": observation.forehand,
+        "legal_actions": [action_to_data(action) for action in observation.legal_actions],
+        "match_ref": observation.match_ref,
+        "match_score": _score_data(observation.match_score),
+        "match_terminal": observation.match_terminal,
+        "observing_seat": observation.observing_seat,
+        "own_hand": [card_to_code(card) for card in observation.own_hand],
+        "partner_seat": observation.partner_seat,
+        "phase": observation.phase.value,
+        "publicly_shown_cards": [
+            {"card": card_to_code(card), "seat": seat}
+            for seat, card in observation.publicly_shown_cards
+        ],
+        "ruleset_id": observation.ruleset_id.value,
+        "schema_version": observation.schema_version,
+        "show_actions": [_show_data(show) for show in observation.show_actions],
+        "team": observation.team.value,
+        "team_tricks": list(observation.team_tricks),
+        "visibility": observation.visibility,
+    }
+```
+
+### E019 — transition_rising_score, lines 53–69
+
+```python
+def transition_rising_score(current: MatchScore, deal_score: DealScore) -> MatchScore:
+    validated = _validate_match_score(current)
+    deal_score = validate_deal_score(deal_score)
+    if is_match_terminal(validated):
+        raise TerminalMatchError("a terminal match cannot accept another deal score")
+
+    winner = deal_score.winner_team
+    up_team = validated.up_team
+    if up_team is None:
+        if winner is Team.TEAM_0:
+            return MatchScore(deal_score.points, 0)
+        return MatchScore(0, deal_score.points)
+    if winner is up_team:
+        if up_team is Team.TEAM_0:
+            return MatchScore(validated.team0 + deal_score.points, 0)
+        return MatchScore(0, validated.team1 + deal_score.points)
+    return MatchScore(0, 0)
+```
+
+### E022 — SuitPolicy, lines 87–91
+
+```python
+class SuitPolicy(StrEnum):
+    """How each seat chooses which card of the suit to contribute."""
+
+    LOWEST = "lowest"
+    HIGHEST = "highest"
+```
+
+### E022 — play_out, lines 428–462
+
+```python
+def play_out(
+    own_ranks: Sequence[int],
+    opponent_ranks: Sequence[Sequence[int]],
+    *,
+    times_led: int,
+    policy: SuitPolicy,
+) -> tuple[int, ...]:
+    """Play the suit out *times_led* times and return tricks won per seat.
+
+    Index 0 is the analysed seat. Every seat that still holds the suit follows;
+    a seat that has run out contributes nothing and cannot win. The trick goes
+    to the highest card contributed, which under a fixed policy makes the result
+    independent of the order the seats play in.
+    """
+
+    if type(times_led) is not int or times_led < 0:
+        raise CombinatoricsError("times_led must be a nonnegative integer")
+    if not isinstance(policy, SuitPolicy):
+        raise CombinatoricsError("policy must be a SuitPolicy value")
+    if len(opponent_ranks) != OPPONENT_COUNT:
+        raise CombinatoricsError("exactly three opponent holdings are required")
+
+    hands = [sorted(own_ranks)] + [sorted(hand) for hand in opponent_ranks]
+    wins = [0, 0, 0, 0]
+    for _ in range(times_led):
+        contributed: dict[int, int] = {}
+        for seat, hand in enumerate(hands):
+            if not hand:
+                continue
+            contributed[seat] = hand.pop(0 if policy is SuitPolicy.LOWEST else -1)
+        if not contributed:
+            break
+        winner = max(contributed, key=lambda seat: contributed[seat])
+        wins[winner] += 1
+    return tuple(wins)
+```
+
+### E022 — conditional_layouts, lines 742–793
+
+```python
+def conditional_layouts(
+    own_ranks: Sequence[int],
+    *,
+    seen_ranks: Sequence[int] = (),
+    hand_sizes: tuple[int, int, int] = (CARDS_PER_HAND,) * OPPONENT_COUNT,
+    void: tuple[bool, bool, bool] = (False,) * OPPONENT_COUNT,
+) -> Iterator[tuple[tuple[tuple[int, ...], ...], Fraction]]:
+    """Yield every layout of the *unseen* outstanding ranks, with probability.
+
+    The mid-deal generalisation of :func:`layouts`. Cards in *seen_ranks* are
+    removed from circulation, hand sizes may differ (they do part-way through a
+    trick, where seats that have already played hold one card fewer), and a
+    proven void forbids any placement in that hand. Probabilities are
+    renormalised over the layouts the evidence permits and sum to 1.
+
+    This enumerates ``3**outstanding`` rank assignments and is the **reference**
+    implementation: correct, and far too slow to consult inside a decision. Use
+    it to verify a faster law, which is what
+    ``test_conditioned_ducking_matches_the_reference_enumeration`` does.
+    """
+
+    outstanding_ranks = _conditioned_outstanding(own_ranks, seen_ranks)
+    outstanding = len(outstanding_ranks)
+    unseen = _check_conditioning(outstanding, hand_sizes, void)
+    if 3 ** outstanding > MAX_LAYOUTS:
+        raise CombinatoricsError("layout enumeration exceeds the exact budget")
+
+    placements: list[tuple[tuple[tuple[int, ...], ...], int]] = []
+    total = 0
+    for assignment in itertools.product(range(OPPONENT_COUNT), repeat=outstanding):
+        buckets: tuple[list[int], ...] = ([], [], [])
+        for rank, owner in zip(outstanding_ranks, assignment):
+            buckets[owner].append(rank)
+        counts = tuple(len(bucket) for bucket in buckets)
+        if any(flag and count for flag, count in zip(void, counts)):
+            continue
+        remainder = tuple(
+            size - count for size, count in zip(hand_sizes, counts)
+        )
+        if any(part < 0 for part in remainder):
+            continue
+        ways = multinomial(unseen - outstanding, remainder)
+        if not ways:
+            continue
+        placements.append((tuple(tuple(bucket) for bucket in buckets), ways))
+        total += ways
+    if total == 0:
+        raise CombinatoricsError(
+            "the stated voids and hand sizes admit no placement of the suit"
+        )
+    for layout, ways in placements:
+        yield layout, Fraction(ways, total)
+```
+
+### E023 — ducking_probabilities, lines 95–162
+
+```python
+@lru_cache(maxsize=8192)
+def ducking_probabilities(
+    own_ranks: tuple[int, ...],
+    outstanding_ranks: tuple[int, ...],
+    hand_sizes: tuple[int, int, int],
+    void: tuple[bool, bool, bool],
+    max_leads: int,
+    *,
+    contested_only: bool = False,
+) -> tuple[Fraction, ...]:
+    """P(this holding wins round *i*) for i = 1..max_leads, everyone ducking.
+
+    Round *i* is contested by each seat's *i*-th lowest card, and an opponent's
+    *i*-th lowest lies below a given card exactly when that opponent holds *i* or
+    more cards below it. So a round turns only on how the outstanding ranks split
+    into those below the card and those above it, never on which ranks they are -
+    which is what replaces an enumeration over rank assignments with a pair of
+    three-part compositions.
+
+    With *contested_only*, a round counts only while some opponent can still
+    contribute to it. That is the form a liability needs: a round nobody can lead
+    is not a trick anybody takes.
+    """
+
+    mine = sorted(own_ranks)
+    unseen = sum(hand_sizes)
+    outstanding = len(outstanding_ranks)
+    if outstanding > unseen:
+        raise AgentsValidationError("more of the suit is outstanding than is unseen")
+    filler = unseen - outstanding
+    caps = tuple(0 if flag else size for flag, size in zip(void, hand_sizes))
+
+    normaliser = 0
+    for counts in _capped_compositions(outstanding, caps):
+        remainder = tuple(size - count for size, count in zip(hand_sizes, counts))
+        normaliser += _multinomial(outstanding, counts) * _multinomial(filler, remainder)
+    if normaliser == 0:
+        raise AgentsValidationError("the public record admits no placement of the suit")
+
+    rounds = min(max_leads, len(mine))
+    totals: list[Fraction] = []
+    for index in range(rounds):
+        card = mine[index]
+        needed = index + 1
+        below = sum(1 for rank in outstanding_ranks if rank < card)
+        above = outstanding - below
+        winning = 0
+        for lows in _capped_compositions(below, caps):
+            highs_caps = tuple(cap - low for cap, low in zip(caps, lows))
+            for highs in _capped_compositions(above, highs_caps):
+                held = tuple(low + high for low, high in zip(lows, highs))
+                if contested_only and max(held) < needed:
+                    continue
+                if any(
+                    total >= needed and low < needed
+                    for total, low in zip(held, lows)
+                ):
+                    continue
+                remainder = tuple(
+                    size - count for size, count in zip(hand_sizes, held)
+                )
+                winning += (
+                    _multinomial(below, lows)
+                    * _multinomial(above, highs)
+                    * _multinomial(filler, remainder)
+                )
+        totals.append(Fraction(winning, normaliser))
+    return tuple(totals) + (Fraction(0),) * (max_leads - rounds)
+```
+
+### E023 — expected_ducking_tricks, lines 165–181
+
+```python
+def expected_ducking_tricks(
+    own_ranks: tuple[int, ...],
+    outstanding_ranks: tuple[int, ...],
+    hand_sizes: tuple[int, int, int],
+    void: tuple[bool, bool, bool],
+) -> Fraction:
+    """Expected tricks this holding takes while the suit is still contested."""
+
+    if not own_ranks:
+        return Fraction(0)
+    return sum(
+        ducking_probabilities(
+            own_ranks, outstanding_ranks, hand_sizes, void,
+            len(own_ranks), contested_only=True,
+        ),
+        Fraction(0),
+    )
+```
+
+### E023 — card_liability, lines 184–203
+
+```python
+def card_liability(
+    rank: int,
+    own_ranks: tuple[int, ...],
+    outstanding_ranks: tuple[int, ...],
+    hand_sizes: tuple[int, int, int],
+    void: tuple[bool, bool, bool],
+) -> Fraction:
+    """Expected tricks that keeping *rank* costs, over discarding it.
+
+    The card discarded joins the outstanding pool only in the sense that it is
+    gone from this hand; it cannot win a later trick for anybody, so it is
+    dropped from the analysis rather than handed to an opponent.
+    """
+
+    if rank not in own_ranks:
+        raise AgentsValidationError("the card must be held to be discarded")
+    kept = expected_ducking_tricks(own_ranks, outstanding_ranks, hand_sizes, void)
+    without = tuple(value for value in own_ranks if value != rank)
+    shed = expected_ducking_tricks(without, outstanding_ranks, hand_sizes, void)
+    return kept - shed
+```
+
+### E023 — public_conditioning, lines 225–268
+
+```python
+def public_conditioning(observation: PlayerObservation, suit: Suit) -> tuple:
+    """Outstanding ranks, hand sizes and proven voids for *suit*.
+
+    Only played cards and proven voids are used. A card shown at deal start but
+    not yet played stays outstanding with an unknown owner, which is the
+    documented weakening in this module's docstring.
+    """
+
+    seat = observation.observing_seat
+    others = opponent_order(seat)
+    plays = _played_cards(observation)
+
+    played_in_suit = {card.rank.value for _, card in plays if card.suit is suit}
+    held = {card.rank.value for card in observation.own_hand if card.suit is suit}
+    outstanding = tuple(
+        sorted(
+            (
+                rank
+                for rank in range(2, 15)
+                if rank not in played_in_suit and rank not in held
+            ),
+            reverse=True,
+        )
+    )
+
+    counts = {other: 0 for other in others}
+    for actor, _ in plays:
+        if actor in counts:
+            counts[actor] += 1
+    hand_sizes = tuple(CARDS_PER_HAND - counts[other] for other in others)
+
+    # A seat is void when it failed to follow a suit that was led.
+    void_seats: set[int] = set()
+    groups = [trick.plays for trick in observation.completed_tricks]
+    if observation.current_trick:
+        groups.append(tuple(observation.current_trick))
+    for group in groups:
+        if not group or group[0].card.suit is not suit:
+            continue
+        for play in group[1:]:
+            if play.card.suit is not suit:
+                void_seats.add(play.seat)
+    void = tuple(other in void_seats for other in others)
+    return outstanding, hand_sizes, void
+```
+
+### E024 — test_contested_rounds_match_a_brute_force_walk, lines 66–91
+
+```python
+@pytest.mark.parametrize("own,seen,hand_sizes,void", GRID)
+def test_contested_rounds_match_a_brute_force_walk(own, seen, hand_sizes, void):
+    """A round nobody can lead is not a trick anybody takes."""
+
+    mine = sorted(own)
+    rounds = len(mine)
+    expected = [Fraction(0)] * rounds
+    for layout, probability in conditional_layouts(
+        list(own), seen_ranks=list(seen), hand_sizes=hand_sizes, void=void
+    ):
+        hands = [sorted(hand) for hand in layout]
+        survives = max((len(hand) for hand in hands), default=0)
+        for index in range(rounds):
+            if index + 1 > survives:
+                continue
+            others = [hand[index] for hand in hands if len(hand) > index]
+            if not others or mine[index] > max(others):
+                expected[index] += probability
+    local = ducking_probabilities(
+        tuple(mine), _outstanding(own, seen), hand_sizes, void, rounds,
+        contested_only=True,
+    )
+    assert local == tuple(expected)
+    assert expected_ducking_tricks(
+        tuple(mine), _outstanding(own, seen), hand_sizes, void
+    ) == sum(expected, Fraction(0))
+```
+
+### E025 — SupportBudget, lines 62–74
+
+```python
+@dataclass(frozen=True, slots=True)
+class SupportBudget:
+    max_remaining_tricks: int = DEFAULT_REMAINING_TRICKS
+    max_worlds: int = DEFAULT_WORLDS
+    max_engine_transitions: int = DEFAULT_ENGINE_TRANSITIONS
+
+    def __post_init__(self):
+        for name, ceiling in (("max_remaining_tricks", CEILING_REMAINING_TRICKS),
+                              ("max_worlds", CEILING_WORLDS),
+                              ("max_engine_transitions", CEILING_ENGINE_TRANSITIONS)):
+            value = getattr(self, name)
+            if type(value) is not int or not 0 <= value <= ceiling:
+                raise ValueError(f"{name} must be an integer in 0..{ceiling}")
+```
+
+### E025 — ResearchWorld, lines 110–119
+
+```python
+@dataclass(frozen=True, slots=True)
+class ResearchWorld:
+    assignment: HiddenHandAssignment
+    continuation: HypotheticalContinuation
+
+    @property
+    def content_key(self) -> tuple[tuple[int, ...], ...]:
+        """Private allocation identity, independent of sample/protocol metadata."""
+        return tuple(tuple(sorted(map(card_to_index, hand)))
+                     for hand in self.assignment.hands)
+```
+
+### E025 — SupportResult, lines 122–149
+
+```python
+@dataclass(frozen=True, slots=True)
+class SupportResult:
+    """Research-private result. Only diagnostics() is suitable for explanations."""
+    status: SupportStatus
+    decision_key: str | None
+    world_count: int | None
+    counted_candidates: int | None
+    assignments_attempted: int
+    engine_transitions: int
+    reason: str | None
+    # Not included in diagnostic output; this object must not enter a policy.
+    research_worlds: tuple[ResearchWorld, ...] = field(default=(), repr=False)
+
+    def __post_init__(self):
+        if self.status is SupportStatus.EXACT_COMPLETE:
+            if not self.research_worlds or self.world_count != len(self.research_worlds):
+                raise SupportInvariantError("exact support must contain every world")
+        elif self.world_count is not None or self.research_worlds:
+            raise SupportInvariantError("unresolved support must not expose a partial set")
+
+    def diagnostics(self) -> dict:
+        return {
+            "status": self.status.value, "decision_key": self.decision_key,
+            "world_count": self.world_count, "counted_candidates": self.counted_candidates,
+            "assignments_attempted": self.assignments_attempted,
+            "engine_transitions": self.engine_transitions, "fallback_reason": self.reason,
+            "claim_type": "UNCLASSIFIED",
+        }
+```
+
+### E025 — semantic_observation_key, lines 96–107
+
+```python
+def semantic_observation_key(observation: PlayerObservation) -> str:
+    """Own hand/action order and public history, with protocol identities absent.
+
+    Mirrors the field design of tuppi_search/information_state.py without a
+    dependency on that research layer. Public voids are derivable from history.
+    No assignment, sample metadata, private owner map or hidden hand is accepted.
+    """
+    if not isinstance(observation, PlayerObservation):
+        raise TypeError("semantic_observation_key requires PlayerObservation")
+    data = {name: _public_value(getattr(observation, name)) for name in OBSERVATION_KEY_FIELDS}
+    encoded = json.dumps(data, sort_keys=True, separators=(",", ":")).encode()
+    return "nolo-observation-v1:" + hashlib.sha256(encoded).hexdigest()
+```
+
+### E025 — build_support, lines 272–330
+
+```python
+def build_support(observation: PlayerObservation, budget: SupportBudget) -> SupportResult:
+    """Return the complete hard support or a typed unresolved result, never a sample.
+
+    Wrong entry-point types are programmer errors. Contradictory evidence returns
+    INVALID_INPUT. Rejection/count disagreement within exact enumeration raises
+    SupportInvariantError, and unexpected errors propagate unchanged.
+    """
+    if not isinstance(observation, PlayerObservation):
+        raise TypeError("build_support requires PlayerObservation, not a private state/fixture")
+    if not isinstance(budget, SupportBudget):
+        raise TypeError("build_support requires SupportBudget")
+    key = semantic_observation_key(observation)
+    counted = None
+    attempted = 0
+    meter = _ReplayMeter(budget.max_engine_transitions)
+
+    def unresolved(status, reason):
+        return SupportResult(status, key, None, counted, attempted, meter.calls, reason)
+
+    if observation.phase is not EnginePhase.TRICK_PLAY or observation.contract is not Contract.NOLO:
+        return unresolved(SupportStatus.OUT_OF_SCOPE, "requires resolved NOLO trick play")
+    remaining = 13 - len(observation.completed_tricks)
+    if not 1 <= remaining <= budget.max_remaining_tricks:
+        return unresolved(SupportStatus.OUT_OF_SCOPE, "remaining-trick limit")
+    try:
+        _validate_public_record(observation)
+        model = HardConstraintModel.build(observation)
+    except (ConstraintError, AgentsValidationError, RulesError, StateInvariantError) as exc:
+        return unresolved(SupportStatus.INVALID_INPUT, str(exc))
+    counted = feasible_assignment_count(model)
+    if counted == 0:
+        return unresolved(SupportStatus.INVALID_INPUT, "no hard-feasible assignments")
+    if counted > budget.max_worlds:
+        return unresolved(SupportStatus.SUPPORT_BUDGET, "complete count exceeds world limit")
+    worlds = []
+    seen = set()
+    for assignment in _assignments(model, observation):
+        attempted += 1
+        try:
+            continuation = meter.replay(observation, assignment)
+        except _TransitionLimit:
+            return unresolved(SupportStatus.SEARCH_BUDGET, "engine transition limit during replay")
+        except (EngineValidationError, RulesError, ContinuationError) as exc:
+            raise SupportInvariantError(
+                f"hard-model candidate {assignment.content_key()} rejected after "
+                f"{meter.calls} engine calls: {exc}"
+            ) from exc
+        replayed_key = semantic_observation_key(observation_for(continuation.state, observation.observing_seat))
+        if replayed_key != key:
+            raise SupportInvariantError("replay changed semantic observation")
+        world = ResearchWorld(assignment, continuation)
+        if world.content_key in seen:
+            raise SupportInvariantError("duplicate assignment")
+        seen.add(world.content_key)
+        worlds.append(world)
+    if len(worlds) != counted:
+        raise SupportInvariantError(f"enumerated {len(worlds)} assignments, counted {counted}")
+    return SupportResult(SupportStatus.EXACT_COMPLETE, key, counted, counted,
+                         attempted, meter.calls, None, tuple(worlds))
+```
+
+### E026 — _search, lines 163–238
+
+```python
+def _search(states, *, seat: int, team: int, meter: _Meter, agents) -> tuple[int, dict]:
+    """Value of one information class, and the own plan achieving it.
+
+    ``states`` are the hypothetical states of every world still compatible with
+    the public history. They necessarily share a current actor and, at an own
+    turn, a single information key.
+    """
+
+    meter.nodes += 1
+    if states[0].phase is not EnginePhase.TRICK_PLAY:
+        return _terminal_value(states, team), {}
+
+    actor = states[0].current_actor
+    if actor != seat:
+        # Every other seat, partner included, may do anything legal. Each public
+        # action keeps exactly the worlds in which it was available.
+        union: dict = {}
+        for state in states:
+            for action in meter.observe(state, actor).legal_actions:
+                union.setdefault(action, []).append(state)
+        worst = -1
+        merged: dict = {}
+        for action, subset in union.items():
+            successors = tuple(meter.step(state, action) for state in subset)
+            value, plan = _search(
+                successors, seat=seat, team=team, meter=meter, agents=agents
+            )
+            worst = max(worst, value)
+            # Every adversary branch is reachable, so all of their own-plan
+            # entries belong in the exported plan.
+            for key, chosen in plan.items():
+                if merged.setdefault(key, chosen) != chosen:
+                    raise SecurityInvariantError(
+                        "two reachable branches demand different actions at one key"
+                    )
+        return worst, merged
+
+    # The controlled seat. Partition defensively: distinct observation classes
+    # are distinct decisions, and nature picks the worst of them.
+    classes: dict = {}
+    for state in states:
+        observation = meter.observe(state, seat)
+        classes.setdefault(meter.information_key(observation), []).append(
+            (state, observation)
+        )
+
+    worst = -1
+    merged = {}
+    for key, members in classes.items():
+        common = set(members[0][1].legal_actions)
+        for _state, observation in members[1:]:
+            common &= set(observation.legal_actions)
+        if not common:
+            raise SecurityInvariantError("an information class shares no legal action")
+        order = _ranked_actions(agents[seat], members[0][1])
+        best_value = None
+        best_action = None
+        best_plan: dict = {}
+        # One action for the whole class. Never minimise per world.
+        for action in sorted(common, key=lambda a: _preference_index(order, a)):
+            successors = tuple(meter.step(state, action) for state, _obs in members)
+            value, plan = _search(
+                successors, seat=seat, team=team, meter=meter, agents=agents
+            )
+            if best_value is None or value < best_value:
+                best_value, best_action, best_plan = value, action, plan
+        for key_inner, chosen in best_plan.items():
+            if merged.setdefault(key_inner, chosen) != chosen:
+                raise SecurityInvariantError(
+                    "two reachable branches demand different actions at one key"
+                )
+        # A forced action still belongs in the plan only if the verifier will
+        # look for it; it consults every own node, so record every one.
+        merged[key] = best_action
+        worst = max(worst, best_value)
+    return worst, merged
+```
+
+### E028 — hypothetical_continuation, lines 178–229
+
+```python
+def hypothetical_continuation(
+    observation: PlayerObservation,
+    assignment: HiddenHandAssignment,
+    *,
+    match_ref: str | None = None,
+) -> HypotheticalContinuation:
+    """Build the engine-validated continuation for one sampled assignment.
+
+    The public action history is replayed through :func:`apply_action`, so the
+    resulting state is reachable under ``project_target_v1`` by construction.
+    """
+
+    if not isinstance(observation, PlayerObservation):
+        raise ContinuationError("hypothetical_continuation requires an observation")
+    hands = reconstruct_initial_hands(observation, assignment)
+    reference = match_ref or _default_match_ref(observation, assignment)
+    if not reference.startswith(HYPOTHETICAL_MATCH_REF_PREFIX):
+        raise ContinuationError(
+            "an explicit continuation match_ref must keep the hypothetical prefix"
+        )
+
+    state = create_deal_state(
+        ExplicitDeal(dealer=observation.dealer, hands=hands),
+        starting_score=observation.match_score,
+        match_ref=reference,
+        deal_ref=f"{reference}/deal:0",
+        deal_number=0,
+        event_start_index=0,
+    )
+    for action in observation.show_actions:
+        state = apply_action(
+            state,
+            EngineShowAction(
+                seat=action.seat,
+                shown_card=action.shown_card,
+                declared_contract=action.declared_contract,
+            ),
+        )
+    for trick in observation.completed_tricks:
+        for play in trick.plays:
+            state = apply_action(state, PlayCardAction(seat=play.seat, card=play.card))
+    for play in observation.current_trick:
+        state = apply_action(state, PlayCardAction(seat=play.seat, card=play.card))
+
+    _require_same_decision_point(observation, state)
+    return HypotheticalContinuation(
+        state=state,
+        observing_seat=observation.observing_seat,
+        source_match_ref=observation.match_ref,
+        source_deal_ref=observation.deal_ref,
+        sample_index=assignment.sample_index,
+    )
+```
+
+### E020 — _construct_ai_agents, lines 141–165
+
+```python
+def _construct_ai_agents(
+    seats: frozenset[int],
+    *,
+    profile_key: str,
+) -> dict[int, object]:
+    if profile_key == TEST_AI_PROFILE_KEY:
+        return {seat: FirstLegalActionAgent() for seat in seats}
+    if profile_key == TUPPI_AI_PROFILE_KEY:
+        try:
+            from tuppi_ai.best import best_agents
+        except ImportError as exc:
+            raise ValueError("the tuppi_ai package is not installed") from exc
+        return best_agents(sorted(seats))
+    if profile_key == DEFAULT_AI_PROFILE_KEY:
+        return {
+            seat: construct_void_lead_agent(seat, profile_key=BASE_AI_PROFILE_KEY)
+            for seat in seats
+        }
+    if profile_key != LEGACY_AI_PROFILE_KEY:
+        raise ValueError(f"unsupported live AI profile: {profile_key}")
+    specification = phase4_specifications_by_profile_key()[profile_key]
+    return {
+        seat: construct_registered_agent(specification, seat=seat)
+        for seat in seats
+    }
+```
+
+### E020 — _resolve_locked_showing, lines 645–695
+
+```python
+    def _resolve_locked_showing(self) -> None:
+        """Apply the bids in seat order, blind, until showing resolves.
+
+        AI seats decide at their turn from an observation that shows no bid.
+        Human bids come from the lock buffer. The locked bids after the first
+        RAMI are discarded unseen and never stored.
+        """
+
+        while self.state.phase is EnginePhase.SHOWING:
+            actor = self.current_actor
+            if actor in self.ai_seats:
+                action, evaluation = self._choose_ai_action(actor)
+                self._apply_ai_action(actor, action=action, contract_evaluation=evaluation)
+                continue
+            locked = self._locked_bids.pop(actor)
+            expected_event_index = self.event_cursor
+            before_event_count = len(self.state.public_events)
+            self.state = apply_match_action(self.state, locked.action)
+            event_batch = tuple(
+                project_event_batch(
+                    self.state.public_events,
+                    after_event_index=(
+                        self.state.public_events[before_event_count - 1].event_index
+                        if before_event_count
+                        else -1
+                    ),
+                )
+            )
+            indices = tuple(item["event_index"] for item in event_batch)
+            acknowledgement = self._acknowledgement(
+                client_action_id=locked.client_action_id,
+                status="accepted",
+                accepted_event_indices=indices,
+            )
+            record = AcceptedActionRecord(
+                client_action_id=locked.client_action_id,
+                action_index=self._next_action_index,
+                seat=actor,
+                expected_event_index=expected_event_index,
+                action=action_to_data(locked.action),
+                accepted_event_indices=indices,
+                event_batch=event_batch,
+                acknowledgement=acknowledgement,
+                contract_evaluation=None,
+            )
+            self._records[locked.client_action_id] = record
+            self._accepted_actions.append(record)
+            self._next_action_index += 1
+        for locked in self._locked_bids.values():
+            self._discarded_bid_acks[locked.client_action_id] = locked.acknowledgement
+        self._locked_bids = {}
+```
+
+### E027 — show_exclusion_for, lines 94–110
+
+```python
+def show_exclusion_for(action: ShowAction) -> frozenset[Card]:
+    """Return the cards one public show action proves are absent from the hand.
+
+    The result is a statement about the shower's complete initial hand and is a
+    direct consequence of the mandatory showing hierarchy, not an inference
+    about the shower's intentions.
+    """
+
+    if not isinstance(action, ShowAction):
+        raise ConstraintError("show_exclusion_for requires a rules ShowAction")
+    if not action.verbal_required:
+        return frozenset()
+    if is_show_rank_eligible(action.shown_card.rank):
+        # Priority 2: no eligible card of the contract's normal colour exists.
+        return ELIGIBLE_SHOW_CARDS_BY_COLOR[contract_color(action.declared_contract)]
+    # Priority 3: no eligible card of either colour exists.
+    return ELIGIBLE_SHOW_CARDS
+```
+
+### E006 — complete native contract / evaluator
+
+```c
+// Native Tuppi core for project_target_v1 and project_target_v2 (v1 + sooli).
+//
+// The Python package tuppi_rules in TuppiProject is the authoritative
+// reference; this core is a fast re-implementation that is differential-tested
+// against it (tests/test_differential.py). Nothing here is a second source of
+// truth: a disagreement is a bug in this file.
+//
+// Card index: suit * 13 + (rank - 2), suits hearts, diamonds, clubs, spades
+// (the project's project_target_v1_suit_major_hdcs_rank_2_to_ace encoding).
+//
+// Action ids: 0..51 play that card; 52 + 52 * contract + card shows that card
+// with that contract (contract 0 = NOLO, 1 = RAMI). NUM_ACTIONS = 156.
+// project_target_v2 adds 156 decline sooli, 157 accept sooli and 158 + card
+// exchange that card (give or return); these never reach a network head.
+#ifndef TUPPI_CORE_H
+#define TUPPI_CORE_H
+
+#include <stdint.h>
+
+#define TC_NOLO 0
+#define TC_RAMI 1
+#define TC_PH_SHOW 0
+#define TC_PH_PLAY 1
+#define TC_PH_DONE 2
+// Rulesets: 1 = project_target_v1, 2 = v1 + sooli, 3 = v2 + locked bids
+// (during showing no seat sees another's bid; only how many were taken).
+#define TC_LOCKED(o) ((o)->ruleset == 3 && (o)->phase == TC_PH_SHOW)
+// project_target_v2 (sooli)
+#define TC_PH_SOOLI_OFFER 3
+#define TC_PH_SOOLI_GIVE 4
+#define TC_PH_SOOLI_RETURN 5
+#define TC_PH_SOOLI_PLAY 6
+// Network heads and legal masks cover action ids 0..155 (plays and shows).
+#define TC_NUM_ACTIONS 156
+// v2 action ids outside the network head: sooli answers and exchanged cards.
+#define TC_ACT_SOOLI_DECLINE 156
+#define TC_ACT_SOOLI_ACCEPT 157
+#define TC_ACT_EXCHANGE 158   // + card
+#define TC_NUM_ACTIONS_V2 210
+#define TC_TARGET 52
+#define TC_SOOLI_POINTS 24
+
+typedef struct {
+  uint64_t hand[4];
+  uint8_t dealer, phase, cur;
+  uint8_t n_shows;
+  uint8_t show_seat[4], show_card[4], show_contract[4], show_verbal[4];
+  int8_t contract, declarer;
+  uint8_t first_leader;
+  uint8_t n_played;
+  uint8_t play_card[52], play_seat[52];
+  uint8_t team_tricks[2];
+  uint8_t score[2];  // match score when this deal started
+  // Filled when phase becomes DONE.
+  int8_t winner_team;
+  uint8_t points;
+  uint8_t stolen;
+  // project_target_v2 (sooli). v1 deals keep the defaults set by tc_deal_init.
+  uint8_t ruleset;          // 1 or 2
+  uint8_t trick_size;       // 4, or 3 once sooli play starts
+  uint8_t n_decisions;
+  uint8_t decision_seat[2], decision_accept[2];
+  int8_t soolaaja;          // -1 when no sooli
+  int8_t given, returned;   // exchanged cards, -1 until exchanged
+  uint8_t sooli_won;        // DONE sooli deals: 1 if the soolaaja took no trick
+} TcDeal;
+
+// A player's legal view: own hand plus public history. Built either by
+// projecting a TcDeal (tc_observe) or from an engine PlayerObservation on the
+// Python side. The encoder reads nothing else, so it cannot see hidden cards.
+typedef struct {
+  uint64_t hand;
+  uint8_t seat, dealer, phase;
+  uint8_t n_shows;
+  uint8_t show_seat[4], show_card[4], show_contract[4], show_verbal[4];
+  int8_t contract, declarer;
+  uint8_t first_leader;
+  uint8_t n_played;
+  uint8_t play_card[52], play_seat[52];
+  uint8_t score[2];
+  // project_target_v2 (sooli). The exchanged cards are known only to the
+  // soolaaja and the partner; everyone else sees -1.
+  uint8_t ruleset, trick_size, n_decisions;
+  uint8_t decision_seat[2], decision_accept[2];
+  int8_t soolaaja, known_given, known_returned;
+} TcObs;
+
+void tc_deal_init(TcDeal *d, const uint64_t hands[4], int dealer, int score0, int score1);
+void tc_deal_init_v(TcDeal *d, const uint64_t hands[4], int dealer, int score0, int score1, int ruleset);
+// Ace-low rank used in sooli trick play (A=0, 2=1, ..., K=12).
+int tc_sooli_rank(int card);
+void tc_struct_sizes(int *out);
+// Legal action ids for the current actor; returns the count.
+int tc_legal(const TcDeal *d, int *actions);
+// Applies an action for the current actor. Returns 0, or -1 if illegal.
+int tc_apply(TcDeal *d, int action);
+// Rising-score transition. Returns 1 if the match is over.
+int tc_next_score(const uint8_t score[2], int winner_team, int points, uint8_t out[2]);
+
+// Sooli perfect-information solver (tuppi_sooli.c). tc_sooli_solve returns 1
+// if the soolaaja survives the rest of the deal, 0 if the RAMI pair can force
+// a trick on them, -1 outside sooli play.
+int tc_sooli_solve(const TcDeal *d);
+int tc_sooli_move_values(const TcDeal *d, const int *actions, int k, int *out);
+void tc_sooli_finish(TcDeal *d);
+long tc_sooli_nodes(void);
+// Observation-only sooli heuristics (tuppi_sooli_policy.c): an action for the
+// observer in a sooli phase, -1 otherwise.
+int tc_sooli_policy(const TcObs *o, uint64_t *rng);
+int tc_sooli_offer_prefilter(uint64_t hand);
+int tc_sample_world_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, int mode, double lambda);
+void tc_set_rollout_chunk(int chunk);
+int tc_sample_world_tilted(const TcObs *o, uint64_t *rng, TcDeal *out, double lambda);
+
+// Ends a deal with the given final team-0 trick count (for solver tails).
+void tc_finish_with_tricks(TcDeal *d, int team0_tricks);
+int tc_dd_team0_tricks(const TcDeal *d);
+
+void tc_observe(const TcDeal *d, int seat, TcObs *o);
+int tc_legal_obs(const TcObs *o, int *actions);
+int tc_feature_dim(void);
+// Every feature is 0 or 1. Version 1 is tc_encode; version 2 appends play order.
+void tc_encode(const TcObs *o, uint8_t *out);
+int tc_feature_dim_v(int version);
+void tc_encode_v(const TcObs *o, uint8_t *out, int version);
+
+// Derived public facts, exposed for tests.
+uint64_t tc_valid_show_cards(uint64_t hand, int contract);
+int tc_verbal_required(int card, int contract);
+
+#endif
+
+```
+
+### E004 — complete native contract / evaluator
+
+```c
+// Batched self-play environment: N independent matches stepped in lockstep.
+// Every live game always has exactly one actor waiting, so one call observes N
+// decisions and one call applies N actions.
+#include <dispatch/dispatch.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "tuppi_core.h"
+
+typedef uint64_t u64;
+
+typedef struct {
+  TcDeal d;
+  u64 rng;
+  int32_t deals_in_match;
+  int32_t live;
+} TcGame;
+
+typedef struct {
+  int n;
+  TcGame *g;
+  double eq[25][2];      // team-0 match equity; [state][team 0 deals this deal]
+  double p_random_start; // probability a new match starts from a random score
+  int single_deal;       // if set, a finished deal is left finished
+  int encoder;           // feature encoder version (1 or 2)
+  int sooli_belief;      // tc_sample_world_sooli mode for searches in sooli phases
+  int sooli_return_pi;   // rollouts: the partner returns the perfect-information best card
+  int sooli_play_heur;   // rollouts: sooli trick play by the heuristics instead of the solver
+  double sooli_lambda;   // exposure tilt of sooli beliefs (mode bit 2)
+} TcEnv;
+
+static inline u64 splitmix(u64 *x) {
+  u64 z = (*x += 0x9E3779B97F4A7C15ULL);
+  z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+  z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+  return z ^ (z >> 31);
+}
+
+static inline double unit(u64 *x) { return (splitmix(x) >> 11) * (1.0 / 9007199254740992.0); }
+
+static void deal_random(TcGame *g, int dealer, int s0, int s1) {
+  int deck[52];
+  for (int i = 0; i < 52; i++) deck[i] = i;
+  for (int i = 51; i > 0; i--) {
+    int j = (int)(splitmix(&g->rng) % (u64)(i + 1));
+    int t = deck[i]; deck[i] = deck[j]; deck[j] = t;
+  }
+  u64 hands[4] = {0, 0, 0, 0};
+  for (int i = 0; i < 52; i++) hands[i / 13] |= 1ULL << deck[i];
+  tc_deal_init(&g->d, hands, dealer, s0, s1);
+}
+
+static void new_match(TcEnv *e, TcGame *g) {
+  int dealer = (int)(splitmix(&g->rng) & 3);
+  int s0 = 0, s1 = 0;
+  if (e->p_random_start > 0 && unit(&g->rng) < e->p_random_start) {
+    int level = (int)(splitmix(&g->rng) % 13);  // 0..12
+    if (level) { if (splitmix(&g->rng) & 1) s0 = 4 * level; else s1 = 4 * level; }
+  }
+  g->deals_in_match = 0;
+  g->live = 1;
+  deal_random(g, dealer, s0, s1);
+}
+
+static int eq_index(int s0, int s1) {
+  if (s0 == 0 && s1 == 0) return 0;
+  if (s0 > 0) return s0 / 4;
+  return 12 + s1 / 4;
+}
+
+// Team-0 equity of a score about to be played with the given dealer.
+static double equity0(const TcEnv *e, int s0, int s1, int dealer) {
+  if (s0 >= TC_TARGET) return 1.0;
+  if (s1 >= TC_TARGET) return 0.0;
+  return e->eq[eq_index(s0, s1)][(dealer & 1) == 0];
+}
+
+TcEnv *tc_env_new(int n, uint64_t seed) {
+  TcEnv *e = calloc(1, sizeof *e);
+  e->n = n;
+  e->encoder = 1;
+  e->g = calloc((size_t)n, sizeof(TcGame));
+  for (int s = 0; s < 25; s++) e->eq[s][0] = e->eq[s][1] = 0.5;
+  for (int i = 0; i < n; i++) {
+    e->g[i].rng = seed * 0x100000001B3ULL + (u64)i * 0x9E3779B97F4A7C15ULL + 1;
+    splitmix(&e->g[i].rng);
+    new_match(e, &e->g[i]);
+  }
+  return e;
+}
+
+void tc_env_free(TcEnv *e) { free(e->g); free(e); }
+int tc_env_size(const TcEnv *e) { return e->n; }
+void tc_env_set_equity(TcEnv *e, const double *eq) { memcpy(e->eq, eq, sizeof e->eq); }
+void tc_env_set_options(TcEnv *e, double p_random_start, int single_deal) {
+  e->p_random_start = p_random_start;
+  e->single_deal = single_deal;
+}
+void tc_env_set_encoder(TcEnv *e, int version) { e->encoder = version; }
+void tc_env_set_sooli(TcEnv *e, int belief, int return_pi, int play_heur, double lambda) {
+  e->sooli_lambda = lambda;
+  e->sooli_belief = belief;
+  e->sooli_return_pi = return_pi;
+  e->sooli_play_heur = play_heur;
+}
+void tc_env_reset_all(TcEnv *e) { for (int i = 0; i < e->n; i++) new_match(e, &e->g[i]); }
+
+// Explicit deal for duplicate evaluation (single-deal mode).
+void tc_env_set_deal(TcEnv *e, int i, const uint64_t *hands, int dealer, int s0, int s1) {
+  tc_deal_init(&e->g[i].d, hands, dealer, s0, s1);
+  e->g[i].live = 1;
+}
+
+TcDeal *tc_env_deal(TcEnv *e, int i) { return &e->g[i].d; }
+
+// Features and legal-action masks for every game's current actor.
+void tc_env_observe(TcEnv *e, uint8_t *feat, uint8_t *mask, int32_t *seat, int32_t *phase) {
+  int dim = tc_feature_dim_v(e->encoder);
+  int acts[TC_NUM_ACTIONS_V2];
+  TcObs o;
+  memset(mask, 0, (size_t)e->n * TC_NUM_ACTIONS);
+  for (int i = 0; i < e->n; i++) {
+    TcGame *g = &e->g[i];
+    if (!g->live || g->d.phase == TC_PH_DONE) {
+      memset(feat + (size_t)i * dim, 0, (size_t)dim);
+      seat[i] = -1;
+      phase[i] = TC_PH_DONE;
+      continue;
+    }
+    int s = g->d.cur;
+    tc_observe(&g->d, s, &o);
+    tc_encode_v(&o, feat + (size_t)i * dim, e->encoder);
+    int k = tc_legal(&g->d, acts);
+    for (int j = 0; j < k; j++) if (acts[j] < TC_NUM_ACTIONS) mask[(size_t)i * TC_NUM_ACTIONS + acts[j]] = 1;
+    seat[i] = s;
+    phase[i] = g->d.phase;
+  }
+}
+
+// Applies one action per live game. For every game whose deal ended, sets
+// done[i] = 1 and delta0[i] = team 0's match-equity change, and fills
+// info[i*8..]: winner, points, contract, declarer, team-0 tricks, match over,
+// score before (team 0), score before (team 1).
+// Returns the number of illegal actions (which are not applied).
+int tc_env_step(TcEnv *e, const int32_t *actions, int32_t *done, float *delta0, int32_t *info) {
+  int illegal = 0;
+  for (int i = 0; i < e->n; i++) {
+    TcGame *g = &e->g[i];
+    done[i] = 0;
+    delta0[i] = 0.f;
+    if (!g->live || g->d.phase == TC_PH_DONE) continue;
+    if (tc_apply(&g->d, actions[i]) != 0) { illegal++; continue; }
+    if (g->d.phase != TC_PH_DONE) continue;
+    TcDeal *d = &g->d;
+    uint8_t after[2];
+    int over = tc_next_score(d->score, d->winner_team, d->points, after);
+    double before_eq = equity0(e, d->score[0], d->score[1], d->dealer);
+    double after_eq = equity0(e, after[0], after[1], d->dealer + 1);
+    done[i] = 1;
+    delta0[i] = (float)(after_eq - before_eq);
+    int32_t *f = info + (size_t)i * 8;
+    f[0] = d->winner_team; f[1] = d->points; f[2] = d->contract; f[3] = d->declarer;
+    f[4] = d->team_tricks[0]; f[5] = over; f[6] = d->score[0]; f[7] = d->score[1];
+    if (e->single_deal) continue;
+    g->deals_in_match++;
+    if (over) new_match(e, g);
+    else deal_random(g, (d->dealer + 1) & 3, after[0], after[1]);
+  }
+  return illegal;
+}
+
+// Loads an arbitrary full deal state into game i (used by search rollouts).
+void tc_env_set_state(TcEnv *e, int i, const TcDeal *d) {
+  e->g[i].d = *d;
+  e->g[i].live = 1;
+}
+
+// Solver tail: every live game in trick play with at most `dd_left` tricks
+// remaining is finished with its perfect-information result. Same outputs as
+// tc_env_step for the games it finishes. Returns how many it finished.
+int tc_env_dd_finish(TcEnv *e, int dd_left, int32_t *done, float *delta0) {
+  int *todo = malloc(sizeof(int) * (size_t)e->n), k = 0;
+  for (int i = 0; i < e->n; i++) {
+    done[i] = 0;
+    delta0[i] = 0.f;
+    TcGame *g = &e->g[i];
+    if (!g->live || g->d.phase != TC_PH_PLAY) continue;
+    if (13 - (g->d.n_played >> 2) > dd_left) continue;
+    todo[k++] = i;
+  }
+  if (k) {
+    // Solves are independent and each game is touched by one worker only.
+    const size_t chunk = 64, chunks = ((size_t)k + chunk - 1) / chunk;
+    dispatch_apply(chunks, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t c) {
+      size_t lo = c * chunk, hi = lo + chunk < (size_t)k ? lo + chunk : (size_t)k;
+      for (size_t j = lo; j < hi; j++) {
+        int i = todo[j];
+        TcDeal *d = &e->g[i].d;
+        tc_finish_with_tricks(d, tc_dd_team0_tricks(d));
+        uint8_t after[2];
+        tc_next_score(d->score, d->winner_team, d->points, after);
+        done[i] = 1;
+        delta0[i] = (float)(equity0(e, after[0], after[1], d->dealer + 1) - equity0(e, d->score[0], d->score[1], d->dealer));
+      }
+    });
+  }
+  free(todo);
+  return k;
+}
+
+// Compact observation of live games only: writes rows for games still in play
+// into feat/mask consecutively and their indices into idx. Returns the count.
+int tc_env_observe_live(TcEnv *e, uint8_t *feat, uint8_t *mask, int32_t *idx) {
+  int dim = tc_feature_dim_v(e->encoder), k = 0;
+  int acts[TC_NUM_ACTIONS_V2];
+  TcObs o;
+  for (int i = 0; i < e->n; i++) {
+    TcGame *g = &e->g[i];
+    if (!g->live || g->d.phase == TC_PH_DONE) continue;
+    tc_observe(&g->d, g->d.cur, &o);
+    tc_encode_v(&o, feat + (size_t)k * dim, e->encoder);
+    uint8_t *mk = mask + (size_t)k * TC_NUM_ACTIONS;
+    memset(mk, 0, TC_NUM_ACTIONS);
+    int n = tc_legal(&g->d, acts);
+    for (int j = 0; j < n; j++) if (acts[j] < TC_NUM_ACTIONS) mk[acts[j]] = 1;
+    idx[k++] = i;
+  }
+  return k;
+}
+
+// Applies actions only to the listed games (idx[0..k)).
+void tc_env_step_live(TcEnv *e, const int32_t *idx, const int32_t *actions, int k, int32_t *done, float *delta0) {
+  for (int j = 0; j < k; j++) {
+    int i = idx[j];
+    TcGame *g = &e->g[i];
+    done[i] = 0;
+    if (!g->live || g->d.phase == TC_PH_DONE) continue;
+    if (tc_apply(&g->d, actions[j]) != 0) continue;
+    if (g->d.phase != TC_PH_DONE) continue;
+    TcDeal *d = &g->d;
+    uint8_t after[2];
+    tc_next_score(d->score, d->winner_team, d->points, after);
+    done[i] = 1;
+    delta0[i] = (float)(equity0(e, after[0], after[1], d->dealer + 1) - equity0(e, d->score[0], d->score[1], d->dealer));
+  }
+}
+
+// Clones one game's state from another environment into slot j.
+void tc_env_clone_from(TcEnv *dst, int j, const TcEnv *src, int i) {
+  dst->g[j].d = src->g[i].d;
+  dst->g[j].live = 1;
+}
+
+// Loads a sampled world `count` times into consecutive slots starting at j.
+void tc_env_set_state_repeat(TcEnv *e, int j, const TcDeal *d, int count) {
+  for (int k = 0; k < count; k++) { e->g[j + k].d = *d; e->g[j + k].live = 1; }
+}
+
+void tc_env_park_all(TcEnv *e) { for (int i = 0; i < e->n; i++) e->g[i].d.phase = TC_PH_DONE; }
+
+// All current hands and actors, for labelling (research data only; never
+// reachable from a policy).
+void tc_env_hands(const TcEnv *e, uint64_t *hands, int32_t *actor) {
+  for (int i = 0; i < e->n; i++) {
+    for (int s = 0; s < 4; s++) hands[4 * i + s] = e->g[i].d.hand[s];
+    actor[i] = e->g[i].d.cur;
+  }
+}
+
+// ------------------------------------------------------------ native search
+#include "tuppi_mlp.h"
+int tc_sample_world(const TcObs *o, uint64_t *rng, TcDeal *out);
+
+static void record_if_done(TcEnv *e, int i, double *total) {
+  TcDeal *d = &e->g[i].d;
+  if (d->phase != TC_PH_DONE) return;
+  uint8_t after[2];
+  tc_next_score(d->score, d->winner_team, d->points, after);
+  float delta = (float)(equity0(e, after[0], after[1], d->dealer + 1) - equity0(e, d->score[0], d->score[1], d->dealer));
+  total[i] += (double)delta;
+}
+
+int tc_sooli_policy(const TcObs *o, uint64_t *rng);
+int tc_sample_world_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, int mode, double lambda);
+
+// The returned card that keeps the soolaaja alive under perfect information
+// (the first in id order), or the heuristic's if none does.
+static int pi_return(const TcDeal *d, uint64_t *rng) {
+  int acts[TC_NUM_ACTIONS_V2], k = tc_legal(d, acts);
+  for (int j = 0; j < k; j++) {
+    TcDeal c = *d;
+    if (tc_apply(&c, acts[j]) == 0 && tc_sooli_solve(&c) == 1) return acts[j];
+  }
+  TcObs ob;
+  tc_observe(d, d->cur, &ob);
+  return tc_sooli_policy(&ob, rng);
+}
+
+// project_target_v2: sooli decisions inside rollouts are taken by the
+// observation-only heuristics (tuppi_sooli_policy.c) and sooli trick play is
+// finished by the perfect-information solver. One game at a time with its own
+// rng; search_core runs the games in parallel (the solvers' tables are
+// per-thread).
+static void resolve_sooli(TcEnv *e, int i, uint64_t *rng, double *total) {
+  TcDeal *d = &e->g[i].d;
+  while (d->phase == TC_PH_SOOLI_OFFER || d->phase == TC_PH_SOOLI_GIVE || d->phase == TC_PH_SOOLI_RETURN) {
+    TcObs ob;
+    tc_observe(d, d->cur, &ob);
+    int a = d->phase == TC_PH_SOOLI_RETURN && e->sooli_return_pi ? pi_return(d, rng) : tc_sooli_policy(&ob, rng);
+    if (tc_apply(d, a) != 0) { d->phase = TC_PH_DONE; return; }
+  }
+  if (d->phase == TC_PH_SOOLI_PLAY) {
+    if (e->sooli_play_heur) {
+      while (d->phase == TC_PH_SOOLI_PLAY) {
+        TcObs ob;
+        tc_observe(d, d->cur, &ob);
+        if (tc_apply(d, tc_sooli_policy(&ob, rng)) != 0) { d->phase = TC_PH_DONE; return; }
+      }
+    } else {
+      tc_sooli_finish(d);
+    }
+    record_if_done(e, i, total);
+  }
+}
+
+// Values of `k` candidate actions for the observer of `o`: `w` uniform
+// hard-feasible worlds, every candidate played out in each world greedily by
+// the network for all four seats (each from its own observation), the last
+// `dd_left` tricks solved exactly if dd_left > 0; team-0 equity changes are
+// averaged over worlds and signed for the observer's team. The same steps, in
+// the same order and with the same rounding, as tuppi_ai.search.Searcher.
+// Returns 0, -1 if no world exists, -2 if the environment is too small.
+static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *actions, int k, int w,
+                       int dd_left, uint64_t *rng, double *values, double *per_world);
+
+// Rollouts per network batch in the search. 32 spreads one search over the
+// most cores (lowest latency, for live play); 128 does about 7% less work in
+// total (larger matrix products), for batch jobs that already run several
+// processes. The moves are the same either way.
+static int rollout_chunk = 32;
+void tc_set_rollout_chunk(int chunk) { rollout_chunk = chunk < 8 ? 8 : chunk > 512 ? 512 : chunk; }
+
+int tc_search_values(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *actions, int k, int w,
+                     int dd_left, uint64_t *rng, double *values) {
+  return search_core(e, m, o, actions, k, w, dd_left, rng, values, NULL);
+}
+
+// As tc_search_values, and also every world's value of every action in
+// per_world[wi * k + ai] (observer's sign). The worlds are shared by all
+// actions, so per-world differences give the paired standard error of a gap.
+int tc_search_world_values(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *actions, int k, int w,
+                           int dd_left, uint64_t *rng, double *values, double *per_world) {
+  return search_core(e, m, o, actions, k, w, dd_left, rng, values, per_world);
+}
+
+static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *actions, int k, int w,
+                       int dd_left, uint64_t *rng, double *values, double *per_world) {
+  const int n = w * k;
+  if (n > e->n) return -2;
+  TcDeal world;
+  for (int wi = 0; wi < w; wi++) {
+    if (tc_sample_world_sooli(o, rng, &world, e->sooli_belief, e->sooli_lambda) != 0) return -1;
+    for (int ai = 0; ai < k; ai++) { e->g[wi * k + ai].d = world; e->g[wi * k + ai].live = 1; }
+  }
+  double *total = calloc((size_t)n, sizeof(double));
+  int *idx = malloc(sizeof(int) * (size_t)n);
+  for (int i = 0; i < n; i++) {
+    if (tc_apply(&e->g[i].d, actions[i % k]) != 0) { free(total); free(idx); return -3; }
+    record_if_done(e, i, total);
+  }
+  const int enc = tc_mlp_encoder(m), dim = tc_feature_dim_v(enc);
+  for (;;) {
+    // Rollouts that reached a sooli (most RAMI rollouts of a bid search pass
+    // an offer, which the heuristic answers with the exact solver on sampled
+    // worlds): resolved in parallel, each game with its own stream seeded from
+    // one draw of the shared rng, so a search stays reproducible.
+    int ns = 0;
+    for (int i = 0; i < n; i++)
+      if (e->g[i].d.phase >= TC_PH_SOOLI_OFFER) idx[ns++] = i;
+    if (ns) {
+      const u64 base = splitmix(rng);
+      dispatch_apply((size_t)ns, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t j) {
+        u64 local = base ^ (0x9E3779B97F4A7C15ULL * (u64)(idx[j] + 1));
+        splitmix(&local);
+        resolve_sooli(e, idx[j], &local, total);
+      });
+    }
+    if (dd_left > 0) {
+      int todo = 0;
+      for (int i = 0; i < n; i++) {
+        TcDeal *d = &e->g[i].d;
+        if (d->phase == TC_PH_PLAY && 13 - (d->n_played >> 2) <= dd_left) idx[todo++] = i;
+      }
+      if (todo) {
+        dispatch_apply((size_t)(todo + 31) / 32, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t c) {
+          int lo = (int)c * 32, hi = lo + 32 < todo ? lo + 32 : todo;
+          for (int j = lo; j < hi; j++) {
+            TcDeal *d = &e->g[idx[j]].d;
+            tc_finish_with_tricks(d, tc_dd_team0_tricks(d));
+            record_if_done(e, idx[j], total);
+          }
+        });
+      }
+    }
+    int live = 0;
+    for (int i = 0; i < n; i++) if (e->g[i].d.phase != TC_PH_DONE) idx[live++] = i;
+    if (!live) break;
+    const int chunk = rollout_chunk;
+    dispatch_apply((size_t)(live + chunk - 1) / chunk, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(size_t c) {
+      int lo = (int)c * chunk, hi = lo + chunk < live ? lo + chunk : live, rows = hi - lo;
+      uint8_t *feat = malloc((size_t)rows * dim);
+      float *q = malloc(sizeof(float) * (size_t)rows * TC_NUM_ACTIONS);
+      int legal[TC_NUM_ACTIONS];
+      TcObs ob;
+      for (int r = 0; r < rows; r++) {
+        TcDeal *d = &e->g[idx[lo + r]].d;
+        tc_observe(d, d->cur, &ob);
+        tc_encode_v(&ob, feat + (size_t)r * dim, enc);
+      }
+      tc_mlp_forward(m, feat, rows, q);
+      for (int r = 0; r < rows; r++) {
+        int i = idx[lo + r];
+        TcDeal *d = &e->g[i].d;
+        // tc_legal lists actions in increasing id order, so scanning it keeps
+        // numpy's "first maximum" tie-break over the masked row.
+        int nl = tc_legal(d, legal), best = legal[0];
+        const float *qr = q + (size_t)r * TC_NUM_ACTIONS;
+        for (int t = 1; t < nl; t++) if (qr[legal[t]] > qr[best]) best = legal[t];
+        tc_apply(d, best);
+        record_if_done(e, i, total);
+      }
+      free(feat);
+      free(q);
+    });
+  }
+  const double sign = (o->seat & 1) == 0 ? 1.0 : -1.0;
+  for (int a = 0; a < k; a++) {
+    double s = 0.0;
+    for (int wi = 0; wi < w; wi++) s += total[wi * k + a];
+    values[a] = sign * (s / w);
+  }
+  if (per_world)
+    for (int i = 0; i < n; i++) per_world[i] = sign * total[i];
+  free(total);
+  free(idx);
+  return 0;
+}
+
+```
+
+### E005 — decisive sampler entrypoint, lines 276–339
+
+```c
+int tc_sample_world(const TcObs *o, uint64_t *rng, TcDeal *out) {
+  init_lfact();
+  int played_by[4], void_mask[4];
+  u64 played_all;
+  public_state(o, out, played_by, void_mask, &played_all);
+  const int me = o->seat;
+  int others[3], k = 0;
+  for (int s = 0; s < 4; s++) if (s != me) others[k++] = s;
+  if (o->soolaaja >= 0 && (o->phase == TC_PH_SOOLI_RETURN || o->trick_size == 3))
+    return sample_sooli(o, rng, out, played_by, void_mask, played_all, others);
+  u64 known[4] = {0, 0, 0, 0};
+  for (int i = 0; i < (TC_LOCKED(o) ? 0 : o->n_shows); i++) {
+    int c = o->show_card[i], s = o->show_seat[i];
+    if (s != me && !(played_all >> c & 1ULL)) known[s] |= 1ULL << c;
+  }
+  int hand_size[4], cap[3];
+  for (int s = 0; s < 4; s++) hand_size[s] = 13 - played_by[s];
+  u64 free_cards;
+  if (setup(o, others, hand_size, known, played_all, cap, &free_cards) != 0) return -1;
+  u64 hands[4] = {0, 0, 0, 0};
+  hands[me] = o->hand;
+  for (int s = 0; s < 4; s++) hands[s] |= known[s];
+  if (count_or_draw(others, cap, free_cards, void_mask, rng, hands, NULL) == -INFINITY) return -1;
+  for (int s = 0; s < 4; s++) out->hand[s] = hands[s];
+  if (TC_LOCKED(o)) {
+    // Locked bids: the earlier bids are unseen, and all were NOLO (a RAMI
+    // would have ended showing). Each earlier seat bids a random legal NOLO
+    // card of its sampled hand, as players pick bid cards (owner: "roughly
+    // at random"). Only hands matter for the rest of the deal.
+    for (int i = 0; i < o->n_shows; i++) {
+      int s = (o->dealer + 1 + i) & 3;
+      u64 valid = tc_valid_show_cards(hands[s], TC_NOLO);
+      int n = __builtin_popcountll(valid), pick = (int)(splitmix(rng) % (u64)(n ? n : 1));
+      int c = -1;
+      for (u64 m = valid; m; m &= m - 1) { if (pick-- == 0) { c = __builtin_ctzll(m); break; } }
+      if (c < 0) return -1;
+      out->show_seat[i] = (uint8_t)s;
+      out->show_card[i] = (uint8_t)c;
+      out->show_contract[i] = TC_NOLO;
+      out->show_verbal[i] = (uint8_t)tc_verbal_required(c, TC_NOLO);
+    }
+  }
+  return 0;
+}
+
+// Exposure tilt for sooli worlds (tc_sample_world_tilted); 0 = none.
+static __thread double sooli_tilt = 0.0;
+
+int tc_sample_world_tilted(const TcObs *o, uint64_t *rng, TcDeal *out, double lambda) {
+  sooli_tilt = lambda;
+  int r = tc_sample_world(o, rng, out);
+  sooli_tilt = 0.0;
+  return r;
+}
+
+// Worlds once a sooli exchange has begun (project_target_v2). Hand sizes follow
+// the exchange (during the return the soolaaja holds 12 cards and the partner
+// 14). The soolaaja and the partner know both exchanged cards, so every shown
+// card's holder is known to them. The RAMI pair does not: a card shown by the
+// soolaaja or the partner and not yet played is with one of the two, and the
+// cases are weighted by their numbers of worlds times the number of exchanges
+// (given card, returned card) that lead to them, i.e. a uniform prior over the
+// exchange. A RAMI player is never asked during the return, so that case is
+// unsupported (-1).
+```
+
+### E008 — decisive sampler entrypoint, lines 283–320
+
+```c
+int tc_sample_world_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, int mode, double lambda) {
+  const int S = o->soolaaja, P = (S + 2) & 3;
+  int applies = mode && S >= 0 && o->seat != S &&
+                ((o->phase == TC_PH_SOOLI_RETURN && o->seat == P) || (o->phase == TC_PH_SOOLI_PLAY && o->seat != P));
+  if (!applies) return tc_sample_world(o, rng, out);
+  u64 played = played_mask(o);
+  const double tilt = (mode & 16) ? lambda : 0.0;
+  if (!(mode & ~16)) return tc_sample_world_tilted(o, rng, out, tilt);
+  for (int t = 0; t < SOOLI_TRIES; t++) {
+    if (tc_sample_world_tilted(o, rng, out, tilt) != 0) return -1;
+    u64 s_hand = out->hand[S];
+    for (int i = 0; i < o->n_played; i++) if (o->play_seat[i] == S) s_hand |= 1ULL << o->play_card[i];
+    if (o->phase == TC_PH_SOOLI_RETURN) s_hand |= 1ULL << o->known_given;
+    if ((mode & 1) && !offer_prefilter(s_hand)) continue;
+    if ((mode & 2) && o->phase == TC_PH_SOOLI_RETURN) {
+      u64 others = FULL_DECK & ~s_hand & ~played;
+      if (least_exposed_without(s_hand, others) != o->known_given) continue;
+    }
+    if ((mode & 8) && o->phase == TC_PH_SOOLI_PLAY) {
+      int xc = -1, yc = -1;
+      for (int i = 0; i < o->n_shows; i++) {
+        if (o->show_seat[i] == S) xc = o->show_card[i];
+        if (o->show_seat[i] == P) yc = o->show_card[i];
+      }
+      if (!exchange_plausible(s_hand, out->hand[P], xc, yc)) continue;
+    }
+    if (mode & 4) {
+      int x = exposure(to_low(s_hand), to_low(FULL_DECK & ~s_hand));
+      double u = (splitmix_(rng) >> 11) * (1.0 / 9007199254740992.0);
+      if (u >= exp(-lambda * x)) continue;
+    }
+    return 0;
+  }
+  return 0;  // keep the last world drawn
+}
+
+// The offer heuristic's static test alone (exposed for tests and analysis).
+int tc_sooli_offer_prefilter(uint64_t hand) { return offer_prefilter(hand); }
+```

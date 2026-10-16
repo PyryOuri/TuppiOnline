@@ -1,0 +1,38 @@
+{
+  "schema": "tuppi.additional_exact_wins.compact_build.v1",
+  "command": [
+    "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang",
+    "-O3",
+    "-Wall",
+    "-Wextra",
+    "-Wno-unused-parameter",
+    "-isysroot",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+    "-dynamiclib",
+    "-framework",
+    "Accelerate",
+    "-o",
+    "/Users/pyryouri/Developer/audit_deliverables/tuppi_additional_exact_wins_20261014/builds/compact_rows/libtuppi.dylib",
+    "/Users/pyryouri/Developer/audit_deliverables/tuppi_additional_exact_wins_20261014/builds/compact_rows/tuppi_core.c",
+    "/Users/pyryouri/Developer/audit_deliverables/tuppi_additional_exact_wins_20261014/builds/compact_rows/tuppi_env.c",
+    "/Users/pyryouri/Developer/audit_deliverables/tuppi_additional_exact_wins_20261014/builds/compact_rows/tuppi_search.c",
+    "/Users/pyryouri/Developer/audit_deliverables/tuppi_additional_exact_wins_20261014/builds/compact_rows/tuppi_dd.c",
+    "/Users/pyryouri/Developer/audit_deliverables/tuppi_additional_exact_wins_20261014/builds/compact_rows/tuppi_mlp.c",
+    "/Users/pyryouri/Developer/audit_deliverables/tuppi_additional_exact_wins_20261014/builds/compact_rows/tuppi_sooli.c",
+    "/Users/pyryouri/Developer/audit_deliverables/tuppi_additional_exact_wins_20261014/builds/compact_rows/tuppi_sooli_policy.c"
+  ],
+  "library_sha256": "c05f30a242dae55e78bdadda73dd04ab9eeb115b0e91f6fc0ecc75e3dcc4c167",
+  "sources": {
+    "tuppi_dd.c": "abcb117b29d64e2f51d5d6739623ad89429b0421f57f8c09d4e48c9948ac2260",
+    "tuppi_core.h": "fc301b9484d6bc1e6af5dacd4937542ff429eab51ca3cbfe6380220f8571033b",
+    "tuppi_sooli_policy.c": "fee631973b45b815625d6391b9f20805c077e6d27e2a10fda0a8b2f66807a342",
+    "tuppi_mlp.c": "e5e13dc2c9e2e3a07f7319c12c2fc520f6b4b8e067e80836ef61ba0220344230",
+    "tuppi_search.c": "9675d910762cd18200fee11a9eb799f80d86fb3a3799bab40476c2089f506dc1",
+    "showing_constraints.h": "f641aa73bfe8373c8b88329f842d268a12d64b87791a9c501c1f0a911975afea",
+    "tuppi_core.c": "2c3f0a539f6569d0927aea0d08fc8911304a88108e84667826b5c8a0c810ecbf",
+    "tuppi_env.c": "c00bf27051954a7bb874ec1411ad2fdd4bc51539df79a1e92841ef19ae31f5d0",
+    "tuppi_sooli.c": "8068068831552abadbf1776aa3b5b51d60f294ac0b438befd5105f567186d02d",
+    "tuppi_mlp.h": "89f7b352ba52edfedc289f9e47dc134957907568c481500412714e368f92f372"
+  },
+  "scope": "Compaction only when no team split or incremental first-layer state is enabled; current same-model rollout factory."
+}

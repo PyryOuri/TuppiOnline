@@ -1,0 +1,58 @@
+{
+  "schema": "tuppi.cheap_wins.plan.v1",
+  "name": "speed_validation",
+  "stage": "speed_validation",
+  "execution_enabled": false,
+  "budget_cpu_seconds": 960,
+  "budget_wall_seconds": 1200,
+  "jobs": [
+    {
+      "id": "baseline_before",
+      "kind": "full_deals",
+      "arm": "baseline",
+      "worlds": 1024,
+      "samples": 2,
+      "seed": "cw-speed-validation-v1",
+      "scores": "uniform",
+      "serial": true,
+      "cpu_seconds": 240,
+      "wall_seconds": 300
+    },
+    {
+      "id": "reward_bucket",
+      "kind": "full_deals",
+      "arm": "reward_bucket",
+      "worlds": 1024,
+      "samples": 2,
+      "seed": "cw-speed-validation-v1",
+      "scores": "uniform",
+      "serial": true,
+      "cpu_seconds": 240,
+      "wall_seconds": 300
+    },
+    {
+      "id": "baseline_after",
+      "kind": "full_deals",
+      "arm": "baseline",
+      "worlds": 1024,
+      "samples": 2,
+      "seed": "cw-speed-validation-v1",
+      "scores": "uniform",
+      "serial": true,
+      "cpu_seconds": 240,
+      "wall_seconds": 300
+    },
+    {
+      "id": "same_net",
+      "kind": "full_deals",
+      "arm": "same_net",
+      "worlds": 1024,
+      "samples": 2,
+      "seed": "cw-speed-validation-v1",
+      "scores": "uniform",
+      "serial": true,
+      "cpu_seconds": 240,
+      "wall_seconds": 300
+    }
+  ]
+}

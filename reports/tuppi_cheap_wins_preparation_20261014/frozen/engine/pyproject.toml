@@ -1,0 +1,338 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tuppi-research"
+version = "0.13.1"
+description = "Deterministic Tuppi rules and research infrastructure with a private-alpha server, protocol fixtures, and optional learned-policy experiments"
+readme = "README.md"
+requires-python = ">=3.11,<3.15"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "hypothesis>=6.100,<7",
+  "jsonschema>=4.20,<5",
+  "pytest>=8,<9",
+]
+learning = [
+  "numpy>=2,<3",
+  "torch>=2.13,<2.14",
+]
+server = [
+  "uvicorn>=0.30,<1",
+  "websockets>=13,<17",
+]
+
+[project.scripts]
+tuppi-legacy = "tuppi_legacy.run:entrypoint"
+tuppi-engine = "tuppi_engine.runner:entrypoint"
+tuppi-eval = "tuppi_eval.runner:entrypoint"
+tuppi-agents = "tuppi_agents.runner:entrypoint"
+tuppi-match = "tuppi_match.runner:entrypoint"
+tuppi-exact = "tuppi_exact.runner:entrypoint"
+tuppi-search = "tuppi_search.runner:entrypoint"
+tuppi-corpus = "tuppi_corpus.runner:entrypoint"
+tuppi-ui-fixtures = "tuppi_ui_fixtures.exporter:main"
+tuppi-server = "tuppi_server.app:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.data-files]
+"share/tuppi-legacy/Archive" = [
+  "Archive/tuppi_emulator_v9.py",
+  "Archive/tuppi_gui_client_multi_v8.py",
+]
+"share/tuppi-legacy/manifests" = ["manifests/legacy_v9.json"]
+"share/tuppi-legacy/schemas" = [
+  "schemas/legacy_deal.schema.json",
+  "schemas/legacy_deal_set.schema.json",
+  "schemas/legacy_result.schema.json",
+]
+"share/tuppi-legacy/docs" = ["docs/phase0_audit.md"]
+"share/tuppi-rules/configs/rules" = ["configs/rules/project_target_v1.json"]
+"share/tuppi-rules/schemas" = ["schemas/ruleset.schema.json"]
+"share/tuppi-rules/docs/rules" = [
+  "docs/rules/project_target_v1.md",
+  "docs/rules/project_target_v1.fi.md",
+  "docs/rules/project_target_v1_decisions.md",
+]
+"share/tuppi-rules/examples/project_target_v1" = [
+  "examples/rules/project_target_v1/README.md",
+  "examples/rules/project_target_v1/show_actions.json",
+  "examples/rules/project_target_v1/contract_resolution.json",
+  "examples/rules/project_target_v1/deal_scoring.json",
+  "examples/rules/project_target_v1/match_transitions.json",
+]
+"share/tuppi-engine/schemas" = [
+  "schemas/engine/explicit_deal.schema.json",
+  "schemas/engine/match_input.schema.json",
+  "schemas/engine/agent_script.schema.json",
+  "schemas/engine/public_event_log.schema.json",
+  "schemas/engine/deal_result.schema.json",
+  "schemas/engine/match_result.schema.json",
+  "schemas/engine/player_observation.schema.json",
+  "schemas/engine/research_result.schema.json",
+]
+"share/tuppi-engine/docs" = [
+  "docs/engine/architecture.md",
+  "docs/engine/state_machine.md",
+  "docs/engine/observation_security.md",
+  "docs/engine/serialization.md",
+]
+"share/tuppi-engine/examples/project_target_v1" = [
+  "examples/engine/project_target_v1/README.md",
+  "examples/engine/project_target_v1/generate_examples.py",
+  "examples/engine/project_target_v1/valid_one_deal_match.json",
+  "examples/engine/project_target_v1/full_nolo_script.json",
+  "examples/engine/project_target_v1/successful_rami_match.json",
+  "examples/engine/project_target_v1/successful_rami_script.json",
+  "examples/engine/project_target_v1/stolen_rami_match.json",
+  "examples/engine/project_target_v1/stolen_rami_script.json",
+  "examples/engine/project_target_v1/verbal_fallback_match.json",
+  "examples/engine/project_target_v1/verbal_fallback_script.json",
+  "examples/engine/project_target_v1/no_eligible_show_match.json",
+  "examples/engine/project_target_v1/no_eligible_show_script.json",
+  "examples/engine/project_target_v1/exact_52_match.json",
+  "examples/engine/project_target_v1/exact_52_script.json",
+  "examples/engine/project_target_v1/invalid_duplicate_card_deal.json",
+]
+"share/tuppi-eval/schemas" = [
+  "schemas/evaluation/agent_spec.schema.json",
+  "schemas/evaluation/team_spec.schema.json",
+  "schemas/evaluation/deal_bank.schema.json",
+  "schemas/evaluation/evaluation_config.schema.json",
+  "schemas/evaluation/schedule.schema.json",
+  "schemas/evaluation/game_record.schema.json",
+  "schemas/evaluation/duplicate_block_record.schema.json",
+  "schemas/evaluation/evaluation_result.schema.json",
+  "schemas/evaluation/crossplay_matrix.schema.json",
+  "schemas/evaluation/promotion_decision.schema.json",
+]
+"share/tuppi-eval/docs" = [
+  "docs/evaluation/architecture.md",
+  "docs/evaluation/duplicate_design.md",
+  "docs/evaluation/statistics.md",
+  "docs/evaluation/model_performance_methodology.md",
+  "docs/evaluation/reproducibility.md",
+  "docs/evaluation/agent_registry.md",
+]
+"share/tuppi-eval/examples" = [
+  "examples/evaluation/README.md",
+  "examples/evaluation/generate_examples.py",
+  "examples/evaluation/benchmark_smoke.py",
+  "examples/evaluation/small_deal_bank.json",
+  "examples/evaluation/baseline_comparison.json",
+  "examples/evaluation/homogeneous_vs_heterogeneous.json",
+  "examples/evaluation/duplicate_block.json",
+  "examples/evaluation/baseline_crossplay.json",
+  "examples/evaluation/small_crossplay_matrix.json",
+  "examples/evaluation/structured_failure.json",
+  "examples/evaluation/interrupted_resume.json",
+  "examples/evaluation/synthetic_statistics.json",
+  "examples/evaluation/promotion_decision.json",
+]
+
+"share/tuppi-agents/schemas" = [
+  "schemas/agents/heuristic_profile.schema.json",
+  "schemas/agents/strategy_rule_catalogue.schema.json",
+  "schemas/agents/decision_diagnostics.schema.json",
+  "schemas/agents/baseline_report.schema.json",
+]
+"share/tuppi-agents/docs" = [
+  "docs/agents/architecture.md",
+  "docs/agents/public_inference.md",
+  "docs/agents/baseline_profiles.md",
+  "docs/agents/legacy_port.md",
+  "docs/agents/strategy_rule_catalogue.md",
+  "docs/agents/phase4_evaluation.md",
+]
+"share/tuppi-agents/examples" = [
+  "examples/agents/README.md",
+  "examples/agents/generate_examples.py",
+  "examples/agents/render_report.py",
+  "examples/agents/strategy_rule_catalogue.json",
+  "examples/agents/heuristic_profiles.json",
+  "examples/agents/phase4_agents.json",
+  "examples/agents/ladder_fixed_deal.json",
+  "examples/agents/decision_diagnostics.json",
+  "examples/agents/legacy_port_compatibility.json",
+]
+"share/tuppi-agents/banks" = [
+  "banks/phase4_development_deal_v1.json",
+  "banks/phase4_development_deal_up_v1.json",
+  "banks/phase4_crossplay_v1.json",
+  "banks/phase4_development_match_v1.json",
+]
+"share/tuppi-agents/reports" = ["reports/phase4/baseline_report.json"]
+"share/tuppi-match/docs" = [
+  "docs/match/complete_match_protocol.md",
+  "docs/match/endpoints.md",
+  "docs/match/censoring.md",
+  "docs/match/bank_lifecycle.md",
+  "docs/match/calibration.md",
+  "docs/match/phase5a_results.md",
+]
+"share/tuppi-match/reports" = [
+  "reports/phase5a/phase4_frozen_agents.json",
+  "reports/phase5a/calibration_report.json",
+  "reports/phase5a/score_state_diagnostics.json",
+  "reports/phase5a/match_length_calibration.json",
+  "reports/phase5a/sealed_commitment.json",
+]
+"share/tuppi-exact/schemas" = [
+  "schemas/exact/frozen_baseline.schema.json",
+  "schemas/exact/hidden_hand_sampling.schema.json",
+  "schemas/exact/late_game_solution.schema.json",
+  "schemas/exact/match_rule_diagnosis.schema.json",
+]
+"share/tuppi-exact/docs" = [
+  "docs/exact/architecture.md",
+  "docs/exact/constraint_model.md",
+  "docs/exact/counting_and_sampling.md",
+  "docs/exact/continuation.md",
+  "docs/exact/solver.md",
+  "docs/exact/integrity.md",
+  "docs/exact/phase5b_results.md",
+]
+"share/tuppi-exact/reports" = [
+  "reports/phase5b/frozen_baseline.json",
+  "reports/phase5b/match_rule_diagnosis.json",
+]
+"share/tuppi-search/schemas" = [
+  "schemas/search/pimc_configuration.schema.json",
+  "schemas/search/pimc_decision_diagnostics.schema.json",
+  "schemas/search/world_set_summary.schema.json",
+  "schemas/search/search_benchmark.schema.json",
+  "schemas/search/phase5c_evaluation.schema.json",
+  "schemas/search/phase5d_a_convergence.schema.json",
+  "schemas/search/phase5d_a_decomposition.schema.json",
+  "schemas/search/phase5d_a_report.schema.json",
+  "schemas/search/root_info_uct_configuration.schema.json",
+  "schemas/search/root_info_uct_diagnostics.schema.json",
+  "schemas/search/tiny_exact_information_reference.schema.json",
+  "schemas/search/phase5d_b_evaluation.schema.json",
+  "schemas/search/phase5d_c_results.schema.json",
+  "schemas/search/multi_observer_configuration.schema.json",
+  "schemas/search/multi_observer_diagnostics.schema.json",
+  "schemas/search/phase5e_evaluation.schema.json",
+  "schemas/search/tiny_multi_observer_reference.schema.json",
+]
+"share/tuppi-search/docs" = [
+  "docs/search/architecture.md",
+  "docs/search/uniform_feasible_pimc.md",
+  "docs/search/rollout_security.md",
+  "docs/search/exact_tail_integration.md",
+  "docs/search/utilities.md",
+  "docs/search/determinism.md",
+  "docs/search/phase5c_evaluation.md",
+  "docs/search/phase5d_a_hypotheses.md",
+  "docs/search/phase5d_a_results.md",
+  "docs/search/phase5d_a_handoff.md",
+  "docs/search/root_information_uct.md",
+  "docs/search/information_state_nodes.md",
+  "docs/search/tiny_exact_information_reference.md",
+  "docs/search/phase5d_b_results.md",
+  "docs/search/phase5d_c_profiling.md",
+  "docs/search/phase5d_c_optimization.md",
+  "docs/search/phase5d_c_results.md",
+  "docs/search/multi_observer_search.md",
+  "docs/search/redeterminization.md",
+  "docs/search/observer_privacy.md",
+  "docs/search/tiny_multi_observer_oracle.md",
+  "docs/search/phase5e_results.md",
+]
+"share/tuppi-search/examples" = [
+  "examples/search/README.md",
+  "examples/search/assemble_phase5d_a_report.py",
+]
+
+"share/tuppi-learning/schemas" = [
+  "schemas/learning/actor_configuration.schema.json",
+  "schemas/learning/checkpoint_metadata.schema.json",
+  "schemas/learning/dataset_manifest.schema.json",
+  "schemas/learning/evaluation_summary.schema.json",
+]
+"share/tuppi-learning/docs" = [
+  "docs/learning/behavior_cloning.md",
+  "docs/learning/ctde_training.md",
+  "docs/learning/observation_encoder.md",
+  "docs/learning/phase6_architecture.md",
+  "docs/learning/phase6_results.md",
+]
+"share/tuppi-search/reports" = [
+  "reports/phase5c/pimc_registry.json",
+  "reports/phase5c/search_benchmark.json",
+  "reports/phase5c/phase5c_evaluation.json",
+  "reports/phase5d_a/phase5d_a_registry.json",
+  "reports/phase5d_a/phase5d_a_findings.json",
+  "reports/phase5d_b/root_info_uct_registry.json",
+]
+"share/tuppi-belief/schemas" = [
+  "schemas/belief/behavior_model.schema.json",
+  "schemas/belief/behavioral_belief.schema.json",
+  "schemas/belief/synthetic_manifest.schema.json",
+]
+"share/tuppi-belief/docs" = [
+  "docs/belief/behavioral_likelihood.md",
+  "docs/belief/action_history_reconstruction.md",
+  "docs/belief/policy_mixture.md",
+  "docs/belief/calibration.md",
+  "docs/belief/phase5g_b_results.md",
+]
+"share/tuppi-network/schemas" = [
+  "schemas/network/action_acknowledgement.schema.json",
+  "schemas/network/completed_deal_analysis.schema.json",
+  "schemas/network/completed_deal_analysis_v1.schema.json",
+  "schemas/network/completed_deal_analysis_v2.schema.json",
+  "schemas/network/completed_deal_analysis_v3.schema.json",
+  "schemas/network/completed_deal_analysis_v4.schema.json",
+  "schemas/network/completed_deal_analysis_v5.schema.json",
+  "schemas/network/http_api.schema.json",
+  "schemas/network/post_match_analysis.schema.json",
+  "schemas/network/post_match_analysis_v1.schema.json",
+  "schemas/network/post_match_diagnostics_v2.schema.json",
+  "schemas/network/post_match_diagnostics_v3.schema.json",
+  "schemas/network/protocol_manifest.json",
+  "schemas/network/protocol_manifest.schema.json",
+  "schemas/network/showing_ui_hints.schema.json",
+  "schemas/network/transport_cases.schema.json",
+  "schemas/network/websocket_message.schema.json",
+  "schemas/network/wire_recordings.schema.json",
+]
+"share/tuppi-product/docs" = [
+  "docs/ui/local_product_runtime.md",
+  "docs/ui/network_protocol_v1.md",
+  "docs/ui/phase_a_protocol_bundle.md",
+  "docs/ui/phase_d_server.md",
+  "docs/ui/phase_f_persistence.md",
+  "docs/ui/phase_h2_analysis.md",
+  "docs/ui/product_architecture.md",
+  "docs/ui/product_stabilization_1.md",
+  "docs/ui/product_stabilization_2.md",
+]
+
+[tool.pytest.ini_options]
+testpaths = [
+  "tests/legacy_characterization",
+  "tests/archival_harness",
+  "tests/rules/project_target_v1",
+  "tests/engine",
+  "tests/evaluation",
+  "tests/agents",
+  "tests/match",
+  "tests/exact",
+  "tests/valuation",
+  "tests/search",
+  "tests/corpus",
+  "tests/audit",
+  "tests/research",
+  "tests/belief",
+  "tests/learning",
+  "tests/llm",
+  "tests/ui",
+  "tests/server",
+]
+addopts = "-ra"

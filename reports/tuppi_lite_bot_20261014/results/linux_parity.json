@@ -1,0 +1,45 @@
+{
+ "deals": 500,
+ "decisions": 28036,
+ "action_trace_differing_deals": [],
+ "cursor_differing_deals_at_double_precision": [],
+ "note": "Cursors pass through JSON.parse in the Node check, so they are compared at float64 precision only.",
+ "linux": {
+  "deals": 500,
+  "decisions": 28036,
+  "torch_imported": false,
+  "cpu_per_seat_deal": 0.029197668954999825,
+  "p50_seconds": 0.002659252999990258,
+  "p95_seconds": 0.0027880029999778344,
+  "max_seconds": 0.05088992500003542,
+  "peak_rss_bytes": 87621632
+ },
+ "image": {
+  "id": "sha256:9354e1c4b1bebee1ea7dcebe3872cc56d68c2991ef368305bb9cfe08cc9f1ab7",
+  "architecture": "amd64",
+  "os": "linux"
+ },
+ "bot": {
+  "profile": "tuppi_ai_lite_v1",
+  "level": "lite",
+  "search": null,
+  "models_sha256": "3a22bf992daacfc301158947ab7b74ed8528d71ea22ffc4e165a37fff4e7c380",
+  "native_sha256": "3523c1b5c8a033c4415c975eb388c24a7e95ac2b0925f83b4806a55579d6b907"
+ },
+ "match": {
+  "humans": 1,
+  "bots": 3,
+  "level": "lite",
+  "actions": 130,
+  "completedDeals": 9,
+  "finalScores": [
+   0,
+   52
+  ],
+  "elapsedSeconds": 22.167,
+  "midgameRestart": true,
+  "clientReload": true,
+  "uncertainActionReconnect": true,
+  "replacementContainerVolumeRestore": true
+ }
+}

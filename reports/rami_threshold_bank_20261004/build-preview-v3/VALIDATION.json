@@ -1,0 +1,33 @@
+{
+  "version": "0.3.2",
+  "build": 26,
+  "tests": {
+    "total": 155,
+    "skipped": 3,
+    "failures": 0,
+    "skips": "Optional table snapshot renderers"
+  },
+  "gui": {
+    "status": "blocked",
+    "action": "Open isolated Tuppi Training QA app using computer-use tool",
+    "tool_response": "Computer Use was not approved to use Tuppi Training QA",
+    "user_archive_used": false
+  },
+  "changes": [
+    "Removed countdown and fixed-duration prompts",
+    "Retained backward decoding of legacy timer metadata without a deadline",
+    "Shared normal-game keyboard resolver across decision lab and training branches",
+    "Added R/N and Enter to the fixed-card RAMI measurement",
+    "Blocked odds shortcut in all protected measurement sessions"
+  ],
+  "source_sha256": {
+    "Sources/TuppiClient/TrainingTableInput.swift": "821b0e6e3fabe6c9cc5c9285276140b54c15e0a54b7484f7a84e8400df9ee3d9",
+    "Sources/TuppiClient/ExpertDecisionLabView.swift": "13640e6b0be09176d2313c9f9a6ac47367099290f45d6c3b61622471a0933963",
+    "Sources/TuppiClient/ExpertTrainingBranchView.swift": "7f0bdb56a038ddd039f82d528deae20c2623a18ec586011ff076413400aff466",
+    "Sources/TuppiClient/ExpertTrainingModels.swift": "9526d0098ece2eb0f15da1be85c859e54ba022adc9808c9fb1a02376c3ef7bc2",
+    "Sources/TuppiClient/ExpertTrainingStore.swift": "ec96f19be55c2153a958e850a7d6e702c337ba3d4e1bb84cd59221e52b30a0fa",
+    "Sources/TuppiClient/ExpertTrainingViews.swift": "a793ff4343158889f2f17222a3cb7b3efb20be000ac05a94b5de71c75957847f",
+    "Sources/TuppiClient/TuppiClientApp.swift": "1af02fa6dbf520f70fc4357dfe6059fe4b7af885c9be8c60f0ced1eac0ec7551",
+    "Tests/TuppiClientTests/TrainingTableInputTests.swift": "aff9eb7bd3ed11f25af9edaf94c2ca5efccfad134e9e43adbd78b7af0ec6570b"
+  }
+}

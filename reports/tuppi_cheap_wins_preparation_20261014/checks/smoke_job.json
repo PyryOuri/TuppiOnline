@@ -1,0 +1,21 @@
+{
+  "job": {
+    "id": "pipeline_smoke",
+    "kind": "duplicate",
+    "arm": "baseline",
+    "opponent": "baseline",
+    "worlds": 4,
+    "samples": 2,
+    "seed": "cw-pipeline-control-v1",
+    "scores": "uniform",
+    "serial": true,
+    "cpu_seconds": 30,
+    "wall_seconds": 35
+  },
+  "context": {
+    "package_sha256": "b977fe06790aae6c3e8e829ff2a20557727e6d948c87d7e2b5ebb2793a5104d8",
+    "controller_lifecycle": "fresh_indexed_game",
+    "design": "4_rotations_2_teams",
+    "qualification": "preparation smoke"
+  }
+}

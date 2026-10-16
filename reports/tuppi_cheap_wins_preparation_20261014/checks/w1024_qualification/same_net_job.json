@@ -1,0 +1,26 @@
+{
+  "job": {
+    "id": "same_net",
+    "kind": "full_deals",
+    "arm": "same_net",
+    "worlds": 1024,
+    "samples": 1,
+    "seed": "cw-w1024-qualification-v1",
+    "scores": "uniform",
+    "serial": true,
+    "cpu_seconds": 60,
+    "wall_seconds": 90
+  },
+  "context": {
+    "scope": "preparation_validation_only",
+    "input_manifest_sha256": "b977fe06790aae6c3e8e829ff2a20557727e6d948c87d7e2b5ebb2793a5104d8",
+    "worlds": 1024,
+    "controller_lifecycle": "retained",
+    "design": "full_deals",
+    "score_design": "uniform",
+    "workers": 1,
+    "native_parallel": false,
+    "rollout_chunk": 32,
+    "sooli_reset": "fresh_on_construction_only"
+  }
+}

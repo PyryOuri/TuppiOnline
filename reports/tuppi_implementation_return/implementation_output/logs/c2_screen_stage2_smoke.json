@@ -1,0 +1,151 @@
+{
+ "manifest": "/Users/pyryouri/Developer/audit_deliverables/tuppi_implementation_output/research/c2_stage2_manifest.json",
+ "run": {
+  "stopped_early": null,
+  "total_cpu_s": 28.694098,
+  "total_wall_s": 3.4331101669813506
+ },
+ "summary": {
+  "source_deals": 1,
+  "evaluated_positions": 2,
+  "contracts": {
+   "NOLO": 0,
+   "RAMI": 1
+  },
+  "exclusion_rate_mean": 0.2942586599544529,
+  "shortfalls": 0,
+  "F128c": {
+   "changed_vs_live": 1,
+   "mean_per_reached_call": -0.0006612078432226554,
+   "se_across_positions": 0.0006612078432226554,
+   "per_deal_mean": -0.0013224156864453107,
+   "per_deal_se": null,
+   "significantly_better": 0,
+   "significantly_worse": 0
+  },
+  "R128": {
+   "changed_vs_live": 2,
+   "mean_per_reached_call": -0.00040419967626803555,
+   "se_across_positions": 7.2139246185543e-05,
+   "per_deal_mean": -0.0008083993525360711,
+   "per_deal_se": null,
+   "significantly_better": 0,
+   "significantly_worse": 0
+  },
+  "RC128": {
+   "changed_vs_live": 2,
+   "mean_per_reached_call": -0.0007326609593292233,
+   "se_across_positions": 0.0005897547271160873,
+   "per_deal_mean": -0.0014653219186584465,
+   "per_deal_se": null,
+   "significantly_better": 0,
+   "significantly_worse": 0
+  },
+  "R128_minus_F128c_control": {
+   "mean": 0.0002570081669546198,
+   "se": 0.0005890685970371123
+  },
+  "RC128_minus_F128c_control": {
+   "mean": -7.14531161065679e-05,
+   "se": 7.14531161065679e-05
+  }
+ },
+ "deals": [
+  {
+   "source": 0,
+   "dealer": 0,
+   "contract": "RAMI",
+   "bids": [
+    [
+     1,
+     0,
+     80
+    ],
+    [
+     2,
+     1,
+     84
+    ],
+    [
+     3,
+     2,
+     106
+    ]
+   ]
+  }
+ ],
+ "positions": [
+  {
+   "source": 0,
+   "seat": 2,
+   "k": 1,
+   "legal": 9,
+   "draws": 206,
+   "accepted": 128,
+   "exclusion_rate": 0.3786407766990292,
+   "picks": {
+    "live": 84,
+    "F128c": 92,
+    "R128": 81,
+    "RC128": 92
+   },
+   "arm_cpu_s": 13.297386,
+   "validation": {
+    "accepted": 256,
+    "draws": 433,
+    "F128c": {
+     "mean": -0.0013224156864453107,
+     "se": 0.0008888926077305913,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": -0.00047633892245357856,
+     "se": 0.0007853839006366177,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": -0.0013224156864453107,
+     "se": 0.0008888926077305913,
+     "same_as_live": false
+    },
+    "cpu_s": 2.5142719999999983
+   }
+  },
+  {
+   "source": 0,
+   "seat": 3,
+   "k": 2,
+   "legal": 6,
+   "draws": 162,
+   "accepted": 128,
+   "exclusion_rate": 0.2098765432098766,
+   "picks": {
+    "live": 106,
+    "F128c": 106,
+    "R128": 124,
+    "RC128": 108
+   },
+   "arm_cpu_s": 3.4431660000000015,
+   "validation": {
+    "accepted": 256,
+    "draws": 309,
+    "F128c": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "R128": {
+     "mean": -0.00033206043008249253,
+     "se": 0.00020826472848304867,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": -0.0001429062322131358,
+     "se": 0.00036856472219263967,
+     "same_as_live": false
+    },
+    "cpu_s": 1.6342299999999987
+   }
+  }
+ ]
+}

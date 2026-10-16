@@ -1,0 +1,42 @@
+{
+  "schema": "tuppi.policy_prior_infrastructure.v1",
+  "date": "2026-10-02",
+  "checkout": "/Users/pyryouri/Developer/TuppiAI-prior",
+  "branch": "research/policy-prior-infra-20261002",
+  "implementation_commit": "319e12134ef10945d842f8306b811061128d9ad7",
+  "parent_commit": "43cbaa7873d5d93bd8166d4dcd503f571545e204",
+  "files_sha256": {
+    "docs/POLICY_PRIOR_INFRASTRUCTURE.md": "d47490e2c42b9c5fc57f7b333708ed1b003eb5f39c6808dcd6dbf4d4698ece71",
+    "tests/test_evaluate_configuration_stdlib.py": "7c611bad0f944ba66dd2d650522bbb851b39213c7450da23652bb031ed4c41ff",
+    "tests/test_match_statistics_stdlib.py": "5dd0a2ab57280aad09c71300b02f66e1ac1d42caf5303e871052fe4fb7531819",
+    "tests/test_policy_prior_factory.py": "a7465aeff324e71d67546a9a5dea27e554c26c907a46c7f732de619d3188ec95",
+    "tests/test_policy_prior_search.py": "ca3cb3310403202575985ebc1bb7c95b77f93fadbb4871f6d097763f9a80532e",
+    "tests/test_policy_prior_stdlib.py": "bf03b313af80a909f3ee128e246e5f6862861f3a1f7e41430c7fea61ae03aebd",
+    "tests/test_prior_replay_stdlib.py": "27c67f2ffb504da97482ca9bd20bccd90a5e9a05560278068f666262b319f44c",
+    "tests/test_timing_report_stdlib.py": "df06a21eff0733cbff4d2968a41c521dac6307ec1b10f34e63e1e7a94ee857c0",
+    "tests/test_vrpo_infrastructure.py": "c290bcd8e2c82a504af61365ee6a1d64639c82132c16ba395e0fc174265a9574",
+    "tools/collect_prior_bank.py": "0fafce3ff1500a3d8ebeeddf56e02a8c7aaecd8f36fc8f0cb1d9a9ecaf728760",
+    "tools/prior_replay.py": "b94552d0411969c7b60b0501624dd35018e0e7259f13f41e26bce2a22c5e5d9b",
+    "tools/vrpo_timing_report.py": "3923d7ac7007990f7f792fb9fcc327f35f1b4a0b11f2b9611cbf8ca7bdd3db16",
+    "tuppi_ai/evaluate.py": "c1f5881fcfc827178a844e06615f16de0d5b3d55ae5cf95192495d58ad3401dc",
+    "tuppi_ai/match_eval.py": "907e3a12ad6817a5c190245261187e114d2ef6ee4404641b4879b2102a9377c9",
+    "tuppi_ai/match_statistics.py": "488e9aaf0c87cc0dc4b12f4ae1610b157b523ccd0efce8b4aad2aeca33b55b5f",
+    "tuppi_ai/policy_prior.py": "45679c323edc85c80cb17110fe7e5c065d629e2759c7a1d76ea9f4ee42747a20",
+    "tuppi_ai/search.py": "c5883ff655264a8f0adad3d1e949c167674b9b3cb724e7f161813221cd197fbe",
+    "tuppi_ai/vrpo.py": "2a652563da305a3c09deaebebfd659ca1d295c1d921c30dd14398f058386deb9"
+  },
+  "report_sha256": "823aa4b376c374f28a11908cb072d1214fc876522d6e14b9e90f8b44c6aace5f",
+  "validation": {
+    "stdlib_tests_passed": 24,
+    "test_execution_seconds": 0.002,
+    "python_files_syntax_checked": 17,
+    "diff_whitespace_check": "passed",
+    "native_built": false,
+    "torch_native_tests_run": false,
+    "training_run": false,
+    "benchmarks_run": false,
+    "strength_evaluations_run": false
+  },
+  "execution_constraint": "Coding/infrastructure only while heuristic research occupies CPU.",
+  "source_scope": "Implementation files only; native binary, models and engine runtime are not attested by this manifest."
+}

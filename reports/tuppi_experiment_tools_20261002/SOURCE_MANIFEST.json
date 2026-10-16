@@ -1,0 +1,114 @@
+{
+  "schema": "tuppi.experiment_implementation_manifest.v1",
+  "created_utc": "2026-10-02T07:15:06.725956+00:00",
+  "checkout": "/Users/pyryouri/Developer/TuppiAI-prior",
+  "branch": "research/policy-prior-infra-20261002",
+  "source_commit": "0799508ad5a48a5db9eca99693534f998f0ebcf2",
+  "previous_infrastructure_commit": "319e12134ef10945d842f8306b811061128d9ad7",
+  "implementation_commits": [
+    "aab6511f3ac47497fd1838c8c41aff1348b9b3bf",
+    "0799508ad5a48a5db9eca99693534f998f0ebcf2"
+  ],
+  "changed_source_files": [
+    "docs/EXPERIMENT_TOOLS.md",
+    "examples/policy_prior_queue.json",
+    "tests/test_experiment_process_stdlib.py",
+    "tests/test_experiment_queue_stdlib.py",
+    "tests/test_paired_results_stdlib.py",
+    "tuppi_ai/evaluate.py",
+    "tuppi_ai/experiment_io.py",
+    "tuppi_ai/experiment_queue.py",
+    "tuppi_ai/experiment_worker.py",
+    "tuppi_ai/paired_results.py"
+  ],
+  "clean_source_checkout": true,
+  "scope": "Files changed since 319e121 plus handoff evidence and discovery documents; not a prepared queue, model inventory or full environment snapshot.",
+  "validation": {
+    "stdlib_tests_covered": 63,
+    "real_queue_prepared": false,
+    "real_queue_executed": false,
+    "training": false,
+    "native_build": false,
+    "game_evaluation": false,
+    "model_hashing_or_loading": false,
+    "deployment": false
+  },
+  "files": {
+    "/Users/pyryouri/Developer/AGENTS.md": {
+      "sha256": "7f4387a07226839aed7e87642e01adda3b7bbcd92416f6299897b8239499f241",
+      "bytes": 3097
+    },
+    "/Users/pyryouri/Developer/README.md": {
+      "sha256": "bf73c6b54b05037abed2fc48270e2d51defa4e56ef109dee75dc770666bc8412",
+      "bytes": 7400
+    },
+    "/Users/pyryouri/Developer/TuppiAI-prior/docs/EXPERIMENT_TOOLS.md": {
+      "sha256": "9b8afd8ea49127ad9b2218fb70be0516e2acc6e1fd0d1bd72e95cc97d00c0278",
+      "bytes": 9343
+    },
+    "/Users/pyryouri/Developer/TuppiAI-prior/examples/policy_prior_queue.json": {
+      "sha256": "44ceb13384188e340b5d1f5a1971132d07f0758069f6798d28e8de0ab6a2dd77",
+      "bytes": 2019
+    },
+    "/Users/pyryouri/Developer/TuppiAI-prior/tests/test_experiment_process_stdlib.py": {
+      "sha256": "f813cf05a040863c1b54ec194558979c3d9d7b9c37e268156d408b47a3b8dbd6",
+      "bytes": 3516
+    },
+    "/Users/pyryouri/Developer/TuppiAI-prior/tests/test_experiment_queue_stdlib.py": {
+      "sha256": "bcddb2bea9c11fd5b0c48b68bc93537074a5d6387e87b7224982aa0004c0675f",
+      "bytes": 15019
+    },
+    "/Users/pyryouri/Developer/TuppiAI-prior/tests/test_paired_results_stdlib.py": {
+      "sha256": "9c0d81296f7f4f79ff1be2818c145806ece59fa5ef697cdf02b6db0e31a8aa70",
+      "bytes": 6406
+    },
+    "/Users/pyryouri/Developer/TuppiAI-prior/tuppi_ai/evaluate.py": {
+      "sha256": "1b91d819f03d2026c2e010a18859b881e29ec2fa6aecf4e2d8661993d12eaaab",
+      "bytes": 14475
+    },
+    "/Users/pyryouri/Developer/TuppiAI-prior/tuppi_ai/experiment_io.py": {
+      "sha256": "e10d0efcde484606ed2a20a7664c9a3c615bf478be826055b6f635461e904134",
+      "bytes": 1755
+    },
+    "/Users/pyryouri/Developer/TuppiAI-prior/tuppi_ai/experiment_queue.py": {
+      "sha256": "50a659b697b333c26754ee5123cc25c2a06f6eb752cb8dd713452170ff335767",
+      "bytes": 29198
+    },
+    "/Users/pyryouri/Developer/TuppiAI-prior/tuppi_ai/experiment_worker.py": {
+      "sha256": "b1f35b1052a63bdd3e7e01bba981630827d1de1e282e6b2a36bcba123f1bedc4",
+      "bytes": 1030
+    },
+    "/Users/pyryouri/Developer/TuppiAI-prior/tuppi_ai/paired_results.py": {
+      "sha256": "80de3bbdf310f72af9830f8491bdee74ed27ac33c211804d335dae1d91f1e00c",
+      "bytes": 8651
+    },
+    "/Users/pyryouri/Developer/audit_deliverables/tuppi_experiment_tools_20261002/EXAMPLE_PREVIEW.json": {
+      "sha256": "af520336a4c9c1133c3203547d583dc8ed9fa8687a203e762662d50cdba39898",
+      "bytes": 2594
+    },
+    "/Users/pyryouri/Developer/audit_deliverables/tuppi_experiment_tools_20261002/IMPLEMENTATION_REPORT.md": {
+      "sha256": "c0a86a7f3b6fb9cdaf05bd0b9c66e1799d2e18bf2b78d7cb2a1119d68398838a",
+      "bytes": 8630
+    },
+    "/Users/pyryouri/Developer/audit_deliverables/tuppi_experiment_tools_20261002/LEGACY_RESULT_CHECK.json": {
+      "sha256": "376dabea2b3139e3d7d6538847367cf91f37a6419462f5ab9c06d69fd4958f34",
+      "bytes": 868
+    },
+    "/Users/pyryouri/Developer/audit_deliverables/tuppi_experiment_tools_20261002/STATIC_CHECK.json": {
+      "sha256": "df3a1b0269f4c61d7ec35a9435b4f5cf0a3dd57389a87ff8eecee796327a07b9",
+      "bytes": 723
+    },
+    "/Users/pyryouri/Developer/audit_deliverables/tuppi_experiment_tools_20261002/TEST_REPORT.json": {
+      "sha256": "8006e2753fc6829672719239a6fee13c365ef4f53a97f944b6222c531693b2e8",
+      "bytes": 1758
+    },
+    "/Users/pyryouri/Developer/audit_deliverables/tuppi_policy_prior_infrastructure_20261002/IMPLEMENTATION_REPORT.md": {
+      "sha256": "823aa4b376c374f28a11908cb072d1214fc876522d6e14b9e90f8b44c6aace5f",
+      "bytes": 6770
+    },
+    "/Users/pyryouri/Developer/audit_deliverables/tuppi_policy_prior_infrastructure_20261002/SOURCE_MANIFEST.json": {
+      "sha256": "86eddf9dee9aa41e7e54ea63d1b6831011ef9c5e00273f5df3e7f51255169eeb",
+      "bytes": 2865
+    }
+  }
+}

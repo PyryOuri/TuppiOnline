@@ -1,0 +1,47 @@
+{
+  "schema": "tuppi.experiment_test_report.v1",
+  "source_commit": "0799508ad5a48a5db9eca99693534f998f0ebcf2",
+  "coverage_count": 63,
+  "counts_by_file": {
+    "test_evaluate_configuration_stdlib.py": 4,
+    "test_experiment_process_stdlib.py": 4,
+    "test_experiment_queue_stdlib.py": 21,
+    "test_match_statistics_stdlib.py": 4,
+    "test_paired_results_stdlib.py": 14,
+    "test_policy_prior_stdlib.py": 9,
+    "test_prior_replay_stdlib.py": 4,
+    "test_timing_report_stdlib.py": 3
+  },
+  "one_final_63_test_suite_run": false,
+  "checks": [
+    {
+      "command": "python3 -m unittest discover -s tests -p 'test_*_stdlib.py'",
+      "tests": 56,
+      "wall_seconds": 183.033,
+      "status": "passed",
+      "stage": "earlier full-suite check before final additional tests"
+    },
+    {
+      "command": "PYTHONPATH=tests:. python3 -m unittest test_paired_results_stdlib",
+      "tests": 14,
+      "wall_seconds": 3.089,
+      "status": "passed",
+      "stage": "final analyser source"
+    },
+    {
+      "command": "PYTHONPATH=tests:. python3 -m unittest test_experiment_queue_stdlib",
+      "tests": 21,
+      "wall_seconds": 226.893,
+      "status": "passed",
+      "stage": "final queue source"
+    },
+    {
+      "command": "PYTHONPATH=tests:. python3 -m unittest test_experiment_process_stdlib",
+      "tests": 4,
+      "wall_seconds": 4.137,
+      "status": "passed",
+      "stage": "process code unchanged by final provenance fix"
+    }
+  ],
+  "qualification": "Observed test wall times on a busy host. Standard-library fixture/stub tests and two tiny Python child processes; no actual game, model, Torch, NumPy or native workloads. Queue disk barriers mocked. These checks are not strength, throughput or power-loss-durability evidence."
+}

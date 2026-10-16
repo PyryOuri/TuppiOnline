@@ -1,0 +1,233 @@
+{
+ "manifest": "/Users/pyryouri/Developer/audit_deliverables/tuppi_implementation_output/research/c2_screen_manifest.json",
+ "run": {
+  "stopped_early": null,
+  "total_cpu_s": 80.624436,
+  "total_wall_s": 13.177662625006633
+ },
+ "summary": {
+  "source_deals": 2,
+  "contracts": {
+   "NOLO": 0,
+   "RAMI": 2
+  },
+  "reached_bids_by_k": {
+   "0": 2,
+   "1": 2,
+   "2": 1,
+   "3": 0
+  },
+  "evaluated_positions": 3,
+  "exclusion_rate_clone_by_k": {
+   "1": {
+    "n": 2,
+    "mean": 0.2421875,
+    "max": 0.328125
+   },
+   "2": {
+    "n": 1,
+    "mean": 0.515625,
+    "max": 0.515625
+   }
+  },
+  "exclusion_rate_clone_all": {
+   "mean": 0.3333333333333333,
+   "positions_with_any_exclusion": 3
+  },
+  "argmax_changes": {
+   "R_vs_F": 1,
+   "RC_vs_F": 1,
+   "RC_vs_R": 0
+  },
+  "regret_of_F_under_R": {
+   "n": 3,
+   "mean": 0.0026471824936007936,
+   "max": 0.00794154748080238
+  },
+  "regret_of_F_under_RC": {
+   "n": 3,
+   "mean": 0.0031829939414096133,
+   "max": 0.00954898182422884
+  },
+  "max_abs_R_minus_F": {
+   "n": 3,
+   "mean": 0.015191979438569501,
+   "max": 0.021366497840824384
+  },
+  "max_abs_RC_minus_R": {
+   "n": 3,
+   "mean": 0.003186797452695242,
+   "max": 0.004845776625217929
+  },
+  "gap_spread_F": {
+   "n": 3,
+   "mean": 0.031163608568022028,
+   "max": 0.049290552706224844
+  },
+  "calibration": {
+   "positions": 3,
+   "worlds": 18,
+   "search_hits": 17,
+   "clone_hits": 16,
+   "event_agreement": 0.9444444444444445,
+   "search_calls": 24
+  },
+  "live_bid_equals_F_argmax_W64": 2
+ },
+ "deals": [
+  {
+   "source": 0,
+   "dealer": 0,
+   "bids": [
+    [
+     1,
+     0,
+     80
+    ],
+    [
+     2,
+     1,
+     97
+    ],
+    [
+     3,
+     2,
+     124
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 7.123604
+  },
+  {
+   "source": 1,
+   "dealer": 1,
+   "bids": [
+    [
+     2,
+     0,
+     96
+    ],
+    [
+     3,
+     1,
+     109
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 4.595855999999998
+  }
+ ],
+ "positions": [
+  {
+   "source": 0,
+   "seat": 1,
+   "k": 0,
+   "live_bid": 80,
+   "live_bid_cpu_s": 1.3803219999999998,
+   "legal": 7,
+   "evaluated": false
+  },
+  {
+   "source": 0,
+   "seat": 2,
+   "k": 1,
+   "live_bid": 97,
+   "live_bid_cpu_s": 2.354861,
+   "legal": 8,
+   "evaluated": true,
+   "hits": 43,
+   "W": 64,
+   "exclusion_rate": 0.328125,
+   "eval_cpu_s": 1.6049140000000008,
+   "argmax": {
+    "F": 97,
+    "R": 97,
+    "RC": 97
+   },
+   "live_bid_in_F_argmax": true,
+   "max_abs_R_minus_F": 0.021366497840824384,
+   "max_abs_RC_minus_R": 0.002600886707389078,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.049290552706224844,
+   "calibration": {
+    "worlds": 6,
+    "search_hits": 6,
+    "clone_hits": 5,
+    "event_agreement": 0.8333333333333334,
+    "search_calls": 6
+   }
+  },
+  {
+   "source": 0,
+   "seat": 3,
+   "k": 2,
+   "live_bid": 124,
+   "live_bid_cpu_s": 3.3867030000000007,
+   "legal": 8,
+   "evaluated": true,
+   "hits": 31,
+   "W": 64,
+   "exclusion_rate": 0.515625,
+   "eval_cpu_s": 4.646964000000004,
+   "argmax": {
+    "F": 121,
+    "R": 83,
+    "RC": 83
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.020544992160848194,
+   "max_abs_RC_minus_R": 0.004845776625217929,
+   "regret_of_F_under_R": 0.00794154748080238,
+   "regret_of_F_under_RC": 0.00954898182422884,
+   "gap_spread_F": 0.014529821928590536,
+   "calibration": {
+    "worlds": 6,
+    "search_hits": 5,
+    "clone_hits": 5,
+    "event_agreement": 1.0,
+    "search_calls": 12
+   }
+  },
+  {
+   "source": 1,
+   "seat": 2,
+   "k": 0,
+   "live_bid": 96,
+   "live_bid_cpu_s": 1.8560349999999985,
+   "legal": 8,
+   "evaluated": false
+  },
+  {
+   "source": 1,
+   "seat": 3,
+   "k": 1,
+   "live_bid": 109,
+   "live_bid_cpu_s": 2.7387659999999983,
+   "legal": 6,
+   "evaluated": true,
+   "hits": 54,
+   "W": 64,
+   "exclusion_rate": 0.15625,
+   "eval_cpu_s": 2.371147999999991,
+   "argmax": {
+    "F": 109,
+    "R": 109,
+    "RC": 109
+   },
+   "live_bid_in_F_argmax": true,
+   "max_abs_R_minus_F": 0.00366444831403593,
+   "max_abs_RC_minus_R": 0.002113729025478718,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.029670451069250703,
+   "calibration": {
+    "worlds": 6,
+    "search_hits": 6,
+    "clone_hits": 6,
+    "event_agreement": 1.0,
+    "search_calls": 6
+   }
+  }
+ ]
+}

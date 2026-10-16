@@ -1,0 +1,2616 @@
+{
+ "manifest": "/Users/pyryouri/Developer/audit_deliverables/tuppi_implementation_output/research/c2_screen_manifest.json",
+ "run": {
+  "stopped_early": null,
+  "total_cpu_s": 430.126038,
+  "total_wall_s": 64.08191237499705
+ },
+ "summary": {
+  "source_deals": 30,
+  "contracts": {
+   "NOLO": 0,
+   "RAMI": 30
+  },
+  "reached_bids_by_k": {
+   "0": 30,
+   "1": 23,
+   "2": 18,
+   "3": 9
+  },
+  "evaluated_positions": 50,
+  "exclusion_rate_clone_by_k": {
+   "1": {
+    "n": 23,
+    "mean": 0.21739130434782608,
+    "max": 0.421875
+   },
+   "2": {
+    "n": 18,
+    "mean": 0.3784722222222222,
+    "max": 0.640625
+   },
+   "3": {
+    "n": 9,
+    "mean": 0.3784722222222222,
+    "max": 0.5625
+   }
+  },
+  "exclusion_rate_clone_all": {
+   "mean": 0.304375,
+   "positions_with_any_exclusion": 50
+  },
+  "argmax_changes": {
+   "R_vs_F": 11,
+   "RC_vs_F": 24,
+   "RC_vs_R": 16
+  },
+  "regret_of_F_under_R": {
+   "n": 50,
+   "mean": 0.0007212932605126453,
+   "max": 0.00794154748080238
+  },
+  "regret_of_F_under_RC": {
+   "n": 50,
+   "mean": 0.0008638666983467998,
+   "max": 0.00954898182422884
+  },
+  "max_abs_R_minus_F": {
+   "n": 50,
+   "mean": 0.010998113031009636,
+   "max": 0.038260103823189194
+  },
+  "max_abs_RC_minus_R": {
+   "n": 50,
+   "mean": 0.002313434173871124,
+   "max": 0.013668171928397248
+  },
+  "gap_spread_F": {
+   "n": 50,
+   "mean": 0.0260016946750693,
+   "max": 0.06807064142776653
+  },
+  "calibration": {
+   "positions": 4,
+   "worlds": 24,
+   "search_hits": 21,
+   "clone_hits": 20,
+   "event_agreement": 0.9583333333333334,
+   "search_calls": 30
+  },
+  "live_bid_equals_F_argmax_W64": 18,
+  "validated_R_vs_F": {
+   "positions": 11,
+   "mean_diff": -0.005131218037586718,
+   "positions_significantly_better": 0,
+   "positions_significantly_worse": 3,
+   "per_commitment_gain_estimate": -0.001128867968269078,
+   "note": "fresh independent validation worlds; unit = equity per reached call among evaluated positions"
+  },
+  "validated_RC_vs_F": {
+   "positions": 24,
+   "mean_diff": -0.0024398622208250467,
+   "positions_significantly_better": 1,
+   "positions_significantly_worse": 5,
+   "per_commitment_gain_estimate": -0.0011711338659960225,
+   "note": "fresh independent validation worlds; unit = equity per reached call among evaluated positions"
+  }
+ },
+ "deals": [
+  {
+   "source": 0,
+   "dealer": 0,
+   "bids": [
+    [
+     1,
+     0,
+     80
+    ],
+    [
+     2,
+     1,
+     97
+    ],
+    [
+     3,
+     2,
+     124
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 7.161765
+  },
+  {
+   "source": 1,
+   "dealer": 1,
+   "bids": [
+    [
+     2,
+     0,
+     96
+    ],
+    [
+     3,
+     1,
+     109
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 4.544206000000003
+  },
+  {
+   "source": 2,
+   "dealer": 2,
+   "bids": [
+    [
+     3,
+     0,
+     81
+    ],
+    [
+     0,
+     1,
+     122
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 2.772196000000008
+  },
+  {
+   "source": 3,
+   "dealer": 3,
+   "bids": [
+    [
+     0,
+     0,
+     92
+    ],
+    [
+     1,
+     1,
+     107
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 7.1985229999999945
+  },
+  {
+   "source": 4,
+   "dealer": 0,
+   "bids": [
+    [
+     1,
+     0,
+     111
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 1.5546420000000012
+  },
+  {
+   "source": 5,
+   "dealer": 1,
+   "bids": [
+    [
+     2,
+     0,
+     107
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 1.7279120000000034
+  },
+  {
+   "source": 6,
+   "dealer": 2,
+   "bids": [
+    [
+     3,
+     0,
+     97
+    ],
+    [
+     0,
+     1,
+     124
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 7.114537999999996
+  },
+  {
+   "source": 7,
+   "dealer": 3,
+   "bids": [
+    [
+     0,
+     0,
+     85
+    ],
+    [
+     1,
+     1,
+     95
+    ],
+    [
+     2,
+     2,
+     93
+    ],
+    [
+     3,
+     3,
+     111
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 6.871780999999999
+  },
+  {
+   "source": 8,
+   "dealer": 0,
+   "bids": [
+    [
+     1,
+     0,
+     93
+    ],
+    [
+     2,
+     1,
+     96
+    ],
+    [
+     3,
+     2,
+     95
+    ],
+    [
+     0,
+     3,
+     119
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 8.55743099999998
+  },
+  {
+   "source": 9,
+   "dealer": 1,
+   "bids": [
+    [
+     2,
+     0,
+     98
+    ],
+    [
+     3,
+     1,
+     81
+    ],
+    [
+     0,
+     2,
+     107
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 8.123858000000013
+  },
+  {
+   "source": 10,
+   "dealer": 2,
+   "bids": [
+    [
+     3,
+     0,
+     93
+    ],
+    [
+     0,
+     1,
+     92
+    ],
+    [
+     1,
+     2,
+     83
+    ],
+    [
+     2,
+     3,
+     111
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 10.18587100000002
+  },
+  {
+   "source": 11,
+   "dealer": 3,
+   "bids": [
+    [
+     0,
+     0,
+     81
+    ],
+    [
+     1,
+     1,
+     93
+    ],
+    [
+     2,
+     2,
+     97
+    ],
+    [
+     3,
+     3,
+     111
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 10.409354999999977
+  },
+  {
+   "source": 12,
+   "dealer": 0,
+   "bids": [
+    [
+     1,
+     0,
+     96
+    ],
+    [
+     2,
+     1,
+     110
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 4.357196999999985
+  },
+  {
+   "source": 13,
+   "dealer": 1,
+   "bids": [
+    [
+     2,
+     0,
+     106
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 2.233149999999995
+  },
+  {
+   "source": 14,
+   "dealer": 2,
+   "bids": [
+    [
+     3,
+     0,
+     95
+    ],
+    [
+     0,
+     1,
+     98
+    ],
+    [
+     1,
+     2,
+     96
+    ],
+    [
+     2,
+     3,
+     121
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 8.355153999999999
+  },
+  {
+   "source": 15,
+   "dealer": 3,
+   "bids": [
+    [
+     0,
+     0,
+     98
+    ],
+    [
+     1,
+     1,
+     80
+    ],
+    [
+     2,
+     2,
+     119
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 7.272324999999967
+  },
+  {
+   "source": 16,
+   "dealer": 0,
+   "bids": [
+    [
+     1,
+     0,
+     94
+    ],
+    [
+     2,
+     1,
+     85
+    ],
+    [
+     3,
+     2,
+     111
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 5.135633999999982
+  },
+  {
+   "source": 17,
+   "dealer": 1,
+   "bids": [
+    [
+     2,
+     0,
+     108
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 2.936946999999975
+  },
+  {
+   "source": 18,
+   "dealer": 2,
+   "bids": [
+    [
+     3,
+     0,
+     95
+    ],
+    [
+     0,
+     1,
+     98
+    ],
+    [
+     1,
+     2,
+     124
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 7.60297300000002
+  },
+  {
+   "source": 19,
+   "dealer": 3,
+   "bids": [
+    [
+     0,
+     0,
+     94
+    ],
+    [
+     1,
+     1,
+     98
+    ],
+    [
+     2,
+     2,
+     92
+    ],
+    [
+     3,
+     3,
+     121
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 8.209118999999987
+  },
+  {
+   "source": 20,
+   "dealer": 0,
+   "bids": [
+    [
+     1,
+     0,
+     98
+    ],
+    [
+     2,
+     1,
+     81
+    ],
+    [
+     3,
+     2,
+     96
+    ],
+    [
+     0,
+     3,
+     111
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 8.21671200000003
+  },
+  {
+   "source": 21,
+   "dealer": 1,
+   "bids": [
+    [
+     2,
+     0,
+     79
+    ],
+    [
+     3,
+     1,
+     96
+    ],
+    [
+     0,
+     2,
+     110
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 9.273849999999982
+  },
+  {
+   "source": 22,
+   "dealer": 2,
+   "bids": [
+    [
+     3,
+     0,
+     96
+    ],
+    [
+     0,
+     1,
+     83
+    ],
+    [
+     1,
+     2,
+     109
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 4.593244999999968
+  },
+  {
+   "source": 23,
+   "dealer": 3,
+   "bids": [
+    [
+     0,
+     0,
+     81
+    ],
+    [
+     1,
+     1,
+     84
+    ],
+    [
+     2,
+     2,
+     83
+    ],
+    [
+     3,
+     3,
+     119
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 9.786151999999959
+  },
+  {
+   "source": 24,
+   "dealer": 0,
+   "bids": [
+    [
+     1,
+     0,
+     84
+    ],
+    [
+     2,
+     1,
+     83
+    ],
+    [
+     3,
+     2,
+     98
+    ],
+    [
+     0,
+     3,
+     122
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 6.85403100000002
+  },
+  {
+   "source": 25,
+   "dealer": 1,
+   "bids": [
+    [
+     2,
+     0,
+     92
+    ],
+    [
+     3,
+     1,
+     80
+    ],
+    [
+     0,
+     2,
+     124
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 7.139245000000017
+  },
+  {
+   "source": 26,
+   "dealer": 2,
+   "bids": [
+    [
+     3,
+     0,
+     109
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 1.5563619999999787
+  },
+  {
+   "source": 27,
+   "dealer": 3,
+   "bids": [
+    [
+     0,
+     0,
+     83
+    ],
+    [
+     1,
+     1,
+     80
+    ],
+    [
+     2,
+     2,
+     105
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 6.344204999999988
+  },
+  {
+   "source": 28,
+   "dealer": 0,
+   "bids": [
+    [
+     1,
+     0,
+     107
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 1.2625740000000292
+  },
+  {
+   "source": 29,
+   "dealer": 1,
+   "bids": [
+    [
+     2,
+     0,
+     119
+    ]
+   ],
+   "contract": "RAMI",
+   "showing_cpu_s": 2.472016999999994
+  }
+ ],
+ "positions": [
+  {
+   "source": 0,
+   "seat": 1,
+   "k": 0,
+   "live_bid": 80,
+   "live_bid_cpu_s": 1.3966079999999998,
+   "legal": 7,
+   "evaluated": false
+  },
+  {
+   "source": 0,
+   "seat": 2,
+   "k": 1,
+   "live_bid": 97,
+   "live_bid_cpu_s": 2.3567899999999997,
+   "legal": 8,
+   "evaluated": true,
+   "hits": 43,
+   "W": 64,
+   "exclusion_rate": 0.328125,
+   "eval_cpu_s": 1.5259290000000005,
+   "argmax": {
+    "F": 97,
+    "R": 97,
+    "RC": 97
+   },
+   "live_bid_in_F_argmax": true,
+   "max_abs_R_minus_F": 0.021366497840824384,
+   "max_abs_RC_minus_R": 0.002600886707389078,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.049290552706224844,
+   "calibration": {
+    "worlds": 6,
+    "search_hits": 6,
+    "clone_hits": 5,
+    "event_agreement": 0.8333333333333334,
+    "search_calls": 6
+   }
+  },
+  {
+   "source": 0,
+   "seat": 3,
+   "k": 2,
+   "live_bid": 124,
+   "live_bid_cpu_s": 3.4065960000000004,
+   "legal": 8,
+   "evaluated": true,
+   "hits": 31,
+   "W": 64,
+   "exclusion_rate": 0.515625,
+   "eval_cpu_s": 4.698079,
+   "argmax": {
+    "F": 121,
+    "R": 83,
+    "RC": 83
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.020544992160848194,
+   "max_abs_RC_minus_R": 0.004845776625217929,
+   "regret_of_F_under_R": 0.00794154748080238,
+   "regret_of_F_under_RC": 0.00954898182422884,
+   "gap_spread_F": 0.014529821928590536,
+   "validation": {
+    "worlds": 256,
+    "hits": 135,
+    "actions": [
+     83,
+     121
+    ],
+    "R_pick_minus_F_pick_under_R": {
+     "mean": 0.010206258393548153,
+     "se": 0.005348521118181848,
+     "n": 135
+    },
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": 0.012534459528547747,
+     "se": 0.005182974565704064,
+     "n": 135
+    }
+   },
+   "calibration": {
+    "worlds": 6,
+    "search_hits": 5,
+    "clone_hits": 5,
+    "event_agreement": 1.0,
+    "search_calls": 12
+   }
+  },
+  {
+   "source": 1,
+   "seat": 2,
+   "k": 0,
+   "live_bid": 96,
+   "live_bid_cpu_s": 1.8253410000000088,
+   "legal": 8,
+   "evaluated": false
+  },
+  {
+   "source": 1,
+   "seat": 3,
+   "k": 1,
+   "live_bid": 109,
+   "live_bid_cpu_s": 2.7178339999999963,
+   "legal": 6,
+   "evaluated": true,
+   "hits": 54,
+   "W": 64,
+   "exclusion_rate": 0.15625,
+   "eval_cpu_s": 2.3407339999999976,
+   "argmax": {
+    "F": 109,
+    "R": 109,
+    "RC": 109
+   },
+   "live_bid_in_F_argmax": true,
+   "max_abs_R_minus_F": 0.00366444831403593,
+   "max_abs_RC_minus_R": 0.002113729025478718,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.029670451069250703,
+   "calibration": {
+    "worlds": 6,
+    "search_hits": 6,
+    "clone_hits": 6,
+    "event_agreement": 1.0,
+    "search_calls": 6
+   }
+  },
+  {
+   "source": 2,
+   "seat": 3,
+   "k": 0,
+   "live_bid": 81,
+   "live_bid_cpu_s": 1.5037999999999982,
+   "legal": 6,
+   "evaluated": false
+  },
+  {
+   "source": 2,
+   "seat": 0,
+   "k": 1,
+   "live_bid": 122,
+   "live_bid_cpu_s": 1.2673479999999984,
+   "legal": 5,
+   "evaluated": true,
+   "hits": 55,
+   "W": 64,
+   "exclusion_rate": 0.140625,
+   "eval_cpu_s": 1.4039429999999982,
+   "argmax": {
+    "F": 109,
+    "R": 122,
+    "RC": 122
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.004917759003265845,
+   "max_abs_RC_minus_R": 0.00011058795181187811,
+   "regret_of_F_under_R": 0.0009121939201246609,
+   "regret_of_F_under_RC": 0.0009121939201246609,
+   "gap_spread_F": 0.0068942069774493575,
+   "validation": {
+    "worlds": 256,
+    "hits": 229,
+    "actions": [
+     109,
+     122
+    ],
+    "R_pick_minus_F_pick_under_R": {
+     "mean": -0.0014635048416243891,
+     "se": 0.0008361754633091259,
+     "n": 229
+    },
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": -0.0008857493740242121,
+     "se": 0.0006928807531662314,
+     "n": 229
+    }
+   },
+   "calibration": {
+    "worlds": 6,
+    "search_hits": 4,
+    "clone_hits": 4,
+    "event_agreement": 1.0,
+    "search_calls": 6
+   }
+  },
+  {
+   "source": 3,
+   "seat": 0,
+   "k": 0,
+   "live_bid": 92,
+   "live_bid_cpu_s": 3.1844779999999986,
+   "legal": 8,
+   "evaluated": false
+  },
+  {
+   "source": 3,
+   "seat": 1,
+   "k": 1,
+   "live_bid": 107,
+   "live_bid_cpu_s": 4.013047999999998,
+   "legal": 6,
+   "evaluated": true,
+   "hits": 50,
+   "W": 64,
+   "exclusion_rate": 0.21875,
+   "eval_cpu_s": 5.006664000000001,
+   "argmax": {
+    "F": 107,
+    "R": 107,
+    "RC": 107
+   },
+   "live_bid_in_F_argmax": true,
+   "max_abs_R_minus_F": 0.005237545629497617,
+   "max_abs_RC_minus_R": 0.002000968195497988,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.01680343091720715
+  },
+  {
+   "source": 4,
+   "seat": 1,
+   "k": 0,
+   "live_bid": 111,
+   "live_bid_cpu_s": 1.5540770000000066,
+   "legal": 6,
+   "evaluated": false
+  },
+  {
+   "source": 5,
+   "seat": 2,
+   "k": 0,
+   "live_bid": 107,
+   "live_bid_cpu_s": 1.727361000000002,
+   "legal": 6,
+   "evaluated": false
+  },
+  {
+   "source": 6,
+   "seat": 3,
+   "k": 0,
+   "live_bid": 97,
+   "live_bid_cpu_s": 4.36502999999999,
+   "legal": 7,
+   "evaluated": false
+  },
+  {
+   "source": 6,
+   "seat": 0,
+   "k": 1,
+   "live_bid": 124,
+   "live_bid_cpu_s": 2.748451000000017,
+   "legal": 6,
+   "evaluated": true,
+   "hits": 58,
+   "W": 64,
+   "exclusion_rate": 0.09375,
+   "eval_cpu_s": 2.8676150000000007,
+   "argmax": {
+    "F": 121,
+    "R": 121,
+    "RC": 123
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.010626734123998803,
+   "max_abs_RC_minus_R": 0.0008650114759802818,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0013242399576922914,
+   "gap_spread_F": 0.02731763309566304,
+   "validation": {
+    "worlds": 256,
+    "hits": 225,
+    "actions": [
+     121,
+     123
+    ],
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": -0.000678852250178655,
+     "se": 0.0018472635662544216,
+     "n": 225
+    }
+   }
+  },
+  {
+   "source": 7,
+   "seat": 0,
+   "k": 0,
+   "live_bid": 85,
+   "live_bid_cpu_s": 1.4732879999999966,
+   "legal": 7,
+   "evaluated": false
+  },
+  {
+   "source": 7,
+   "seat": 1,
+   "k": 1,
+   "live_bid": 95,
+   "live_bid_cpu_s": 1.7405390000000125,
+   "legal": 8,
+   "evaluated": true,
+   "hits": 49,
+   "W": 64,
+   "exclusion_rate": 0.234375,
+   "eval_cpu_s": 1.2627990000000011,
+   "argmax": {
+    "F": 94,
+    "R": 94,
+    "RC": 95
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.011811669515588378,
+   "max_abs_RC_minus_R": 0.001023891134833803,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.001023891134833803,
+   "gap_spread_F": 0.041493230703053996,
+   "validation": {
+    "worlds": 256,
+    "hits": 197,
+    "actions": [
+     94,
+     95
+    ],
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": -0.0006286089738764738,
+     "se": 0.00048008441189587,
+     "n": 197
+    }
+   }
+  },
+  {
+   "source": 7,
+   "seat": 2,
+   "k": 2,
+   "live_bid": 93,
+   "live_bid_cpu_s": 2.3771270000000015,
+   "legal": 6,
+   "evaluated": true,
+   "hits": 31,
+   "W": 64,
+   "exclusion_rate": 0.515625,
+   "eval_cpu_s": 2.5805450000000008,
+   "argmax": {
+    "F": 81,
+    "R": 93,
+    "RC": 93
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.011644891460403622,
+   "max_abs_RC_minus_R": 0.006476711842321577,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.04217734755366109,
+   "validation": {
+    "worlds": 256,
+    "hits": 140,
+    "actions": [
+     93,
+     81
+    ],
+    "R_pick_minus_F_pick_under_R": {
+     "mean": -0.00082539739087224,
+     "se": 0.0007356564022507669,
+     "n": 140
+    },
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": -0.0012396188186747687,
+     "se": 0.0009527743693814421,
+     "n": 140
+    }
+   }
+  },
+  {
+   "source": 7,
+   "seat": 3,
+   "k": 3,
+   "live_bid": 111,
+   "live_bid_cpu_s": 1.278694999999999,
+   "legal": 7,
+   "evaluated": true,
+   "hits": 46,
+   "W": 64,
+   "exclusion_rate": 0.28125,
+   "eval_cpu_s": 1.5521960000000092,
+   "argmax": {
+    "F": 111,
+    "R": 111,
+    "RC": 111
+   },
+   "live_bid_in_F_argmax": true,
+   "max_abs_R_minus_F": 0.002366327116286142,
+   "max_abs_RC_minus_R": 0.001433983566644399,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.0452149934717454
+  },
+  {
+   "source": 8,
+   "seat": 1,
+   "k": 0,
+   "live_bid": 93,
+   "live_bid_cpu_s": 1.7421129999999891,
+   "legal": 8,
+   "evaluated": false
+  },
+  {
+   "source": 8,
+   "seat": 2,
+   "k": 1,
+   "live_bid": 96,
+   "live_bid_cpu_s": 2.6097139999999968,
+   "legal": 7,
+   "evaluated": true,
+   "hits": 56,
+   "W": 64,
+   "exclusion_rate": 0.125,
+   "eval_cpu_s": 2.8692559999999787,
+   "argmax": {
+    "F": 85,
+    "R": 85,
+    "RC": 85
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.005384970410627179,
+   "max_abs_RC_minus_R": 0.0006416795575725186,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.00871675941743888
+  },
+  {
+   "source": 8,
+   "seat": 3,
+   "k": 2,
+   "live_bid": 95,
+   "live_bid_cpu_s": 3.1184849999999926,
+   "legal": 8,
+   "evaluated": true,
+   "hits": 33,
+   "W": 64,
+   "exclusion_rate": 0.484375,
+   "eval_cpu_s": 3.609053999999986,
+   "argmax": {
+    "F": 98,
+    "R": 122,
+    "RC": 98
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.010970667133347668,
+   "max_abs_RC_minus_R": 0.013265756551514973,
+   "regret_of_F_under_R": 0.006029054127407797,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.013950199238024652,
+   "validation": {
+    "worlds": 256,
+    "hits": 149,
+    "actions": [
+     98,
+     122
+    ],
+    "R_pick_minus_F_pick_under_R": {
+     "mean": -0.01316434121221904,
+     "se": 0.007115639957161463,
+     "n": 149
+    }
+   }
+  },
+  {
+   "source": 8,
+   "seat": 0,
+   "k": 3,
+   "live_bid": 119,
+   "live_bid_cpu_s": 1.0848829999999907,
+   "legal": 5,
+   "evaluated": true,
+   "hits": 50,
+   "W": 64,
+   "exclusion_rate": 0.21875,
+   "eval_cpu_s": 1.5907129999999938,
+   "argmax": {
+    "F": 108,
+    "R": 108,
+    "RC": 108
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.00725751859252341,
+   "max_abs_RC_minus_R": 0.0018115248531103134,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.03877112449845299
+  },
+  {
+   "source": 9,
+   "seat": 2,
+   "k": 0,
+   "live_bid": 98,
+   "live_bid_cpu_s": 5.453444000000019,
+   "legal": 8,
+   "evaluated": false
+  },
+  {
+   "source": 9,
+   "seat": 3,
+   "k": 1,
+   "live_bid": 81,
+   "live_bid_cpu_s": 1.5854209999999966,
+   "legal": 7,
+   "evaluated": true,
+   "hits": 50,
+   "W": 64,
+   "exclusion_rate": 0.21875,
+   "eval_cpu_s": 2.6042520000000025,
+   "argmax": {
+    "F": 81,
+    "R": 81,
+    "RC": 81
+   },
+   "live_bid_in_F_argmax": true,
+   "max_abs_R_minus_F": 0.013625860017491505,
+   "max_abs_RC_minus_R": 0.0,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.02950393219362013
+  },
+  {
+   "source": 9,
+   "seat": 0,
+   "k": 2,
+   "live_bid": 107,
+   "live_bid_cpu_s": 1.083359999999999,
+   "legal": 6,
+   "evaluated": true,
+   "hits": 62,
+   "W": 64,
+   "exclusion_rate": 0.03125,
+   "eval_cpu_s": 0.6015150000000062,
+   "argmax": {
+    "F": 123,
+    "R": 123,
+    "RC": 123
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.0019752222785515833,
+   "max_abs_RC_minus_R": 0.0009353387079411938,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.06807064142776653
+  },
+  {
+   "source": 10,
+   "seat": 3,
+   "k": 0,
+   "live_bid": 93,
+   "live_bid_cpu_s": 1.9405129999999815,
+   "legal": 9,
+   "evaluated": false
+  },
+  {
+   "source": 10,
+   "seat": 0,
+   "k": 1,
+   "live_bid": 92,
+   "live_bid_cpu_s": 1.3522980000000189,
+   "legal": 7,
+   "evaluated": true,
+   "hits": 50,
+   "W": 64,
+   "exclusion_rate": 0.21875,
+   "eval_cpu_s": 1.5254119999999887,
+   "argmax": {
+    "F": 92,
+    "R": 105,
+    "RC": 105
+   },
+   "live_bid_in_F_argmax": true,
+   "max_abs_R_minus_F": 0.01473851371440105,
+   "max_abs_RC_minus_R": 0.002189817316830158,
+   "regret_of_F_under_R": 0.00023313373327255244,
+   "regret_of_F_under_RC": 0.00011148698627948782,
+   "gap_spread_F": 0.015045177075080574,
+   "validation": {
+    "worlds": 256,
+    "hits": 200,
+    "actions": [
+     92,
+     105
+    ],
+    "R_pick_minus_F_pick_under_R": {
+     "mean": -0.01817080964334309,
+     "se": 0.003730423292418313,
+     "n": 200
+    },
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": -0.018715519616380336,
+     "se": 0.0036902935710833905,
+     "n": 200
+    }
+   }
+  },
+  {
+   "source": 10,
+   "seat": 1,
+   "k": 2,
+   "live_bid": 83,
+   "live_bid_cpu_s": 0.6844969999999932,
+   "legal": 5,
+   "evaluated": true,
+   "hits": 36,
+   "W": 64,
+   "exclusion_rate": 0.4375,
+   "eval_cpu_s": 0.6497059999999806,
+   "argmax": {
+    "F": 80,
+    "R": 109,
+    "RC": 109
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.006178453483799886,
+   "max_abs_RC_minus_R": 0.001645982006771697,
+   "regret_of_F_under_R": 0.0020667754320634734,
+   "regret_of_F_under_RC": 0.0009443982918229368,
+   "gap_spread_F": 0.0039971394871827215,
+   "validation": {
+    "worlds": 256,
+    "hits": 156,
+    "actions": [
+     80,
+     109
+    ],
+    "R_pick_minus_F_pick_under_R": {
+     "mean": -0.007257080827959073,
+     "se": 0.004194821766261961,
+     "n": 156
+    },
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": -0.005806820622334878,
+     "se": 0.004098413024414399,
+     "n": 156
+    }
+   }
+  },
+  {
+   "source": 10,
+   "seat": 2,
+   "k": 3,
+   "live_bid": 111,
+   "live_bid_cpu_s": 6.206254000000001,
+   "legal": 7,
+   "evaluated": true,
+   "hits": 32,
+   "W": 64,
+   "exclusion_rate": 0.5,
+   "eval_cpu_s": 7.273758000000015,
+   "argmax": {
+    "F": 121,
+    "R": 121,
+    "RC": 108
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.029427053115796298,
+   "max_abs_RC_minus_R": 0.002936244069132954,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.000546141411177814,
+   "gap_spread_F": 0.009009746398078278,
+   "validation": {
+    "worlds": 256,
+    "hits": 151,
+    "actions": [
+     108,
+     121
+    ],
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": -0.004605030209220798,
+     "se": 0.002121146248192688,
+     "n": 151
+    }
+   }
+  },
+  {
+   "source": 11,
+   "seat": 0,
+   "k": 0,
+   "live_bid": 81,
+   "live_bid_cpu_s": 2.764731999999981,
+   "legal": 5,
+   "evaluated": false
+  },
+  {
+   "source": 11,
+   "seat": 1,
+   "k": 1,
+   "live_bid": 93,
+   "live_bid_cpu_s": 2.7227989999999807,
+   "legal": 8,
+   "evaluated": true,
+   "hits": 57,
+   "W": 64,
+   "exclusion_rate": 0.109375,
+   "eval_cpu_s": 1.9968840000000228,
+   "argmax": {
+    "F": 120,
+    "R": 120,
+    "RC": 120
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.0005143239436540426,
+   "max_abs_RC_minus_R": 0.0003539525429930603,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.004914550081593916
+  },
+  {
+   "source": 11,
+   "seat": 2,
+   "k": 2,
+   "live_bid": 97,
+   "live_bid_cpu_s": 3.805041999999986,
+   "legal": 7,
+   "evaluated": true,
+   "hits": 28,
+   "W": 64,
+   "exclusion_rate": 0.5625,
+   "eval_cpu_s": 4.21346299999999,
+   "argmax": {
+    "F": 97,
+    "R": 97,
+    "RC": 95
+   },
+   "live_bid_in_F_argmax": true,
+   "max_abs_R_minus_F": 0.008801061589370614,
+   "max_abs_RC_minus_R": 0.013668171928397248,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.00021722633391618729,
+   "gap_spread_F": 0.0471051481727045,
+   "validation": {
+    "worlds": 256,
+    "hits": 107,
+    "actions": [
+     97,
+     95
+    ],
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": -8.728804293079912e-05,
+     "se": 8.728804293079909e-05,
+     "n": 107
+    }
+   }
+  },
+  {
+   "source": 11,
+   "seat": 3,
+   "k": 3,
+   "live_bid": 111,
+   "live_bid_cpu_s": 1.1145640000000014,
+   "legal": 8,
+   "evaluated": true,
+   "hits": 42,
+   "W": 64,
+   "exclusion_rate": 0.34375,
+   "eval_cpu_s": 0.8938089999999761,
+   "argmax": {
+    "F": 111,
+    "R": 119,
+    "RC": 110
+   },
+   "live_bid_in_F_argmax": true,
+   "max_abs_R_minus_F": 0.0026657112674521553,
+   "max_abs_RC_minus_R": 0.003530561746585937,
+   "regret_of_F_under_R": 0.001700625932287602,
+   "regret_of_F_under_RC": 0.0014762238466313887,
+   "gap_spread_F": 0.02077237711637281,
+   "validation": {
+    "worlds": 256,
+    "hits": 183,
+    "actions": [
+     111,
+     110,
+     119
+    ],
+    "R_pick_minus_F_pick_under_R": {
+     "mean": 0.0004711757653235086,
+     "se": 0.00032677625842838284,
+     "n": 183
+    },
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": 4.377388115463361e-05,
+     "se": 8.404439783240725e-05,
+     "n": 183
+    }
+   }
+  },
+  {
+   "source": 12,
+   "seat": 1,
+   "k": 0,
+   "live_bid": 96,
+   "live_bid_cpu_s": 2.903691999999978,
+   "legal": 8,
+   "evaluated": false
+  },
+  {
+   "source": 12,
+   "seat": 2,
+   "k": 1,
+   "live_bid": 110,
+   "live_bid_cpu_s": 1.4524339999999825,
+   "legal": 6,
+   "evaluated": true,
+   "hits": 55,
+   "W": 64,
+   "exclusion_rate": 0.140625,
+   "eval_cpu_s": 1.0874239999999986,
+   "argmax": {
+    "F": 123,
+    "R": 123,
+    "RC": 107
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.0011377421075435892,
+   "max_abs_RC_minus_R": 0.00031807442957704907,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.00014564764093269456,
+   "gap_spread_F": 0.033098507090471685,
+   "validation": {
+    "worlds": 256,
+    "hits": 232,
+    "actions": [
+     123,
+     107
+    ],
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": 2.043393183628033e-05,
+     "se": 0.0007438386978535291,
+     "n": 232
+    }
+   }
+  },
+  {
+   "source": 13,
+   "seat": 2,
+   "k": 0,
+   "live_bid": 106,
+   "live_bid_cpu_s": 2.232618000000002,
+   "legal": 7,
+   "evaluated": false
+  },
+  {
+   "source": 14,
+   "seat": 3,
+   "k": 0,
+   "live_bid": 95,
+   "live_bid_cpu_s": 3.553436000000005,
+   "legal": 8,
+   "evaluated": false
+  },
+  {
+   "source": 14,
+   "seat": 0,
+   "k": 1,
+   "live_bid": 98,
+   "live_bid_cpu_s": 0.8996249999999861,
+   "legal": 6,
+   "evaluated": true,
+   "hits": 53,
+   "W": 64,
+   "exclusion_rate": 0.171875,
+   "eval_cpu_s": 1.0322810000000118,
+   "argmax": {
+    "F": 82,
+    "R": 82,
+    "RC": 83
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.01008925541965203,
+   "max_abs_RC_minus_R": 0.0008253182091240613,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0003289718462048836,
+   "gap_spread_F": 0.01823015118134208,
+   "validation": {
+    "worlds": 256,
+    "hits": 204,
+    "actions": [
+     82,
+     83
+    ],
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": 0.0006034005268969957,
+     "se": 0.00039867925727813986,
+     "n": 204
+    }
+   }
+  },
+  {
+   "source": 14,
+   "seat": 1,
+   "k": 2,
+   "live_bid": 96,
+   "live_bid_cpu_s": 1.8118809999999996,
+   "legal": 8,
+   "evaluated": true,
+   "hits": 32,
+   "W": 64,
+   "exclusion_rate": 0.5,
+   "eval_cpu_s": 1.768148999999994,
+   "argmax": {
+    "F": 96,
+    "R": 96,
+    "RC": 93
+   },
+   "live_bid_in_F_argmax": true,
+   "max_abs_R_minus_F": 0.0054745631059631705,
+   "max_abs_RC_minus_R": 0.0017474707565270364,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.00019007304217666388,
+   "gap_spread_F": 0.024705114075914025,
+   "validation": {
+    "worlds": 256,
+    "hits": 105,
+    "actions": [
+     96,
+     93
+    ],
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": 0.0005325625162749064,
+     "se": 0.0005325625162749063,
+     "n": 105
+    }
+   }
+  },
+  {
+   "source": 14,
+   "seat": 2,
+   "k": 3,
+   "live_bid": 121,
+   "live_bid_cpu_s": 2.0879019999999855,
+   "legal": 6,
+   "evaluated": true,
+   "hits": 29,
+   "W": 64,
+   "exclusion_rate": 0.546875,
+   "eval_cpu_s": 1.661722999999995,
+   "argmax": {
+    "F": 118,
+    "R": 122,
+    "RC": 122
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.012231883678207944,
+   "max_abs_RC_minus_R": 0.005224139975576567,
+   "regret_of_F_under_R": 0.0036582665453697046,
+   "regret_of_F_under_RC": 0.003658266545369708,
+   "gap_spread_F": 0.011379811214283109,
+   "validation": {
+    "worlds": 256,
+    "hits": 138,
+    "actions": [
+     122,
+     118
+    ],
+    "R_pick_minus_F_pick_under_R": {
+     "mean": 0.0010154683520828469,
+     "se": 0.0013499583142463857,
+     "n": 138
+    },
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": 0.001635597573350305,
+     "se": 0.0016489633981829049,
+     "n": 138
+    }
+   }
+  },
+  {
+   "source": 15,
+   "seat": 0,
+   "k": 0,
+   "live_bid": 98,
+   "live_bid_cpu_s": 4.363452999999993,
+   "legal": 7,
+   "evaluated": false
+  },
+  {
+   "source": 15,
+   "seat": 1,
+   "k": 1,
+   "live_bid": 80,
+   "live_bid_cpu_s": 1.849693000000002,
+   "legal": 8,
+   "evaluated": true,
+   "hits": 40,
+   "W": 64,
+   "exclusion_rate": 0.375,
+   "eval_cpu_s": 1.39274800000004,
+   "argmax": {
+    "F": 81,
+    "R": 81,
+    "RC": 81
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.025701478699920698,
+   "max_abs_RC_minus_R": 0.004881293233484031,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.04483355043339543
+  },
+  {
+   "source": 15,
+   "seat": 2,
+   "k": 2,
+   "live_bid": 119,
+   "live_bid_cpu_s": 1.057546000000002,
+   "legal": 7,
+   "evaluated": true,
+   "hits": 43,
+   "W": 64,
+   "exclusion_rate": 0.328125,
+   "eval_cpu_s": 1.5028069999999616,
+   "argmax": {
+    "F": 119,
+    "R": 119,
+    "RC": 122
+   },
+   "live_bid_in_F_argmax": true,
+   "max_abs_R_minus_F": 0.004609496343534353,
+   "max_abs_RC_minus_R": 0.0030075804611971206,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0010262638503728914,
+   "gap_spread_F": 0.012984233180759475,
+   "validation": {
+    "worlds": 256,
+    "hits": 188,
+    "actions": [
+     119,
+     122
+    ],
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": -0.00044614155875875595,
+     "se": 0.0009234280092891915,
+     "n": 188
+    }
+   }
+  },
+  {
+   "source": 16,
+   "seat": 1,
+   "k": 0,
+   "live_bid": 94,
+   "live_bid_cpu_s": 1.978634999999997,
+   "legal": 7,
+   "evaluated": false
+  },
+  {
+   "source": 16,
+   "seat": 2,
+   "k": 1,
+   "live_bid": 85,
+   "live_bid_cpu_s": 1.8072259999999574,
+   "legal": 7,
+   "evaluated": true,
+   "hits": 53,
+   "W": 64,
+   "exclusion_rate": 0.171875,
+   "eval_cpu_s": 1.6495919999999842,
+   "argmax": {
+    "F": 96,
+    "R": 96,
+    "RC": 80
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.008361017315007113,
+   "max_abs_RC_minus_R": 0.0013209815435814409,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0010614955692358737,
+   "gap_spread_F": 0.014959243242628872,
+   "validation": {
+    "worlds": 256,
+    "hits": 195,
+    "actions": [
+     96,
+     80
+    ],
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": -0.00025071648833079215,
+     "se": 0.00017755311566861688,
+     "n": 195
+    }
+   }
+  },
+  {
+   "source": 16,
+   "seat": 3,
+   "k": 2,
+   "live_bid": 111,
+   "live_bid_cpu_s": 1.3481240000000412,
+   "legal": 5,
+   "evaluated": true,
+   "hits": 63,
+   "W": 64,
+   "exclusion_rate": 0.015625,
+   "eval_cpu_s": 1.4130490000000009,
+   "argmax": {
+    "F": 111,
+    "R": 111,
+    "RC": 111
+   },
+   "live_bid_in_F_argmax": true,
+   "max_abs_R_minus_F": 0.0006419381548074046,
+   "max_abs_RC_minus_R": 0.00012715270240155896,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.05993930785916746
+  },
+  {
+   "source": 17,
+   "seat": 2,
+   "k": 0,
+   "live_bid": 108,
+   "live_bid_cpu_s": 2.936401999999987,
+   "legal": 9,
+   "evaluated": false
+  },
+  {
+   "source": 18,
+   "seat": 3,
+   "k": 0,
+   "live_bid": 95,
+   "live_bid_cpu_s": 3.4475380000000087,
+   "legal": 7,
+   "evaluated": false
+  },
+  {
+   "source": 18,
+   "seat": 0,
+   "k": 1,
+   "live_bid": 98,
+   "live_bid_cpu_s": 2.5653990000000135,
+   "legal": 7,
+   "evaluated": true,
+   "hits": 48,
+   "W": 64,
+   "exclusion_rate": 0.25,
+   "eval_cpu_s": 2.3720270000000028,
+   "argmax": {
+    "F": 92,
+    "R": 106,
+    "RC": 106
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.008521433851759259,
+   "max_abs_RC_minus_R": 0.0009202790679410109,
+   "regret_of_F_under_R": 0.007638617496316631,
+   "regret_of_F_under_RC": 0.008120780539078018,
+   "gap_spread_F": 0.004902310582110658,
+   "validation": {
+    "worlds": 256,
+    "hits": 211,
+    "actions": [
+     92,
+     106
+    ],
+    "R_pick_minus_F_pick_under_R": {
+     "mean": -0.012693998169913111,
+     "se": 0.00519819544066763,
+     "n": 211
+    },
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": -0.012684664993560144,
+     "se": 0.005191817598379385,
+     "n": 211
+    }
+   }
+  },
+  {
+   "source": 18,
+   "seat": 1,
+   "k": 2,
+   "live_bid": 124,
+   "live_bid_cpu_s": 1.5883910000000014,
+   "legal": 6,
+   "evaluated": true,
+   "hits": 45,
+   "W": 64,
+   "exclusion_rate": 0.296875,
+   "eval_cpu_s": 1.1241469999999936,
+   "argmax": {
+    "F": 107,
+    "R": 107,
+    "RC": 123
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.004454300090179053,
+   "max_abs_RC_minus_R": 0.001377808923522631,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.001377808923522631,
+   "gap_spread_F": 0.03275507621583529,
+   "validation": {
+    "worlds": 256,
+    "hits": 191,
+    "actions": [
+     107,
+     123
+    ],
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": 0.0007870543104503791,
+     "se": 0.0008935881619031588,
+     "n": 191
+    }
+   }
+  },
+  {
+   "source": 19,
+   "seat": 0,
+   "k": 0,
+   "live_bid": 94,
+   "live_bid_cpu_s": 1.7842339999999695,
+   "legal": 5,
+   "evaluated": false
+  },
+  {
+   "source": 19,
+   "seat": 1,
+   "k": 1,
+   "live_bid": 98,
+   "live_bid_cpu_s": 2.1214769999999703,
+   "legal": 8,
+   "evaluated": true,
+   "hits": 51,
+   "W": 64,
+   "exclusion_rate": 0.203125,
+   "eval_cpu_s": 1.1940309999999954,
+   "argmax": {
+    "F": 81,
+    "R": 81,
+    "RC": 81
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.006799349705140817,
+   "max_abs_RC_minus_R": 0.002397149472552187,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.04612832557177171
+  },
+  {
+   "source": 19,
+   "seat": 2,
+   "k": 2,
+   "live_bid": 92,
+   "live_bid_cpu_s": 3.205619000000013,
+   "legal": 9,
+   "evaluated": true,
+   "hits": 23,
+   "W": 64,
+   "exclusion_rate": 0.640625,
+   "eval_cpu_s": 2.9089669999999614,
+   "argmax": {
+    "F": 79,
+    "R": 79,
+    "RC": 79
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.03724544209367393,
+   "max_abs_RC_minus_R": 0.0009668215137460974,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.0570879282313399
+  },
+  {
+   "source": 19,
+   "seat": 3,
+   "k": 3,
+   "live_bid": 121,
+   "live_bid_cpu_s": 1.0955419999999663,
+   "legal": 6,
+   "evaluated": true,
+   "hits": 28,
+   "W": 64,
+   "exclusion_rate": 0.5625,
+   "eval_cpu_s": 0.9291069999999877,
+   "argmax": {
+    "F": 121,
+    "R": 121,
+    "RC": 121
+   },
+   "live_bid_in_F_argmax": true,
+   "max_abs_R_minus_F": 0.023328168737602288,
+   "max_abs_RC_minus_R": 0.00033356502119984144,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.014618585642892867
+  },
+  {
+   "source": 20,
+   "seat": 1,
+   "k": 0,
+   "live_bid": 98,
+   "live_bid_cpu_s": 2.1858720000000176,
+   "legal": 7,
+   "evaluated": false
+  },
+  {
+   "source": 20,
+   "seat": 2,
+   "k": 1,
+   "live_bid": 81,
+   "live_bid_cpu_s": 1.7992880000000468,
+   "legal": 8,
+   "evaluated": true,
+   "hits": 62,
+   "W": 64,
+   "exclusion_rate": 0.03125,
+   "eval_cpu_s": 1.990274999999997,
+   "argmax": {
+    "F": 81,
+    "R": 106,
+    "RC": 106
+   },
+   "live_bid_in_F_argmax": true,
+   "max_abs_R_minus_F": 0.0029700376467043234,
+   "max_abs_RC_minus_R": 0.00012920355244028952,
+   "regret_of_F_under_R": 0.0012639420888116283,
+   "regret_of_F_under_RC": 0.0011347385363713388,
+   "gap_spread_F": 0.0018312614993192255,
+   "validation": {
+    "worlds": 256,
+    "hits": 230,
+    "actions": [
+     81,
+     106
+    ],
+    "R_pick_minus_F_pick_under_R": {
+     "mean": 0.001159903803921264,
+     "se": 0.0038653380830301473,
+     "n": 230
+    },
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": 0.0017486627578087474,
+     "se": 0.003880562661062952,
+     "n": 230
+    }
+   }
+  },
+  {
+   "source": 20,
+   "seat": 3,
+   "k": 2,
+   "live_bid": 96,
+   "live_bid_cpu_s": 3.0942949999999882,
+   "legal": 8,
+   "evaluated": true,
+   "hits": 27,
+   "W": 64,
+   "exclusion_rate": 0.578125,
+   "eval_cpu_s": 2.042023000000029,
+   "argmax": {
+    "F": 96,
+    "R": 96,
+    "RC": 97
+   },
+   "live_bid_in_F_argmax": true,
+   "max_abs_R_minus_F": 0.02163603139234948,
+   "max_abs_RC_minus_R": 0.005563669458583546,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.016329952573869377,
+   "validation": {
+    "worlds": 256,
+    "hits": 124,
+    "actions": [
+     97,
+     96
+    ],
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": 0.00035555103433228307,
+     "se": 0.00029752182590633445,
+     "n": 124
+    }
+   }
+  },
+  {
+   "source": 20,
+   "seat": 0,
+   "k": 3,
+   "live_bid": 111,
+   "live_bid_cpu_s": 1.1349930000000086,
+   "legal": 5,
+   "evaluated": true,
+   "hits": 34,
+   "W": 64,
+   "exclusion_rate": 0.46875,
+   "eval_cpu_s": 1.0860550000000444,
+   "argmax": {
+    "F": 111,
+    "R": 111,
+    "RC": 111
+   },
+   "live_bid_in_F_argmax": true,
+   "max_abs_R_minus_F": 0.009582146159921062,
+   "max_abs_RC_minus_R": 0.0002772025763988495,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.020483227795921266
+  },
+  {
+   "source": 21,
+   "seat": 2,
+   "k": 0,
+   "live_bid": 79,
+   "live_bid_cpu_s": 4.147890000000018,
+   "legal": 8,
+   "evaluated": false
+  },
+  {
+   "source": 21,
+   "seat": 3,
+   "k": 1,
+   "live_bid": 96,
+   "live_bid_cpu_s": 2.1788760000000025,
+   "legal": 6,
+   "evaluated": true,
+   "hits": 50,
+   "W": 64,
+   "exclusion_rate": 0.21875,
+   "eval_cpu_s": 1.863014000000021,
+   "argmax": {
+    "F": 83,
+    "R": 83,
+    "RC": 122
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.00909911488299258,
+   "max_abs_RC_minus_R": 0.003118403889238834,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.00042566318064928054,
+   "gap_spread_F": 0.011791855591582134,
+   "validation": {
+    "worlds": 256,
+    "hits": 222,
+    "actions": [
+     83,
+     122
+    ],
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": -0.015023972025258583,
+     "se": 0.004195492842163556,
+     "n": 222
+    }
+   }
+  },
+  {
+   "source": 21,
+   "seat": 0,
+   "k": 2,
+   "live_bid": 110,
+   "live_bid_cpu_s": 2.945440000000019,
+   "legal": 8,
+   "evaluated": true,
+   "hits": 45,
+   "W": 64,
+   "exclusion_rate": 0.296875,
+   "eval_cpu_s": 2.522397000000012,
+   "argmax": {
+    "F": 121,
+    "R": 121,
+    "RC": 121
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.00857310149197777,
+   "max_abs_RC_minus_R": 0.0029553587237993876,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.012448273570043966
+  },
+  {
+   "source": 22,
+   "seat": 3,
+   "k": 0,
+   "live_bid": 96,
+   "live_bid_cpu_s": 1.0660460000000285,
+   "legal": 8,
+   "evaluated": false
+  },
+  {
+   "source": 22,
+   "seat": 0,
+   "k": 1,
+   "live_bid": 83,
+   "live_bid_cpu_s": 2.5592960000000176,
+   "legal": 9,
+   "evaluated": true,
+   "hits": 44,
+   "W": 64,
+   "exclusion_rate": 0.3125,
+   "eval_cpu_s": 2.7323149999999714,
+   "argmax": {
+    "F": 83,
+    "R": 83,
+    "RC": 83
+   },
+   "live_bid_in_F_argmax": true,
+   "max_abs_R_minus_F": 0.016993020999838005,
+   "max_abs_RC_minus_R": 0.0034140698950399055,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.030260195373557508
+  },
+  {
+   "source": 22,
+   "seat": 1,
+   "k": 2,
+   "live_bid": 109,
+   "live_bid_cpu_s": 0.9662680000000137,
+   "legal": 5,
+   "evaluated": true,
+   "hits": 48,
+   "W": 64,
+   "exclusion_rate": 0.25,
+   "eval_cpu_s": 0.5574650000000361,
+   "argmax": {
+    "F": 109,
+    "R": 109,
+    "RC": 109
+   },
+   "live_bid_in_F_argmax": true,
+   "max_abs_R_minus_F": 0.0016062093394187613,
+   "max_abs_RC_minus_R": 0.003129564070453242,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.051401413744315505
+  },
+  {
+   "source": 23,
+   "seat": 0,
+   "k": 0,
+   "live_bid": 81,
+   "live_bid_cpu_s": 2.260197000000005,
+   "legal": 7,
+   "evaluated": false
+  },
+  {
+   "source": 23,
+   "seat": 1,
+   "k": 1,
+   "live_bid": 84,
+   "live_bid_cpu_s": 4.200680000000034,
+   "legal": 7,
+   "evaluated": true,
+   "hits": 44,
+   "W": 64,
+   "exclusion_rate": 0.3125,
+   "eval_cpu_s": 3.725432000000012,
+   "argmax": {
+    "F": 93,
+    "R": 93,
+    "RC": 84
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.006707551563687792,
+   "max_abs_RC_minus_R": 0.006619054697115313,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.003414069895039905,
+   "gap_spread_F": 0.021434613998280838,
+   "validation": {
+    "worlds": 256,
+    "hits": 183,
+    "actions": [
+     93,
+     84
+    ],
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": 7.614315248252264e-05,
+     "se": 0.0011020501093191766,
+     "n": 183
+    }
+   }
+  },
+  {
+   "source": 23,
+   "seat": 2,
+   "k": 2,
+   "live_bid": 83,
+   "live_bid_cpu_s": 1.9442899999999668,
+   "legal": 6,
+   "evaluated": true,
+   "hits": 51,
+   "W": 64,
+   "exclusion_rate": 0.203125,
+   "eval_cpu_s": 1.7688959999999838,
+   "argmax": {
+    "F": 83,
+    "R": 83,
+    "RC": 83
+   },
+   "live_bid_in_F_argmax": true,
+   "max_abs_R_minus_F": 0.012641173273247356,
+   "max_abs_RC_minus_R": 0.0010963294508994793,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.002600265870569274
+  },
+  {
+   "source": 23,
+   "seat": 3,
+   "k": 3,
+   "live_bid": 119,
+   "live_bid_cpu_s": 1.3786999999999807,
+   "legal": 8,
+   "evaluated": true,
+   "hits": 44,
+   "W": 64,
+   "exclusion_rate": 0.3125,
+   "eval_cpu_s": 1.2696620000000394,
+   "argmax": {
+    "F": 105,
+    "R": 105,
+    "RC": 105
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.01124175329195251,
+   "max_abs_RC_minus_R": 0.0008199479092251185,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.0018931871163658798
+  },
+  {
+   "source": 24,
+   "seat": 1,
+   "k": 0,
+   "live_bid": 84,
+   "live_bid_cpu_s": 2.529604000000006,
+   "legal": 8,
+   "evaluated": false
+  },
+  {
+   "source": 24,
+   "seat": 2,
+   "k": 1,
+   "live_bid": 83,
+   "live_bid_cpu_s": 1.8335670000000164,
+   "legal": 6,
+   "evaluated": true,
+   "hits": 37,
+   "W": 64,
+   "exclusion_rate": 0.421875,
+   "eval_cpu_s": 1.8544979999999782,
+   "argmax": {
+    "F": 94,
+    "R": 94,
+    "RC": 83
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.038260103823189194,
+   "max_abs_RC_minus_R": 0.0006009971571935193,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.00022038575765248892,
+   "gap_spread_F": 0.05397613538661972,
+   "validation": {
+    "worlds": 256,
+    "hits": 173,
+    "actions": [
+     94,
+     83
+    ],
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": 0.00030869548074427365,
+     "se": 0.0005734361560882088,
+     "n": 173
+    }
+   }
+  },
+  {
+   "source": 24,
+   "seat": 3,
+   "k": 2,
+   "live_bid": 98,
+   "live_bid_cpu_s": 1.586342000000002,
+   "legal": 8,
+   "evaluated": true,
+   "hits": 29,
+   "W": 64,
+   "exclusion_rate": 0.546875,
+   "eval_cpu_s": 1.0089419999999905,
+   "argmax": {
+    "F": 97,
+    "R": 97,
+    "RC": 97
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.005541108751364438,
+   "max_abs_RC_minus_R": 0.0,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.010751233028713614
+  },
+  {
+   "source": 24,
+   "seat": 0,
+   "k": 3,
+   "live_bid": 122,
+   "live_bid_cpu_s": 0.9022739999999771,
+   "legal": 6,
+   "evaluated": true,
+   "hits": 53,
+   "W": 64,
+   "exclusion_rate": 0.171875,
+   "eval_cpu_s": 1.019108000000017,
+   "argmax": {
+    "F": 106,
+    "R": 106,
+    "RC": 106
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.004927062229604796,
+   "max_abs_RC_minus_R": 0.00015385420817249227,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.054122962639667094
+  },
+  {
+   "source": 25,
+   "seat": 2,
+   "k": 0,
+   "live_bid": 92,
+   "live_bid_cpu_s": 1.51053399999995,
+   "legal": 8,
+   "evaluated": false
+  },
+  {
+   "source": 25,
+   "seat": 3,
+   "k": 1,
+   "live_bid": 80,
+   "live_bid_cpu_s": 4.529223000000002,
+   "legal": 10,
+   "evaluated": true,
+   "hits": 41,
+   "W": 64,
+   "exclusion_rate": 0.359375,
+   "eval_cpu_s": 5.398571000000004,
+   "argmax": {
+    "F": 97,
+    "R": 109,
+    "RC": 109
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.03789576445280279,
+   "max_abs_RC_minus_R": 0.0015122293063053272,
+   "regret_of_F_under_R": 0.004620506269175832,
+   "regret_of_F_under_RC": 0.005984385884026202,
+   "gap_spread_F": 0.03755255922442302,
+   "validation": {
+    "worlds": 256,
+    "hits": 168,
+    "actions": [
+     97,
+     109
+    ],
+    "R_pick_minus_F_pick_under_R": {
+     "mean": -0.01572107264239873,
+     "se": 0.005307333662444591,
+     "n": 168
+    },
+    "RC_pick_minus_F_pick_under_RC": {
+     "mean": -0.016150045020150997,
+     "se": 0.005314186077365811,
+     "n": 168
+    }
+   }
+  },
+  {
+   "source": 25,
+   "seat": 0,
+   "k": 2,
+   "live_bid": 124,
+   "live_bid_cpu_s": 1.09783699999997,
+   "legal": 4,
+   "evaluated": true,
+   "hits": 53,
+   "W": 64,
+   "exclusion_rate": 0.171875,
+   "eval_cpu_s": 1.2313010000000304,
+   "argmax": {
+    "F": 120,
+    "R": 120,
+    "RC": 120
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.001894916158459447,
+   "max_abs_RC_minus_R": 0.0003836126822345659,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.0341563489055261
+  },
+  {
+   "source": 26,
+   "seat": 3,
+   "k": 0,
+   "live_bid": 109,
+   "live_bid_cpu_s": 1.5558369999999968,
+   "legal": 8,
+   "evaluated": false
+  },
+  {
+   "source": 27,
+   "seat": 0,
+   "k": 0,
+   "live_bid": 83,
+   "live_bid_cpu_s": 3.407776999999953,
+   "legal": 7,
+   "evaluated": false
+  },
+  {
+   "source": 27,
+   "seat": 1,
+   "k": 1,
+   "live_bid": 80,
+   "live_bid_cpu_s": 1.3532920000000104,
+   "legal": 7,
+   "evaluated": true,
+   "hits": 52,
+   "W": 64,
+   "exclusion_rate": 0.1875,
+   "eval_cpu_s": 1.6615279999999757,
+   "argmax": {
+    "F": 94,
+    "R": 94,
+    "RC": 94
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.010905790514348505,
+   "max_abs_RC_minus_R": 0.0,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.02003056072862819
+  },
+  {
+   "source": 27,
+   "seat": 2,
+   "k": 2,
+   "live_bid": 105,
+   "live_bid_cpu_s": 1.5814900000000307,
+   "legal": 5,
+   "evaluated": true,
+   "hits": 36,
+   "W": 64,
+   "exclusion_rate": 0.4375,
+   "eval_cpu_s": 1.5047559999999862,
+   "argmax": {
+    "F": 93,
+    "R": 93,
+    "RC": 93
+   },
+   "live_bid_in_F_argmax": false,
+   "max_abs_R_minus_F": 0.007114475563867018,
+   "max_abs_RC_minus_R": 0.0,
+   "regret_of_F_under_R": 0.0,
+   "regret_of_F_under_RC": 0.0,
+   "gap_spread_F": 0.010150078654987738
+  },
+  {
+   "source": 28,
+   "seat": 1,
+   "k": 0,
+   "live_bid": 107,
+   "live_bid_cpu_s": 1.2620229999999992,
+   "legal": 6,
+   "evaluated": false
+  },
+  {
+   "source": 29,
+   "seat": 2,
+   "k": 0,
+   "live_bid": 119,
+   "live_bid_cpu_s": 2.4714930000000095,
+   "legal": 7,
+   "evaluated": false
+  }
+ ]
+}

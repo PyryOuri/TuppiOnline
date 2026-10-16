@@ -1,0 +1,261 @@
+{
+  "schema": "tuppi.cheap_wins.final_validation.v1",
+  "status": "PREPARATION_READY",
+  "package_sha256": "89ff82546ea2b8d22c2c1f621b87cee0ea6f6ccd3cfff9294adc841f129d0472",
+  "sealed_evidence_files": 53,
+  "local_links_checked": 19,
+  "broken_links": [],
+  "source_drift": [],
+  "scientific_plans_executed": false,
+  "production_integration": false,
+  "commands": [
+    {
+      "command": [
+        "verify"
+      ],
+      "result": {
+        "frozen_files": 293,
+        "native_builds": [
+          "rebuilt",
+          "reward_bucket"
+        ],
+        "sealed": true
+      }
+    },
+    {
+      "command": [
+        "preview",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/configs/heuristic_guard_costing.json"
+      ],
+      "result": {
+        "name": "heuristic_guard_costing",
+        "stage": "costing",
+        "jobs": 3,
+        "workers": 1,
+        "cpu_reserved_seconds": 540,
+        "wall_reserved_seconds": 720,
+        "status": "PREPARED_NOT_EXECUTED",
+        "automatic_confirmation": false
+      }
+    },
+    {
+      "command": [
+        "preview",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/configs/match_costing.json"
+      ],
+      "result": {
+        "name": "match_costing",
+        "stage": "costing",
+        "jobs": 1,
+        "workers": 1,
+        "cpu_reserved_seconds": 600,
+        "wall_reserved_seconds": 660,
+        "status": "PREPARED_NOT_EXECUTED",
+        "automatic_confirmation": false
+      }
+    },
+    {
+      "command": [
+        "preview",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/configs/speed_validation.json"
+      ],
+      "result": {
+        "name": "speed_validation",
+        "stage": "speed_validation",
+        "jobs": 4,
+        "workers": 1,
+        "cpu_reserved_seconds": 960,
+        "wall_reserved_seconds": 1200,
+        "status": "PREPARED_NOT_EXECUTED",
+        "automatic_confirmation": false
+      }
+    },
+    {
+      "command": [
+        "preview",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/configs/strength_costing.json"
+      ],
+      "result": {
+        "name": "strength_costing",
+        "stage": "costing",
+        "jobs": 6,
+        "workers": 1,
+        "cpu_reserved_seconds": 1800,
+        "wall_reserved_seconds": 2160,
+        "status": "PREPARED_NOT_EXECUTED",
+        "automatic_confirmation": false
+      }
+    },
+    {
+      "command": [
+        "compare",
+        "checks/pipeline_smoke.json",
+        "checks/pipeline_smoke.json",
+        "--out",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/validation/identity_comparison.json"
+      ],
+      "result": {
+        "schema": "tuppi.cheap_wins.paired.v1",
+        "candidate": "baseline",
+        "reference": "baseline",
+        "base_deals": 2,
+        "paired_deltas": [
+          0.0,
+          0.0
+        ],
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "standard_error": 0.0,
+        "context": {
+          "package_sha256": "b977fe06790aae6c3e8e829ff2a20557727e6d948c87d7e2b5ebb2793a5104d8",
+          "controller_lifecycle": "fresh_indexed_game",
+          "design": "4_rotations_2_teams",
+          "qualification": "preparation smoke"
+        },
+        "qualification": "Candidate minus reference against the same opponent; normal interval across independent parent bundles. No multiple-comparison or tuning adjustment."
+      }
+    },
+    {
+      "command": [
+        "compare_traces",
+        "checks/w1024_qualification/reward_bucket_result.json",
+        "checks/w1024_qualification/baseline_result.json",
+        "--out",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/validation/reward_bucket_comparison.json"
+      ],
+      "result": {
+        "schema": "tuppi.cheap_wins.trace_comparison.v1",
+        "candidate": "reward_bucket",
+        "reference": "baseline",
+        "fingerprints_identical": true,
+        "mismatched_deals": [],
+        "deals": 1,
+        "classification": "exact_on_checked_traces",
+        "cpu_reference_over_candidate": 1.290264902406103,
+        "wall_reference_over_candidate": 1.2920123153225158,
+        "qualification": "Fixed-input cost observation. Whole-deal equality is required for an exact speed claim; repeat alternating runs before estimating general speed."
+      }
+    },
+    {
+      "command": [
+        "compare_traces",
+        "checks/w1024_qualification/same_net_result.json",
+        "checks/w1024_qualification/baseline_result.json",
+        "--out",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/validation/same_net_comparison.json"
+      ],
+      "result": {
+        "schema": "tuppi.cheap_wins.trace_comparison.v1",
+        "candidate": "same_net",
+        "reference": "baseline",
+        "fingerprints_identical": true,
+        "mismatched_deals": [],
+        "deals": 1,
+        "classification": "exact_on_checked_traces",
+        "cpu_reference_over_candidate": 1.1180319777584762,
+        "wall_reference_over_candidate": 1.121521347786468,
+        "qualification": "Fixed-input cost observation. Whole-deal equality is required for an exact speed claim; repeat alternating runs before estimating general speed."
+      }
+    }
+  ],
+  "links": [
+    {
+      "file": "README.md",
+      "target": "PROTOCOL.md",
+      "exists": true
+    },
+    {
+      "file": "README.md",
+      "target": "../tuppi_cheap_wins_assessment_20261014/REPORT.md",
+      "exists": true
+    },
+    {
+      "file": "README.md",
+      "target": "checks/w1024_qualification/comparison.json",
+      "exists": true
+    },
+    {
+      "file": "README.md",
+      "target": "checks/w1024_qualification/same_net_comparison.json",
+      "exists": true
+    },
+    {
+      "file": "README.md",
+      "target": "FROZEN.json",
+      "exists": true
+    },
+    {
+      "file": "README.md",
+      "target": "candidates.py",
+      "exists": true
+    },
+    {
+      "file": "README.md",
+      "target": "build_native.py",
+      "exists": true
+    },
+    {
+      "file": "README.md",
+      "target": "NATIVE_BUILD.json",
+      "exists": true
+    },
+    {
+      "file": "README.md",
+      "target": "worker.py",
+      "exists": true
+    },
+    {
+      "file": "README.md",
+      "target": "launch.py",
+      "exists": true
+    },
+    {
+      "file": "README.md",
+      "target": "statistics_tools.py",
+      "exists": true
+    },
+    {
+      "file": "README.md",
+      "target": "PREPARATION_CHECKS.json",
+      "exists": true
+    },
+    {
+      "file": "README.md",
+      "target": "PACKAGE.json",
+      "exists": true
+    },
+    {
+      "file": "PROTOCOL.md",
+      "target": "FROZEN.json",
+      "exists": true
+    },
+    {
+      "file": "PROTOCOL.md",
+      "target": "configs/strength_costing.json",
+      "exists": true
+    },
+    {
+      "file": "PROTOCOL.md",
+      "target": "configs/speed_validation.json",
+      "exists": true
+    },
+    {
+      "file": "PROTOCOL.md",
+      "target": "configs/match_costing.json",
+      "exists": true
+    },
+    {
+      "file": "PROTOCOL.md",
+      "target": "configs/heuristic_guard_costing.json",
+      "exists": true
+    },
+    {
+      "file": "PROTOCOL.md",
+      "target": "PREPARATION_CHECKS.json",
+      "exists": true
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "schema_version": "tuppi.audit.fixture_recipes.v1",
+  "fixtures": [
+    {
+      "id": "F01",
+      "status": "PROPOSED",
+      "runtime_record": null,
+      "construction": "Construct a v3 explicit deal with seat k not forehand; collect earlier legal NOLO commitments through the engine. Export the focal observation before its bid. Verify empty visible show list, correct `bids_locked`,13 own cards, no predecessor hand/bid content, and at least two legal declarations/cards. Separately retain original four hands and actual commits. Pair with a hypothetical layout in which the named deterministic predecessor clone chooses RAMI; the focal observation must stay identical while evaluator-only E differs. Forehand companion control requires E=1. A reached-only fixture alone cannot validate unconditional event weighting.",
+      "evidence_ids": [
+        "E006",
+        "E016",
+        "E017"
+      ]
+    },
+    {
+      "id": "F02",
+      "status": "PROPOSED",
+      "runtime_record": null,
+      "construction": "Use a development explicit deal, four legal NOLO shows, then legal plays until actor is void in led suit with at least two cards in different suit-liability situations. Export completed/current trick order and all public shows; retain no other hands in legal record. Require unequal remaining capacities at this partial trick and, in one companion, two shown cards of the same suit. Enumerate small supplied layouts for the contested oracle; ensure at least one action gap/proxy varies across worlds. Root cannot win the current off-suit trick; do not claim the proxy models future lead allocation. E024's test is the exact within-suit oracle cross-check, not a fabricated full-deal fixture.",
+      "evidence_ids": [
+        "E006",
+        "E016",
+        "E017"
+      ]
+    },
+    {
+      "id": "F03",
+      "status": "PROPOSED",
+      "runtime_record": null,
+      "construction": "Start a v3 development explicit deal, resolve bids and legal sooli decisions, accept the frozen offer policy's choice, stop before give. Export soolaaja's13-card observation and13 exchange actions. Truth retains all original hands and offer selection facts. Require two legal gives with differing downstream transfer value; acceptance-conditioned population metadata is part of the case. A forced accept may be used for a unit test only and must not be labelled naturally accepted pilot data.",
+      "evidence_ids": [
+        "E006",
+        "E016",
+        "E017"
+      ]
+    },
+    {
+      "id": "F04",
+      "status": "PROPOSED",
+      "runtime_record": null,
+      "construction": "Branch F03 on a specified legal g, stop before return. Export partner's14-card own hand, legal13 returns excluding g, and legal `given_card`; returned_card remains unavailable. The giver's remaining12 cards are absent. Recover original P for receiver features by removing g from its14, not by consulting truth. Pair hidden layouts holding this full receiver information fixed; outputs must agree. Add a candidate convention in which informative g is expensive to transfer, so the survival test can reject a poor signal. After return validate13/13,39active/13dead and defender observations without g/r.",
+      "evidence_ids": [
+        "E006",
+        "E016",
+        "E017"
+      ]
+    },
+    {
+      "id": "F05",
+      "status": "PROPOSED",
+      "runtime_record": null,
+      "construction": "Replay a development ordinary NOLO or RAMI deal through ten complete tricks, stop at actual actor with three cards. Export root legal observation and full public history; keep possible layouts evaluator-private. Require complete support\u22652, a non-forced current root choice and a later non-forced choice under at least one branch. Construct independent toy continuations where indistinguishable worlds prefer opposite later actions, and a companion where observable future events separate them. Verify enumeration count independently and reject key collisions. A two-card boundary companion is a control, not primary strategy-fusion evidence. Run v3 round-trip/ruleset preservation before accepting the fixture; current legacy reconstruction is not sufficient.",
+      "evidence_ids": [
+        "E006",
+        "E016",
+        "E017"
+      ]
+    },
+    {
+      "id": "F06",
+      "status": "PROPOSED",
+      "runtime_record": null,
+      "construction": "A pure rules-object fixture can use `MatchScore(48,0)` and validated `DealScore` objects for each winner at different legal margins. DERIVED structural expectations: Team0 win at any positive legal award reaches\u226552 and V0=1; Team1 win resets to0\u20130 rather than awarding Team1 a fresh lead. For nonterminal continuation dealer rotates; terminal future dealer is not needed for V0. Repeat with teams swapped, zero-score awards and an overshoot. These are arithmetic expectations, not measured game outcomes. A rollout fixture additionally needs two feasible differing margins with the same winner and one branch where winner remains uncertain, to prevent unsafe stopping simply because score is48.",
+      "evidence_ids": [
+        "E006",
+        "E016",
+        "E017"
+      ]
+    }
+  ]
+}

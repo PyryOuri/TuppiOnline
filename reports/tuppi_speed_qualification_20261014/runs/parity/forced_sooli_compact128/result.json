@@ -1,0 +1,352 @@
+{
+  "schema": "tuppi.speed_qualification.result.v1",
+  "job": {
+    "id": "forced_sooli_compact128",
+    "mode": "forced_sooli",
+    "variant": "compact128",
+    "worlds": 1024,
+    "parallel": false,
+    "seed": "qualification-fixtures-v1",
+    "samples": 0,
+    "cpu_seconds": 90,
+    "wall_seconds": 120
+  },
+  "rows": [
+    {
+      "exact": {
+        "label": "v3_rules_00:2",
+        "seat": 3,
+        "phase": "SOOLI_OFFER",
+        "contract": "RAMI",
+        "input_sha256": "f990d468caf982c352ec516afef32f44531c0f7673ab2e07a68096225c0f18f6",
+        "legal": [
+          156,
+          157
+        ],
+        "action": 156,
+        "values": {
+          "156": "0x1.7f2254a040000p-5",
+          "157": "-0x1.a7080d1800000p-7"
+        },
+        "rng": 12725293355728953869,
+        "world_counts": {
+          "156": 1024,
+          "157": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 0.25910654198378325,
+      "cpu_seconds": 0.25907199999999997
+    },
+    {
+      "exact": {
+        "label": "v3_rules_00:3",
+        "seat": 3,
+        "phase": "SOOLI_GIVE",
+        "contract": "RAMI",
+        "input_sha256": "a3bc23c1b19599b1ce29a9d59a79fa5b4b4bd6ff2c58b5acf1b7a9327a26b69f",
+        "legal": [
+          199,
+          198,
+          209,
+          197,
+          173,
+          178,
+          160,
+          170,
+          189,
+          180,
+          202,
+          196,
+          164
+        ],
+        "action": 180,
+        "values": {
+          "180": "-0x1.88fa0b4700000p-5",
+          "199": "-0x1.dd19736100000p-5",
+          "198": "-0x1.dd19736100000p-5",
+          "209": "-0x1.dd19736100000p-5",
+          "197": "-0x1.dd19736100000p-5",
+          "173": "-0x1.1b9d8ce300000p-4",
+          "178": "-0x1.d84adb2500000p-5",
+          "160": "-0x1.05620ccd80000p-4",
+          "170": "-0x1.0f99104d00000p-4",
+          "189": "-0x1.ae3b271800000p-5",
+          "202": "-0x1.dd19736100000p-5",
+          "196": "-0x1.206c251f00000p-4",
+          "164": "-0x1.b90bfd9f00000p-5"
+        },
+        "rng": 7003108635826160162,
+        "world_counts": {
+          "180": 1024,
+          "199": 1024,
+          "198": 1024,
+          "209": 1024,
+          "197": 1024,
+          "173": 1024,
+          "178": 1024,
+          "160": 1024,
+          "170": 1024,
+          "189": 1024,
+          "202": 1024,
+          "196": 1024,
+          "164": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 5.809261332964525,
+      "cpu_seconds": 5.808298
+    },
+    {
+      "exact": {
+        "label": "v3_rules_00:4",
+        "seat": 1,
+        "phase": "SOOLI_RETURN",
+        "contract": "RAMI",
+        "input_sha256": "10f5a294ad9d18bb7c2dda33837999761bfe5be3cb99e5451616fe2c60e9062a",
+        "legal": [
+          194,
+          183,
+          172,
+          176,
+          182,
+          186,
+          165,
+          193,
+          163,
+          166,
+          206,
+          203,
+          159
+        ],
+        "action": 183,
+        "values": null,
+        "rng": 733991304452916,
+        "world_counts": null,
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 2.512522041797638e-05,
+      "cpu_seconds": 2.4999999999941735e-05
+    },
+    {
+      "exact": {
+        "label": "v3_rules_00:5",
+        "seat": 2,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "00415e8b262ea1dadd3474b2884d41fad4b5545181df0c780baf961935d67384",
+        "legal": [
+          49,
+          0,
+          30,
+          50,
+          33,
+          4,
+          13,
+          19,
+          11,
+          3,
+          17,
+          37,
+          10
+        ],
+        "action": 49,
+        "values": {
+          "13": "0x1.916483ce00000p-6",
+          "49": "0x1.bca7ddea00000p-6",
+          "0": "0x1.795b8aa200000p-6",
+          "30": "0x1.96331c0a00000p-6",
+          "50": "0x1.bca7ddea00000p-6",
+          "33": "0x1.8efd37b000000p-6",
+          "4": "0x1.3876837800000p-6",
+          "19": "0x1.662129b200000p-6",
+          "11": "0x1.46e4286800000p-7",
+          "3": "0x1.3876837800000p-6",
+          "17": "0x1.7225a64800000p-6",
+          "37": "0x1.795b8aa200000p-6",
+          "10": "0x1.46e4286800000p-7"
+        },
+        "rng": 2694338685904635925,
+        "world_counts": {
+          "13": 1024,
+          "49": 1024,
+          "0": 1024,
+          "30": 1024,
+          "50": 1024,
+          "33": 1024,
+          "4": 1024,
+          "19": 1024,
+          "11": 1024,
+          "3": 1024,
+          "17": 1024,
+          "37": 1024,
+          "10": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 1.4742849171161652,
+      "cpu_seconds": 1.4740759999999993
+    },
+    {
+      "exact": {
+        "label": "v3_rules_00:6",
+        "seat": 0,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "f54750b98658f6f218706840ae72660f3530d0f279d532696897ffc232120785",
+        "legal": [
+          46,
+          47,
+          42,
+          43
+        ],
+        "action": 47,
+        "values": {
+          "47": "0x1.7227828400000p-7",
+          "46": "0x1.7227828400000p-7",
+          "42": "0x1.5eed219400000p-7",
+          "43": "0x1.5eed219400000p-7"
+        },
+        "rng": 8093742635845070565,
+        "world_counts": {
+          "47": 1024,
+          "46": 1024,
+          "42": 1024,
+          "43": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.3436147498432547,
+      "cpu_seconds": 0.3435750000000013
+    },
+    {
+      "exact": {
+        "label": "v3_rules_00:7",
+        "seat": 3,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "15e6832b5399262e652647cd8b3cb415237188f737083cee9880d09a75a36e5b",
+        "legal": [
+          41,
+          40,
+          51,
+          39,
+          44
+        ],
+        "action": 44,
+        "values": {
+          "44": "-0x1.296f828f80000p-4",
+          "41": "-0x1.296f828f80000p-4",
+          "40": "-0x1.296f828f80000p-4",
+          "51": "-0x1.296f828f80000p-4",
+          "39": "-0x1.296f828f80000p-4"
+        },
+        "rng": 8651994929496139319,
+        "world_counts": {
+          "44": 1024,
+          "41": 1024,
+          "40": 1024,
+          "51": 1024,
+          "39": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.07525616697967052,
+      "cpu_seconds": 0.07524599999999992
+    }
+  ],
+  "exact_sha256": "96c65e684b5a4dad8e83aabef0fe6258fae50b4e84a622e26d5aff79a7cfd300",
+  "seconds": 8.878724209032953,
+  "cpu_seconds": 8.618211,
+  "construction": {
+    "seconds": 0.12899687490426004,
+    "cpu_seconds": 0.12212800000000001,
+    "factories": 1
+  },
+  "peak_rss_bytes_macos": 292536320,
+  "library_sha256": "71ded3fe95e1f2ced869631fb9d9754acd16f4af5a4c86a29bddd9b19eab28f0",
+  "library": "/Users/pyryouri/Developer/audit_deliverables/tuppi_speed_qualification_20261014/builds/reward_compact/libtuppi.dylib",
+  "dependency_versions": {
+    "torch": "2.14.0",
+    "numpy": "2.5.3",
+    "python": "3.14.2 (v3.14.2:df793163d58, Dec  5 2025, 12:18:06) [Clang 16.0.0 (clang-1600.0.26.6)]",
+    "executable": "/Users/pyryouri/.venvs/tuppi-v2/bin/python"
+  },
+  "phase_counts": {
+    "SOOLI_OFFER": 1,
+    "SOOLI_GIVE": 1,
+    "SOOLI_RETURN": 1,
+    "SOOLI_PLAY": 3
+  },
+  "sooli_history_modes": {
+    "C": 4,
+    "O": 1,
+    "P": 1
+  }
+}

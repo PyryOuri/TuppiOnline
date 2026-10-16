@@ -1,0 +1,32 @@
+{
+  "AI": {
+    "head": "4220f249e351905deb3a3754de812a01acf152d7",
+    "branch": "main",
+    "status": "M .DS_Store",
+    "diff_stat": ".DS_Store | Bin 8196 -> 10244 bytes\n 1 file changed, 0 insertions(+), 0 deletions(-)"
+  },
+  "RESEARCH": {
+    "head": "622d5599318e4f1b2a82ef53bfc141970edc24de",
+    "branch": "phase7/reference-policy-identity",
+    "status": "M README.md\n M docs/nolo/tasks/README.md\n M docs/nolo/tasks/fixtures.json\n M docs/nolo/tasks/source_manifest.json\n M pyproject.toml\n M schemas/network/completed_deal_analysis_v3.schema.json\n M src/tuppi_eval/agents.py\n M src/tuppi_nolo/adapter.py\n M src/tuppi_nolo/certificates.py\n M src/tuppi_nolo/security.py\n M src/tuppi_nolo/support.py\n M src/tuppi_server/analysis.py\n M src/tuppi_server/completed_deal_review.py\n M src/tuppi_server/match_runner.py\n M src/tuppi_server/post_match_diagnostics.py\n M tests/nolo/test_support.py\n M tests/server/test_completed_deal_review.py\n M tests/server/test_match_runner.py\n M tests/server/test_post_match_diagnostics.py\n?? docs/nolo/compact_backend.md\n?? docs/nolo/hypotheses-n10.md\n?? docs/nolo/hypotheses-n11.md\n?? docs/nolo/n10_positions.json\n?? docs/nolo/results/N10.md\n?? docs/nolo/results/N10_sources.json\n?? docs/nolo/results/N11.md\n?? docs/valuation/\n?? src/tuppi_llm/\n?? src/tuppi_nolo/compact.py\n?? src/tuppi_nolo/coverage.py\n?? src/tuppi_nolo/performance.py\n?? src/tuppi_valuation/\n?? tests/agents/test_nolo_discard.py\n?? tests/llm/\n?? tests/nolo/test_compact.py\n?? tests/valuation/\n?? tools/human_vs_bot.py\n?? tools/measure_nolo_discard.py\n?? tools/measure_odds_calibration.py\n?? tools/measure_odds_ceiling.py\n?? work/infrastructure_audit/\n?? work/nolo/n10/\n?? work/nolo/n11/\n?? work/nolo_discard/",
+    "diff_stat": "README.md                                          |  8 +++-\n docs/nolo/tasks/README.md                          | 24 +++++-----\n docs/nolo/tasks/fixtures.json                      | 25 ++++++++++-\n docs/nolo/tasks/source_manifest.json               | 29 +++++++++---\n pyproject.toml                                     |  4 ++\n .../network/completed_deal_analysis_v3.schema.json |  4 +-\n src/tuppi_eval/agents.py                           |  9 ++++\n src/tuppi_nolo/adapter.py                          | 17 ++++---\n src/tuppi_nolo/certificates.py                     | 48 ++++++++++++--------\n src/tuppi_nolo/security.py                         | 33 +++++++++-----\n src/tuppi_nolo/support.py                          | 52 +++++++++++++++-------\n src/tuppi_server/analysis.py                       |  4 +-\n src/tuppi_server/completed_deal_review.py          | 21 ++++++++-\n src/tuppi_server/match_runner.py                   | 11 ++---\n src/tuppi_server/post_match_diagnostics.py         | 21 +++++++--\n tests/nolo/test_support.py                         | 21 ++++++++-\n tests/server/test_completed_deal_review.py         | 49 +++++++++++++++-----\n tests/server/test_match_runner.py                  |  2 +-\n tests/server/test_post_match_diagnostics.py        | 51 ++++++++++++---------\n 19 files changed, 317 insertions(+), 116 deletions(-)"
+  },
+  "ENGINE": {
+    "head": "1347153f7d6e7bed95edddce9d35d28a3df91750",
+    "branch": "rules/project-target-v3-locked-bids",
+    "status": "",
+    "diff_stat": ""
+  },
+  "CLIENT": {
+    "head": "7ba8ca283f01794170d105ba08c5a799f7bd7909",
+    "branch": "feature/v3-locked-bids-sooli",
+    "status": "?? Sources/TuppiClient/ReferencePolicy.swift\n?? Tests/TuppiClientTests/ReferencePolicyTests.swift",
+    "diff_stat": ""
+  },
+  "CLIENT_OLD": {
+    "head": "1d82b4b36097f08684b3e4838166bda708ee8b19",
+    "branch": "main",
+    "status": "M Sources/TuppiClient/Resources/Fixtures/manifest.json\n M Sources/TuppiClient/Resources/Fixtures/sha256sums.json\n?? Sources/TuppiClient/ReferencePolicy.swift\n?? Tests/TuppiClientTests/ReferencePolicyTests.swift",
+    "diff_stat": "Sources/TuppiClient/Resources/Fixtures/manifest.json   | 2 +-\n Sources/TuppiClient/Resources/Fixtures/sha256sums.json | 2 +-\n 2 files changed, 2 insertions(+), 2 deletions(-)"
+  }
+}

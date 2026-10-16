@@ -1,0 +1,153 @@
+{
+  "schema": "tuppi.speed_qualification.stage.v1",
+  "stage": "parallel_parity",
+  "complete": true,
+  "all_exact": true,
+  "cpu_charged_seconds": 209.576215,
+  "wall_charged_seconds": 37.31353324931115,
+  "jobs": [
+    {
+      "job": "parallel_native_roots_reference",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 2.14752,
+      "wall_seconds": 2.0218145418912172,
+      "result_sha256": "7b1f70faed0d0b1a42d72bced22c0c9a35c68db67d162142f1043a8e72b35543"
+    },
+    {
+      "job": "parallel_native_roots_combo32",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 1.5030159999999997,
+      "wall_seconds": 1.4818854159675539,
+      "result_sha256": "9e2c9d487a5883312454b2b6b9483b9308585a9f4b6cb2d00d86c31f8cc0dee3"
+    },
+    {
+      "job": "parallel_native_roots_combo128",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 1.4613810000000003,
+      "wall_seconds": 1.3835763330571353,
+      "result_sha256": "d39ee8ae8bd7d401339aad10f3bea06def966204c07b0642382736974c66701e"
+    },
+    {
+      "job": "parallel_native_roots_compact128",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 1.4417700000000004,
+      "wall_seconds": 1.3749999580904841,
+      "result_sha256": "008551479b62a2af9dc4b6ca044c90a77688296b2b771ae67f18401f59222361"
+    },
+    {
+      "job": "parallel_history_bank_reference",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 25.438729,
+      "wall_seconds": 4.850662791868672,
+      "result_sha256": "70916ffadf5e1ad8600ed9a792b6a721cc018ad28dda4f8f771c935a5259ed06"
+    },
+    {
+      "job": "parallel_history_bank_combo32",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 23.096357000000005,
+      "wall_seconds": 4.4942100420594215,
+      "result_sha256": "5b74c72ff92fc240459a2d5380ebefdbe091aff43a6ccf164c102219d1c5051c"
+    },
+    {
+      "job": "parallel_history_bank_combo128",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 21.376456000000005,
+      "wall_seconds": 4.512502500088885,
+      "result_sha256": "444304463c53fc50bcbb995ac3718515471d4ab155f770324fa39d70eb9a42b8"
+    },
+    {
+      "job": "parallel_history_bank_compact128",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 20.904674999999987,
+      "wall_seconds": 4.462625249987468,
+      "result_sha256": "b5df1fe9a58da2e2f8055accbd6a6d1b3372eddb998b882d7d608845900c1b35"
+    },
+    {
+      "job": "parallel_forced_sooli_reference",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 27.992854000000005,
+      "wall_seconds": 3.181153916986659,
+      "result_sha256": "9415e69998da9866cafb7515884e78c562f0d1305c017756421f3cffa3511523"
+    },
+    {
+      "job": "parallel_forced_sooli_combo32",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 28.274614999999997,
+      "wall_seconds": 3.1850348331499845,
+      "result_sha256": "5f816020c4b8af810babd0289998d9c44c5d91b4b7cb0ad98f6eef1823302b9a"
+    },
+    {
+      "job": "parallel_forced_sooli_combo128",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 28.20393500000001,
+      "wall_seconds": 3.2006934580858797,
+      "result_sha256": "8b52033300d05f2c577c24f35934ccfd59ec7d23bf9b88453de9c60de3b6a84a"
+    },
+    {
+      "job": "parallel_forced_sooli_compact128",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 27.734907,
+      "wall_seconds": 3.1643742080777884,
+      "result_sha256": "d303f53bdd0424fb86d89361defdc4ba688602558c125f29737ad6c10fe6cb67"
+    }
+  ],
+  "comparisons": [
+    {
+      "job": "parallel_native_roots_combo32",
+      "reference": "parallel_native_roots_reference",
+      "exact": true
+    },
+    {
+      "job": "parallel_native_roots_combo128",
+      "reference": "parallel_native_roots_reference",
+      "exact": true
+    },
+    {
+      "job": "parallel_native_roots_compact128",
+      "reference": "parallel_native_roots_reference",
+      "exact": true
+    },
+    {
+      "job": "parallel_history_bank_combo32",
+      "reference": "parallel_history_bank_reference",
+      "exact": true
+    },
+    {
+      "job": "parallel_history_bank_combo128",
+      "reference": "parallel_history_bank_reference",
+      "exact": true
+    },
+    {
+      "job": "parallel_history_bank_compact128",
+      "reference": "parallel_history_bank_reference",
+      "exact": true
+    },
+    {
+      "job": "parallel_forced_sooli_combo32",
+      "reference": "parallel_forced_sooli_reference",
+      "exact": true
+    },
+    {
+      "job": "parallel_forced_sooli_combo128",
+      "reference": "parallel_forced_sooli_reference",
+      "exact": true
+    },
+    {
+      "job": "parallel_forced_sooli_compact128",
+      "reference": "parallel_forced_sooli_reference",
+      "exact": true
+    }
+  ]
+}

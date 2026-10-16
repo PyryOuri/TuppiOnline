@@ -1,0 +1,77 @@
+{
+  "schema": "tuppi.cheap_wins.native_build.v1",
+  "libraries": {
+    "rebuilt": {
+      "command": [
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang",
+        "-O3",
+        "-Wall",
+        "-Wextra",
+        "-Wno-unused-parameter",
+        "-isysroot",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-dynamiclib",
+        "-framework",
+        "Accelerate",
+        "-o",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/builds/rebuilt/libtuppi.dylib",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/builds/rebuilt/tuppi_core.c",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/builds/rebuilt/tuppi_env.c",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/builds/rebuilt/tuppi_search.c",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/builds/rebuilt/tuppi_dd.c",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/builds/rebuilt/tuppi_mlp.c",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/builds/rebuilt/tuppi_sooli.c",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/builds/rebuilt/tuppi_sooli_policy.c"
+      ],
+      "sha256": "3b3c943bb7b02762fc82589cc820044500836678cd35d2c8d23e5364fbb1bd2b",
+      "source_hashes": {
+        "tuppi_dd.c": "abcb117b29d64e2f51d5d6739623ad89429b0421f57f8c09d4e48c9948ac2260",
+        "tuppi_core.h": "fc301b9484d6bc1e6af5dacd4937542ff429eab51ca3cbfe6380220f8571033b",
+        "tuppi_sooli_policy.c": "fee631973b45b815625d6391b9f20805c077e6d27e2a10fda0a8b2f66807a342",
+        "tuppi_mlp.c": "117c2de9420994030c1fedd0105df1741d5edacc26ab677d3e0086d32b100b33",
+        "tuppi_search.c": "9675d910762cd18200fee11a9eb799f80d86fb3a3799bab40476c2089f506dc1",
+        "showing_constraints.h": "f641aa73bfe8373c8b88329f842d268a12d64b87791a9c501c1f0a911975afea",
+        "tuppi_core.c": "2c3f0a539f6569d0927aea0d08fc8911304a88108e84667826b5c8a0c810ecbf",
+        "tuppi_env.c": "68d0cb2da0fe1dec76c20c96c226645e978004ae7abd2376fb51ecb5889425f1",
+        "tuppi_sooli.c": "8068068831552abadbf1776aa3b5b51d60f294ac0b438befd5105f567186d02d",
+        "tuppi_mlp.h": "89f7b352ba52edfedc289f9e47dc134957907568c481500412714e368f92f372"
+      }
+    },
+    "reward_bucket": {
+      "command": [
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang",
+        "-O3",
+        "-Wall",
+        "-Wextra",
+        "-Wno-unused-parameter",
+        "-isysroot",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-dynamiclib",
+        "-framework",
+        "Accelerate",
+        "-o",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/builds/reward_bucket/libtuppi.dylib",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/builds/reward_bucket/tuppi_core.c",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/builds/reward_bucket/tuppi_env.c",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/builds/reward_bucket/tuppi_search.c",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/builds/reward_bucket/tuppi_dd.c",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/builds/reward_bucket/tuppi_mlp.c",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/builds/reward_bucket/tuppi_sooli.c",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/builds/reward_bucket/tuppi_sooli_policy.c"
+      ],
+      "sha256": "cfd3d2f350d23dace45058c8b0990395ccdfef7064fb1d65cf2216d64512d10f",
+      "source_hashes": {
+        "tuppi_dd.c": "3525c76009aee73d62d77e15ba896946a298d14b0377ac45c8d7cf2e3f09d5ca",
+        "tuppi_core.h": "fc301b9484d6bc1e6af5dacd4937542ff429eab51ca3cbfe6380220f8571033b",
+        "tuppi_sooli_policy.c": "fee631973b45b815625d6391b9f20805c077e6d27e2a10fda0a8b2f66807a342",
+        "tuppi_mlp.c": "117c2de9420994030c1fedd0105df1741d5edacc26ab677d3e0086d32b100b33",
+        "tuppi_search.c": "9675d910762cd18200fee11a9eb799f80d86fb3a3799bab40476c2089f506dc1",
+        "showing_constraints.h": "f641aa73bfe8373c8b88329f842d268a12d64b87791a9c501c1f0a911975afea",
+        "tuppi_core.c": "2c3f0a539f6569d0927aea0d08fc8911304a88108e84667826b5c8a0c810ecbf",
+        "tuppi_env.c": "0df871383ceac0b0b7a27f8a1992b9ee0fddb8256efa9af48692159e65bfe520",
+        "tuppi_sooli.c": "8068068831552abadbf1776aa3b5b51d60f294ac0b438befd5105f567186d02d",
+        "tuppi_mlp.h": "89f7b352ba52edfedc289f9e47dc134957907568c481500412714e368f92f372"
+      }
+    }
+  }
+}

@@ -1,0 +1,143 @@
+{
+  "variant": "compact128",
+  "library": "/Users/pyryouri/Developer/audit_deliverables/tuppi_speed_qualification_20261014/builds/reward_compact/libtuppi.dylib",
+  "rows": 2827,
+  "phase_counts": {
+    "0": 211,
+    "3": 140,
+    "4": 94,
+    "5": 94,
+    "6": 936,
+    "1": 1352
+  },
+  "models": {
+    "vrpo1_rollout": {
+      "width": 256,
+      "encoder": 2,
+      "row_checks": 189334,
+      "mismatched_rows": 189330,
+      "max_abs_diff": 6.103515625e-05,
+      "failures": [
+        {
+          "M": 2,
+          "trial": 0,
+          "rows": 2
+        },
+        {
+          "M": 2,
+          "trial": 1,
+          "rows": 2
+        },
+        {
+          "M": 2,
+          "trial": 2,
+          "rows": 2
+        },
+        {
+          "M": 2,
+          "trial": 3,
+          "rows": 2
+        },
+        {
+          "M": 3,
+          "trial": 0,
+          "rows": 3
+        },
+        {
+          "M": 3,
+          "trial": 1,
+          "rows": 3
+        },
+        {
+          "M": 3,
+          "trial": 2,
+          "rows": 3
+        },
+        {
+          "M": 3,
+          "trial": 3,
+          "rows": 3
+        },
+        {
+          "M": 4,
+          "trial": 0,
+          "rows": 4
+        },
+        {
+          "M": 4,
+          "trial": 1,
+          "rows": 4
+        }
+      ],
+      "full_batch_equals_single": false,
+      "repeat_equal": true,
+      "single_sha256": "1fa19c0e609d75b2653bc5db4c1303b95c1af0c50321bf62f854b41e47fdbae1",
+      "seconds": 1.1133489608764648
+    },
+    "vrpo3_anchor": {
+      "width": 512,
+      "encoder": 2,
+      "row_checks": 189334,
+      "mismatched_rows": 189330,
+      "max_abs_diff": 1.7642974853515625e-05,
+      "failures": [
+        {
+          "M": 2,
+          "trial": 0,
+          "rows": 2
+        },
+        {
+          "M": 2,
+          "trial": 1,
+          "rows": 2
+        },
+        {
+          "M": 2,
+          "trial": 2,
+          "rows": 2
+        },
+        {
+          "M": 2,
+          "trial": 3,
+          "rows": 2
+        },
+        {
+          "M": 3,
+          "trial": 0,
+          "rows": 3
+        },
+        {
+          "M": 3,
+          "trial": 1,
+          "rows": 3
+        },
+        {
+          "M": 3,
+          "trial": 2,
+          "rows": 3
+        },
+        {
+          "M": 3,
+          "trial": 3,
+          "rows": 3
+        },
+        {
+          "M": 4,
+          "trial": 0,
+          "rows": 4
+        },
+        {
+          "M": 4,
+          "trial": 1,
+          "rows": 4
+        }
+      ],
+      "full_batch_equals_single": false,
+      "repeat_equal": true,
+      "single_sha256": "549673725907417df2d8c661e260552f33e848ba773e80a457884f6de594f5d1",
+      "seconds": 2.3645071983337402
+    }
+  },
+  "pass": false,
+  "veclib_threads": null
+}

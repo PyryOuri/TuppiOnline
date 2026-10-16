@@ -1,0 +1,241 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "checkout": "TuppiBrowser-speed-port",
+      "case": "table-source",
+      "command": [
+        "/Users/pyryouri/Developer/toolchains/emsdk/node/24.19.0_64bit/bin/node",
+        "/Users/pyryouri/Developer/TuppiBrowser-speed-port/tests/check_table.mjs"
+      ],
+      "passed": true,
+      "elapsed_seconds": 0.14395125000737607,
+      "stdout": "{\"passed\":true,\"checks\":[\"all suit/rank shortcuts\",\"N/R bids and Enter\",\"legal arrow navigation\",\"selection before confirmation\",\"input/dialog/modifier/repeat guards\",\"NOLO/RAMI reveal order and timing\",\"reveal input blocking and worker acknowledgement\",\"persistent public bid labels\",\"bid-card seat captions\",\"starting-hand summary and accessible labels\",\"sooli ace-low ordering\",\"played cards and previous trick\",\"save acknowledgement blocks play until durable commit\",\"storage failure blocks play and offers recovery\"]}\n",
+      "stderr": ""
+    },
+    {
+      "checkout": "TuppiBrowser-speed-port",
+      "case": "table-packaged",
+      "command": [
+        "/Users/pyryouri/Developer/toolchains/emsdk/node/24.19.0_64bit/bin/node",
+        "/Users/pyryouri/Developer/TuppiBrowser-speed-port/tests/check_table.mjs",
+        "/Users/pyryouri/Developer/TuppiBrowser-speed-port/web/client.17cfee617dc75503.mjs"
+      ],
+      "passed": true,
+      "elapsed_seconds": 0.08712100004777312,
+      "stdout": "{\"passed\":true,\"checks\":[\"all suit/rank shortcuts\",\"N/R bids and Enter\",\"legal arrow navigation\",\"selection before confirmation\",\"input/dialog/modifier/repeat guards\",\"NOLO/RAMI reveal order and timing\",\"reveal input blocking and worker acknowledgement\",\"persistent public bid labels\",\"bid-card seat captions\",\"starting-hand summary and accessible labels\",\"sooli ace-low ordering\",\"played cards and previous trick\",\"save acknowledgement blocks play until durable commit\",\"storage failure blocks play and offers recovery\"]}\n",
+      "stderr": ""
+    },
+    {
+      "checkout": "TuppiBrowser-speed-port",
+      "case": "table-online-source",
+      "command": [
+        "/Users/pyryouri/Developer/toolchains/emsdk/node/24.19.0_64bit/bin/node",
+        "/Users/pyryouri/Developer/TuppiBrowser-speed-port/tests/check_table.mjs",
+        "--online"
+      ],
+      "passed": true,
+      "elapsed_seconds": 0.11957983300089836,
+      "stdout": "{\"passed\":true,\"checks\":[\"online invitation omits local bot startup\",\"join/hello wiring\",\"actual seat and team rotation in table\",\"touch selection and confirmation use wire seat\",\"uncertain action blocks second input\",\"invite excludes credentials\",\"return to offline adapter\"]}\n",
+      "stderr": ""
+    },
+    {
+      "checkout": "TuppiBrowser-speed-port",
+      "case": "table-online-packaged",
+      "command": [
+        "/Users/pyryouri/Developer/toolchains/emsdk/node/24.19.0_64bit/bin/node",
+        "/Users/pyryouri/Developer/TuppiBrowser-speed-port/tests/check_table.mjs",
+        "/Users/pyryouri/Developer/TuppiBrowser-speed-port/web/client.17cfee617dc75503.mjs",
+        "--online"
+      ],
+      "passed": true,
+      "elapsed_seconds": 0.09862379194237292,
+      "stdout": "{\"passed\":true,\"checks\":[\"online invitation omits local bot startup\",\"join/hello wiring\",\"actual seat and team rotation in table\",\"touch selection and confirmation use wire seat\",\"uncertain action blocks second input\",\"invite excludes credentials\",\"return to offline adapter\"]}\n",
+      "stderr": ""
+    },
+    {
+      "checkout": "TuppiBrowser-speed-port",
+      "case": "network",
+      "command": [
+        "/Users/pyryouri/Developer/toolchains/emsdk/node/24.19.0_64bit/bin/node",
+        "/Users/pyryouri/Developer/TuppiBrowser-speed-port/tests/check_network.mjs"
+      ],
+      "passed": true,
+      "elapsed_seconds": 0.06673212512396276,
+      "stdout": "{\"passed\":true,\"checks\":[\"52 wire cards and action ids\",\"all observing-seat rotations\",\"sooli counts and exchange\",\"HTTPS and seat/ruleset guards\",\"durable pending before send\",\"blocked duplicate input\",\"snapshot before exact-ID retry\",\"heartbeat/wake/reconnect\",\"credentials excluded from URLs\",\"storage failure fails closed\",\"per-seat bot toggles leave partner seats open\"]}\n",
+      "stderr": ""
+    },
+    {
+      "checkout": "TuppiBrowser-speed-port",
+      "case": "offline",
+      "command": [
+        "/Users/pyryouri/Developer/toolchains/emsdk/node/24.19.0_64bit/bin/node",
+        "/Users/pyryouri/Developer/TuppiBrowser-speed-port/tests/check_offline.mjs"
+      ],
+      "passed": true,
+      "elapsed_seconds": 0.3404842910822481,
+      "stdout": "{\"passed\":true,\"sharedAssets\":7,\"checks\":[\"interrupted download and verified resume\",\"corrupt partial asset rejected\",\"streamed byte progress\",\"UI updates reuse bot assets\",\"one shared asset copy\",\"current files and complete models required for readiness\",\"runtime-pinned and live-client retention\",\"compatible offline launch\",\"previous release and unrelated cache preserved\",\"network-only recovery alias\",\"quota failure leaves old release usable\",\"cache mutation lock\",\"decorated hosting HTML uses verified plain-text shell and HTML MIME\"],\"scope\":\"Cache/fetch adapter; actual browser/device acceptance remains separate\"}\n",
+      "stderr": ""
+    },
+    {
+      "checkout": "TuppiBrowser-speed-port",
+      "case": "offline_setup",
+      "command": [
+        "/Users/pyryouri/Developer/toolchains/emsdk/node/24.19.0_64bit/bin/node",
+        "/Users/pyryouri/Developer/TuppiBrowser-speed-port/tests/check_offline_setup.mjs"
+      ],
+      "passed": true,
+      "elapsed_seconds": 0.06019600015133619,
+      "stdout": "{\"passed\":true,\"checks\":[\"active versus waiting release readiness\",\"progress rendering state\",\"retention deferred during update\",\"offline registration fallback\",\"safe compatible-launch URL\",\"unsupported service worker\"]}\n",
+      "stderr": ""
+    },
+    {
+      "checkout": "TuppiBrowser-speed-port",
+      "case": "storage",
+      "command": [
+        "/Users/pyryouri/Developer/toolchains/emsdk/node/24.19.0_64bit/bin/node",
+        "/Users/pyryouri/Developer/TuppiBrowser-speed-port/tests/check_storage.mjs"
+      ],
+      "passed": true,
+      "elapsed_seconds": 0.052250917069613934,
+      "stdout": "{\"passed\":true,\"checks\":[\"persistence grant, denial and unsupported APIs\",\"quota estimates and API errors\",\"database opening retry\",\"failed transaction preserves durable save\",\"portable integrity-checked backup\",\"corrupt save rejected\",\"online credentials separated from offline saves and exports\",\"failed pending-ack write preserves original ID\"]}\n",
+      "stderr": ""
+    },
+    {
+      "checkout": "TuppiBrowser-speed-port",
+      "case": "recovery",
+      "command": [
+        "/Users/pyryouri/Developer/toolchains/emsdk/node/24.19.0_64bit/bin/node",
+        "/Users/pyryouri/Developer/TuppiBrowser-speed-port/tests/check_recovery.mjs"
+      ],
+      "passed": true,
+      "elapsed_seconds": 0.06934866588562727,
+      "stdout": "{\"passed\":true,\"checks\":[\"refuses repair while another match owns lock\",\"only unregisters own scope\",\"does not access IndexedDB or delete caches\",\"checks local server before reopening\",\"visible offline recovery error\"]}\n",
+      "stderr": ""
+    },
+    {
+      "checkout": "TuppiBrowser-speed-port",
+      "case": "startup",
+      "command": [
+        "/Users/pyryouri/Developer/toolchains/emsdk/node/24.19.0_64bit/bin/node",
+        "/Users/pyryouri/Developer/TuppiBrowser-speed-port/tests/check_startup.mjs"
+      ],
+      "passed": true,
+      "elapsed_seconds": 0.37510954099707305,
+      "stdout": "{\"passed\":true,\"engines\":[{\"worlds\":128,\"hand\":13,\"publicBids\":0,\"progressMessages\":6},{\"worlds\":1024,\"hand\":13,\"publicBids\":0,\"progressMessages\":6}],\"checks\":[\"old/new graph mismatch reproduced\",\"visible manifest/import errors\",\"safe versioned entry path\",\"startup watchdog and retry\",\"durable-save acknowledgement before ready\",\"packaged worker with real WASM/models at W128 and W1024\"]}\n",
+      "stderr": ""
+    },
+    {
+      "checkout": "TuppiBrowser-speed-port",
+      "case": "session",
+      "command": [
+        "/Users/pyryouri/Developer/toolchains/emsdk/node/24.19.0_64bit/bin/node",
+        "/Users/pyryouri/Developer/TuppiBrowser-speed-port/tests/check_session.mjs",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_compact128_integration_20261014/checks/candidate-macos-w128.json"
+      ],
+      "passed": true,
+      "elapsed_seconds": 0.12313724984414876,
+      "stdout": "{\"passed\":true,\"deals\":12,\"decisions\":396,\"restores\":11,\"checkpoints\":750,\"reveals\":12,\"checks\":[\"blind human bid before bot resolution\",\"discarded bids\",\"all phase scheduling\",\"reveal pauses all actors\",\"action-boundary restore\",\"controller context serialization\",\"corruption detection\",\"idempotent completed history\",\"starting-hand counts and HCP persist through play, exchanges and legacy restore\"]}\n",
+      "stderr": ""
+    },
+    {
+      "checkout": "TuppiBrowser-offline-release",
+      "case": "table-source",
+      "command": [
+        "/Users/pyryouri/Developer/toolchains/emsdk/node/24.19.0_64bit/bin/node",
+        "/Users/pyryouri/Developer/TuppiBrowser-offline-release/tests/check_table.mjs"
+      ],
+      "passed": true,
+      "elapsed_seconds": 0.0964697920717299,
+      "stdout": "{\"passed\":true,\"checks\":[\"all suit/rank shortcuts\",\"N/R bids and Enter\",\"legal arrow navigation\",\"selection before confirmation\",\"input/dialog/modifier/repeat guards\",\"NOLO/RAMI reveal order and timing\",\"reveal input blocking and worker acknowledgement\",\"persistent public bid labels\",\"bid-card seat captions\",\"starting-hand summary and accessible labels\",\"sooli ace-low ordering\",\"played cards and previous trick\",\"save acknowledgement blocks play until durable commit\",\"storage failure blocks play and offers recovery\"]}\n",
+      "stderr": ""
+    },
+    {
+      "checkout": "TuppiBrowser-offline-release",
+      "case": "table-packaged",
+      "command": [
+        "/Users/pyryouri/Developer/toolchains/emsdk/node/24.19.0_64bit/bin/node",
+        "/Users/pyryouri/Developer/TuppiBrowser-offline-release/tests/check_table.mjs",
+        "/Users/pyryouri/Developer/TuppiBrowser-offline-release/web/client.b7db600672e32994.mjs"
+      ],
+      "passed": true,
+      "elapsed_seconds": 0.06662395806051791,
+      "stdout": "{\"passed\":true,\"checks\":[\"all suit/rank shortcuts\",\"N/R bids and Enter\",\"legal arrow navigation\",\"selection before confirmation\",\"input/dialog/modifier/repeat guards\",\"NOLO/RAMI reveal order and timing\",\"reveal input blocking and worker acknowledgement\",\"persistent public bid labels\",\"bid-card seat captions\",\"starting-hand summary and accessible labels\",\"sooli ace-low ordering\",\"played cards and previous trick\",\"save acknowledgement blocks play until durable commit\",\"storage failure blocks play and offers recovery\"]}\n",
+      "stderr": ""
+    },
+    {
+      "checkout": "TuppiBrowser-offline-release",
+      "case": "offline",
+      "command": [
+        "/Users/pyryouri/Developer/toolchains/emsdk/node/24.19.0_64bit/bin/node",
+        "/Users/pyryouri/Developer/TuppiBrowser-offline-release/tests/check_offline.mjs"
+      ],
+      "passed": true,
+      "elapsed_seconds": 0.2966913329437375,
+      "stdout": "{\"passed\":true,\"sharedAssets\":7,\"checks\":[\"interrupted download and verified resume\",\"corrupt partial asset rejected\",\"streamed byte progress\",\"UI updates reuse bot assets\",\"one shared asset copy\",\"current files and complete models required for readiness\",\"runtime-pinned and live-client retention\",\"compatible offline launch\",\"previous release and unrelated cache preserved\",\"network-only recovery alias\",\"quota failure leaves old release usable\",\"cache mutation lock\",\"decorated hosting HTML uses verified plain-text shell and HTML MIME\"],\"scope\":\"Cache/fetch adapter; actual browser/device acceptance remains separate\"}\n",
+      "stderr": ""
+    },
+    {
+      "checkout": "TuppiBrowser-offline-release",
+      "case": "offline_setup",
+      "command": [
+        "/Users/pyryouri/Developer/toolchains/emsdk/node/24.19.0_64bit/bin/node",
+        "/Users/pyryouri/Developer/TuppiBrowser-offline-release/tests/check_offline_setup.mjs"
+      ],
+      "passed": true,
+      "elapsed_seconds": 0.04911845806054771,
+      "stdout": "{\"passed\":true,\"checks\":[\"active versus waiting release readiness\",\"progress rendering state\",\"retention deferred during update\",\"offline registration fallback\",\"safe compatible-launch URL\",\"unsupported service worker\"]}\n",
+      "stderr": ""
+    },
+    {
+      "checkout": "TuppiBrowser-offline-release",
+      "case": "storage",
+      "command": [
+        "/Users/pyryouri/Developer/toolchains/emsdk/node/24.19.0_64bit/bin/node",
+        "/Users/pyryouri/Developer/TuppiBrowser-offline-release/tests/check_storage.mjs"
+      ],
+      "passed": true,
+      "elapsed_seconds": 0.04841195815242827,
+      "stdout": "{\"passed\":true,\"checks\":[\"persistence grant, denial and unsupported APIs\",\"quota estimates and API errors\",\"database opening retry\",\"failed transaction preserves durable save\",\"portable integrity-checked backup\",\"corrupt save rejected\"]}\n",
+      "stderr": ""
+    },
+    {
+      "checkout": "TuppiBrowser-offline-release",
+      "case": "recovery",
+      "command": [
+        "/Users/pyryouri/Developer/toolchains/emsdk/node/24.19.0_64bit/bin/node",
+        "/Users/pyryouri/Developer/TuppiBrowser-offline-release/tests/check_recovery.mjs"
+      ],
+      "passed": true,
+      "elapsed_seconds": 0.03629345912486315,
+      "stdout": "{\"passed\":true,\"checks\":[\"refuses repair while another match owns lock\",\"only unregisters own scope\",\"does not access IndexedDB or delete caches\",\"checks local server before reopening\",\"visible offline recovery error\"]}\n",
+      "stderr": ""
+    },
+    {
+      "checkout": "TuppiBrowser-offline-release",
+      "case": "startup",
+      "command": [
+        "/Users/pyryouri/Developer/toolchains/emsdk/node/24.19.0_64bit/bin/node",
+        "/Users/pyryouri/Developer/TuppiBrowser-offline-release/tests/check_startup.mjs"
+      ],
+      "passed": true,
+      "elapsed_seconds": 0.2552714159246534,
+      "stdout": "{\"passed\":true,\"engines\":[{\"worlds\":128,\"hand\":13,\"publicBids\":0,\"progressMessages\":6},{\"worlds\":1024,\"hand\":13,\"publicBids\":0,\"progressMessages\":6}],\"checks\":[\"old/new graph mismatch reproduced\",\"visible manifest/import errors\",\"safe versioned entry path\",\"startup watchdog and retry\",\"durable-save acknowledgement before ready\",\"packaged worker with real WASM/models at W128 and W1024\"]}\n",
+      "stderr": ""
+    },
+    {
+      "checkout": "TuppiBrowser-offline-release",
+      "case": "session",
+      "command": [
+        "/Users/pyryouri/Developer/toolchains/emsdk/node/24.19.0_64bit/bin/node",
+        "/Users/pyryouri/Developer/TuppiBrowser-offline-release/tests/check_session.mjs",
+        "/Users/pyryouri/Developer/audit_deliverables/tuppi_compact128_integration_20261014/checks/candidate-macos-w128.json"
+      ],
+      "passed": true,
+      "elapsed_seconds": 0.12839770899154246,
+      "stdout": "{\"passed\":true,\"deals\":12,\"decisions\":396,\"restores\":11,\"checkpoints\":750,\"reveals\":12,\"checks\":[\"blind human bid before bot resolution\",\"discarded bids\",\"all phase scheduling\",\"reveal pauses all actors\",\"action-boundary restore\",\"controller context serialization\",\"corruption detection\",\"idempotent completed history\",\"starting-hand counts and HCP persist through play, exchanges and legacy restore\"]}\n",
+      "stderr": ""
+    }
+  ],
+  "scope": "Node DOM/cache/worker/storage adapters and actual generated WASM startup; no browser/device acceptance"
+}

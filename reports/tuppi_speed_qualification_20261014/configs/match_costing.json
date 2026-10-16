@@ -1,0 +1,24 @@
+{
+  "schema": "tuppi.cheap_wins.plan.v1",
+  "name": "match_costing",
+  "stage": "costing",
+  "execution_enabled": false,
+  "budget_cpu_seconds": 600,
+  "budget_wall_seconds": 660,
+  "jobs": [
+    {
+      "id": "baseline_match_cost",
+      "kind": "match_cost",
+      "arm": "baseline",
+      "worlds": 1024,
+      "samples": 1,
+      "seed": "cw-match-costing-v1",
+      "scores": "zero",
+      "serial": true,
+      "cpu_seconds": 600,
+      "wall_seconds": 660,
+      "opponent": "baseline",
+      "match_cap": 4
+    }
+  ]
+}

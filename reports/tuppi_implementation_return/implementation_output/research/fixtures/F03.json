@@ -1,0 +1,193 @@
+{
+ "cases": [
+  {
+   "case_id": "F03",
+   "cluster_id": "deal:5994587643f829346f6bc98a9cd4fbb0",
+   "kind": "DecisionCase",
+   "observation": {
+    "bids_locked": 0,
+    "completed_tricks": [],
+    "contract": "RAMI",
+    "current_actor": 2,
+    "current_trick": [],
+    "deal_ref": "research-fixture/deal:0",
+    "deal_terminal": false,
+    "dealer": 0,
+    "declarer": 1,
+    "first_leader": 0,
+    "forehand": 1,
+    "legal_actions": [
+     {
+      "card": "2H",
+      "seat": 2,
+      "type": "sooli_exchange"
+     },
+     {
+      "card": "3H",
+      "seat": 2,
+      "type": "sooli_exchange"
+     },
+     {
+      "card": "KH",
+      "seat": 2,
+      "type": "sooli_exchange"
+     },
+     {
+      "card": "AH",
+      "seat": 2,
+      "type": "sooli_exchange"
+     },
+     {
+      "card": "2D",
+      "seat": 2,
+      "type": "sooli_exchange"
+     },
+     {
+      "card": "3D",
+      "seat": 2,
+      "type": "sooli_exchange"
+     },
+     {
+      "card": "AD",
+      "seat": 2,
+      "type": "sooli_exchange"
+     },
+     {
+      "card": "2C",
+      "seat": 2,
+      "type": "sooli_exchange"
+     },
+     {
+      "card": "3C",
+      "seat": 2,
+      "type": "sooli_exchange"
+     },
+     {
+      "card": "AC",
+      "seat": 2,
+      "type": "sooli_exchange"
+     },
+     {
+      "card": "2S",
+      "seat": 2,
+      "type": "sooli_exchange"
+     },
+     {
+      "card": "3S",
+      "seat": 2,
+      "type": "sooli_exchange"
+     },
+     {
+      "card": "AS",
+      "seat": 2,
+      "type": "sooli_exchange"
+     }
+    ],
+    "match_ref": "research-fixture",
+    "match_score": [
+     0,
+     0
+    ],
+    "match_terminal": false,
+    "observing_seat": 2,
+    "own_hand": [
+     "2H",
+     "3H",
+     "KH",
+     "AH",
+     "2D",
+     "3D",
+     "AD",
+     "2C",
+     "3C",
+     "AC",
+     "2S",
+     "3S",
+     "AS"
+    ],
+    "partner_seat": 0,
+    "phase": "SOOLI_GIVE",
+    "publicly_shown_cards": [
+     {
+      "card": "8H",
+      "seat": 1
+     }
+    ],
+    "ruleset_id": "project_target_v3",
+    "schema_version": "tuppi.engine.player_observation.v1",
+    "show_actions": [
+     {
+      "declared_contract": "RAMI",
+      "seat": 1,
+      "shown_card": "8H",
+      "verbal_required": false
+     }
+    ],
+    "sooli": {
+     "decisions": [
+      {
+       "play_sooli": true,
+       "seat": 2
+      }
+     ],
+     "exchanged": false,
+     "given_card": null,
+     "partner": 0,
+     "returned_card": null,
+     "soolaaja": 2
+    },
+    "team": 0,
+    "team_tricks": [
+     0,
+     0
+    ],
+    "visibility": "player_private"
+   },
+   "ordered_action_ids": [
+    158,
+    159,
+    169,
+    170,
+    171,
+    172,
+    183,
+    184,
+    185,
+    196,
+    197,
+    198,
+    209
+   ],
+   "policy_snapshot_ref": null,
+   "population": {
+    "accepted_offers": 1,
+    "population": "accepted by the frozen heuristic offer policy on a constructed deal",
+    "rejected_offers": 0
+   },
+   "schema": "tuppi.research.records.v1",
+   "split": "DEV"
+  }
+ ],
+ "checks": {
+  "F03": {
+   "actor_to_move": true,
+   "give_survival_values_differ": true,
+   "legal_gives": 13,
+   "own_cards": 13,
+   "replay_reproduces_observation": true,
+   "ruleset": "project_target_v3",
+   "survival_values": [
+    0,
+    1
+   ],
+   "wire_roundtrip": true
+  }
+ },
+ "deals_generated": [
+  "deck:9d9f0077e10e5bd8f7209fb2"
+ ],
+ "fixture_id": "F03",
+ "status": "VALIDATED",
+ "truth_extras_ref": "truth/F03.extras.json",
+ "truth_ref": "truth/deal_5994587643f829346f6bc98a9cd4fbb0.truth.json"
+}

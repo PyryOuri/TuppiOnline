@@ -1,0 +1,141 @@
+{
+  "schema": "tuppi.speed_qualification.parallel_parity_plan.v1",
+  "jobs": [
+    {
+      "id": "parallel_native_roots_reference",
+      "mode": "native_roots",
+      "variant": "reference",
+      "worlds": 16,
+      "parallel": true,
+      "seed": "qualification-fixtures-v1",
+      "samples": 0,
+      "cpu_seconds": 90,
+      "wall_seconds": 120
+    },
+    {
+      "id": "parallel_native_roots_combo32",
+      "mode": "native_roots",
+      "variant": "combo32",
+      "worlds": 16,
+      "parallel": true,
+      "seed": "qualification-fixtures-v1",
+      "samples": 0,
+      "cpu_seconds": 90,
+      "wall_seconds": 120
+    },
+    {
+      "id": "parallel_native_roots_combo128",
+      "mode": "native_roots",
+      "variant": "combo128",
+      "worlds": 16,
+      "parallel": true,
+      "seed": "qualification-fixtures-v1",
+      "samples": 0,
+      "cpu_seconds": 90,
+      "wall_seconds": 120
+    },
+    {
+      "id": "parallel_native_roots_compact128",
+      "mode": "native_roots",
+      "variant": "compact128",
+      "worlds": 16,
+      "parallel": true,
+      "seed": "qualification-fixtures-v1",
+      "samples": 0,
+      "cpu_seconds": 90,
+      "wall_seconds": 120
+    },
+    {
+      "id": "parallel_history_bank_reference",
+      "mode": "history_bank",
+      "variant": "reference",
+      "worlds": 128,
+      "parallel": true,
+      "seed": "qualification-fixtures-v1",
+      "samples": 0,
+      "cpu_seconds": 120,
+      "wall_seconds": 150
+    },
+    {
+      "id": "parallel_history_bank_combo32",
+      "mode": "history_bank",
+      "variant": "combo32",
+      "worlds": 128,
+      "parallel": true,
+      "seed": "qualification-fixtures-v1",
+      "samples": 0,
+      "cpu_seconds": 120,
+      "wall_seconds": 150
+    },
+    {
+      "id": "parallel_history_bank_combo128",
+      "mode": "history_bank",
+      "variant": "combo128",
+      "worlds": 128,
+      "parallel": true,
+      "seed": "qualification-fixtures-v1",
+      "samples": 0,
+      "cpu_seconds": 120,
+      "wall_seconds": 150
+    },
+    {
+      "id": "parallel_history_bank_compact128",
+      "mode": "history_bank",
+      "variant": "compact128",
+      "worlds": 128,
+      "parallel": true,
+      "seed": "qualification-fixtures-v1",
+      "samples": 0,
+      "cpu_seconds": 120,
+      "wall_seconds": 150
+    },
+    {
+      "id": "parallel_forced_sooli_reference",
+      "mode": "forced_sooli",
+      "variant": "reference",
+      "worlds": 1024,
+      "parallel": true,
+      "seed": "qualification-fixtures-v1",
+      "samples": 0,
+      "cpu_seconds": 150,
+      "wall_seconds": 180
+    },
+    {
+      "id": "parallel_forced_sooli_combo32",
+      "mode": "forced_sooli",
+      "variant": "combo32",
+      "worlds": 1024,
+      "parallel": true,
+      "seed": "qualification-fixtures-v1",
+      "samples": 0,
+      "cpu_seconds": 150,
+      "wall_seconds": 180
+    },
+    {
+      "id": "parallel_forced_sooli_combo128",
+      "mode": "forced_sooli",
+      "variant": "combo128",
+      "worlds": 1024,
+      "parallel": true,
+      "seed": "qualification-fixtures-v1",
+      "samples": 0,
+      "cpu_seconds": 150,
+      "wall_seconds": 180
+    },
+    {
+      "id": "parallel_forced_sooli_compact128",
+      "mode": "forced_sooli",
+      "variant": "compact128",
+      "worlds": 1024,
+      "parallel": true,
+      "seed": "qualification-fixtures-v1",
+      "samples": 0,
+      "cpu_seconds": 150,
+      "wall_seconds": 180
+    }
+  ],
+  "base_plan_sha256": "82a3dbb055babe4c4d5aacfee4b8f70f2319212b1f29f4c06981c500a630d920",
+  "budget_cpu_seconds": 1440,
+  "budget_wall_seconds": 1800,
+  "purpose": "Same fixed roots/history/accepted-sooli corpus under native dispatch; compare with serial and dispatched reference."
+}

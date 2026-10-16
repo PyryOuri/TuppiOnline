@@ -1,0 +1,198 @@
+{
+  "status": "PASS",
+  "scope": "12 real v3 deals; correctness only, no learner training or strength measurement",
+  "seconds": 2.223898458003532,
+  "phases": [
+    "SHOWING",
+    "SOOLI_GIVE",
+    "SOOLI_OFFER",
+    "SOOLI_PLAY",
+    "SOOLI_RETURN",
+    "TRICK_PLAY"
+  ],
+  "rows": 493,
+  "deals": [
+    {
+      "parent": 0,
+      "mode": "nolo",
+      "steps": 56,
+      "winner": 1,
+      "score_after": [
+        0,
+        12
+      ],
+      "match_terminal": false
+    },
+    {
+      "parent": 1,
+      "mode": "rami",
+      "steps": 55,
+      "winner": 0,
+      "score_after": [
+        8,
+        0
+      ],
+      "match_terminal": false
+    },
+    {
+      "parent": 2,
+      "mode": "sooli",
+      "steps": 19,
+      "winner": 1,
+      "score_after": [
+        0,
+        24
+      ],
+      "match_terminal": false
+    },
+    {
+      "parent": 3,
+      "mode": "nolo",
+      "steps": 56,
+      "winner": 1,
+      "score_after": [
+        0,
+        4
+      ],
+      "match_terminal": false
+    },
+    {
+      "parent": 4,
+      "mode": "rami",
+      "steps": 55,
+      "winner": 0,
+      "score_after": [
+        64,
+        0
+      ],
+      "match_terminal": true
+    },
+    {
+      "parent": 5,
+      "mode": "sooli",
+      "steps": 7,
+      "winner": 0,
+      "score_after": [
+        72,
+        0
+      ],
+      "match_terminal": true
+    },
+    {
+      "parent": 6,
+      "mode": "nolo",
+      "steps": 56,
+      "winner": 1,
+      "score_after": [
+        0,
+        0
+      ],
+      "match_terminal": false
+    },
+    {
+      "parent": 7,
+      "mode": "rami",
+      "steps": 55,
+      "winner": 1,
+      "score_after": [
+        0,
+        0
+      ],
+      "match_terminal": false
+    },
+    {
+      "parent": 8,
+      "mode": "sooli",
+      "steps": 13,
+      "winner": 1,
+      "score_after": [
+        0,
+        72
+      ],
+      "match_terminal": true
+    },
+    {
+      "parent": 9,
+      "mode": "nolo",
+      "steps": 56,
+      "winner": 1,
+      "score_after": [
+        0,
+        52
+      ],
+      "match_terminal": true
+    },
+    {
+      "parent": 10,
+      "mode": "rami",
+      "steps": 55,
+      "winner": 0,
+      "score_after": [
+        0,
+        0
+      ],
+      "match_terminal": false
+    },
+    {
+      "parent": 11,
+      "mode": "sooli",
+      "steps": 10,
+      "winner": 0,
+      "score_after": [
+        0,
+        0
+      ],
+      "match_terminal": false
+    }
+  ],
+  "exact_real_game_suffixes": [
+    {
+      "parent": 0,
+      "paths": 16,
+      "q_advantage_mse": 0.0,
+      "gae_advantage_mse": 0.0
+    },
+    {
+      "parent": 1,
+      "paths": 8,
+      "q_advantage_mse": 0.0,
+      "gae_advantage_mse": 0.0
+    },
+    {
+      "parent": 3,
+      "paths": 10,
+      "q_advantage_mse": 0.0,
+      "gae_advantage_mse": 0.0
+    },
+    {
+      "parent": 4,
+      "paths": 8,
+      "q_advantage_mse": 0.0,
+      "gae_advantage_mse": 0.5
+    },
+    {
+      "parent": 6,
+      "paths": 10,
+      "q_advantage_mse": 0.0,
+      "gae_advantage_mse": 0.0
+    },
+    {
+      "parent": 7,
+      "paths": 12,
+      "q_advantage_mse": 0.0,
+      "gae_advantage_mse": 0.0
+    },
+    {
+      "parent": 9,
+      "paths": 10,
+      "q_advantage_mse": 0.0,
+      "gae_advantage_mse": 0.0
+    },
+    {
+      "parent": 10,
+      "paths": 12,
+      "q_advantage_mse": 0.0,
+      "gae_advantage_mse": 0.0
+    }
+  ]
+}

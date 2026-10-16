@@ -1,0 +1,48 @@
+{
+ "manifest_id": "c2-screen-stage1-v1",
+ "task": "P.C2 stage 1: reach (exclusion) rates, F/R/RC gap differences and decision changes on natural blind-bid positions",
+ "execution_enabled": true,
+ "approval": {
+  "by": "owner (chat)",
+  "date": "2026-09-26",
+  "scope": "C2 stage 1, about 12 CPU-minutes",
+  "caps_set_by": "implementer, stated to the owner before the run"
+ },
+ "baseline": "B0 best_agents(worlds=128); its bid search uses the F reconstruction (uniform worlds, random eligible NOLO cards for earlier seats)",
+ "process_library": "R0-parity 221fe041 (bitwise == B0 on the A03 probe set); needed for explicit-world evaluation and forks",
+ "population": {
+  "source": "natural v3 deals by best_agents(worlds=128) at all seats, fresh agents per deal, played through showing only",
+  "deck_namespace": "c2-screen-v1",
+  "score_law": "zero",
+  "dealer": "source index mod 4",
+  "focal_positions": "every blind bid actually reached with at least one earlier bidder (reveal position k >= 1); forehand bids are counted, not evaluated (R = F exactly there)"
+ },
+ "evaluation": {
+  "worlds_per_position": 64,
+  "world_stream": "test|c2-screen|<source>|<k>",
+  "actions": "every legal bid, engine order",
+  "solver_tail": 6,
+  "env_sooli_settings": "cold (as for an agent's first call)",
+  "predecessor_model": "deterministic native clone (C2.01)",
+  "calibration": "first 4 evaluated positions: the earlier seats' bids on the first 6 worlds recomputed by fresh W128 forks (C2.02 SearchPredecessor)",
+  "validation": "where F, R and RC pick different bids: those bids re-evaluated on 256 fresh independent worlds (stream validation|c2-screen|<source>|<k>) with clone predecessors; paired difference R/RC pick minus F pick under that model, with its standard error"
+ },
+ "measurements": [
+  "exclusion rate 1 - P(E | focal observation) per position under the clone model, by k",
+  "the same under W128 search predecessors (calibration) and per-world agreement with the clone model",
+  "conditional gaps F, R, RC per action; argmax under each; max |R - F| and |RC - R|",
+  "estimated decision regret of F under the R (and RC) model: gap_R(argmax_R) - gap_R(argmax_F)"
+ ],
+ "caps": {
+  "max_source_deals": 30,
+  "cpu_seconds": 638,
+  "wall_seconds": 300,
+  "workers": 1,
+  "native_concurrency": 1,
+  "rule": "stop before a deal (or before calibration) if spent + expected cost would exceed a cap",
+  "note": "720 CPU-s stage budget minus the 81 CPU-s pre-flight"
+ },
+ "not_claimed": "no strength claim; 64 worlds per position gives noisy argmax comparisons; clone predecessors are a model",
+ "result_path": "logs/c2_screen_stage1.json",
+ "amended": "2026-09-26 after the 2-deal pre-flight: added independent validation (winner's-curse guard); calibration cut to 4 positions"
+}

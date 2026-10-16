@@ -1,0 +1,76 @@
+{
+  "schema": "tuppi.cheap_wins.preparation_checks.v1",
+  "status": "PREPARATION_CHECKS_PASS",
+  "pytest_exit": 0,
+  "native_root_parity": {
+    "installed": true,
+    "rebuilt": true,
+    "bucket_off": true,
+    "bucket_on": true,
+    "same_net": true
+  },
+  "native_root_count": 14,
+  "native_root_scope": "Ordinary roots including partial tricks and C/O/P modes; W1024 only on exact-tail roots",
+  "same_net_exact_on_checked_roots": true,
+  "authoritative_pipeline_smoke": {
+    "worlds": 4,
+    "base_deals": 2,
+    "games": 16,
+    "values": [
+      0.0,
+      0.0
+    ]
+  },
+  "wall_seconds": 12.351814500056207,
+  "qualification": "Prepared mechanism, pipeline and one complete W1024 trace check per speed arm. Broader contract/accepted-sooli histories, repeated speed work and strength comparisons remain unexecuted.",
+  "unit_tests_passed": 11,
+  "final_unit_log": "checks/pytest-comparison.log",
+  "additional_smokes": [
+    {
+      "name": "ensemble_smoke",
+      "schema": "tuppi.cheap_wins.full_deals.v1",
+      "seconds": 1.1157804171089083,
+      "cpu_seconds": 0.7949970000000001
+    },
+    {
+      "name": "match_smoke",
+      "schema": "tuppi.cheap_wins.match_cost.v1",
+      "seconds": 1.592966000083834,
+      "cpu_seconds": 1.240065
+    }
+  ],
+  "runtime_versions": {
+    "torch": "2.14.0",
+    "numpy": "2.5.3",
+    "python": "3.14.2 (v3.14.2:df793163d58, Dec  5 2025, 12:18:06) [Clang 16.0.0 (clang-1600.0.26.6)]",
+    "executable": "/Users/pyryouri/.venvs/tuppi-v2/bin/python"
+  },
+  "cli_validation": "checks/cli_and_source_validation.json",
+  "whole_deal_qualification": {
+    "worlds": 1024,
+    "deals": 1,
+    "scope": "Single fixed input, separate fresh processes; not repeated speed measurement",
+    "cpu_reserved_seconds": 240,
+    "wall_reserved_seconds": 330,
+    "reward_bucket": {
+      "comparison": "checks/w1024_qualification/comparison.json",
+      "fingerprints_identical": true,
+      "candidate_cpu_seconds": 22.254158,
+      "reference_cpu_seconds": 28.713759,
+      "observed_cpu_reduction": 0.22496535545903273
+    },
+    "same_net": {
+      "comparison": "checks/w1024_qualification/same_net_comparison.json",
+      "fingerprints_identical": true,
+      "candidate_cpu_seconds": 25.682413,
+      "reference_cpu_seconds": 28.713759,
+      "observed_cpu_reduction": 0.10557120020405542
+    },
+    "phases": {
+      "SHOWING": 4,
+      "SOOLI_OFFER": 2,
+      "TRICK_PLAY": 52
+    },
+    "actual_cpu_seconds": 76.65033
+  }
+}

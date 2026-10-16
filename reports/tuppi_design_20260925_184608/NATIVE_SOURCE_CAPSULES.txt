@@ -1,0 +1,1758 @@
+E005 | native/tuppi_search.c | complete file
+// Hidden-hand sampling for search.
+//
+// tc_sample_world draws the other three hands exactly uniformly from every
+// assignment consistent with the observer's hard public constraints: hand
+// sizes, cards already played, shown cards not yet played (known to be held by
+// their shower), and voids revealed by failing to follow suit. Cards of one
+// suit are exchangeable under these constraints, so the count of assignments
+// factorises over suits; a DP over remaining capacities (at most 14^3 states)
+// gives exact weights for the per-suit split counts.
+#include <dispatch/dispatch.h>
+#include <math.h>
+#include <string.h>
+
+#include "tuppi_core.h"
+
+typedef uint64_t u64;
+#define SUIT_MASK(s) (0x1FFFULL << ((s) * 13))
+#define FULL_DECK ((1ULL << 52) - 1)
+
+static inline u64 splitmix(u64 *x) {
+  u64 z = (*x += 0x9E3779B97F4A7C15ULL);
+  z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+  z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+  return z ^ (z >> 31);
+}
+static inline double unit(u64 *x) { return (splitmix(x) >> 11) * (1.0 / 9007199254740992.0); }
+
+// Filled once: the sooli heuristics sample worlds from several threads at a
+// time (search_core resolves rollouts' soolis in parallel).
+static double lfact[53];
+static void fill_lfact(void *unused) {
+  (void)unused;
+  lfact[0] = 0;
+  for (int i = 1; i < 53; i++) lfact[i] = lfact[i - 1] + log((double)i);
+}
+static void init_lfact(void) {
+  static dispatch_once_t once;
+  dispatch_once_f(&once, NULL, fill_lfact);
+}
+
+// Rebuilds the full public trick state from an observation's history and fills
+// everything in a TcDeal except the hidden hands.
+static void public_state(const TcObs *o, TcDeal *d, int played_by[4], int void_mask[4], u64 *played_all) {
+  memset(d, 0, sizeof *d);
+  d->dealer = o->dealer;
+  d->phase = o->phase;
+  d->n_shows = o->n_shows;
+  memcpy(d->show_seat, o->show_seat, 4);
+  memcpy(d->show_card, o->show_card, 4);
+  memcpy(d->show_contract, o->show_contract, 4);
+  memcpy(d->show_verbal, o->show_verbal, 4);
+  d->contract = o->contract;
+  d->declarer = o->declarer;
+  d->first_leader = o->first_leader;
+  d->n_played = o->n_played;
+  memcpy(d->play_card, o->play_card, o->n_played);
+  memcpy(d->play_seat, o->play_seat, o->n_played);
+  d->score[0] = o->score[0];
+  d->score[1] = o->score[1];
+  d->winner_team = -1;
+  d->ruleset = o->ruleset == 2 || o->ruleset == 3 ? o->ruleset : 1;
+  d->trick_size = o->trick_size == 3 ? 3 : 4;
+  d->n_decisions = o->n_decisions;
+  memcpy(d->decision_seat, o->decision_seat, 2);
+  memcpy(d->decision_accept, o->decision_accept, 2);
+  d->soolaaja = o->soolaaja;
+  d->given = o->known_given;
+  d->returned = o->known_returned;
+  for (int i = 0; i < 4; i++) { played_by[i] = 0; void_mask[i] = 0; }
+  *played_all = 0;
+  const int ts = d->trick_size;
+  int leader = ts == 3 ? o->declarer : o->first_leader, n = o->n_played;
+  for (int t = 0; t < n; t += ts) {
+    int led = o->play_card[t] / 13, best = t;
+    for (int i = t; i < n && i < t + ts; i++) {
+      int c = o->play_card[i], s = o->play_seat[i];
+      played_by[s]++;
+      *played_all |= 1ULL << c;
+      if (c / 13 != led) void_mask[s] |= 1 << led;
+      int higher = ts == 3 ? tc_sooli_rank(c) > tc_sooli_rank(o->play_card[best]) : c % 13 > o->play_card[best] % 13;
+      if (i > t && c / 13 == led && higher) best = i;
+    }
+    if (t + ts <= n) {
+      int w = o->play_seat[best];
+      d->team_tricks[w & 1]++;
+      leader = w;
+    }
+  }
+  if (o->phase == TC_PH_SHOW) d->cur = (uint8_t)((o->dealer + 1 + o->n_shows) & 3);
+  else if (o->phase == TC_PH_PLAY) {
+    int pos = n & 3;
+    d->cur = (uint8_t)(pos ? ((o->play_seat[n - pos] + pos) & 3) : leader);
+  } else if (o->phase == TC_PH_SOOLI_OFFER) {
+    d->cur = (uint8_t)((o->declarer + (o->n_decisions ? 3 : 1)) & 3);
+  } else if (o->phase == TC_PH_SOOLI_GIVE) {
+    d->cur = (uint8_t)o->soolaaja;
+  } else if (o->phase == TC_PH_SOOLI_RETURN) {
+    d->cur = (uint8_t)((o->soolaaja + 2) & 3);
+  } else if (o->phase == TC_PH_SOOLI_PLAY) {
+    int pos = n % 3, lead = pos ? o->play_seat[n - pos] : leader;
+    d->cur = (uint8_t)(pos == 0 ? lead : pos == 1 ? ((lead + 2) & 3) : o->soolaaja);
+  }
+}
+
+// Optional exponential tilt on one other seat's holding (sooli beliefs): each
+// assignment is weighted by exp(-lambda * exposure) of that seat's cards
+// together with `fixed` (its cards known or already played). Exposure against
+// the rest of the deck is a sum over suits of max(0, rank_i - 2i) over the
+// seat's ace-low ranks in increasing order, so the weighted count still
+// factorises over suits and the draw stays exact.
+typedef struct { int j; double lambda; u64 fixed; } Tilt;
+
+// Log weight of splitting a suit's m free cards x / y / z among the others.
+static inline double split_term(const Tilt *t, const double *logA, int m, int x, int y, int z) {
+  if (!t) return lfact[m] - lfact[x] - lfact[y] - lfact[z];
+  int n[3] = {x, y, z}, k = n[t->j], p = n[(t->j + 1) % 3];
+  return logA[k] + lfact[m - k] - lfact[p] - lfact[m - k - p];
+}
+
+static int suit_exposure_low(unsigned low13) {
+  int d = 0, i = 0;
+  while (low13) {
+    int r = __builtin_ctz(low13);
+    low13 &= low13 - 1;
+    if (r > 2 * i) d += r - 2 * i;
+    i++;
+  }
+  return d;
+}
+static inline unsigned suit_low(u64 hand, int v) {
+  unsigned m = (unsigned)((hand >> (13 * v)) & 0x1FFFULL);
+  return ((m & 0xFFFu) << 1) | (m >> 12);
+}
+// Tilt weight of giving the seat the subset `sub` (bit i = i-th free card of
+// the suit, ascending) of the suit's free cards.
+static double tilt_weight(const Tilt *t, int v, const int *cards, int nc, unsigned sub) {
+  u64 h = t->fixed;
+  for (int i = 0; i < nc; i++) if (sub >> i & 1u) h |= 1ULL << cards[i];
+  return exp(-t->lambda * suit_exposure_low(suit_low(h, v)));
+}
+
+// Log number of assignments of `free_cards` to the three `others` with exact
+// capacities and no card of a void suit, and, if `hands` is given, an exact
+// uniform draw of one such assignment (added to hands). -INFINITY if none.
+static double count_or_draw(const int others[3], const int cap[3], u64 free_cards, const int void_mask[4],
+                            u64 *rng, u64 hands[4], const Tilt *tilt) {
+  int size[4];
+  for (int v = 0; v < 4; v++) size[v] = __builtin_popcountll(free_cards & SUIT_MASK(v));
+  // logA[v][k]: log of the tilt-weighted number of k-subsets of suit v's free
+  // cards for the tilted seat (log C(m, k) without a tilt).
+  double logA[4][14];
+  int suit_cards[4][13];
+  for (int v = 0; v < 4; v++) {
+    int nc = 0;
+    for (u64 fm = free_cards & SUIT_MASK(v); fm; fm &= fm - 1) suit_cards[v][nc++] = __builtin_ctzll(fm);
+    if (!tilt) continue;
+    double A[14] = {0};
+    for (unsigned sub = 0; sub < (1u << nc); sub++) A[__builtin_popcount(sub)] += tilt_weight(tilt, v, suit_cards[v], nc, sub);
+    for (int k = 0; k <= nc; k++) logA[v][k] = log(A[k]);
+  }
+  if (size[0] + size[1] + size[2] + size[3] != cap[0] + cap[1] + cap[2]) return -INFINITY;
+
+  // W[v][a][b] = log number of ways to place suits v..3 given remaining
+  // capacities a, b for the first two others (the third is implied).
+  double W[5][14][14];
+  int remaining_after[5];
+  remaining_after[4] = 0;
+  for (int v = 3; v >= 0; v--) remaining_after[v] = remaining_after[v + 1] + size[v];
+  for (int a = 0; a < 14; a++) for (int b = 0; b < 14; b++) W[4][a][b] = (a == 0 && b == 0) ? 0.0 : -INFINITY;
+  for (int v = 3; v >= 0; v--) {
+    int m = size[v];
+    for (int a = 0; a < 14; a++) {
+      for (int b = 0; b < 14; b++) {
+        int c = remaining_after[v] - a - b;
+        double best = -INFINITY, acc = 0.0;
+        double terms[196]; int nt = 0;
+        if (c < 0 || c > 13) { W[v][a][b] = -INFINITY; continue; }
+        for (int x = 0; x <= m && x <= a; x++) {
+          if (x && (void_mask[others[0]] >> v & 1)) break;
+          for (int y = 0; x + y <= m && y <= b; y++) {
+            if (y && (void_mask[others[1]] >> v & 1)) break;
+            int z = m - x - y;
+            if (z > c) continue;
+            if (z && (void_mask[others[2]] >> v & 1)) continue;
+            double rest = W[v + 1][a - x][b - y];
+            if (rest == -INFINITY) continue;
+            double t = split_term(tilt, logA[v], m, x, y, z) + rest;
+            terms[nt++] = t;
+            if (t > best) best = t;
+          }
+        }
+        if (!nt) { W[v][a][b] = -INFINITY; continue; }
+        for (int i = 0; i < nt; i++) acc += exp(terms[i] - best);
+        W[v][a][b] = best + log(acc);
+      }
+    }
+  }
+  if (cap[0] > 13 || cap[1] > 13 || W[0][cap[0]][cap[1]] == -INFINITY) return -INFINITY;
+  if (!hands) return W[0][cap[0]][cap[1]];
+
+  int a = cap[0], b = cap[1];
+  for (int v = 0; v < 4; v++) {
+    int m = size[v], c = remaining_after[v] - a - b;
+    double lw[196]; int sx[196], sy[196], ns = 0;
+    for (int x = 0; x <= m && x <= a; x++) {
+      if (x && (void_mask[others[0]] >> v & 1)) break;
+      for (int y = 0; x + y <= m && y <= b; y++) {
+        if (y && (void_mask[others[1]] >> v & 1)) break;
+        int z = m - x - y;
+        if (z > c || (z && (void_mask[others[2]] >> v & 1))) continue;
+        double rest = W[v + 1][a - x][b - y];
+        if (rest == -INFINITY) continue;
+        lw[ns] = split_term(tilt, logA[v], m, x, y, z) + rest - W[v][a][b];
+        sx[ns] = x; sy[ns] = y; ns++;
+      }
+    }
+    if (!ns) return -INFINITY;
+    double r = unit(rng), acc = 0.0;
+    int pick = ns - 1;
+    for (int i = 0; i < ns; i++) { acc += exp(lw[i]); if (r < acc) { pick = i; break; } }
+    int cx = sx[pick], cy = sy[pick];
+    int cards[13], nc = 0;
+    u64 fm = free_cards & SUIT_MASK(v);
+    while (fm) { cards[nc++] = __builtin_ctzll(fm); fm &= fm - 1; }
+    if (tilt) {
+      // The tilted seat's subset by weight, then the rest uniformly.
+      int n3[3] = {cx, cy, m - cx - cy}, k = n3[tilt->j];
+      double r2 = unit(rng) * exp(logA[v][k]), acc2 = 0.0;
+      unsigned chosen = 0, last = 0;
+      for (unsigned sub = 0; sub < (1u << nc); sub++) {
+        if (__builtin_popcount(sub) != k) continue;
+        last = sub;
+        acc2 += tilt_weight(tilt, v, cards, nc, sub);
+        if (r2 < acc2) { chosen = sub; break; }
+        chosen = last;
+      }
+      int rest[13], nr = 0;
+      for (int i = 0; i < nc; i++) {
+        if (chosen >> i & 1u) hands[others[tilt->j]] |= 1ULL << cards[i];
+        else rest[nr++] = cards[i];
+      }
+      for (int i = nr - 1; i > 0; i--) { int j = (int)(splitmix(rng) % (u64)(i + 1)); int t = rest[i]; rest[i] = rest[j]; rest[j] = t; }
+      int j1 = (tilt->j + 1) % 3, j2 = (tilt->j + 2) % 3, n1 = n3[j1];
+      for (int i = 0; i < nr; i++) hands[others[i < n1 ? j1 : j2]] |= 1ULL << rest[i];
+    } else {
+      // Deal the suit's free cards: a random permutation split x / y / z.
+      for (int i = nc - 1; i > 0; i--) { int j = (int)(splitmix(rng) % (u64)(i + 1)); int t = cards[i]; cards[i] = cards[j]; cards[j] = t; }
+      for (int i = 0; i < nc; i++) {
+        int who = i < cx ? 0 : (i < cx + cy ? 1 : 2);
+        hands[others[who]] |= 1ULL << cards[i];
+      }
+    }
+    a -= cx;
+    b -= cy;
+  }
+  return W[0][cap[0]][cap[1]];
+}
+
+// Capacities of the others and free cards given the known placements.
+static int setup(const TcObs *o, const int others[3], const int hand_size[4], const u64 known[4], u64 played_all,
+                 int cap[3], u64 *free_cards) {
+  u64 known_all = known[0] | known[1] | known[2] | known[3];
+  *free_cards = FULL_DECK & ~o->hand & ~played_all & ~known_all;
+  for (int j = 0; j < 3; j++) {
+    int s = others[j];
+    cap[j] = hand_size[s] - __builtin_popcountll(known[s]);
+    if (cap[j] < 0) return -1;
+  }
+  return 0;
+}
+
+static int sample_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, const int played_by[4], const int void_mask[4],
+                        u64 played_all, const int others[3]);
+
+// Returns 0 on success, -1 if the constraints admit no world.
+int tc_sample_world(const TcObs *o, uint64_t *rng, TcDeal *out) {
+  init_lfact();
+  int played_by[4], void_mask[4];
+  u64 played_all;
+  public_state(o, out, played_by, void_mask, &played_all);
+  const int me = o->seat;
+  int others[3], k = 0;
+  for (int s = 0; s < 4; s++) if (s != me) others[k++] = s;
+  if (o->soolaaja >= 0 && (o->phase == TC_PH_SOOLI_RETURN || o->trick_size == 3))
+    return sample_sooli(o, rng, out, played_by, void_mask, played_all, others);
+  u64 known[4] = {0, 0, 0, 0};
+  for (int i = 0; i < (TC_LOCKED(o) ? 0 : o->n_shows); i++) {
+    int c = o->show_card[i], s = o->show_seat[i];
+    if (s != me && !(played_all >> c & 1ULL)) known[s] |= 1ULL << c;
+  }
+  int hand_size[4], cap[3];
+  for (int s = 0; s < 4; s++) hand_size[s] = 13 - played_by[s];
+  u64 free_cards;
+  if (setup(o, others, hand_size, known, played_all, cap, &free_cards) != 0) return -1;
+  u64 hands[4] = {0, 0, 0, 0};
+  hands[me] = o->hand;
+  for (int s = 0; s < 4; s++) hands[s] |= known[s];
+  if (count_or_draw(others, cap, free_cards, void_mask, rng, hands, NULL) == -INFINITY) return -1;
+  for (int s = 0; s < 4; s++) out->hand[s] = hands[s];
+  if (TC_LOCKED(o)) {
+    // Locked bids: the earlier bids are unseen, and all were NOLO (a RAMI
+    // would have ended showing). Each earlier seat bids a random legal NOLO
+    // card of its sampled hand, as players pick bid cards (owner: "roughly
+    // at random"). Only hands matter for the rest of the deal.
+    for (int i = 0; i < o->n_shows; i++) {
+      int s = (o->dealer + 1 + i) & 3;
+      u64 valid = tc_valid_show_cards(hands[s], TC_NOLO);
+      int n = __builtin_popcountll(valid), pick = (int)(splitmix(rng) % (u64)(n ? n : 1));
+      int c = -1;
+      for (u64 m = valid; m; m &= m - 1) { if (pick-- == 0) { c = __builtin_ctzll(m); break; } }
+      if (c < 0) return -1;
+      out->show_seat[i] = (uint8_t)s;
+      out->show_card[i] = (uint8_t)c;
+      out->show_contract[i] = TC_NOLO;
+      out->show_verbal[i] = (uint8_t)tc_verbal_required(c, TC_NOLO);
+    }
+  }
+  return 0;
+}
+
+// Exposure tilt for sooli worlds (tc_sample_world_tilted); 0 = none.
+static __thread double sooli_tilt = 0.0;
+
+int tc_sample_world_tilted(const TcObs *o, uint64_t *rng, TcDeal *out, double lambda) {
+  sooli_tilt = lambda;
+  int r = tc_sample_world(o, rng, out);
+  sooli_tilt = 0.0;
+  return r;
+}
+
+// Worlds once a sooli exchange has begun (project_target_v2). Hand sizes follow
+// the exchange (during the return the soolaaja holds 12 cards and the partner
+// 14). The soolaaja and the partner know both exchanged cards, so every shown
+// card's holder is known to them. The RAMI pair does not: a card shown by the
+// soolaaja or the partner and not yet played is with one of the two, and the
+// cases are weighted by their numbers of worlds times the number of exchanges
+// (given card, returned card) that lead to them, i.e. a uniform prior over the
+// exchange. A RAMI player is never asked during the return, so that case is
+// unsupported (-1).
+static int sample_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, const int played_by[4], const int void_mask[4],
+                        u64 played_all, const int others[3]) {
+  const int me = o->seat, S = o->soolaaja, P = (S + 2) & 3;
+  const int returning = o->phase == TC_PH_SOOLI_RETURN;
+  const int knows = me == S || me == P;
+  if (!knows && returning) return -1;
+  int hand_size[4];
+  for (int s = 0; s < 4; s++) hand_size[s] = 13 - played_by[s];
+  if (returning) { hand_size[S]--; hand_size[P]++; }
+  const int g = o->known_given, r = o->known_returned;
+  u64 known[4] = {0, 0, 0, 0};
+  int unsure[2], n_unsure = 0, x_card = -1, y_card = -1;
+  for (int i = 0; i < o->n_shows; i++) {
+    int c = o->show_card[i], s = o->show_seat[i];
+    if (s == S) x_card = c;
+    if (s == P) y_card = c;
+    if (played_all >> c & 1ULL) continue;
+    int loc = s;
+    if (knows) loc = c == g ? P : (c == r ? S : s);
+    else if (s == S || s == P) { unsure[n_unsure++] = c; continue; }
+    if (loc != me) known[loc] |= 1ULL << c;
+  }
+  if (knows) {
+    if (g >= 0 && P != me && !(played_all >> g & 1ULL)) known[P] |= 1ULL << g;
+    if (r >= 0 && S != me && !(played_all >> r & 1ULL)) known[S] |= 1ULL << r;
+  }
+  for (int s = 0; s < 4; s++) known[s] &= ~o->hand;
+  u64 base[4] = {0, 0, 0, 0};
+  base[me] = o->hand;
+  for (int s = 0; s < 4; s++) base[s] |= known[s];
+  // The tilted seat is the soolaaja; its fixed cards are those it is known to
+  // hold, those it has played and, during the return, the card it gave.
+  u64 s_played = 0;
+  for (int i = 0; i < o->n_played; i++) if (o->play_seat[i] == S) s_played |= 1ULL << o->play_card[i];
+  Tilt tilt = {0, sooli_tilt, 0};
+  int tilted = sooli_tilt > 0.0 && me != S;
+  for (int j = 0; j < 3; j++) if (others[j] == S) tilt.j = j;
+  if (returning && g >= 0) s_played |= 1ULL << g;
+  if (knows || n_unsure == 0) {
+    int cap[3];
+    u64 free_cards;
+    if (setup(o, others, hand_size, known, played_all, cap, &free_cards) != 0) return -1;
+    tilt.fixed = known[S] | s_played;
+    if (count_or_draw(others, cap, free_cards, void_mask, rng, base, tilted ? &tilt : NULL) == -INFINITY) return -1;
+    for (int s = 0; s < 4; s++) out->hand[s] = base[s];
+    return 0;
+  }
+  // RAMI observer: every placement of the unsure cards with S or P.
+  double lw[4];
+  u64 case_known[4][4];
+  int n_cases = 1 << n_unsure;
+  double best = -INFINITY;
+  for (int m = 0; m < n_cases; m++) {
+    u64 *kk = case_known[m];
+    for (int s = 0; s < 4; s++) kk[s] = known[s];
+    int ok = 1;
+    for (int j = 0; j < n_unsure; j++) {
+      int c = unsure[j], loc = (m >> j & 1) ? P : S;
+      if (loc == S && (void_mask[S] >> (c / 13) & 1)) ok = 0;
+      kk[loc] |= 1ULL << c;
+    }
+    int cap[3];
+    u64 free_cards;
+    lw[m] = -INFINITY;
+    if (!ok || setup(o, others, hand_size, kk, played_all, cap, &free_cards) != 0) continue;
+    tilt.fixed = kk[S] | s_played;
+    double w = count_or_draw(others, cap, free_cards, void_mask, NULL, NULL, tilted ? &tilt : NULL);
+    if (w == -INFINITY) continue;
+    // Exchanges (given, returned) leading to this placement: the soolaaja's
+    // post-exchange cards S' and the partner's P'.
+    int x_in_s = 0, y_in_s = 0;
+    if (x_card >= 0) x_in_s = (kk[S] >> x_card & 1ULL) || (played_all >> x_card & 1ULL);
+    if (y_card >= 0) y_in_s = (kk[S] >> y_card & 1ULL) || (played_all >> y_card & 1ULL);
+    int n_r = y_in_s ? 1 : 13 - (x_card >= 0 && x_in_s);
+    int n_g = (x_card >= 0 && !x_in_s) ? 1 : 13 - (y_card >= 0 && !y_in_s);
+    lw[m] = w + log((double)n_r * n_g);
+    if (lw[m] > best) best = lw[m];
+  }
+  if (best == -INFINITY) return -1;
+  double total = 0.0;
+  for (int m = 0; m < n_cases; m++) total += lw[m] == -INFINITY ? 0.0 : exp(lw[m] - best);
+  double u = unit(rng) * total, acc = 0.0;
+  int pick = -1;
+  for (int m = 0; m < n_cases; m++) {
+    if (lw[m] == -INFINITY) continue;
+    pick = m;
+    acc += exp(lw[m] - best);
+    if (u < acc) break;
+  }
+  u64 hands[4] = {0, 0, 0, 0};
+  hands[me] = o->hand;
+  for (int s = 0; s < 4; s++) hands[s] |= case_known[pick][s];
+  int cap[3];
+  u64 free_cards;
+  setup(o, others, hand_size, case_known[pick], played_all, cap, &free_cards);
+  tilt.fixed = case_known[pick][S] | s_played;
+  if (count_or_draw(others, cap, free_cards, void_mask, rng, hands, tilted ? &tilt : NULL) == -INFINITY) return -1;
+  for (int s = 0; s < 4; s++) out->hand[s] = hands[s];
+  return 0;
+}
+
+// Replays a full world from the start of its deal and emits, for every past
+// decision made by a seat in `seat_mask` (bit s = seat s), that seat's encoded
+// observation at the time, its legal-action mask and the action it took.
+// `world` is a full state at the current decision (hands = current holdings);
+// initial hands are recovered by adding back each seat's played cards.
+// Forced decisions (one legal action) carry no information and are skipped.
+// Returns the number of rows written (at most max_rows).
+int tc_history_rows(const TcDeal *world, int seat_mask, int encoder, int max_rows,
+                    uint8_t *feat, uint8_t *mask, int32_t *action) {
+  if (world->n_decisions || world->soolaaja >= 0) return -1;  // sooli histories are not replayed here
+  uint64_t init[4];
+  for (int s = 0; s < 4; s++) init[s] = world->hand[s];
+  for (int i = 0; i < world->n_played; i++) init[world->play_seat[i]] |= 1ULL << world->play_card[i];
+  TcDeal d;
+  tc_deal_init(&d, init, world->dealer, world->score[0], world->score[1]);
+  int dim = tc_feature_dim_v(encoder), rows = 0, acts[TC_NUM_ACTIONS];
+  int n_actions = world->n_shows + world->n_played;
+  TcObs o;
+  for (int t = 0; t < n_actions && rows < max_rows; t++) {
+    int a = t < world->n_shows
+      ? 52 + 52 * world->show_contract[t] + world->show_card[t]
+      : world->play_card[t - world->n_shows];
+    int seat = d.cur;
+    if (seat_mask >> seat & 1) {
+      int k = tc_legal(&d, acts);
+      if (k > 1) {
+        tc_observe(&d, seat, &o);
+        tc_encode_v(&o, feat + (size_t)rows * dim, encoder);
+        uint8_t *mk = mask + (size_t)rows * TC_NUM_ACTIONS;
+        memset(mk, 0, TC_NUM_ACTIONS);
+        for (int j = 0; j < k; j++) mk[acts[j]] = 1;
+        action[rows++] = a;
+      }
+    }
+    if (tc_apply(&d, a) != 0) return -1;  // world inconsistent with history
+  }
+  return rows;
+}
+
+// Exact sampling from a product-form belief restricted to the hard-feasible set:
+// P(world) proportional to prod over free cards c of w[c][owner_rel(c) - 1],
+// where w is a 52x3 table over the observer's relative seats 1..3 (callers pass
+// tempered probabilities). Voids force w = 0; shown-but-unplayed cards stay with
+// their shower. A DP over the free cards with state = remaining capacities of
+// the first two other seats (the third is implied) makes the draw exact.
+int tc_sample_world_weighted(const TcObs *o, const float *wtab, uint64_t *rng, TcDeal *out) {
+  if (o->soolaaja >= 0 && (o->phase == TC_PH_SOOLI_RETURN || o->trick_size == 3)) return -1;  // v1 beliefs only
+  int played_by[4], void_mask[4];
+  u64 played_all;
+  public_state(o, out, played_by, void_mask, &played_all);
+  const int me = o->seat;
+  int others[3];
+  for (int j = 0; j < 3; j++) others[j] = (me + 1 + j) & 3;
+  u64 known[4] = {0, 0, 0, 0};
+  if (TC_LOCKED(o)) return -1;  // v1 beliefs only
+  for (int i = 0; i < o->n_shows; i++) {
+    int c = o->show_card[i], s = o->show_seat[i];
+    if (s != me && !(played_all >> c & 1ULL)) known[s] |= 1ULL << c;
+  }
+  u64 free_cards = FULL_DECK & ~o->hand & ~played_all & ~(known[0] | known[1] | known[2] | known[3]);
+  int cap[3];
+  for (int j = 0; j < 3; j++) {
+    cap[j] = 13 - played_by[others[j]] - __builtin_popcountll(known[others[j]]);
+    if (cap[j] < 0) return -1;
+  }
+  int cards[52], m = 0;
+  u64 fm = free_cards;
+  while (fm) { cards[m++] = __builtin_ctzll(fm); fm &= fm - 1; }
+  if (m != cap[0] + cap[1] + cap[2]) return -1;
+  double w[52][3];
+  for (int i = 0; i < m; i++) {
+    int c = cards[i];
+    for (int j = 0; j < 3; j++) {
+      double v = wtab[3 * c + j];
+      w[i][j] = (void_mask[others[j]] >> (c / 13) & 1) ? 0.0 : (v > 1e-12 ? v : 1e-12);
+    }
+  }
+  // Z[i][a][b]: weight of placing cards i..m-1 with capacities a, b and
+  // (m - i - a - b) for the three others. Each layer is rescaled by its max.
+  static __thread double Z[53][14][14];
+  for (int a = 0; a < 14; a++) for (int b = 0; b < 14; b++) Z[m][a][b] = (a == 0 && b == 0) ? 1.0 : 0.0;
+  for (int i = m - 1; i >= 0; i--) {
+    int rem = m - i;
+    double mx = 0.0;
+    for (int a = 0; a < 14; a++) {
+      for (int b = 0; b < 14; b++) {
+        int c3 = rem - a - b;
+        double z = 0.0;
+        if (c3 >= 0 && c3 <= 13) {
+          if (a > 0) z += w[i][0] * Z[i + 1][a - 1][b];
+          if (b > 0) z += w[i][1] * Z[i + 1][a][b - 1];
+          if (c3 > 0) z += w[i][2] * Z[i + 1][a][b];
+        }
+        Z[i][a][b] = z;
+        if (z > mx) mx = z;
+      }
+    }
+    if (mx <= 0.0) return -1;
+    for (int a = 0; a < 14; a++) for (int b = 0; b < 14; b++) Z[i][a][b] /= mx;
+  }
+  if (Z[0][cap[0]][cap[1]] <= 0.0) return -1;
+  u64 hands[4] = {0, 0, 0, 0};
+  hands[me] = o->hand;
+  for (int s = 0; s < 4; s++) hands[s] |= known[s];
+  int a = cap[0], b = cap[1];
+  for (int i = 0; i < m; i++) {
+    int c3 = (m - i) - a - b;
+    double p0 = a > 0 ? w[i][0] * Z[i + 1][a - 1][b] : 0.0;
+    double p1 = b > 0 ? w[i][1] * Z[i + 1][a][b - 1] : 0.0;
+    double p2 = c3 > 0 ? w[i][2] * Z[i + 1][a][b] : 0.0;
+    double r = unit(rng) * (p0 + p1 + p2);
+    int j = r < p0 ? 0 : (r < p0 + p1 ? 1 : 2);
+    if (j == 0 && p0 == 0.0) j = p1 > 0 ? 1 : 2;
+    if (j == 1 && p1 == 0.0) j = p2 > 0 ? 2 : 0;
+    if (j == 2 && p2 == 0.0) j = p0 > 0 ? 0 : 1;
+    hands[others[j]] |= 1ULL << cards[i];
+    if (j == 0) a--; else if (j == 1) b--;
+  }
+  for (int s = 0; s < 4; s++) out->hand[s] = hands[s];
+  return 0;
+}
+
+
+E007 | native/tuppi_core.c | complete file
+#include "tuppi_core.h"
+
+#include <string.h>
+
+typedef uint64_t u64;
+
+#define FULL_DECK ((1ULL << 52) - 1)
+#define SUIT_MASK(s) (0x1FFFULL << ((s) * 13))
+// Ranks 3..9 are rank indices 1..7 within a suit.
+#define ELIGIBLE (0xFEULL | (0xFEULL << 13) | (0xFEULL << 26) | (0xFEULL << 39))
+#define RED (SUIT_MASK(0) | SUIT_MASK(1))
+#define BLACK (SUIT_MASK(2) | SUIT_MASK(3))
+
+static inline int suit_of(int c) { return c / 13; }
+static inline int rank_of(int c) { return c % 13; }
+
+uint64_t tc_valid_show_cards(uint64_t hand, int contract) {
+  u64 colour = contract == TC_RAMI ? RED : BLACK;
+  u64 m = hand & ELIGIBLE & colour;
+  if (m) return m;
+  m = hand & ELIGIBLE;
+  if (m) return m;
+  return hand;
+}
+
+int tc_verbal_required(int card, int contract) {
+  u64 colour = contract == TC_RAMI ? RED : BLACK;
+  return !((ELIGIBLE & colour) >> card & 1ULL);
+}
+
+// Lets the Python bindings refuse a stale library with a different layout.
+void tc_struct_sizes(int *out) { out[0] = (int)sizeof(TcDeal); out[1] = (int)sizeof(TcObs); }
+
+int tc_sooli_rank(int card) { int r = card % 13; return r == 12 ? 0 : r + 1; }
+
+void tc_deal_init_v(TcDeal *d, const uint64_t hands[4], int dealer, int score0, int score1, int ruleset) {
+  tc_deal_init(d, hands, dealer, score0, score1);
+  d->ruleset = (uint8_t)(ruleset == 2 || ruleset == 3 ? ruleset : 1);
+}
+
+void tc_deal_init(TcDeal *d, const uint64_t hands[4], int dealer, int score0, int score1) {
+  memset(d, 0, sizeof *d);
+  d->ruleset = 1;
+  d->trick_size = 4;
+  d->soolaaja = -1;
+  d->given = -1;
+  d->returned = -1;
+  for (int i = 0; i < 4; i++) d->hand[i] = hands[i];
+  d->dealer = (uint8_t)dealer;
+  d->phase = TC_PH_SHOW;
+  d->cur = (uint8_t)((dealer + 1) & 3);
+  d->contract = -1;
+  d->declarer = -1;
+  d->winner_team = -1;
+  d->score[0] = (uint8_t)score0;
+  d->score[1] = (uint8_t)score1;
+}
+
+static int legal_from(u64 hand, int phase, int n_played, const uint8_t *play_card, int trick_size, int given,
+                      int *actions) {
+  int k = 0;
+  if (phase == TC_PH_SOOLI_OFFER) {
+    actions[0] = TC_ACT_SOOLI_DECLINE;
+    actions[1] = TC_ACT_SOOLI_ACCEPT;
+    return 2;
+  }
+  if (phase == TC_PH_SOOLI_GIVE || phase == TC_PH_SOOLI_RETURN) {
+    u64 m = hand;
+    if (phase == TC_PH_SOOLI_RETURN && given >= 0) m &= ~(1ULL << given);
+    while (m) { int c = __builtin_ctzll(m); m &= m - 1; actions[k++] = TC_ACT_EXCHANGE + c; }
+    return k;
+  }
+  if (phase == TC_PH_SHOW) {
+    for (int contract = 0; contract < 2; contract++) {
+      u64 m = tc_valid_show_cards(hand, contract);
+      while (m) {
+        int c = __builtin_ctzll(m);
+        m &= m - 1;
+        actions[k++] = 52 + 52 * contract + c;
+      }
+    }
+    return k;
+  }
+  if (phase != TC_PH_PLAY && phase != TC_PH_SOOLI_PLAY) return 0;
+  u64 legal = hand;
+  int pos = trick_size == 3 ? n_played % 3 : n_played & 3;
+  if (pos) {
+    int led = suit_of(play_card[n_played - pos]);
+    u64 f = hand & SUIT_MASK(led);
+    if (f) legal = f;
+  }
+  while (legal) {
+    int c = __builtin_ctzll(legal);
+    legal &= legal - 1;
+    actions[k++] = c;
+  }
+  return k;
+}
+
+int tc_legal(const TcDeal *d, int *actions) {
+  return legal_from(d->hand[d->cur], d->phase, d->n_played, d->play_card, d->trick_size, d->given, actions);
+}
+
+int tc_next_score(const uint8_t score[2], int winner_team, int points, uint8_t out[2]) {
+  int s0 = score[0], s1 = score[1];
+  if (s0 == 0 && s1 == 0) {
+    if (winner_team == 0) s0 = points; else s1 = points;
+  } else {
+    int up = s0 > 0 ? 0 : 1;
+    if (winner_team == up) {
+      if (up == 0) s0 += points; else s1 += points;
+    } else {
+      s0 = 0;
+      s1 = 0;
+    }
+  }
+  out[0] = (uint8_t)s0;
+  out[1] = (uint8_t)s1;
+  return s0 >= TC_TARGET || s1 >= TC_TARGET;
+}
+
+static void finish(TcDeal *d) {
+  d->phase = TC_PH_DONE;
+  int t0 = d->team_tricks[0], t1 = d->team_tricks[1];
+  if (d->contract == TC_NOLO) {
+    int w = t0 < t1 ? 0 : 1;
+    d->winner_team = (int8_t)w;
+    d->points = (uint8_t)(4 * (7 - d->team_tricks[w]));
+    d->stolen = 0;
+  } else {
+    int dt = d->declarer & 1;
+    if (d->team_tricks[dt] >= 7) {
+      d->winner_team = (int8_t)dt;
+      d->points = (uint8_t)(4 * (d->team_tricks[dt] - 6));
+      d->stolen = 0;
+    } else {
+      d->winner_team = (int8_t)(1 - dt);
+      d->points = (uint8_t)(8 * (d->team_tricks[1 - dt] - 6));
+      d->stolen = 1;
+    }
+  }
+}
+
+void tc_finish_with_tricks(TcDeal *d, int team0_tricks) {
+  d->team_tricks[0] = (uint8_t)team0_tricks;
+  d->team_tricks[1] = (uint8_t)(13 - team0_tricks);
+  finish(d);
+}
+
+static void finish_sooli(TcDeal *d, int soolaaja_won_trick) {
+  d->phase = TC_PH_DONE;
+  d->sooli_won = (uint8_t)!soolaaja_won_trick;
+  d->winner_team = (int8_t)(soolaaja_won_trick ? (d->declarer & 1) : (d->soolaaja & 1));
+  d->points = TC_SOOLI_POINTS;
+  d->stolen = 0;
+}
+
+static int apply_sooli(TcDeal *d, int action) {
+  int seat = d->cur;
+  if (d->phase == TC_PH_SOOLI_OFFER) {
+    if (action != TC_ACT_SOOLI_DECLINE && action != TC_ACT_SOOLI_ACCEPT) return -1;
+    int i = d->n_decisions++;
+    d->decision_seat[i] = (uint8_t)seat;
+    d->decision_accept[i] = (uint8_t)(action == TC_ACT_SOOLI_ACCEPT);
+    if (action == TC_ACT_SOOLI_ACCEPT) {
+      d->soolaaja = (int8_t)seat;
+      d->phase = TC_PH_SOOLI_GIVE;
+    } else if (d->n_decisions == 1) {
+      d->cur = (uint8_t)((d->declarer + 3) & 3);
+    } else {
+      d->phase = TC_PH_PLAY;  // both declined: an ordinary RAMI deal
+      d->cur = d->first_leader;
+    }
+    return 0;
+  }
+  if (d->phase == TC_PH_SOOLI_GIVE || d->phase == TC_PH_SOOLI_RETURN) {
+    int c = action - TC_ACT_EXCHANGE;
+    if (c < 0 || c >= 52 || !(d->hand[seat] >> c & 1ULL)) return -1;
+    int partner = (d->soolaaja + 2) & 3;
+    if (d->phase == TC_PH_SOOLI_GIVE) {
+      d->hand[seat] &= ~(1ULL << c);
+      d->hand[partner] |= 1ULL << c;
+      d->given = (int8_t)c;
+      d->phase = TC_PH_SOOLI_RETURN;
+      d->cur = (uint8_t)partner;
+    } else {
+      if (c == d->given) return -1;
+      d->hand[seat] &= ~(1ULL << c);
+      d->hand[(int)d->soolaaja] |= 1ULL << c;
+      d->returned = (int8_t)c;
+      d->phase = TC_PH_SOOLI_PLAY;
+      d->trick_size = 3;
+      d->cur = (uint8_t)d->declarer;  // the declarer leads the first sooli trick
+    }
+    return 0;
+  }
+  // TC_PH_SOOLI_PLAY
+  if (action < 0 || action >= 52) return -1;
+  u64 b = 1ULL << action;
+  if (!(d->hand[seat] & b)) return -1;
+  int pos = d->n_played % 3;
+  if (pos) {
+    int led = suit_of(d->play_card[d->n_played - pos]);
+    if (suit_of(action) != led && (d->hand[seat] & SUIT_MASK(led))) return -1;
+  }
+  d->hand[seat] &= ~b;
+  d->play_card[d->n_played] = (uint8_t)action;
+  d->play_seat[d->n_played] = (uint8_t)seat;
+  d->n_played++;
+  if (pos == 0) { d->cur = (uint8_t)((seat + 2) & 3); return 0; }        // other RAMI player
+  if (pos == 1) { d->cur = (uint8_t)d->soolaaja; return 0; }             // soolaaja last
+  int start = d->n_played - 3, led = suit_of(d->play_card[start]), best = start;
+  for (int i = start + 1; i < start + 3; i++)
+    if (suit_of(d->play_card[i]) == led && tc_sooli_rank(d->play_card[i]) > tc_sooli_rank(d->play_card[best])) best = i;
+  int winner = d->play_seat[best];
+  d->team_tricks[winner & 1]++;
+  if (winner == d->soolaaja) { finish_sooli(d, 1); return 0; }
+  if (d->n_played == 39) { finish_sooli(d, 0); return 0; }
+  d->cur = (uint8_t)winner;
+  return 0;
+}
+
+int tc_apply(TcDeal *d, int action) {
+  int seat = d->cur;
+  if (d->phase >= TC_PH_SOOLI_OFFER) return apply_sooli(d, action);
+  if (d->phase == TC_PH_SHOW) {
+    if (action < 52 || action >= TC_NUM_ACTIONS) return -1;
+    int contract = (action - 52) / 52, card = (action - 52) % 52;
+    if (!(tc_valid_show_cards(d->hand[seat], contract) >> card & 1ULL)) return -1;
+    int i = d->n_shows++;
+    d->show_seat[i] = (uint8_t)seat;
+    d->show_card[i] = (uint8_t)card;
+    d->show_contract[i] = (uint8_t)contract;
+    d->show_verbal[i] = (uint8_t)tc_verbal_required(card, contract);
+    if (contract == TC_RAMI) {
+      d->contract = TC_RAMI;
+      d->declarer = (int8_t)seat;
+      d->first_leader = (uint8_t)((seat + 3) & 3);
+      if (d->ruleset >= 2) {  // defenders are asked about sooli first
+        d->phase = TC_PH_SOOLI_OFFER;
+        d->cur = (uint8_t)((seat + 1) & 3);
+        return 0;
+      }
+      d->phase = TC_PH_PLAY;
+      d->cur = d->first_leader;
+    } else if (d->n_shows == 4) {
+      d->contract = TC_NOLO;
+      d->declarer = -1;
+      d->first_leader = (uint8_t)((d->dealer + 1) & 3);
+      d->phase = TC_PH_PLAY;
+      d->cur = d->first_leader;
+    } else {
+      d->cur = (uint8_t)((seat + 1) & 3);
+    }
+    return 0;
+  }
+  if (d->phase != TC_PH_PLAY) return -1;
+  if (action < 0 || action >= 52) return -1;
+  u64 b = 1ULL << action;
+  if (!(d->hand[seat] & b)) return -1;
+  int pos = d->n_played & 3;
+  if (pos) {
+    int led = suit_of(d->play_card[d->n_played - pos]);
+    if (suit_of(action) != led && (d->hand[seat] & SUIT_MASK(led))) return -1;
+  }
+  d->hand[seat] &= ~b;
+  d->play_card[d->n_played] = (uint8_t)action;
+  d->play_seat[d->n_played] = (uint8_t)seat;
+  d->n_played++;
+  if (pos == 3) {
+    int start = d->n_played - 4, led = suit_of(d->play_card[start]), best = start;
+    for (int i = start + 1; i < start + 4; i++)
+      if (suit_of(d->play_card[i]) == led && rank_of(d->play_card[i]) > rank_of(d->play_card[best])) best = i;
+    int winner = d->play_seat[best];
+    d->team_tricks[winner & 1]++;
+    d->cur = (uint8_t)winner;
+    if (d->n_played == 52) finish(d);
+  } else {
+    d->cur = (uint8_t)((seat + 1) & 3);
+  }
+  return 0;
+}
+
+void tc_observe(const TcDeal *d, int seat, TcObs *o) {
+  memset(o, 0, sizeof *o);
+  o->hand = d->hand[seat];
+  o->seat = (uint8_t)seat;
+  o->dealer = d->dealer;
+  o->phase = d->phase;
+  o->n_shows = d->n_shows;
+  if (!(d->ruleset == 3 && d->phase == TC_PH_SHOW)) {  // locked bids: the count only
+    memcpy(o->show_seat, d->show_seat, 4);
+    memcpy(o->show_card, d->show_card, 4);
+    memcpy(o->show_contract, d->show_contract, 4);
+    memcpy(o->show_verbal, d->show_verbal, 4);
+  }
+  o->contract = d->contract;
+  o->declarer = d->declarer;
+  o->first_leader = d->first_leader;
+  o->n_played = d->n_played;
+  memcpy(o->play_card, d->play_card, d->n_played);
+  memcpy(o->play_seat, d->play_seat, d->n_played);
+  o->score[0] = d->score[0];
+  o->score[1] = d->score[1];
+  o->ruleset = d->ruleset;
+  o->trick_size = d->trick_size;
+  o->n_decisions = d->n_decisions;
+  memcpy(o->decision_seat, d->decision_seat, 2);
+  memcpy(o->decision_accept, d->decision_accept, 2);
+  o->soolaaja = d->soolaaja;
+  int knows = d->soolaaja >= 0 && (seat == d->soolaaja || seat == ((d->soolaaja + 2) & 3));
+  o->known_given = knows ? d->given : -1;
+  o->known_returned = knows ? d->returned : -1;
+}
+
+int tc_legal_obs(const TcObs *o, int *actions) {
+  return legal_from(o->hand, o->phase, o->n_played, o->play_card, o->trick_size, o->known_given, actions);
+}
+
+// ---------------------------------------------------------------- encoder
+enum {
+  F_HAND = 0,
+  F_PLAYED = F_HAND + 52,          // 4 x 52, by relative seat
+  F_LED = F_PLAYED + 208,          // 4 x 52, cards each seat led
+  F_DISCARD = F_LED + 208,         // 4 x 52, cards played off the led suit
+  F_TRICK = F_DISCARD + 208,       // 3 x 52, current trick by relative seat 1..3
+  F_LED_SUIT = F_TRICK + 156,      // 4
+  F_VOID = F_LED_SUIT + 4,         // 3 x 4, relative seats 1..3
+  F_SHOW = F_VOID + 12,            // 4 x 56: card, NOLO, RAMI, verbal, shown
+  F_SHOWN_HELD = F_SHOW + 224,     // 4
+  F_UNSEEN = F_SHOWN_HELD + 4,     // 52
+  F_CONTRACT = F_UNSEEN + 52,      // 3: undecided, NOLO, RAMI
+  F_DECLARER = F_CONTRACT + 3,     // 5: relative seat, none
+  F_LEADER = F_DECLARER + 5,       // 4
+  F_POSITION = F_LEADER + 4,       // 4: my position in the trick
+  F_TRICKS = F_POSITION + 4,       // 2 x 14: own team, other team
+  F_TRICK_INDEX = F_TRICKS + 28,   // 13
+  F_SCORE = F_TRICK_INDEX + 13,    // 2 x 13: own level, other level
+  F_DEALER = F_SCORE + 26,         // 4
+  F_SHOW_POS = F_DEALER + 4,       // 4: number of shows before me
+  F_WINNING = F_SHOW_POS + 4,      // 4: relative seat currently winning the trick
+  F_DIM = F_WINNING + 4
+};
+
+int tc_feature_dim(void) { return F_DIM; }
+
+void tc_encode(const TcObs *o, uint8_t *out) {
+  memset(out, 0, F_DIM);
+  const int s = o->seat;
+#define REL(x) (((x) - s) & 3)
+  u64 m = o->hand;
+  while (m) { int c = __builtin_ctzll(m); m &= m - 1; out[F_HAND + c] = 1; }
+
+  u64 played_all = 0;
+  int void_mask[4] = {0, 0, 0, 0};
+  int tricks[2] = {0, 0};
+  const int ts = o->trick_size == 3 ? 3 : 4;
+  const int ace_low = ts == 3;
+#define RANKV(c) (ace_low ? tc_sooli_rank(c) : rank_of(c))
+  int n = o->n_played, full = n - (n % ts);
+  int leader = ts == 3 ? o->declarer : o->first_leader;
+  for (int t = 0; t < full; t += ts) {
+    int led = suit_of(o->play_card[t]), best = t;
+    for (int i = t; i < t + ts; i++) {
+      int c = o->play_card[i], r = REL(o->play_seat[i]);
+      played_all |= 1ULL << c;
+      out[F_PLAYED + 52 * r + c] = 1;
+      if (i == t) out[F_LED + 52 * r + c] = 1;
+      else if (suit_of(c) != led) { out[F_DISCARD + 52 * r + c] = 1; void_mask[r] |= 1 << led; }
+      if (i > t && suit_of(c) == led && RANKV(c) > RANKV(o->play_card[best])) best = i;
+    }
+    int w = o->play_seat[best];
+    tricks[w & 1]++;
+    leader = w;
+  }
+  int pos = n % ts;
+  if ((o->phase == TC_PH_PLAY || o->phase == TC_PH_SOOLI_PLAY) && pos) {
+    int t = full, led = suit_of(o->play_card[t]), best = t;
+    leader = o->play_seat[t];
+    out[F_LED_SUIT + led] = 1;
+    for (int i = t; i < n; i++) {
+      int c = o->play_card[i], r = REL(o->play_seat[i]);
+      played_all |= 1ULL << c;
+      out[F_PLAYED + 52 * r + c] = 1;
+      if (r >= 1) out[F_TRICK + 52 * (r - 1) + c] = 1;
+      if (i == t) out[F_LED + 52 * r + c] = 1;
+      else if (suit_of(c) != led) { out[F_DISCARD + 52 * r + c] = 1; void_mask[r] |= 1 << led; }
+      if (i > t && suit_of(c) == led && RANKV(c) > RANKV(o->play_card[best])) best = i;
+    }
+    out[F_WINNING + REL(o->play_seat[best])] = 1;
+  }
+  for (int r = 1; r < 4; r++)
+    for (int v = 0; v < 4; v++)
+      if (void_mask[r] >> v & 1) out[F_VOID + 4 * (r - 1) + v] = 1;
+
+  for (int i = 0; i < (TC_LOCKED(o) ? 0 : o->n_shows); i++) {
+    int r = REL(o->show_seat[i]), c = o->show_card[i];
+    uint8_t *b = out + F_SHOW + 56 * r;
+    b[c] = 1;
+    b[52 + o->show_contract[i]] = 1;
+    b[54] = o->show_verbal[i];
+    b[55] = 1;
+    if (!(played_all >> c & 1ULL)) out[F_SHOWN_HELD + r] = 1;
+  }
+  u64 unseen = FULL_DECK & ~o->hand & ~played_all;
+  while (unseen) { int c = __builtin_ctzll(unseen); unseen &= unseen - 1; out[F_UNSEEN + c] = 1; }
+
+  out[F_CONTRACT + (o->contract < 0 ? 0 : 1 + o->contract)] = 1;
+  out[F_DECLARER + (o->declarer < 0 ? 4 : REL(o->declarer))] = 1;
+  if (o->phase == TC_PH_PLAY || o->phase == TC_PH_SOOLI_PLAY) {
+    out[F_LEADER + REL(leader)] = 1;
+    out[F_POSITION + pos] = 1;
+    out[F_TRICK_INDEX + (n / ts > 12 ? 12 : n / ts)] = 1;
+  }
+  int own = s & 1;
+  out[F_TRICKS + tricks[own]] = 1;
+  out[F_TRICKS + 14 + tricks[own ^ 1]] = 1;
+  int lo = o->score[own] / 4, lt = o->score[own ^ 1] / 4;
+  out[F_SCORE + (lo > 12 ? 12 : lo)] = 1;
+  out[F_SCORE + 13 + (lt > 12 ? 12 : lt)] = 1;
+  out[F_DEALER + REL(o->dealer)] = 1;
+#undef RANKV
+  if (o->phase == TC_PH_SHOW) out[F_SHOW_POS + (o->n_shows & 3)] = 1;
+#undef REL
+}
+
+// ------------------------------------------------------------- encoder v2
+// v1 plus the complete play order: for every played card, the index of the
+// trick it was played in (with the seat already in v1 this recovers the whole
+// sequence), and which card won each completed trick.
+enum { F2_TRICK_OF = F_DIM, F2_WON = F2_TRICK_OF + 52 * 13, F2_DIM = F2_WON + 52 };
+
+int tc_feature_dim_v(int version) { return version == 2 ? F2_DIM : F_DIM; }
+
+void tc_encode_v(const TcObs *o, uint8_t *out, int version) {
+  tc_encode(o, out);
+  if (version != 2) return;
+  memset(out + F_DIM, 0, F2_DIM - F_DIM);
+  int n = o->n_played, ts = o->trick_size == 3 ? 3 : 4;
+  for (int i = 0; i < n; i++) out[F2_TRICK_OF + 13 * o->play_card[i] + i / ts] = 1;
+  for (int t = 0; t + ts <= n; t += ts) {
+    int led = suit_of(o->play_card[t]), best = t;
+    for (int i = t + 1; i < t + ts; i++) {
+      int c = o->play_card[i], b = o->play_card[best];
+      int higher = ts == 3 ? tc_sooli_rank(c) > tc_sooli_rank(b) : rank_of(c) > rank_of(b);
+      if (suit_of(c) == led && higher) best = i;
+    }
+    out[F2_WON + o->play_card[best]] = 1;
+  }
+}
+
+
+E008 | native/tuppi_sooli_policy.c | complete file
+// Observation-only sooli heuristics (project_target_v2).
+//
+// Used as the rollout policy for sooli decisions inside search, and as the
+// sooli behaviour of baseline players. Everything here reads a TcObs only.
+//
+//  - Offer: decline unless every suit held has a low card (at most one suit,
+//    a singleton that can be given away, may not); otherwise a small Monte
+//    Carlo: in `OFFER_WORLDS` worlds drawn from the observation, exchange with
+//    these heuristics and solve the play with perfect information; accept if
+//    the soolaaja survives in at least half of them.
+//  - Give: the card whose removal leaves the least exposed hand.
+//  - Return: the lowest card, preferring other suits than the received card's
+//    and suits the partner is short in (where the soolaaja is likely long).
+//  - Play: the soolaaja ducks as high as it can and discards to reduce
+//    exposure; RAMI players lead their lowest cards where the soolaaja may
+//    still follow, follow under the leader's card and discard high.
+#include <math.h>
+#include <string.h>
+
+#include "tuppi_core.h"
+
+typedef uint64_t u64;
+#define SM 0x1FFFULL
+#define FULL_DECK ((1ULL << 52) - 1)
+#define OFFER_WORLDS 8
+
+int tc_sample_world(const TcObs *o, uint64_t *rng, TcDeal *out);
+int tc_sample_world_tilted(const TcObs *o, uint64_t *rng, TcDeal *out, double lambda);
+
+static inline u64 splitmix_(u64 *x) {
+  u64 z = (*x += 0x9E3779B97F4A7C15ULL);
+  z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+  z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+  return z ^ (z >> 31);
+}
+
+static inline u64 to_low(u64 h) {
+  u64 out = 0;
+  for (int s = 0; s < 4; s++) {
+    u64 m = (h >> (13 * s)) & SM;
+    out |= (((m & 0xFFFULL) << 1) | (m >> 12)) << (13 * s);
+  }
+  return out;
+}
+static inline int low_of(int c) { int s = c / 13, r = c % 13; return s * 13 + (r == 12 ? 0 : r + 1); }
+static inline int high_of(int p) { int s = p / 13, r = p % 13; return s * 13 + (r == 0 ? 12 : r - 1); }
+
+// Exposure of a soolaaja hand (low layout): in each suit, with own cards
+// m_1 < ... < m_k, the sum over i of how many other live cards lie below m_i
+// beyond the i - 1 rounds already survived.
+static int exposure(u64 mine, u64 others) {
+  int d = 0;
+  for (int s = 0; s < 4; s++) {
+    u64 M = (mine >> (13 * s)) & SM, O = (others >> (13 * s)) & SM;
+    int i = 0;
+    while (M) {
+      int c = __builtin_ctzll(M);
+      M &= M - 1;
+      int below = __builtin_popcountll(O & ((1ULL << c) - 1));
+      if (below > i) d += below - i;
+      i++;
+    }
+  }
+  return d;
+}
+
+static u64 played_mask(const TcObs *o) {
+  u64 m = 0;
+  for (int i = 0; i < o->n_played; i++) m |= 1ULL << o->play_card[i];
+  return m;
+}
+
+// The card (ace-high index) of `hand` whose removal minimises exposure; ties
+// go to the higher card.
+static int least_exposed_without(u64 hand, u64 others_high) {
+  u64 mine = to_low(hand), others = to_low(others_high);
+  int best = -1, best_d = 1 << 30, best_r = -1;
+  for (u64 m = hand; m; m &= m - 1) {
+    int c = __builtin_ctzll(m), p = low_of(c);
+    int d = exposure(mine & ~(1ULL << p), others);
+    if (d < best_d || (d == best_d && p % 13 > best_r)) { best = c; best_d = d; best_r = p % 13; }
+  }
+  return best;
+}
+
+static int give_card(const TcObs *o) {
+  u64 others = FULL_DECK & ~o->hand & ~played_mask(o);
+  return least_exposed_without(o->hand, others);
+}
+
+static int return_card(const TcObs *o) {
+  int g = o->known_given, best = -1;
+  long best_key = 1L << 40;
+  for (u64 m = o->hand; m; m &= m - 1) {
+    int c = __builtin_ctzll(m);
+    if (c == g) continue;
+    int p = low_of(c), suit = c / 13;
+    int held = __builtin_popcountll(o->hand & (SM << (13 * suit)));
+    long key = (long)(p % 13) * 1000 + (g >= 0 && suit == g / 13 ? 100 : 0) + held;
+    if (key < best_key) { best_key = key; best = c; }
+  }
+  return best;
+}
+
+static int play_card(const TcObs *o) {
+  const int me = o->seat, S = o->soolaaja;
+  int n = o->n_played, pos = n % 3;
+  u64 hand = o->hand, played = played_mask(o);
+  if (me == S) {
+    int start = n - pos, led = o->play_card[start] / 13, hi = -1;
+    for (int i = start; i < n; i++)
+      if (o->play_card[i] / 13 == led && low_of(o->play_card[i]) > hi) hi = low_of(o->play_card[i]);
+    u64 follow = to_low(hand) & (SM << (13 * led));
+    if (follow) {
+      u64 safe = follow & ((1ULL << hi) - 1);
+      u64 pick = safe ? safe : follow;
+      return high_of(63 - __builtin_clzll(pick));
+    }
+    return least_exposed_without(hand, FULL_DECK & ~hand & ~played);
+  }
+  // RAMI players. Voids the soolaaja has shown in sooli play:
+  int s_void = 0;
+  for (int t = 0; t + 3 <= n; t += 3) {
+    int led = o->play_card[t] / 13;
+    for (int i = t; i < t + 3; i++)
+      if (o->play_seat[i] == S && o->play_card[i] / 13 != led) s_void |= 1 << led;
+  }
+  if (pos == 1 && n % 3 == 1) {
+    int a = o->play_card[n - 1], led = a / 13;
+    u64 follow = to_low(hand) & (SM << (13 * led));
+    if (follow) {
+      u64 under = follow & ((1ULL << low_of(a)) - 1);
+      if (under) return high_of(63 - __builtin_clzll(under));  // keep the lowest for later leads
+      return high_of(__builtin_ctzll(follow));
+    }
+    return high_of(63 - __builtin_clzll(to_low(hand)));  // discard the highest
+  }
+  // Leader: the card with the fewest unseen cards below it in a suit the
+  // soolaaja may still hold; then suits with more unseen cards; then lowest.
+  u64 unseen = to_low(FULL_DECK & ~hand & ~played);
+  int best = -1;
+  long best_key = 1L << 40;
+  for (u64 m = to_low(hand); m; m &= m - 1) {
+    int p = __builtin_ctzll(m), suit = p / 13;
+    u64 us = unseen & (SM << (13 * suit));
+    int below = __builtin_popcountll(us & ((1ULL << p) - 1));
+    long key = (long)((s_void >> suit & 1) || !us) * 100000 + below * 1000 + (13 - __builtin_popcountll(us)) * 20 + p % 13;
+    if (key < best_key) { best_key = key; best = p; }
+  }
+  return high_of(best);
+}
+
+static int offer_prefilter(u64 hand) {
+  u64 low = to_low(hand);
+  int lethal = 0, lethal_single = 1;
+  for (int s = 0; s < 4; s++) {
+    u64 m = (low >> (13 * s)) & SM;
+    if (!m) continue;
+    if (__builtin_ctzll(m) >= 4) {
+      lethal++;
+      if (__builtin_popcountll(m) > 1) lethal_single = 0;
+    }
+  }
+  return lethal == 0 || (lethal == 1 && lethal_single);
+}
+
+int tc_sooli_policy(const TcObs *o, uint64_t *rng);
+
+// Survival of the observer as soolaaja in one world at the offer, with the
+// heuristic exchange and perfect-information play.
+static int survives_in(TcDeal *w, uint64_t *rng) {
+  if (tc_apply(w, TC_ACT_SOOLI_ACCEPT) != 0) return 0;
+  TcObs ob;
+  for (int step = 0; step < 2; step++) {
+    tc_observe(w, w->cur, &ob);
+    if (tc_apply(w, tc_sooli_policy(&ob, rng)) != 0) return 0;
+  }
+  return tc_sooli_solve(w) == 1;
+}
+
+// Accept when at least half of OFFER_WORLDS sampled worlds survive. The solves
+// stop as soon as that is settled; the remaining worlds are still drawn, so the
+// rng advances exactly as before (survives_in draws nothing: the heuristic
+// exchange and the solver are deterministic) and every decision, here and
+// after, is unchanged.
+static int offer(const TcObs *o, uint64_t *rng) {
+  if (!offer_prefilter(o->hand)) return TC_ACT_SOOLI_DECLINE;
+  const int need = (OFFER_WORLDS + 1) / 2;
+  int alive = 0, settled = 0;
+  TcDeal w;
+  for (int i = 0; i < OFFER_WORLDS; i++) {
+    if (tc_sample_world(o, rng, &w) != 0) return TC_ACT_SOOLI_DECLINE;
+    if (settled) continue;
+    alive += survives_in(&w, rng);
+    const int remaining = OFFER_WORLDS - 1 - i;
+    if (alive >= need || alive + remaining < need) settled = 1;
+  }
+  return 2 * alive >= OFFER_WORLDS ? TC_ACT_SOOLI_ACCEPT : TC_ACT_SOOLI_DECLINE;
+}
+
+// Heuristic action for the observer in a sooli phase; -1 otherwise.
+int tc_sooli_policy(const TcObs *o, uint64_t *rng) {
+  switch (o->phase) {
+    case TC_PH_SOOLI_OFFER: return offer(o, rng);
+    case TC_PH_SOOLI_GIVE: return TC_ACT_EXCHANGE + give_card(o);
+    case TC_PH_SOOLI_RETURN: return TC_ACT_EXCHANGE + return_card(o);
+    case TC_PH_SOOLI_PLAY: return play_card(o);
+    default: return -1;
+  }
+}
+
+// Sooli-conditioned worlds. The uniform sampler ignores that the soolaaja
+// chose to play sooli; these modes reject worlds whose soolaaja hand is
+// implausible (up to SOOLI_TRIES draws, then the last one drawn):
+//   bit 0: the soolaaja's hand passes the offer prefilter (before the
+//          exchange when the observer knows it, i.e. the partner during the
+//          return; the post-exchange hand, incl. cards played since, for RAMI
+//          observers);
+//   bit 1: the partner during the return: the heuristic give from that hand is
+//          the card actually received;
+//   bit 2: exposure tilt: keep a world with probability exp(-lambda * x),
+//          x = exposure of that soolaaja hand against the rest of the deck;
+//   bit 4: exact exposure tilt (tc_sample_world_tilted) instead of bit 2's
+//          rejection: the same target distribution at the cost of one draw;
+//   bit 3: RAMI observers: some exchange (given g from the dead hand, returned
+//          r from the soolaaja's cards) consistent with the shown cards makes
+//          a pre-exchange soolaaja hand that passes the prefilter, with g among
+//          the heuristic give's EXCHANGE_TOP choices from it and r among the
+//          heuristic return's EXCHANGE_TOP choices.
+// Mode 0, or any other observer or phase, is tc_sample_world.
+#define SOOLI_TRIES 2000
+#define EXCHANGE_TOP 2
+
+// How many cards the heuristic give prefers to c (0 = its choice).
+static int give_rank(u64 hand, int c) {
+  u64 mine = to_low(hand), others = to_low(FULL_DECK & ~hand);
+  int pc = low_of(c), dc = exposure(mine & ~(1ULL << pc), others), rank = 0;
+  for (u64 m = hand; m; m &= m - 1) {
+    int x = __builtin_ctzll(m), px = low_of(x);
+    if (x == c) continue;
+    int dx = exposure(mine & ~(1ULL << px), others);
+    if (dx < dc || (dx == dc && px % 13 > pc % 13)) rank++;
+  }
+  return rank;
+}
+
+static long return_key(u64 hand, int g, int c) {
+  int p = low_of(c), suit = c / 13;
+  int held = __builtin_popcountll(hand & (SM << (13 * suit)));
+  return (long)(p % 13) * 1000 + (suit == g / 13 ? 100 : 0) + held;
+}
+
+// How many cards the heuristic return (hand holds the received g) prefers to c.
+static int return_rank(u64 hand, int g, int c) {
+  long kc = return_key(hand, g, c);
+  int rank = 0;
+  for (u64 m = hand; m; m &= m - 1) {
+    int x = __builtin_ctzll(m);
+    if (x == g || x == c) continue;
+    if (return_key(hand, g, x) < kc) rank++;
+  }
+  return rank;
+}
+
+static int exchange_plausible(u64 s_now, u64 dead, int x_card, int y_card) {
+  for (u64 rm = s_now; rm; rm &= rm - 1) {
+    int r = __builtin_ctzll(rm);
+    if (r == x_card) continue;  // X stayed with the soolaaja unless given
+    for (u64 gm = dead; gm; gm &= gm - 1) {
+      int g = __builtin_ctzll(gm);
+      if (g == y_card) continue;
+      u64 s_pre = (s_now & ~(1ULL << r)) | (1ULL << g), p14 = dead | (1ULL << r);
+      if (x_card >= 0 && !(s_pre >> x_card & 1ULL)) continue;
+      if (y_card >= 0 && !((p14 & ~(1ULL << g)) >> y_card & 1ULL)) continue;
+      if (return_rank(p14, g, r) >= EXCHANGE_TOP) continue;
+      if (!offer_prefilter(s_pre)) continue;
+      if (give_rank(s_pre, g) >= EXCHANGE_TOP) continue;
+      return 1;
+    }
+  }
+  return 0;
+}
+int tc_sample_world_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, int mode, double lambda) {
+  const int S = o->soolaaja, P = (S + 2) & 3;
+  int applies = mode && S >= 0 && o->seat != S &&
+                ((o->phase == TC_PH_SOOLI_RETURN && o->seat == P) || (o->phase == TC_PH_SOOLI_PLAY && o->seat != P));
+  if (!applies) return tc_sample_world(o, rng, out);
+  u64 played = played_mask(o);
+  const double tilt = (mode & 16) ? lambda : 0.0;
+  if (!(mode & ~16)) return tc_sample_world_tilted(o, rng, out, tilt);
+  for (int t = 0; t < SOOLI_TRIES; t++) {
+    if (tc_sample_world_tilted(o, rng, out, tilt) != 0) return -1;
+    u64 s_hand = out->hand[S];
+    for (int i = 0; i < o->n_played; i++) if (o->play_seat[i] == S) s_hand |= 1ULL << o->play_card[i];
+    if (o->phase == TC_PH_SOOLI_RETURN) s_hand |= 1ULL << o->known_given;
+    if ((mode & 1) && !offer_prefilter(s_hand)) continue;
+    if ((mode & 2) && o->phase == TC_PH_SOOLI_RETURN) {
+      u64 others = FULL_DECK & ~s_hand & ~played;
+      if (least_exposed_without(s_hand, others) != o->known_given) continue;
+    }
+    if ((mode & 8) && o->phase == TC_PH_SOOLI_PLAY) {
+      int xc = -1, yc = -1;
+      for (int i = 0; i < o->n_shows; i++) {
+        if (o->show_seat[i] == S) xc = o->show_card[i];
+        if (o->show_seat[i] == P) yc = o->show_card[i];
+      }
+      if (!exchange_plausible(s_hand, out->hand[P], xc, yc)) continue;
+    }
+    if (mode & 4) {
+      int x = exposure(to_low(s_hand), to_low(FULL_DECK & ~s_hand));
+      double u = (splitmix_(rng) >> 11) * (1.0 / 9007199254740992.0);
+      if (u >= exp(-lambda * x)) continue;
+    }
+    return 0;
+  }
+  return 0;  // keep the last world drawn
+}
+
+// The offer heuristic's static test alone (exposed for tests and analysis).
+int tc_sooli_offer_prefilter(uint64_t hand) { return offer_prefilter(hand); }
+
+
+E009 | native/tuppi_dd.c | complete file
+// Perfect-information (double-dummy) solver for the rest of a deal.
+//
+// Both contracts are zero-sum in the trick split and every utility (deal
+// points, match equity) is monotone in it, so one minimax on team-0 tricks
+// with the contract's polarity is exact for any of them: RAMI, both teams take
+// tricks; NOLO, both avoid them. Alpha-beta over trick boundaries with a
+// transposition table keyed on rank-canonical hands (only the relative order
+// of remaining cards matters), plus rank-equivalence move pruning.
+//
+// Practical for the last ~7 tricks; full 13-trick deals need more (see
+// docs/STATUS.md). Used by search as an exact evaluator of late positions.
+#include <stdlib.h>
+#include <string.h>
+
+#include "tuppi_core.h"
+
+typedef uint64_t u64;
+#define SUIT_MASK(s) (0x1FFFULL << ((s) * 13))
+
+typedef struct { u64 h[4]; uint32_t gen; uint8_t leader; int8_t lo, hi; } TTE;
+#define TTBITS 18
+// Per-thread state, so solves can run in parallel (tc_env_dd_finish). Entries
+// hold exact bounds on a pure function of (canonical position, leader,
+// polarity), so they stay valid across solves and are never cleared; the
+// polarity is part of the key (the high bit of `leader`).
+static __thread TTE *tt = NULL;
+static __thread uint32_t gen = 1;
+static __thread int nolo;
+
+typedef struct { u64 h[4]; int leader, n, card[4]; } Pos;
+
+static inline int rank_of(int c) { return c % 13; }
+static inline int suit_of(int c) { return c / 13; }
+static inline int is_max(int seat) { return ((seat & 1) == 0) ^ nolo; }
+static inline u64 mix(u64 x) { x ^= x >> 33; x *= 0xff51afd7ed558ccdULL; x ^= x >> 33; x *= 0xc4ceb9fe1a85ec53ULL; x ^= x >> 33; return x; }
+
+static void canon(const Pos *p, u64 *c) {
+  c[0] = c[1] = c[2] = c[3] = 0;
+  for (int s = 0; s < 4; s++) {
+    int j = 0;
+    for (int r = 0; r < 13; r++) {
+      u64 b = 1ULL << (s * 13 + r);
+      for (int q = 0; q < 4; q++) if (p->h[q] & b) { c[q] |= 1ULL << (s * 13 + j); j++; break; }
+    }
+  }
+}
+
+static int gen_moves(const Pos *p, int seat, int *mv) {
+  u64 hand = p->h[seat], legal = hand;
+  if (p->n > 0) { u64 f = hand & SUIT_MASK(suit_of(p->card[0])); if (f) legal = f; }
+  u64 live = p->h[0] | p->h[1] | p->h[2] | p->h[3];
+  for (int i = 0; i < p->n; i++) live |= 1ULL << p->card[i];
+  int k = 0;
+  for (int s = 0; s < 4; s++) {
+    if (!(legal & SUIT_MASK(s))) continue;
+    int prev_own = 0;
+    for (int c = s * 13 + 12; c >= s * 13; c--) {
+      u64 b = 1ULL << c;
+      if (!(live & b)) continue;
+      if (hand & b) { if (!prev_own) mv[k++] = c; prev_own = 1; }
+      else prev_own = 0;
+    }
+  }
+  return k;
+}
+
+static void order_moves(const Pos *p, int seat, int *mv, int k) {
+  int sc[13], want = !nolo, cur_best = -1, cur_seat = -1, ls = -1;
+  if (p->n) {
+    ls = suit_of(p->card[0]); int b = 0;
+    for (int i = 1; i < p->n; i++) if (suit_of(p->card[i]) == ls && rank_of(p->card[i]) > rank_of(p->card[b])) b = i;
+    cur_best = rank_of(p->card[b]); cur_seat = (p->leader + b) & 3;
+  }
+  for (int i = 0; i < k; i++) {
+    int c = mv[i], r = rank_of(c), s = suit_of(c), v;
+    if (!p->n) v = want ? r : -r;
+    else if (s != ls) v = nolo ? 20 + r : 20 - r;
+    else {
+      int beats = r > cur_best, partner_winning = ((cur_seat ^ seat) & 1) == 0;
+      if (want) v = (beats && !partner_winning) ? 40 - r : -r;
+      else v = beats ? -r : 40 + r;
+    }
+    sc[i] = v;
+  }
+  for (int i = 1; i < k; i++) { int c = mv[i], v = sc[i], j = i - 1; while (j >= 0 && sc[j] < v) { mv[j + 1] = mv[j]; sc[j + 1] = sc[j]; j--; } mv[j + 1] = c; sc[j + 1] = v; }
+}
+
+static int trick_winner(const Pos *p) {
+  int ls = suit_of(p->card[0]), best = 0;
+  for (int i = 1; i < 4; i++) if (suit_of(p->card[i]) == ls && rank_of(p->card[i]) > rank_of(p->card[best])) best = i;
+  return (p->leader + best) & 3;
+}
+
+// Team-0 tricks from here on, fail-hard within [alpha, beta].
+static int search(Pos *p, int alpha, int beta) {
+  int remaining = __builtin_popcountll(p->h[0] | p->h[1] | p->h[2] | p->h[3]) / 4 + (p->n ? 1 : 0);
+  TTE *e = NULL; u64 ck[4];
+  if (p->n == 0) {
+    if (remaining == 0) return 0;
+    if (alpha >= remaining) return remaining;
+    if (beta <= 0) return 0;
+    canon(p, ck);
+    const uint8_t lk = (uint8_t)(p->leader | (nolo << 7));
+    e = &tt[mix(ck[0] * 3 + mix(ck[1] + 7) + mix(ck[2] * 11 + 1) + (u64)lk * 0x9E3779B97F4A7C15ULL) & ((1ULL << TTBITS) - 1)];
+    if (e->gen == gen && e->leader == lk && !memcmp(e->h, ck, sizeof ck)) {
+      if (e->lo >= beta) return e->lo;
+      if (e->hi <= alpha) return e->hi;
+      if (e->lo == e->hi) return e->lo;
+      if (e->lo > alpha) alpha = e->lo;
+      if (e->hi < beta) beta = e->hi;
+    }
+  }
+  int a0 = alpha, b0 = beta, seat = (p->leader + p->n) & 3, mv[13];
+  int k = gen_moves(p, seat, mv);
+  order_moves(p, seat, mv, k);
+  int mx = is_max(seat), best = mx ? -1 : 99;
+  for (int i = 0; i < k; i++) {
+    Pos q = *p;
+    q.h[seat] &= ~(1ULL << mv[i]);
+    q.card[q.n++] = mv[i];
+    int v;
+    if (q.n == 4) {
+      int w = trick_winner(&q), t = (w & 1) == 0;
+      q.leader = w; q.n = 0;
+      v = t + search(&q, alpha - t, beta - t);
+    } else v = search(&q, alpha, beta);
+    if (mx) { if (v > best) best = v; if (best > alpha) alpha = best; }
+    else { if (v < best) best = v; if (best < beta) beta = best; }
+    if (alpha >= beta) break;
+  }
+  if (e) {
+    const uint8_t lk = (uint8_t)(p->leader | (nolo << 7));
+    if (!(e->gen == gen && e->leader == lk && !memcmp(e->h, ck, sizeof ck))) {
+      memcpy(e->h, ck, sizeof ck); e->leader = lk; e->gen = gen; e->lo = 0; e->hi = 13;
+    }
+    if (best <= a0) { if (best < e->hi) e->hi = (int8_t)best; }
+    else if (best >= b0) { if (best > e->lo) e->lo = (int8_t)best; }
+    else e->lo = e->hi = (int8_t)best;
+  }
+  return best;
+}
+
+static void to_pos(const TcDeal *d, Pos *p) {
+  memset(p, 0, sizeof *p);
+  for (int s = 0; s < 4; s++) p->h[s] = d->hand[s];
+  int pos = d->n_played & 3;
+  p->n = pos;
+  if (pos) {
+    int start = d->n_played - pos;
+    p->leader = d->play_seat[start];
+    for (int i = 0; i < pos; i++) p->card[i] = d->play_card[start + i];
+  } else p->leader = d->cur;
+}
+
+// Final team-0 tricks for the whole deal under perfect-information optimal play
+// from this trick-play position.
+int tc_dd_team0_tricks(const TcDeal *d) {
+  if (!tt) tt = calloc(1ULL << TTBITS, sizeof(TTE));
+  nolo = d->contract == TC_NOLO;
+  Pos p;
+  to_pos(d, &p);
+  int remaining = 13 - (d->n_played >> 2);
+  int lo = 0, hi = remaining;
+  while (lo < hi) {  // null-window probes: binary search on the target
+    int m = (lo + hi + 1) / 2;
+    Pos q = p;
+    if (search(&q, m - 1, m) >= m) lo = m; else hi = m - 1;
+  }
+  return d->team_tricks[0] + lo;
+}
+
+
+E010 | native/tuppi_sooli.c | complete file
+// Perfect-information solver for sooli trick play (project_target_v2).
+//
+// Sooli is a boolean game: the soolaaja survives (takes no trick in the rest
+// of the deal) or not. Three hands play: the leader and the other RAMI player
+// (the RAMI pair, who want the soolaaja to win a trick) and the soolaaja, who
+// always plays last. The dead hand never plays, so its cards are simply gone.
+//
+// Internally cards use an ace-low layout: bit suit * 13 + sooli rank
+// (A = 0, 2 = 1, ..., K = 12), so "higher" is "higher bit" within a suit.
+//
+// Exact pruning, all at trick boundaries:
+//  - immediate loss: the leader holds a card below the soolaaja's lowest in a
+//    suit, and the other RAMI player is void there or also holds one;
+//  - certain survival: in every suit the soolaaja's i-th lowest card is below
+//    the RAMI pair's combined i-th lowest (playing the lowest card of the led
+//    suit then always ducks, and discards never hurt the soolaaja);
+//  - rank equivalence of cards adjacent among live cards;
+//  - a transposition table keyed on the canonical per-suit owner sequence,
+//    which describes the subgame completely, so entries stay valid across
+//    solves and are never cleared.
+#include <stdlib.h>
+#include <string.h>
+
+#include "tuppi_core.h"
+
+typedef uint64_t u64;
+#define SM 0x1FFFULL
+#define SUITM(s) (SM << ((s) * 13))
+
+static inline u64 to_low(u64 h) {
+  u64 out = 0;
+  for (int s = 0; s < 4; s++) {
+    u64 m = (h >> (13 * s)) & SM;
+    out |= (((m & 0xFFFULL) << 1) | (m >> 12)) << (13 * s);
+  }
+  return out;
+}
+static inline int card_low(int c) { int s = c / 13, r = c % 13; return s * 13 + (r == 12 ? 0 : r + 1); }
+
+typedef struct { u64 k0, k1; uint8_t val, used; } STE;
+#define STBITS 18
+static __thread STE *stt = NULL;
+static __thread long nodes;
+
+// h[0], h[1]: the RAMI players (h[L] leads), h[2]: the soolaaja.
+typedef struct { u64 h[3]; } SPos;
+
+static void key_of(const SPos *p, int L, u64 *k0, u64 *k1) {
+  u64 live = p->h[0] | p->h[1] | p->h[2];
+  u64 part[4];
+  for (int s = 0; s < 4; s++) {
+    u64 m = (live >> (13 * s)) & SM, code = 0;
+    while (m) {
+      int r = __builtin_ctzll(m);
+      m &= m - 1;
+      u64 b = 1ULL << (13 * s + r);
+      int owner = (p->h[L] & b) ? 1 : (p->h[1 - L] & b) ? 2 : 3;
+      code = code << 2 | (u64)owner;
+    }
+    part[s] = code;
+  }
+  *k0 = part[0] | part[1] << 26;
+  *k1 = part[2] | part[3] << 26;
+}
+
+static inline u64 mix(u64 x) {
+  x ^= x >> 33; x *= 0xff51afd7ed558ccdULL; x ^= x >> 33; x *= 0xc4ceb9fe1a85ec53ULL; x ^= x >> 33; return x;
+}
+
+// Representatives: the lowest card of every run of `hand`'s cards that are
+// adjacent among `live` cards (same suit). Written in ascending order.
+static int reps(u64 hand, u64 live, int *mv) {
+  int k = 0;
+  u64 m = hand;
+  while (m) {
+    int c = __builtin_ctzll(m);
+    m &= m - 1;
+    int base = (c / 13) * 13;
+    u64 below = live & ((1ULL << c) - 1) & ~((1ULL << base) - 1);
+    if (below) {
+      int prev = 63 - __builtin_clzll(below);
+      if (hand >> prev & 1ULL) continue;
+    }
+    mv[k++] = c;
+  }
+  return k;
+}
+
+static int lead_node(SPos *p, int L);
+
+// Soolaaja to play last; `hi` is the highest led-suit card so far (low layout)
+// and `winner` the RAMI player holding it. Returns 1 if the soolaaja survives.
+static int third(SPos *p, int L, int led, int hi, int winner, u64 trick_live) {
+  u64 hs = p->h[2], follow = hs & SUITM(led);
+  u64 options;
+  if (follow) {
+    options = follow & ((1ULL << hi) - 1);
+    if (!options) return 0;  // must win the trick
+  } else {
+    options = hs;
+  }
+  int mv[13];
+  int k = reps(options, p->h[0] | p->h[1] | p->h[2] | trick_live, mv);
+  // Highest first: keep low cards for later.
+  for (int i = k - 1; i >= 0; i--) {
+    u64 b = 1ULL << mv[i];
+    p->h[2] &= ~b;
+    int r = lead_node(p, winner);
+    p->h[2] |= b;
+    if (r) return 1;
+  }
+  return 0;
+}
+
+static int second(SPos *p, int L, int a) {
+  int O = 1 - L, led = a / 13;
+  u64 ho = p->h[O], follow = ho & SUITM(led);
+  u64 trick_live = 1ULL << a;
+  int mv[13];
+  int k = reps(follow ? follow : ho, p->h[0] | p->h[1] | p->h[2] | trick_live, mv);
+  // Follow low; discard high.
+  for (int j = 0; j < k; j++) {
+    int b = follow ? mv[j] : mv[k - 1 - j];
+    u64 bb = 1ULL << b;
+    p->h[O] &= ~bb;
+    int hi = a, winner = L;
+    if (b / 13 == led && b > a) { hi = b; winner = O; }
+    int r = third(p, L, led, hi, winner, trick_live | bb);
+    p->h[O] |= bb;
+    if (!r) return 0;
+  }
+  return 1;
+}
+
+static int lead_node(SPos *p, int L) {
+  nodes++;
+  u64 hs = p->h[2];
+  if (!hs) return 1;
+  const int O = 1 - L;
+  int certain = 1;
+  for (int s = 0; s < 4; s++) {
+    u64 S = (hs >> (13 * s)) & SM;
+    if (!S) continue;
+    u64 Ls = (p->h[L] >> (13 * s)) & SM, Os = (p->h[O] >> (13 * s)) & SM;
+    int minS = __builtin_ctzll(S);
+    if (Ls && __builtin_ctzll(Ls) < minS && (!Os || __builtin_ctzll(Os) < minS)) return 0;
+    if (certain) {
+      u64 R = Ls | Os;
+      while (S && R) {
+        if (__builtin_ctzll(S) > __builtin_ctzll(R)) { certain = 0; break; }
+        S &= S - 1;
+        R &= R - 1;
+      }
+    }
+  }
+  if (certain) return 1;
+
+  if (!stt) stt = calloc((size_t)1 << STBITS, sizeof(STE));
+  u64 k0, k1;
+  key_of(p, L, &k0, &k1);
+  STE *e = &stt[mix(k0 * 0x9E3779B97F4A7C15ULL ^ k1) & (((u64)1 << STBITS) - 1)];
+  if (e->used && e->k0 == k0 && e->k1 == k1) return e->val;
+
+  int mv[13];
+  int k = reps(p->h[L], p->h[0] | p->h[1] | p->h[2], mv);
+  // Suits the soolaaja holds first, low cards first.
+  int order[13], n = 0;
+  for (int pass = 0; pass < 2; pass++)
+    for (int i = 0; i < k; i++) {
+      int has = (hs & SUITM(mv[i] / 13)) != 0;
+      if (has == (pass == 0)) order[n++] = mv[i];
+    }
+  int result = 1;
+  for (int i = 0; i < n && result; i++) {
+    u64 b = 1ULL << order[i];
+    p->h[L] &= ~b;
+    if (!second(p, L, order[i])) result = 0;
+    p->h[L] |= b;
+  }
+  e->k0 = k0;
+  e->k1 = k1;
+  e->val = (uint8_t)result;
+  e->used = 1;
+  return result;
+}
+
+// Position of a TcDeal in sooli play, in the solver's layout. Returns the
+// number of cards already in the current trick (0..2) and fills them.
+static int load(const TcDeal *d, SPos *p, int *L, int trick[2]) {
+  int D = d->declarer, P = (D + 2) & 3, S = d->soolaaja;
+  int pos = d->n_played % 3, leader = pos ? d->play_seat[d->n_played - pos] : d->cur;
+  int seat_of[2] = {leader, leader == D ? P : D};
+  p->h[0] = to_low(d->hand[seat_of[0]]);
+  p->h[1] = to_low(d->hand[seat_of[1]]);
+  p->h[2] = to_low(d->hand[S]);
+  *L = 0;
+  for (int i = 0; i < pos; i++) trick[i] = card_low(d->play_card[d->n_played - pos + i]);
+  return pos;
+}
+
+static int solve_from(SPos *p, int L, int pos, const int trick[2]) {
+  if (pos == 0) return lead_node(p, L);
+  if (pos == 1) return second(p, L, trick[0]);
+  int a = trick[0], b = trick[1], led = a / 13, hi = a, winner = L;
+  if (b / 13 == led && b > a) { hi = b; winner = 1 - L; }
+  return third(p, L, led, hi, winner, (1ULL << a) | (1ULL << b));
+}
+
+// 1 if the soolaaja survives the rest of the deal under perfect-information
+// play, 0 if the RAMI pair can force a trick on them; -1 if not in sooli play.
+int tc_sooli_solve(const TcDeal *d) {
+  if (d->phase == TC_PH_DONE && d->soolaaja >= 0) return d->sooli_won;
+  if (d->phase != TC_PH_SOOLI_PLAY) return -1;
+  SPos p;
+  int L, trick[2];
+  int pos = load(d, &p, &L, trick);
+  return solve_from(&p, L, pos, trick);
+}
+
+// Solver values of the current actor's legal moves in sooli play: out[i] = 1
+// if the soolaaja survives after actions[i]. Returns 0, or -1 if not in sooli
+// play or an action is illegal.
+int tc_sooli_move_values(const TcDeal *d, const int *actions, int k, int *out) {
+  if (d->phase != TC_PH_SOOLI_PLAY) return -1;
+  for (int i = 0; i < k; i++) {
+    TcDeal c = *d;
+    if (tc_apply(&c, actions[i]) != 0) return -1;
+    out[i] = tc_sooli_solve(&c);
+  }
+  return 0;
+}
+
+// Finishes a deal in sooli play with its perfect-information result.
+void tc_sooli_finish(TcDeal *d) {
+  int safe = tc_sooli_solve(d);
+  if (safe < 0 || d->phase == TC_PH_DONE) return;
+  d->phase = TC_PH_DONE;
+  d->sooli_won = (uint8_t)safe;
+  d->winner_team = (int8_t)(safe ? (d->soolaaja & 1) : (d->declarer & 1));
+  d->points = TC_SOOLI_POINTS;
+  d->stolen = 0;
+}
+
+long tc_sooli_nodes(void) { long n = nodes; nodes = 0; return n; }

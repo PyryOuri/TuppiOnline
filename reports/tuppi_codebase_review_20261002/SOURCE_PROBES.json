@@ -1,0 +1,79 @@
+{
+  "scope": "AST-extracted real Python functions, dependency stubs only; no Tuppi game execution",
+  "successful": true,
+  "findings": [
+    {
+      "id": "F01",
+      "source": {
+        "path": "TuppiAI/tuppi_ai/best.py",
+        "function": "best_agents",
+        "line": 76,
+        "sha256": "4567ac0d5ade199cdfb56b7c1b130fb32f695d180f28004032550f12fc83f3f2"
+      },
+      "probe": "best_agents(True) then pinned B0 factory(False)",
+      "observed": {
+        "setter_calls": [
+          true
+        ],
+        "final_showing_fix": true
+      },
+      "expected_contract": "False request must not silently retain True"
+    },
+    {
+      "id": "F02",
+      "source": {
+        "path": "TuppiAI/tuppi_ai/evaluate.py",
+        "function": "_make_candidate",
+        "line": 60,
+        "sha256": "84e1bae06b9732c066bcd4661577eb9271bec58ee2933ff3dc1e2d092d6478b9"
+      },
+      "probe": "search sf=1 side then sf=0 side in one worker",
+      "observed": {
+        "setter_calls": [
+          true
+        ],
+        "effective_fix_for_both": true
+      },
+      "expected_contract": "Reject incompatible process-global settings before constructing sides"
+    },
+    {
+      "id": "F03",
+      "source": {
+        "path": "TuppiAI/tuppi_ai/match_eval.py",
+        "function": "_leg",
+        "line": 31,
+        "sha256": "215d4669644a3ad0b2a67b18cc624181c2756e78329ba33ed0d8ad6edbd58cc0"
+      },
+      "probe": "nonterminal leg at cap with no game actions",
+      "observed": {
+        "result": 0.5,
+        "deals": 0,
+        "censored": true
+      },
+      "expected_contract": "Unknown result, with bounds in aggregation"
+    },
+    {
+      "id": "F04",
+      "source": {
+        "path": "TuppiAI/tuppi_ai/search.py",
+        "function": "adaptive_values",
+        "line": 122,
+        "sha256": "3a08e88301881da96363991e7e43009483745dc57909850d61ceabd3414476f1"
+      },
+      "probe": "200-world cap, batch 128, unresolved equal means",
+      "observed": {
+        "draws": [
+          128,
+          128
+        ],
+        "drawn": 256,
+        "cap": 200,
+        "values": [
+          0.0,
+          0.0
+        ]
+      },
+      "expected_contract": "Final batch is at most remaining worlds; validate positive batch/cap"
+    }
+  ]
+}

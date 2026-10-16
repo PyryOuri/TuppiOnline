@@ -1,0 +1,98 @@
+{
+ "identity": {
+  "bytes": 121816,
+  "ctypes_sizes": {
+   "TcDeal": 184,
+   "TcObs": 152
+  },
+  "feature_dim": {
+   "v1": 1223,
+   "v2": 1951
+  },
+  "mapped_tuppi_images": [
+   "/Users/pyryouri/Developer/TuppiAI/native/research/build/research/libtuppi_research.dylib"
+  ],
+  "num_actions": 156,
+  "num_actions_v2": 210,
+  "path": "/Users/pyryouri/Developer/TuppiAI/native/research/build/research/libtuppi_research.dylib",
+  "sha256": "103528066219c03cea949ae306ac10ba29661cd587878efcfee4f554ae5a41bc",
+  "struct_sizes": {
+   "TcDeal": 184,
+   "TcObs": 152
+  }
+ },
+ "imports": {
+  "engine_resolves_to_v3_checkout": true,
+  "executable": "/Users/pyryouri/.venvs/tuppi-v2/bin/python",
+  "prefix": "/Users/pyryouri/.venvs/tuppi-v2",
+  "python": "3.14.2 (v3.14.2:df793163d58, Dec  5 2025, 12:18:06) [Clang 16.0.0 (clang-1600.0.26.6)]",
+  "research_modules_loaded": [],
+  "tuppi_engine": "/Users/pyryouri/Developer/TuppiProject-current/src/tuppi_engine/__init__.py",
+  "tuppi_rules": "/Users/pyryouri/Developer/TuppiProject-current/src/tuppi_rules/__init__.py"
+ },
+ "library": "R0-parity",
+ "mapped": [
+  "/Users/pyryouri/Developer/TuppiAI/native/research/build/research/libtuppi_research.dylib"
+ ],
+ "probes": [
+  {
+   "cpu_s": 0.277949,
+   "id": "F02b-discard-pos3-chunk128",
+   "per_world_hex_sha256": "9d444bad90d34b1c3e58e1d90e442d59182a19451a82e7ac90410060ca76ba63",
+   "research": {
+    "all_cells_valid": true,
+    "explicit_cont_rng_equals_original_final": true,
+    "explicit_equals_original": true,
+    "row_status_counts": {
+     "1": 1024
+    },
+    "sample_only_equals_trace": true,
+    "sampler_draws_only_rng": 16493757216831141741,
+    "trace_equals_original": true,
+    "work": {
+     "dd_solves": 1024,
+     "first_actions": 1024,
+     "mlp_batches": 32,
+     "mlp_rows": 4096,
+     "plies": 4096,
+     "rounds": 5,
+     "sooli_resolutions": 0
+    }
+   },
+   "rng_after": 16493757216831141741,
+   "status": "ok",
+   "values_hex": "0000805e276e953f0000805e276e953f00008022f1968e3f000000bbe5b67e3f0000007c1632963f0000c0ccaff5953f0000c0ca74f1953f0000805e276e953f",
+   "wall_s": 0.03206966700963676
+  },
+  {
+   "cpu_s": 0.5502350000000003,
+   "id": "F02deck-nolo-lead-chunk128",
+   "per_world_hex_sha256": "c5a5f1530c05ff4e19140d2cf98756f521fad42f4527d254b24702cd7a068bfb",
+   "research": {
+    "all_cells_valid": true,
+    "explicit_cont_rng_equals_original_final": true,
+    "explicit_equals_original": true,
+    "row_status_counts": {
+     "1": 1664
+    },
+    "sample_only_equals_trace": true,
+    "sampler_draws_only_rng": 16040532998436327252,
+    "trace_equals_original": true,
+    "work": {
+     "dd_solves": 1664,
+     "first_actions": 1664,
+     "mlp_batches": 351,
+     "mlp_rows": 44928,
+     "plies": 44928,
+     "rounds": 28,
+     "sooli_resolutions": 0
+    }
+   },
+   "rng_after": 16040532998436327252,
+   "status": "ok",
+   "values_hex": "0000002459a682bf000080225c8482bf0000008c108c56bf000000145bda65bf0000807412b980bf0000008e16c963bf00000082c0ef67bf0000003bc76a84bf000080caa76184bf0000009234da60bf000000f6dc0965bf000080bb0b658dbf00000052604662bf",
+   "wall_s": 0.058534291019896045
+  }
+ ],
+ "sequences": []
+}

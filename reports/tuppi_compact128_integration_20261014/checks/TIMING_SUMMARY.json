@@ -1,0 +1,264 @@
+{
+  "backends": {
+    "macos": {
+      "passed_exact": true,
+      "rounds": [
+        {
+          "round": 1,
+          "measurements": {
+            "baseline": {
+              "job_cpu_seconds": 74.353596,
+              "decision_p95_ms": 2387.3571526499977,
+              "bid_p95_ms": 5841.174916899996,
+              "peak_rss_bytes": 340393984,
+              "decisions": 118,
+              "bids": 7
+            },
+            "candidate": {
+              "job_cpu_seconds": 51.660208,
+              "decision_p95_ms": 1549.0174857999996,
+              "bid_p95_ms": 5265.512654399996,
+              "peak_rss_bytes": 322093056,
+              "decisions": 118,
+              "bids": 7
+            }
+          },
+          "cpu_reduction": 0.3052090177319736,
+          "decision_p95_ratio": 0.6488419565043169,
+          "bid_p95_ratio": 0.9014475219986199
+        },
+        {
+          "round": 2,
+          "measurements": {
+            "baseline": {
+              "job_cpu_seconds": 75.63458899999999,
+              "decision_p95_ms": 2366.349231199998,
+              "bid_p95_ms": 5801.140062299995,
+              "peak_rss_bytes": 338575360,
+              "decisions": 118,
+              "bids": 7
+            },
+            "candidate": {
+              "job_cpu_seconds": 51.734835999999994,
+              "decision_p95_ms": 1547.1629411499996,
+              "bid_p95_ms": 5309.452150099996,
+              "peak_rss_bytes": 321847296,
+              "decisions": 118,
+              "bids": 7
+            }
+          },
+          "cpu_reduction": 0.31598972528296543,
+          "decision_p95_ratio": 0.6538185153530439,
+          "bid_p95_ratio": 0.9152428821025469
+        },
+        {
+          "round": 3,
+          "measurements": {
+            "baseline": {
+              "job_cpu_seconds": 73.47403399999999,
+              "decision_p95_ms": 2346.0254187999976,
+              "bid_p95_ms": 5795.118591399996,
+              "peak_rss_bytes": 338870272,
+              "decisions": 118,
+              "bids": 7
+            },
+            "candidate": {
+              "job_cpu_seconds": 51.311887999999996,
+              "decision_p95_ms": 1511.1542232999996,
+              "bid_p95_ms": 5252.797983099997,
+              "peak_rss_bytes": 321634304,
+              "decisions": 118,
+              "bids": 7
+            }
+          },
+          "cpu_reduction": 0.30163235626888263,
+          "decision_p95_ratio": 0.6441337809856134,
+          "bid_p95_ratio": 0.9064176858943305
+        }
+      ],
+      "median_paired": {
+        "cpu_reduction": 0.3052090177319736,
+        "decision_p95_ratio": 0.6488419565043169,
+        "bid_p95_ratio": 0.9064176858943305
+      }
+    },
+    "linux": {
+      "passed_exact": true,
+      "rounds": [
+        {
+          "round": 1,
+          "measurements": {
+            "baseline": {
+              "job_cpu_seconds": 257.207362,
+              "decision_p95_ms": 9314.737101049997,
+              "bid_p95_ms": 13246.446255099992,
+              "peak_rss_bytes": 433577984,
+              "decisions": 118,
+              "bids": 7
+            },
+            "candidate": {
+              "job_cpu_seconds": 156.03674500000002,
+              "decision_p95_ms": 5302.509290999991,
+              "bid_p95_ms": 9786.180031599994,
+              "peak_rss_bytes": 411176960,
+              "decisions": 118,
+              "bids": 7
+            }
+          },
+          "cpu_reduction": 0.39334261746364774,
+          "decision_p95_ratio": 0.5692602199585718,
+          "bid_p95_ratio": 0.7387777705157889
+        },
+        {
+          "round": 2,
+          "measurements": {
+            "baseline": {
+              "job_cpu_seconds": 264.686132,
+              "decision_p95_ms": 9577.443463299996,
+              "bid_p95_ms": 13931.654128099992,
+              "peak_rss_bytes": 433426432,
+              "decisions": 118,
+              "bids": 7
+            },
+            "candidate": {
+              "job_cpu_seconds": 155.20803,
+              "decision_p95_ms": 5338.190605449991,
+              "bid_p95_ms": 9726.694939499994,
+              "peak_rss_bytes": 411176960,
+              "decisions": 118,
+              "bids": 7
+            }
+          },
+          "cpu_reduction": 0.41361480170030207,
+          "decision_p95_ratio": 0.5573711425084903,
+          "bid_p95_ratio": 0.6981722952683241
+        },
+        {
+          "round": 3,
+          "measurements": {
+            "baseline": {
+              "job_cpu_seconds": 263.665303,
+              "decision_p95_ms": 9655.801270249998,
+              "bid_p95_ms": 13714.896351499992,
+              "peak_rss_bytes": 433610752,
+              "decisions": 118,
+              "bids": 7
+            },
+            "candidate": {
+              "job_cpu_seconds": 155.282732,
+              "decision_p95_ms": 5344.267415199991,
+              "bid_p95_ms": 9700.272104399995,
+              "peak_rss_bytes": 411181056,
+              "decisions": 118,
+              "bids": 7
+            }
+          },
+          "cpu_reduction": 0.4110611816071984,
+          "decision_p95_ratio": 0.5534773620150969,
+          "bid_p95_ratio": 0.707280015524075
+        }
+      ],
+      "median_paired": {
+        "cpu_reduction": 0.4110611816071984,
+        "decision_p95_ratio": 0.5573711425084903,
+        "bid_p95_ratio": 0.707280015524075
+      }
+    },
+    "wasm": {
+      "passed_exact": true,
+      "rounds": [
+        {
+          "round": 1,
+          "measurements": {
+            "baseline": {
+              "job_cpu_seconds": 348.809561,
+              "decision_p95_ms": 12601.012253649984,
+              "bid_p95_ms": 19698.176324999986,
+              "peak_rss_bytes": 178847744,
+              "decisions": 118,
+              "bids": 7
+            },
+            "candidate": {
+              "job_cpu_seconds": 289.24989,
+              "decision_p95_ms": 10799.91414999999,
+              "bid_p95_ms": 17925.930541999995,
+              "peak_rss_bytes": 182386688,
+              "decisions": 118,
+              "bids": 7
+            }
+          },
+          "cpu_reduction": 0.1707512570161458,
+          "decision_p95_ratio": 0.8570671889372783,
+          "bid_p95_ratio": 0.9100299563898846
+        },
+        {
+          "round": 2,
+          "measurements": {
+            "baseline": {
+              "job_cpu_seconds": 350.729936,
+              "decision_p95_ms": 12374.534221499964,
+              "bid_p95_ms": 20407.26204559997,
+              "peak_rss_bytes": 178356224,
+              "decisions": 118,
+              "bids": 7
+            },
+            "candidate": {
+              "job_cpu_seconds": 289.61066,
+              "decision_p95_ms": 10809.66780619999,
+              "bid_p95_ms": 18049.50325809998,
+              "peak_rss_bytes": 182239232,
+              "decisions": 118,
+              "bids": 7
+            }
+          },
+          "cpu_reduction": 0.174263071744181,
+          "decision_p95_ratio": 0.8735413885250631,
+          "bid_p95_ratio": 0.8844647174015021
+        },
+        {
+          "round": 3,
+          "measurements": {
+            "baseline": {
+              "job_cpu_seconds": 346.178878,
+              "decision_p95_ms": 12376.838474999964,
+              "bid_p95_ms": 19664.022604399986,
+              "peak_rss_bytes": 179306496,
+              "decisions": 118,
+              "bids": 7
+            },
+            "candidate": {
+              "job_cpu_seconds": 289.650149,
+              "decision_p95_ms": 10810.732656350008,
+              "bid_p95_ms": 18057.742045599996,
+              "peak_rss_bytes": 182452224,
+              "decisions": 118,
+              "bids": 7
+            }
+          },
+          "cpu_reduction": 0.16329340867526876,
+          "decision_p95_ratio": 0.8734647929830109,
+          "bid_p95_ratio": 0.9183137351336969
+        }
+      ],
+      "median_paired": {
+        "cpu_reduction": 0.1707512570161458,
+        "decision_p95_ratio": 0.8734647929830109,
+        "bid_p95_ratio": 0.9100299563898846
+      }
+    }
+  },
+  "worlds": 1024,
+  "scores": [
+    [
+      24,
+      0
+    ],
+    [
+      40,
+      0
+    ]
+  ],
+  "scope": "Two fixed synthetic deal inputs, 118 choices/probes and eight bids per job, three paired rounds; includes job setup CPU; no strength, device, native Linux host or population-wide guarantee",
+  "linux_execution": "x86-64 OpenBLAS in a one-CPU ARM64 Lima VM through Rosetta",
+  "quantiles": "Linear interpolation between adjacent ordered decision durations"
+}

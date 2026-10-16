@@ -1,0 +1,22 @@
+{
+ "manifest_id": "c1-branch-fraction-measurement-v1",
+ "mechanism": "C1 (pre-pilot measurement only; P.C1 itself stays NOT_AUTHORISED)",
+ "execution_enabled": true,
+ "approval": {"by": "owner (chat)", "date": "2026-09-26",
+              "scope": "bounded measurement of the NOLO-discard branch CPU fraction f: about 10 self-play deals, a few CPU-minutes, timing per decision type"},
+ "purpose": "Estimate f = CPU in C1-eligible decisions / total CPU of the as-is best agent in v3 play, to bound C1's total CPU saving by f*r",
+ "policy": "tuppi_ai.best.best_agents(worlds=128) at all four seats, B0-installed library (byte-identical to B0-source), fresh agents per deal (independent_cold_bundle)",
+ "populations": {
+  "natural": {"deals": 8, "deck_namespace": "c1-f-natural-v1", "score_law": "zero", "dealer": "deal index mod 4"},
+  "forced_nolo": {"deals": 4, "deck_namespace": "c1-f-forced-nolo-v1", "score_law": "zero",
+                  "contract_selection": "scripted: every seat shows its first legal NOLO card (synthetic; bid CPU excluded)",
+                  "use": "CPU of C1-eligible discards per NOLO deal only"}
+ },
+ "c1_eligible_decision": "ruleset v3, ordinary TRICK_PLAY, contract NOLO, actor void in the led suit, >= 2 legal cards",
+ "timing": "time.process_time around each choose_action (process-wide CPU, all native threads); wall per decision; deal totals",
+ "caps": {"max_deals": 12, "cpu_seconds": 300, "wall_seconds": 240, "workers": 1, "native_concurrency": 1,
+          "rule": "before each deal, stop if spent + mean cost of one deal so far would exceed a cap"},
+ "analysis": "f_natural = ratio of sums over natural deals with a deal-bootstrap interval; c_NOLO = eligible CPU per forced-NOLO deal; f_model = P(NOLO) * c_NOLO / CPU per natural deal over a stated P(NOLO) range; total saving bound f*r for r in {0.1, 0.35, 0.5}",
+ "not_claimed": "no strength, no C1 variance reduction (r is not measured here), 8 deals cannot give a precise NOLO frequency",
+ "result_path": "logs/c1_branch_fraction.json"
+}

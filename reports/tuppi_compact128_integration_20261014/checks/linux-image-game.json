@@ -1,0 +1,59 @@
+{
+  "passed": true,
+  "scope": "Local Linux image via HTTP/WebSocket; no physical device, cloud host or strength qualification",
+  "match": {
+    "humans": 1,
+    "bots": 3,
+    "worlds": 1024,
+    "actions": 42,
+    "completedDeals": 3,
+    "finalScores": [
+      0,
+      56
+    ],
+    "elapsedSeconds": 188.304,
+    "midgameRestart": true,
+    "clientReload": true,
+    "uncertainActionReconnect": true,
+    "replacementContainerVolumeRestore": true
+  },
+  "image": {
+    "id": "sha256:4e06ba23054169287c40f6cbeb2894549f7fff8c8c99b90e986056d4d6fce525",
+    "architecture": "amd64",
+    "os": "linux"
+  },
+  "qualification": {
+    "passed": true,
+    "platform": "linux",
+    "bot": {
+      "profile": "tuppi_ai_search_v1",
+      "worlds": 1024,
+      "models_sha256": "82770f5a958f5ff2c75b30441ec2785a901d19bd2f428f44915a243fc0cd05cb",
+      "native_sha256": "3523c1b5c8a033c4415c975eb388c24a7e95ac2b0925f83b4806a55579d6b907"
+    },
+    "references": [
+      {
+        "worlds": 128,
+        "passed": true,
+        "reference_sha256": "a1f55416a3f1b6907cb64c1dd9643b612b5bb46f7cf9a302fe93db629a2f6842"
+      },
+      {
+        "worlds": 1024,
+        "passed": true,
+        "reference_sha256": "f09af2b3d32cdd346a70d1d95c8561a483475524e4d8b57ac93fdfd6fbb3892e"
+      }
+    ],
+    "scope": "Synthetic engine, feature, model, controller and forced-sooli qualification; not a strength or capacity benchmark"
+  },
+  "release": "065856f7ee076c10579b5966733b57988c797d4a3814d3d472601f5952f25eea",
+  "staticFiles": 36,
+  "limits": {
+    "memory.peak": "378253312",
+    "memory.max": "2147483648",
+    "cpu.max": "100000 100000"
+  },
+  "partnerLobby": true,
+  "privateProjection": true,
+  "nonrootAuthority": true,
+  "privateDirectoryMode": "700"
+}

@@ -1,0 +1,30 @@
+build_research.sh manifest
+date: 2026-09-25T21:32:10Z
+clang: Apple clang version 21.0.0 (clang-2100.1.1.101)
+sdk: /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk
+flags: -O3 -Wall -Wextra -Wno-unused-parameter -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -dynamiclib -framework Accelerate
+source_command: cd source && clang $FLAGS -o libtuppi.dylib.tmp tuppi_core.c tuppi_env.c tuppi_search.c tuppi_dd.c tuppi_mlp.c tuppi_sooli.c tuppi_sooli_policy.c && mv -f libtuppi.dylib.tmp libtuppi.dylib
+research_command: cd research && patch -p1 < overlay.patch && clang $FLAGS -o libtuppi_research.dylib.tmp tuppi_core.c research_api.c tuppi_search.c tuppi_dd.c tuppi_mlp.c tuppi_sooli.c tuppi_sooli_policy.c && mv
+native_git_head: 4220f249e351905deb3a3754de812a01acf152d7
+inputs:
+2c3f0a539f6569d0927aea0d08fc8911304a88108e84667826b5c8a0c810ecbf  tuppi_core.c
+243a4fea05410e6699b9770450059424b695a54fc4b3b23c2b8c27fee3949a2e  tuppi_env.c
+c23b311ca10a04db1df64ffd3adef55dcb3a8b7ce6275d4b659176b0896bcb45  tuppi_search.c
+156ea39dbef442dcdf8229af9495a50b9b6fea02f10d5b77dff1d7e129f88898  tuppi_dd.c
+4eaadd056e90769e0b23a6d32a919b547622f81ec41bf402b79fa95c092a5de1  tuppi_mlp.c
+5a867cacf552578a9b3b73b3352684825c524b27986aa03fd2221a60be47cb85  tuppi_sooli.c
+3e0f7b839220559f0d66ed28b7a00b76550654ec8fda090abbc6db01f962e702  tuppi_sooli_policy.c
+7f38088fc44f5b67997a7b616aea4caea78fe07e18393c9b2cd3e7e59767837b  tuppi_core.h
+72d56c895eb1daed582cc00b9203bdefc0a2cafc4e46124912ded13524f6ef68  tuppi_mlp.h
+be5b4eb04b71b3ed8eafaf5c284b6b6db1ad586b2f987f6c9efa7e957775178b  build.sh
+92a477c19c337c98c8406a21b841aa1c0c335e5edbae401173c902bbf07b368b  overlay.patch
+897b57d97507d1ec5282057b7aac30b93e79771f14f0e8b75a931d383bbb8ac3  research_api.c
+89e569347a0c5b215a7f8420843d07d435f842c15fc272ce4c6f1f83a151281e  research_api.h
+e9ebc6dd579d814af3c14c79ec8f0d411549e8b00f073e62378903b9901fcec4  build_research.sh
+88913ad13e91f031d1cc3a2a638b7b32b6e66c7e1886b5df183fc4a311226dd7  pinned_sources.sha256
+patched_copy:
+9a8bd2f0438b314529f6b49380f4b34485b8406736ca536ed8e8dc2aa0ee0a96  tuppi_env.c
+outputs:
+02d9b4fad98ebb342e12cd9ecb4723aaee1406c6c6b539a1dc4a5b2b002c1ab8  /Users/pyryouri/Developer/TuppiAI/native/research/build/source/libtuppi.dylib
+221fe0415b275cd46651e0f9a8d109af294f5b4e18a1a186e4f8c08f1564ca85  /Users/pyryouri/Developer/TuppiAI/native/research/build/research/libtuppi_research.dylib
+02d9b4fad98ebb342e12cd9ecb4723aaee1406c6c6b539a1dc4a5b2b002c1ab8  /Users/pyryouri/Developer/TuppiAI/native/libtuppi.dylib

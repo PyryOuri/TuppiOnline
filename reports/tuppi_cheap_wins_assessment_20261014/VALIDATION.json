@@ -1,0 +1,73 @@
+{
+  "schema": "tuppi.cheap_wins.assessment_validation.v1",
+  "local_links_checked": 27,
+  "broken_local_links": [],
+  "python_ast_valid": true,
+  "source_hashes_still_match": true,
+  "repositories_observed": {
+    "TuppiAI": {
+      "head": "d518f7329c34e4a9070df806b3a5ef937cb04387",
+      "branch": "main",
+      "status": [
+        " M .DS_Store",
+        " M README.md",
+        " M docs/EFFICIENCY_PLAN.md",
+        " M docs/TASKS.md",
+        " M tuppi_ai/native.py",
+        "?? native/research/",
+        "?? tests/conftest.py",
+        "?? tests/research/",
+        "?? tests/test_native_buffers.py",
+        "?? tuppi_ai/research/"
+      ]
+    },
+    "TuppiAI-prior": {
+      "head": "0799508ad5a48a5db9eca99693534f998f0ebcf2",
+      "branch": "research/policy-prior-infra-20261002",
+      "status": []
+    },
+    "TuppiAI-mature": {
+      "head": "4a54fdf18ffe5a2a8a46bb0f7f38d5df48873b55",
+      "branch": "maintenance/offline-browser-20261013",
+      "status": [
+        " M docs/TASKS.md",
+        "?? native/research/",
+        "?? tests/conftest.py",
+        "?? tests/research/",
+        "?? tuppi_ai/research/"
+      ]
+    },
+    "TuppiProject-current": {
+      "head": "dc554c4b3b0e48850a3570cab454c68841aa07fc",
+      "branch": "rules/project-target-v3-locked-bids",
+      "status": [
+        " M README.md",
+        " M src/tuppi_server/match_runner.py",
+        " M tests/server/test_completed_deal_review.py",
+        " M tests/server/test_locked_bids_and_sooli_server.py",
+        " M tests/server/test_match_runner.py",
+        " M tests/server/test_post_match_diagnostics.py"
+      ]
+    },
+    "TuppiBrowser": {
+      "head": "15cfd2a7a8ee0624829673e2ff9b6994809b706c",
+      "branch": "main",
+      "status": []
+    }
+  },
+  "artifact_sha256": {
+    "dd_probe_suffix.c": "46b68f37ca44b4416f194c93d04be3fa91a7e3d0ad2a09ecd6ac5f7854956069",
+    "dd_probe_suits.dylib": "b4a956991e37a3fb167dd1b82646c1f7d1704ed18bbfdf6a9576e4b43ec3d8b8",
+    "REPORT.md": "045f87dd62ea858b677390f0147af5be1b5306ccccf2822f9265f99d1c130729",
+    "PROBES.json": "88fa73076d5109bc9dcb1012182e45659ae94afa69d0b3edab02669379d2497b",
+    "build_probe.py": "f556543d91321be1c0ecad06a6ce37c3af2a7f8bb31812093a74462d97836bdd",
+    "dd_probe.dylib": "587953ba17d17267fd5842e61b39d2de84392757fcb0cb380ef444c9cdc9ccf2",
+    "probe.py": "a6a2d937c39d1d104e547bd22f487c57d0c99a39620bb3f4678f8eec50942d6b",
+    "BUILD.json": "b7ad0652f26be301358834f64a12f178946b177b5ef6c96db3f4b61dd6013cf6",
+    "source_capture/tuppi_core.h": "fc301b9484d6bc1e6af5dacd4937542ff429eab51ca3cbfe6380220f8571033b",
+    "source_capture/dd_probe.c": "33a82cde302649a4de3f163ce171266270e949f06ddb822bfbf71340df33d45a",
+    "source_capture/dd_probe_suits.c": "a13b4e36950183f0ed1916148156aaaeebefbb615c8460b67dc841a86910c6e4",
+    "source_capture/tuppi_dd_original.c": "abcb117b29d64e2f51d5d6739623ad89429b0421f57f8c09d4e48c9948ac2260"
+  },
+  "scope": "Mechanism probes and report validation. No searched game strength evaluation, production change, training, server restart or deployment."
+}

@@ -1,0 +1,231 @@
+{
+ "identity": {
+  "bytes": 121024,
+  "ctypes_sizes": {
+   "TcDeal": 184,
+   "TcObs": 152
+  },
+  "feature_dim": {
+   "v1": 1223,
+   "v2": 1951
+  },
+  "mapped_tuppi_images": [
+   "/Users/pyryouri/Developer/TuppiAI/native/research/build/source/libtuppi.dylib"
+  ],
+  "num_actions": 156,
+  "num_actions_v2": 210,
+  "path": "/Users/pyryouri/Developer/TuppiAI/native/research/build/source/libtuppi.dylib",
+  "sha256": "02d9b4fad98ebb342e12cd9ecb4723aaee1406c6c6b539a1dc4a5b2b002c1ab8",
+  "struct_sizes": {
+   "TcDeal": 184,
+   "TcObs": 152
+  }
+ },
+ "imports": {
+  "engine_resolves_to_v3_checkout": true,
+  "executable": "/Users/pyryouri/.venvs/tuppi-v2/bin/python",
+  "prefix": "/Users/pyryouri/.venvs/tuppi-v2",
+  "python": "3.14.2 (v3.14.2:df793163d58, Dec  5 2025, 12:18:06) [Clang 16.0.0 (clang-1600.0.26.6)]",
+  "research_modules_loaded": [],
+  "tuppi_engine": "/Users/pyryouri/Developer/TuppiProject-current/src/tuppi_engine/__init__.py",
+  "tuppi_rules": "/Users/pyryouri/Developer/TuppiProject-current/src/tuppi_rules/__init__.py"
+ },
+ "library": "B0-source",
+ "mapped": [
+  "/Users/pyryouri/Developer/TuppiAI/native/research/build/source/libtuppi.dylib"
+ ],
+ "probes": [
+  {
+   "cpu_s": 0.025097999999999954,
+   "id": "F02-discard-pos2",
+   "per_world_hex_sha256": "97ca3005f9a46295e44d017b83b96f5f5a75f1397a9fb96e26d6cbbbec2ef7fb",
+   "rng_after": 4768473553293449129,
+   "status": "ok",
+   "values_hex": "00000018fc5742bf00000011e5bb86bf0000c03c48c49abf00000002b643673f00000002b643673f",
+   "wall_s": 0.003777958976570517
+  },
+  {
+   "cpu_s": 0.2730870000000001,
+   "id": "F02b-discard-pos3",
+   "per_world_hex_sha256": "9d444bad90d34b1c3e58e1d90e442d59182a19451a82e7ac90410060ca76ba63",
+   "rng_after": 16493757216831141741,
+   "status": "ok",
+   "values_hex": "0000805e276e953f0000805e276e953f00008022f1968e3f000000bbe5b67e3f0000007c1632963f0000c0ccaff5953f0000c0ca74f1953f0000805e276e953f",
+   "wall_s": 0.028947833023266867
+  },
+  {
+   "cpu_s": 0.0013940000000001174,
+   "id": "F05-three-card-lead",
+   "per_world_hex_sha256": "349645e011ba56f868bddab6de47ac8f104e218d2f64a497be2c1279137ddd94",
+   "rng_after": 2290107677466622346,
+   "status": "ok",
+   "values_hex": "000000fac8449fbf00000083cbdaa0bf000000fac8449fbf",
+   "wall_s": 0.00043429198558442295
+  },
+  {
+   "cpu_s": 2.182144,
+   "id": "F01-bid-cold",
+   "per_world_hex_sha256": "199ef9eedc1aea960ccf7d31090dc5eed860f287eac995ac2e93f02855462f1e",
+   "rng_after": 9935346088885161916,
+   "status": "ok",
+   "values_hex": "00000011b1578bbf00000083347e8dbf0000002215b488bf0000c0368635973f0000403e73c6973f0000404f078a993f",
+   "wall_s": 0.21721091598737985
+  },
+  {
+   "cpu_s": 2.483606,
+   "id": "F01-bid-offer-mode",
+   "per_world_hex_sha256": "57dfc0a46d5b7e63f9936b4cc4f4e6e599a2745fe0eef303de23ebcaf71dfefd",
+   "rng_after": 708748351165857680,
+   "status": "ok",
+   "values_hex": "0000808e3af182bf000000a5d8a083bf000000cce21881bf00000068ff9a8b3f00000024f74e893f000000f298ac873f",
+   "wall_s": 0.2690449169895146
+  },
+  {
+   "cpu_s": 5.698537000000001,
+   "id": "F01-forehand-bid-play-mode",
+   "per_world_hex_sha256": "29ad72252cbadcfac47e022fa498d7194cfd51f000e8a30775831740ef956dba",
+   "rng_after": 2256108857633892778,
+   "status": "ok",
+   "values_hex": "0000802497a49cbf0000404a2a079cbf00008033a3df9dbf000000f688639bbf000040d10bb4b0bf000090505869b1bf000060ebd392b0bf000010de88d3b0bf000040c87e51b1bf000080ee7e48afbf",
+   "wall_s": 0.6180332909862045
+  },
+  {
+   "cpu_s": 2.091521,
+   "id": "F03-give",
+   "per_world_hex_sha256": "cc76fb0cc659298dd6b18ebf292e241a5a15827f24e245d145a608c414aa7586",
+   "rng_after": 10775197297594886845,
+   "status": "ok",
+   "values_hex": "0000c054d766b2bf0000c054d766b2bf000000002e27b33f0000c054d766b2bf0000000675d88fbf0000000675d88fbf0000000675d88fbf000000e828718dbf000000e828718dbf000000e828718dbf0000000675d88fbf0000000675d88fbf0000000675d88fbf",
+   "wall_s": 0.1618002909817733
+  },
+  {
+   "cpu_s": 0.0016130000000007527,
+   "id": "F02-discard-pos2-W16",
+   "per_world_hex_sha256": "86f4d157980b2c140f1003890917678119a037f6df2beaec8282d2ead718442d",
+   "rng_after": 17373812713089825160,
+   "status": "ok",
+   "values_hex": "000000d4c6cd863f00000000c3e1503f0000004244d690bf000000a6eed2923f000000a6eed2923f",
+   "wall_s": 0.0007987499993760139
+  },
+  {
+   "cpu_s": 0.012192000000000647,
+   "id": "F02-discard-pos2-chunk128",
+   "per_world_hex_sha256": "97ca3005f9a46295e44d017b83b96f5f5a75f1397a9fb96e26d6cbbbec2ef7fb",
+   "rng_after": 4768473553293449129,
+   "status": "ok",
+   "values_hex": "00000018fc5742bf00000011e5bb86bf0000c03c48c49abf00000002b643673f00000002b643673f",
+   "wall_s": 0.0016549589927308261
+  },
+  {
+   "cpu_s": 0.6141570000000005,
+   "id": "F02deck-nolo-lead",
+   "per_world_hex_sha256": "c5a5f1530c05ff4e19140d2cf98756f521fad42f4527d254b24702cd7a068bfb",
+   "rng_after": 16040532998436327252,
+   "status": "ok",
+   "values_hex": "0000002459a682bf000080225c8482bf0000008c108c56bf000000145bda65bf0000807412b980bf0000008e16c963bf00000082c0ef67bf0000003bc76a84bf000080caa76184bf0000009234da60bf000000f6dc0965bf000080bb0b658dbf00000052604662bf",
+   "wall_s": 0.0560493340017274
+  },
+  {
+   "cpu_s": 0.040749999999999176,
+   "id": "F03deck-offer",
+   "per_world_hex_sha256": "a2347d5627f2089509b0257c5b3209c671aed845b31d340210d951978c0c0272",
+   "rng_after": 3805938448511961645,
+   "status": "ok",
+   "values_hex": "0000004571f4a03f000000002e27b33f",
+   "wall_s": 0.014107499999227002
+  },
+  {
+   "cpu_s": 0.004737999999999687,
+   "id": "F03deck-soolaaja-play",
+   "per_world_hex_sha256": "12c58cd5c1320fd8bbea69ee612d619f5607a040d5af1d5fb895ac0af1158758",
+   "rng_after": 8406375853437426189,
+   "status": "ok",
+   "values_hex": "000000002e27b33f000000002e27b33f000000002e27b33f",
+   "wall_s": 0.004051208001328632
+  },
+  {
+   "cpu_s": 0.43748199999999926,
+   "id": "F03deck-ordinary-rami-after-declines",
+   "per_world_hex_sha256": "f2379a1c407b4291752065965b753f36279fafee28d30fe0aa3e85dfc3859c3f",
+   "rng_after": 1329013040902477915,
+   "status": "ok",
+   "values_hex": "0000c0885396a1bf0000c0706daea1bf00002067e037a1bf000040de769e9ebf000040e1efc29ebf000040c16b4c9dbf0000c079a9ad9cbf000080d501269dbf0000c0caddd19dbf000080ed16d59cbf000040d265d29cbf0000806eb4949bbf0000401faecf9ebf",
+   "wall_s": 0.043191416014451534
+  }
+ ],
+ "sequences": [
+  {
+   "calls": [
+    {
+     "action": {
+      "declared_contract": "RAMI",
+      "seat": 3,
+      "shown_card": "3H",
+      "type": "show"
+     },
+     "last_values_hex": "00000028d9db4dbf0000008435c6583f00000048a6045cbf00000044c0dc763f0000006dfcf9743f000000f54e85743f",
+     "native_config": null,
+     "numpy_rng": "651e4756411f5c300fbaec8ad520d8ca8a63650023062808c20b055aaeb6c86e",
+     "scalar_rng": 12515026348933218513
+    },
+    {
+     "action": {
+      "card": "2D",
+      "seat": 3,
+      "type": "play"
+     },
+     "last_values_hex": "000000df2057843f000000b36281723f",
+     "native_config": null,
+     "numpy_rng": "651e4756411f5c300fbaec8ad520d8ca8a63650023062808c20b055aaeb6c86e",
+     "scalar_rng": 6684361764799178193
+    },
+    {
+     "action": {
+      "card": "6H",
+      "seat": 3,
+      "type": "play"
+     },
+     "last_values_hex": "0000005cb9d78c3f000000b8a9f08c3f000080756ccc8b3f000080b031de8d3f00008031c3068c3f",
+     "native_config": null,
+     "numpy_rng": "651e4756411f5c300fbaec8ad520d8ca8a63650023062808c20b055aaeb6c86e",
+     "scalar_rng": 11305581053115375825
+    },
+    {
+     "action": {
+      "card": "2H",
+      "seat": 3,
+      "type": "play"
+     },
+     "last_values_hex": "000000599d7b903f0000003cf3d28f3f000000fff4778f3f000000a3045f8f3f",
+     "native_config": null,
+     "numpy_rng": "651e4756411f5c300fbaec8ad520d8ca8a63650023062808c20b055aaeb6c86e",
+     "scalar_rng": 13928085291116745041
+    },
+    {
+     "action": {
+      "card": "AD",
+      "seat": 3,
+      "type": "play"
+     },
+     "last_values_hex": null,
+     "native_config": null,
+     "numpy_rng": "651e4756411f5c300fbaec8ad520d8ca8a63650023062808c20b055aaeb6c86e",
+     "scalar_rng": 13928085291116745041
+    },
+    {
+     "action": {
+      "card": "2H",
+      "seat": 3,
+      "type": "play"
+     },
+     "last_values_hex": "0000c06b0d55993f000000dae7a1983f0000809b08b5983f0000400bf56d923f0000808a33e78e3f0000805b6861833f000000e680467b3f000000e680467b3f00004043a9d4973f",
+     "native_config": null,
+     "numpy_rng": "651e4756411f5c300fbaec8ad520d8ca8a63650023062808c20b055aaeb6c86e",
+     "scalar_rng": 6557014277543972177
+    }
+   ],
+   "id": "best-seat3-F02deck",
+   "spec": "best:06d73618eeb81d8c"
+  }
+ ]
+}

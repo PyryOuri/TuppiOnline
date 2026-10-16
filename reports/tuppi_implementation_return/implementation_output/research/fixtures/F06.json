@@ -1,0 +1,643 @@
+{
+ "fixture_id": "F06",
+ "rollout_complete": true,
+ "rollout_positions": {
+  "same_winner_margins": {
+   "final_team0_tricks": [
+    7,
+    8
+   ],
+   "history_len": 48,
+   "winner": 1
+  },
+  "uncertain_winner": {
+   "final_team0_tricks": [
+    6,
+    7,
+    8,
+    9
+   ],
+   "history_len": 40
+  }
+ },
+ "rules": {
+  "all_match": true,
+  "interpretation": "DealScore points are always positive, so 'zero-score award' is read as an award from 0-0; overshoot = a terminal score above 52",
+  "rows": [
+   {
+    "after": [
+     76,
+     0
+    ],
+    "deal": "NOLO t0=0",
+    "matches_derived_expectation": true,
+    "overshoot": true,
+    "points": 28,
+    "start": [
+     48,
+     0
+    ],
+    "team0_equity_after": 1.0,
+    "terminal": true,
+    "winner": 0
+   },
+   {
+    "after": [
+     64,
+     0
+    ],
+    "deal": "NOLO t0=3",
+    "matches_derived_expectation": true,
+    "overshoot": true,
+    "points": 16,
+    "start": [
+     48,
+     0
+    ],
+    "team0_equity_after": 1.0,
+    "terminal": true,
+    "winner": 0
+   },
+   {
+    "after": [
+     56,
+     0
+    ],
+    "deal": "NOLO t0=5",
+    "matches_derived_expectation": true,
+    "overshoot": true,
+    "points": 8,
+    "start": [
+     48,
+     0
+    ],
+    "team0_equity_after": 1.0,
+    "terminal": true,
+    "winner": 0
+   },
+   {
+    "after": [
+     52,
+     0
+    ],
+    "deal": "NOLO t0=6",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 4,
+    "start": [
+     48,
+     0
+    ],
+    "team0_equity_after": 1.0,
+    "terminal": true,
+    "winner": 0
+   },
+   {
+    "after": [
+     0,
+     0
+    ],
+    "deal": "NOLO t0=7",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 4,
+    "start": [
+     48,
+     0
+    ],
+    "team0_equity_after": 0.49975793280332925,
+    "terminal": false,
+    "winner": 1
+   },
+   {
+    "after": [
+     0,
+     0
+    ],
+    "deal": "NOLO t0=10",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 16,
+    "start": [
+     48,
+     0
+    ],
+    "team0_equity_after": 0.49975793280332925,
+    "terminal": false,
+    "winner": 1
+   },
+   {
+    "after": [
+     0,
+     0
+    ],
+    "deal": "RAMI dt=0 t0=2",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 40,
+    "start": [
+     48,
+     0
+    ],
+    "team0_equity_after": 0.49975793280332925,
+    "terminal": false,
+    "winner": 1
+   },
+   {
+    "after": [
+     0,
+     0
+    ],
+    "deal": "RAMI dt=0 t0=5",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 16,
+    "start": [
+     48,
+     0
+    ],
+    "team0_equity_after": 0.49975793280332925,
+    "terminal": false,
+    "winner": 1
+   },
+   {
+    "after": [
+     52,
+     0
+    ],
+    "deal": "RAMI dt=0 t0=7",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 4,
+    "start": [
+     48,
+     0
+    ],
+    "team0_equity_after": 1.0,
+    "terminal": true,
+    "winner": 0
+   },
+   {
+    "after": [
+     56,
+     0
+    ],
+    "deal": "RAMI dt=0 t0=8",
+    "matches_derived_expectation": true,
+    "overshoot": true,
+    "points": 8,
+    "start": [
+     48,
+     0
+    ],
+    "team0_equity_after": 1.0,
+    "terminal": true,
+    "winner": 0
+   },
+   {
+    "after": [
+     76,
+     0
+    ],
+    "deal": "RAMI dt=0 t0=13",
+    "matches_derived_expectation": true,
+    "overshoot": true,
+    "points": 28,
+    "start": [
+     48,
+     0
+    ],
+    "team0_equity_after": 1.0,
+    "terminal": true,
+    "winner": 0
+   },
+   {
+    "after": [
+     0,
+     0
+    ],
+    "deal": "RAMI dt=1 t0=2",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 20,
+    "start": [
+     48,
+     0
+    ],
+    "team0_equity_after": 0.49975793280332925,
+    "terminal": false,
+    "winner": 1
+   },
+   {
+    "after": [
+     0,
+     0
+    ],
+    "deal": "RAMI dt=1 t0=5",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 8,
+    "start": [
+     48,
+     0
+    ],
+    "team0_equity_after": 0.49975793280332925,
+    "terminal": false,
+    "winner": 1
+   },
+   {
+    "after": [
+     56,
+     0
+    ],
+    "deal": "RAMI dt=1 t0=7",
+    "matches_derived_expectation": true,
+    "overshoot": true,
+    "points": 8,
+    "start": [
+     48,
+     0
+    ],
+    "team0_equity_after": 1.0,
+    "terminal": true,
+    "winner": 0
+   },
+   {
+    "after": [
+     64,
+     0
+    ],
+    "deal": "RAMI dt=1 t0=8",
+    "matches_derived_expectation": true,
+    "overshoot": true,
+    "points": 16,
+    "start": [
+     48,
+     0
+    ],
+    "team0_equity_after": 1.0,
+    "terminal": true,
+    "winner": 0
+   },
+   {
+    "after": [
+     104,
+     0
+    ],
+    "deal": "RAMI dt=1 t0=13",
+    "matches_derived_expectation": true,
+    "overshoot": true,
+    "points": 56,
+    "start": [
+     48,
+     0
+    ],
+    "team0_equity_after": 1.0,
+    "terminal": true,
+    "winner": 0
+   },
+   {
+    "after": [
+     0,
+     0
+    ],
+    "deal": "NOLO t0=0",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 28,
+    "start": [
+     0,
+     48
+    ],
+    "team0_equity_after": 0.49975793280332925,
+    "terminal": false,
+    "winner": 0
+   },
+   {
+    "after": [
+     0,
+     0
+    ],
+    "deal": "NOLO t0=3",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 16,
+    "start": [
+     0,
+     48
+    ],
+    "team0_equity_after": 0.49975793280332925,
+    "terminal": false,
+    "winner": 0
+   },
+   {
+    "after": [
+     0,
+     0
+    ],
+    "deal": "NOLO t0=5",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 8,
+    "start": [
+     0,
+     48
+    ],
+    "team0_equity_after": 0.49975793280332925,
+    "terminal": false,
+    "winner": 0
+   },
+   {
+    "after": [
+     0,
+     0
+    ],
+    "deal": "NOLO t0=6",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 4,
+    "start": [
+     0,
+     48
+    ],
+    "team0_equity_after": 0.49975793280332925,
+    "terminal": false,
+    "winner": 0
+   },
+   {
+    "after": [
+     0,
+     52
+    ],
+    "deal": "NOLO t0=7",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 4,
+    "start": [
+     0,
+     48
+    ],
+    "team0_equity_after": 0.0,
+    "terminal": true,
+    "winner": 1
+   },
+   {
+    "after": [
+     0,
+     64
+    ],
+    "deal": "NOLO t0=10",
+    "matches_derived_expectation": true,
+    "overshoot": true,
+    "points": 16,
+    "start": [
+     0,
+     48
+    ],
+    "team0_equity_after": 0.0,
+    "terminal": true,
+    "winner": 1
+   },
+   {
+    "after": [
+     0,
+     88
+    ],
+    "deal": "RAMI dt=0 t0=2",
+    "matches_derived_expectation": true,
+    "overshoot": true,
+    "points": 40,
+    "start": [
+     0,
+     48
+    ],
+    "team0_equity_after": 0.0,
+    "terminal": true,
+    "winner": 1
+   },
+   {
+    "after": [
+     0,
+     64
+    ],
+    "deal": "RAMI dt=0 t0=5",
+    "matches_derived_expectation": true,
+    "overshoot": true,
+    "points": 16,
+    "start": [
+     0,
+     48
+    ],
+    "team0_equity_after": 0.0,
+    "terminal": true,
+    "winner": 1
+   },
+   {
+    "after": [
+     0,
+     0
+    ],
+    "deal": "RAMI dt=0 t0=7",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 4,
+    "start": [
+     0,
+     48
+    ],
+    "team0_equity_after": 0.49975793280332925,
+    "terminal": false,
+    "winner": 0
+   },
+   {
+    "after": [
+     0,
+     0
+    ],
+    "deal": "RAMI dt=0 t0=8",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 8,
+    "start": [
+     0,
+     48
+    ],
+    "team0_equity_after": 0.49975793280332925,
+    "terminal": false,
+    "winner": 0
+   },
+   {
+    "after": [
+     0,
+     0
+    ],
+    "deal": "RAMI dt=0 t0=13",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 28,
+    "start": [
+     0,
+     48
+    ],
+    "team0_equity_after": 0.49975793280332925,
+    "terminal": false,
+    "winner": 0
+   },
+   {
+    "after": [
+     0,
+     68
+    ],
+    "deal": "RAMI dt=1 t0=2",
+    "matches_derived_expectation": true,
+    "overshoot": true,
+    "points": 20,
+    "start": [
+     0,
+     48
+    ],
+    "team0_equity_after": 0.0,
+    "terminal": true,
+    "winner": 1
+   },
+   {
+    "after": [
+     0,
+     56
+    ],
+    "deal": "RAMI dt=1 t0=5",
+    "matches_derived_expectation": true,
+    "overshoot": true,
+    "points": 8,
+    "start": [
+     0,
+     48
+    ],
+    "team0_equity_after": 0.0,
+    "terminal": true,
+    "winner": 1
+   },
+   {
+    "after": [
+     0,
+     0
+    ],
+    "deal": "RAMI dt=1 t0=7",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 8,
+    "start": [
+     0,
+     48
+    ],
+    "team0_equity_after": 0.49975793280332925,
+    "terminal": false,
+    "winner": 0
+   },
+   {
+    "after": [
+     0,
+     0
+    ],
+    "deal": "RAMI dt=1 t0=8",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 16,
+    "start": [
+     0,
+     48
+    ],
+    "team0_equity_after": 0.49975793280332925,
+    "terminal": false,
+    "winner": 0
+   },
+   {
+    "after": [
+     0,
+     0
+    ],
+    "deal": "RAMI dt=1 t0=13",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 56,
+    "start": [
+     0,
+     48
+    ],
+    "team0_equity_after": 0.49975793280332925,
+    "terminal": false,
+    "winner": 0
+   },
+   {
+    "after": [
+     8,
+     0
+    ],
+    "deal": "NOLO t0=5",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 8,
+    "start": [
+     0,
+     0
+    ],
+    "team0_equity_after": 0.5309703232095494,
+    "terminal": false,
+    "winner": 0
+   },
+   {
+    "after": [
+     0,
+     8
+    ],
+    "deal": "NOLO t0=8",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 8,
+    "start": [
+     0,
+     0
+    ],
+    "team0_equity_after": 0.4689689215022868,
+    "terminal": false,
+    "winner": 1
+   },
+   {
+    "after": [
+     12,
+     0
+    ],
+    "deal": "RAMI dt=0 t0=9",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 12,
+    "start": [
+     0,
+     0
+    ],
+    "team0_equity_after": 0.5389809455004332,
+    "terminal": false,
+    "winner": 0
+   },
+   {
+    "after": [
+     0,
+     32
+    ],
+    "deal": "RAMI stolen dt=0 t0=3",
+    "matches_derived_expectation": true,
+    "overshoot": false,
+    "points": 32,
+    "start": [
+     0,
+     0
+    ],
+    "team0_equity_after": 0.3809332358820711,
+    "terminal": false,
+    "winner": 1
+   }
+  ]
+ },
+ "status": "VALIDATED",
+ "truth_ref": "truth/deal_380b89ce9639da6bc07525bc3d631961.truth.json"
+}

@@ -1,0 +1,82 @@
+{
+  "scope": "Port only the already-qualified compact128 speedups; no new padding/reference, strength study, training, profiler, hosting or live native replacement",
+  "timestamp": "2026-10-14T14:46:08.938115+00:00",
+  "baseline_repos": {
+    "TuppiAI-hosted": {
+      "commit": "fbad9c4f58824c664e1315a79f5f3eff56ed36ec",
+      "status": ""
+    },
+    "TuppiBrowser": {
+      "commit": "218554263aab919b4e3176b2396226fd56e28275",
+      "status": ""
+    },
+    "TuppiProject-browser-network": {
+      "commit": "3cfd8be26c6afa31482c3a8e4767fcd5db890b5e",
+      "status": ""
+    },
+    "TuppiAI-mature": {
+      "commit": "4a54fdf18ffe5a2a8a46bb0f7f38d5df48873b55",
+      "status": "M docs/TASKS.md\n?? native/research/\n?? tests/conftest.py\n?? tests/research/\n?? tuppi_ai/research/"
+    },
+    "TuppiAI": {
+      "commit": "d518f7329c34e4a9070df806b3a5ef937cb04387",
+      "status": "M .DS_Store\n M README.md\n M docs/EFFICIENCY_PLAN.md\n M docs/TASKS.md\n M tuppi_ai/native.py\n?? native/research/\n?? tests/conftest.py\n?? tests/research/\n?? tests/test_native_buffers.py\n?? tuppi_ai/research/"
+    },
+    "TuppiClient-current": {
+      "commit": "7ba8ca283f01794170d105ba08c5a799f7bd7909",
+      "status": "M README.md\n M Tests/TuppiClientTests/LocalInteropTests.swift\n?? Sources/TuppiClient/ReferencePolicy.swift\n?? Tests/TuppiClientTests/ReferencePolicyTests.swift"
+    }
+  },
+  "sealed_package_sha256": "b0740b48c241377271510ae4e9f03bb8a46b5e9e39861de755d048c3a867325a",
+  "baseline_native_sha256": "dc6d428b01c31cd9f945c63e185798d8904d7d34af1af04b789f69a53febcb33",
+  "baseline_frontend": {
+    "schema": "tuppi.browser.frontend.v1",
+    "client": "client.68bd49403df110a7.mjs",
+    "client_sha256": "68bd49403df110a791157e1e11bf09af56c4b0c67f1833fa7fc654fbb5e2daf7",
+    "engine": "engine.372030ac700e2856.mjs",
+    "engine_sha256": "372030ac700e2856957027520aaf64cb2e8f8776d42e41f3f2653a28e410e15b",
+    "runtime_identity": "3387eff23688d09ee79867ddb2ba6fbffcade07023056a5a61b588f824a44846",
+    "launch": "launch.90dd0f3c2bb1087a.html",
+    "styles": "styles.9a2c3c6c06b927a5.css",
+    "bootstrap": "bootstrap.8920d86396c7f725.mjs",
+    "manifest": "frontend.90dd0f3c2bb1087a.json"
+  },
+  "mechanisms": [
+    "exact DD reward buckets",
+    "shared immutable identical VRPO1 rollout weights",
+    "rollout chunk 128",
+    "skip forced inference rows"
+  ],
+  "gates": {
+    "models_worlds_margins_equity_solver_lifecycle": "unchanged",
+    "native_trace": "exact action, float64 values, RNG and sooli options per backend at W128/W1024",
+    "browser_trace": "exact action, float64 values, RNG and sooli options against current WASM at W128/W1024",
+    "regression": "offline/cache/storage/keyboard/reveal and network checkpoint/reconnect",
+    "performance": "finite paired fixed-input timing; report only measured backend gains"
+  },
+  "cpu_policy": "one active test job, one BLAS/Torch thread",
+  "promotion": "qualified isolated candidates can merge into owned browser/hosted sources; live native, published offline app and sealed research remain preserved",
+  "timing_plan": {
+    "rounds": 3,
+    "order": "baseline/candidate, candidate/baseline, baseline/candidate",
+    "worlds": 1024,
+    "controller_score_cells": [
+      [
+        24,
+        0
+      ],
+      [
+        40,
+        0
+      ]
+    ],
+    "bank": "fixed browser-controller-oracle-0 and -1 with retained per-seat cursors; no outcome-based selection",
+    "backends": [
+      "macOS hosted BLAS",
+      "WebAssembly SIMD",
+      "Linux x86-64 OpenBLAS"
+    ],
+    "scope": "finite paired CPU/decision/bid timings, not profiling or strength",
+    "per_job_wall_cap_seconds": 600
+  }
+}

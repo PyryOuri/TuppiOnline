@@ -1,0 +1,3057 @@
+{
+ "ai_tracked": {
+  ".DS_Store": "48b4fda6ba4f162a2d51ebd03996bd08377ef41dc22a5e5e2b23f2785de7c9ac",
+  ".gitignore": "1b223b8807661e19ae916eb34f7f62126a96a27e06ccf1574e46bbe7059bd10d",
+  "README.md": "c682f84cafaf16ba832674a816d8db30a3072a903603d9054fb9e4eadf606151",
+  "docs/BIDDING_EXPLANATION_PLAN.md": "e0172b922f15d97d13e6b571dee2ca7db40803e11b7442e0af9fa868ded0848a",
+  "docs/CONVENTIONS.md": "efd944bcdcc5b81d5893af24907f11b5c8baa9e98787ab333d627c9ca32abddc",
+  "docs/HUMAN_BENCHMARK.md": "c4c0b74fd2cd55c888889d0a6f17ef1d7b5cc51d91cd775e7fbc6a98e5dc6cd0",
+  "docs/LOCKED_BIDS_AND_CONVENTION_TESTS_PLAN.md": "816f850c33ffd5de0629b9ccf0a8cd09b5f8c79b92e9b7ec21be892787ca810a",
+  "docs/LOCKED_BIDS_RULESET_REVIEW.md": "5688b098f636a60ec97fea4d0fbf314007fdfaf659fb31f9b5659da5a69e840c",
+  "docs/MERGING_V3.md": "53c710b581e76b77046fe4c10665b5f8d0a6d4f44abeac01ffcdbb3c37886d4c",
+  "docs/SOOLI_PLAN.md": "aeb2c8585b4bba05b30010460914195de011bfbc54a37cf64d3ca3fa6a96aca4",
+  "docs/STATUS.md": "911bf188d7d3745383e89813dcffaa5e8e00ff0002d59b470a981f9fd071f4ae",
+  "docs/TASKS.md": "d4097aa0b168388717c43460ef157a5d415a7e17848108ea57990f42ff2f82f2",
+  "models/equity_incumbent.json": "1496f77104f411c5cb55e2cef4573a10aead59acbd643261b755886bfeb60b91",
+  "models/rollout_clone_small.pt": "38737c9042695a4c960157fb77a8d17f308c5773899c2ec0c65b0d20546324f1",
+  "native/build.sh": "be5b4eb04b71b3ed8eafaf5c284b6b6db1ad586b2f987f6c9efa7e957775178b",
+  "native/tuppi_core.c": "2c3f0a539f6569d0927aea0d08fc8911304a88108e84667826b5c8a0c810ecbf",
+  "native/tuppi_core.h": "7f38088fc44f5b67997a7b616aea4caea78fe07e18393c9b2cd3e7e59767837b",
+  "native/tuppi_dd.c": "156ea39dbef442dcdf8229af9495a50b9b6fea02f10d5b77dff1d7e129f88898",
+  "native/tuppi_env.c": "243a4fea05410e6699b9770450059424b695a54fc4b3b23c2b8c27fee3949a2e",
+  "native/tuppi_mlp.c": "4eaadd056e90769e0b23a6d32a919b547622f81ec41bf402b79fa95c092a5de1",
+  "native/tuppi_mlp.h": "72d56c895eb1daed582cc00b9203bdefc0a2cafc4e46124912ded13524f6ef68",
+  "native/tuppi_search.c": "c23b311ca10a04db1df64ffd3adef55dcb3a8b7ce6275d4b659176b0896bcb45",
+  "native/tuppi_sooli.c": "5a867cacf552578a9b3b73b3352684825c524b27986aa03fd2221a60be47cb85",
+  "native/tuppi_sooli_policy.c": "3e0f7b839220559f0d66ed28b7a00b76550654ec8fda090abbc6db01f962e702",
+  "pytest.ini": "b160d82f7811555051f8966d8e02750a985227c1d022208c784e606946f2eada",
+  "tests/test_best.py": "d818e568ffabedd1922c3942207011cdf4e14f6359cbb567ea40468249405f74",
+  "tests/test_bidding_pipeline.py": "9acbcdb396de84e935a7ece8666f63b2ec048e86511460051f87b319ddf7fa7e",
+  "tests/test_dd.py": "7174df7b0a9c3dcc35504f6a0b4746dbda314634dc07d86afb7aa6463ddaf6dd",
+  "tests/test_differential.py": "f1270a68ee61fa805d738cdc23b327bae0775a88f55769eb3358518678c64cf9",
+  "tests/test_differential_v2.py": "c6082851a0ff808c2448336182fcd2245d7a9432080a437424ea8ca4ba2eff04",
+  "tests/test_history.py": "799f1d10f8e43574d7f79fc76adfce070a95e28f441d8dd2cb014a7f0e2baf9d",
+  "tests/test_sampler.py": "0edf6155966a32f13b237c12f0ab3d9be033d35f0ed746ffd8e7cb536f8ce4e9",
+  "tests/test_sampler_v2.py": "49e5cd5d690727e59261a95a836c050871bc87504b690209ddbab2a0ca6dbf61",
+  "tests/test_sooli_solver.py": "3ba888daa7b811a11c3f8202bb4dcc0f1fa645c1956534c8e32e71b71da8866c",
+  "tools/belief_eval.py": "c2e4af58fb702b7359440852af5463decc0943ae2fc7b61d6233be1d3cbbe874",
+  "tools/bid_dataset.py": "43dbd774857834940af13a52f6938f5ebf20e33d4b9773b4b677f51585d725de",
+  "tools/bid_explain.py": "23b49e394da7b62b438a7515e4c1aa9ccd97109d563c777faafa63748e8e8a52",
+  "tools/bid_rule_eval.py": "17224101553357633c00eb6525e4dc2ad036bbf619962ca2b55e74e78cc8084f",
+  "tools/cmp.sh": "7c57624a2e8ab13163777bcb60958ed557d75a7e6afb1e916d0add96f4c197e1",
+  "tools/fit_equity.py": "16aeb0fbbd2247dc47db5fde7691d7c01705150e5943aabd8ca77de16abc6c46",
+  "tools/gen_bc.py": "36b66f74368a9cefd5dbf95f6443bc7d97755f1d62a608a249c5cee53d550cb7",
+  "tools/gen_belief.py": "1e40a623c48e038ffc424c7e05a366b49f897a4a335212f3da7decd2acff6a8d",
+  "tools/gen_belief_tuppi.py": "cde45b3a40d138e965df2211dd55f2c024146d7d8ad83c687162841247a345b4",
+  "tools/gen_game_db.py": "0f05251e954820ff7d6678853d4fcadbf4cb9c14fc65d425b848ecb5d47bfdba",
+  "tools/human_report.py": "06e4f9007bd077f35488f3ed9f8ab35667044b114fc3e29552fef33a5774112e",
+  "tools/odds_calibration.py": "b046115bab4be0a7735859bbfe9392ffcb838ceb1f6aeaf0f16f514a00e97665",
+  "tools/probe.py": "d4ca91af9392b2156449d00080495041df96f48ecf7795c65ea673bc48f5c656",
+  "tools/review_calibrate.py": "09cad296d2024bfcf3c63e1d049b7535f08b410336c546458e66179ac43c678c",
+  "tools/run_bidding_pilot.sh": "0eaba1b68b8ff5d545f647217ac048b479c3464e1ef0f26009f6b6fe86890970",
+  "tools/serve_human.py": "168032daa3a262d5105de78e4f6486a40ee0d140d5c404f2021909120abc9955",
+  "tools/sooli_bank.py": "adb670c2577fd60c54aac6e7bca622180f74ef36c49ff43f31b17b3280947d87",
+  "tools/sooli_odds_calibration.py": "457cd991b696a1c2edd039f789278cbd89ef361e875c4ee5e389d6b3adc3c861",
+  "tools/sooli_offer_check.py": "7d405c30d196e5871e2381635c57f3f450cafcfb29c274ac038e7805701b5657",
+  "tools/sooli_play_eval.py": "a0b0ba0bb52a1fd20f5bd53bc244a058bc9e30a9af1e5de3f75444cc3564ee45",
+  "tools/transfer.sh": "6604749f13b91f821ce134d6bf5f0e5bc619745d4f1d9e3c38b3eafd0b70e4c5",
+  "tools/watch_eval.py": "78d58ae2db3908eb7616ed8f2b46db7aa04d3465a64c67c377fa4cc80054d3d8",
+  "tools/xi_round.sh": "3f4e471a409d3fedc83f0e12e313c1a2f91abc270319388cc8b3604316af404d",
+  "tuppi_ai/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "tuppi_ai/agent.py": "789e860895b3b7b87e3b90f75314fd222e96a07871c474e77b1d1379b4c4712e",
+  "tuppi_ai/bc.py": "26c3a8159628e8478aa0dbdbb58937f1afe8066a0af7ab23ae653a655f20bf61",
+  "tuppi_ai/belief.py": "bd7e356d1fab8dd290ec882b8ad002b1280d1ee43cd39e2eb2db67cdea4edd19",
+  "tuppi_ai/best.py": "bdec3507cbf2bfaa248d513244353c4a02aad36650f368c5ecc8e2aa1f7568db",
+  "tuppi_ai/bid_features.py": "213618e34103bd4bb519cb95038ed00257c7be6c9309d269f0d6ca66d6bd378e",
+  "tuppi_ai/bid_models.py": "d84811612478a86ad2f5be7bbc1b5bf66298b8720453df9839e69191d51c79ab",
+  "tuppi_ai/bridge.py": "f2d24345e289c78dbf9efb07f0c7007519b638beb15b414446aaa78ffda429d2",
+  "tuppi_ai/bsearch.py": "57dc9d8e5f6fab8a077c08099f4c4afed8f2d66a90b743ceac0d7e74bbd03556",
+  "tuppi_ai/distill.py": "1d4aa27a2c8e6cb4125ff71ef0177964c0673547432ad62c80802c29cec03ff3",
+  "tuppi_ai/equity.py": "c03de75eb6f249f77d5066226fb68d3f6a1b48452a6cafc6202a543d925e3976",
+  "tuppi_ai/evaluate.py": "b133798fcb65a6ba8337e7da6bd346735b4d2d90762b6195d198060ae3a21d3b",
+  "tuppi_ai/incumbent.py": "4ea9a7521c4ee2de7853f0d1d7f493656a37233fc08371e6c3e177e0c7522b80",
+  "tuppi_ai/match_eval.py": "eca0f709d010b9e1df0e23938718443480de3dcd9ea2ffab8b3ea6feb24c34d9",
+  "tuppi_ai/model.py": "07527cbf1eb97a13f3b5510078e4bc07053da2ad56057b393f141787741c7c16",
+  "tuppi_ai/native.py": "3c6c13f50a710aee52dcc0a4b8f0b89d68c499b04cd2a6fb8726aa2325b4ef84",
+  "tuppi_ai/native_eval.py": "b199a6f00a53c151697c4aac7495f0b3bddd396cefa952bd9ee55033eeafac0d",
+  "tuppi_ai/policies.py": "7c666a509f26bae3f21390e527dbadfe6f0c4f2f7f12f672431018af247987c0",
+  "tuppi_ai/review.py": "eac6d53a0555afaa8e31cdc01edc8dd8aa5b1964f68fd2898752ff53d8c6d6db",
+  "tuppi_ai/rule_bidder.py": "5c1d3d1a42ae731476ef1b49dc8143333c714ceea7226bfcadda533b7ed2feae",
+  "tuppi_ai/search.py": "ec43cb390dd1ba571991de1523995791df936292f5a4408c8207e90c73366612",
+  "tuppi_ai/sooli_odds.py": "edae2a0d734a99d737bfe497d1daa77075b6931c858cff7c7661fce632f72315",
+  "tuppi_ai/train.py": "3e43726481d169a1eccc3bb7f705873fcbd0b1293428f22aa91a0caae74392d9",
+  "tuppi_ai/train2.py": "046942263707e08ab1e9b90f1f65e8c9ff9abf44d6b5f7645136888a39c57cb1"
+ },
+ "assets": {
+  "equity": "1496f77104f411c5cb55e2cef4573a10aead59acbd643261b755886bfeb60b91",
+  "installed_dylib": "02d9b4fad98ebb342e12cd9ecb4723aaee1406c6c6b539a1dc4a5b2b002c1ab8",
+  "rollout_model": "38737c9042695a4c960157fb77a8d17f308c5773899c2ec0c65b0d20546324f1"
+ },
+ "checkouts": {
+  "AI": {
+   "alias": "AI",
+   "audit_head": "4220f249e351905deb3a3754de812a01acf152d7",
+   "branch": "main",
+   "dirty": [
+    {
+     "path": ".DS_Store",
+     "sha256": "48b4fda6ba4f162a2d51ebd03996bd08377ef41dc22a5e5e2b23f2785de7c9ac",
+     "status": " M"
+    },
+    {
+     "path": "docs/TASKS.md",
+     "sha256": "d4097aa0b168388717c43460ef157a5d415a7e17848108ea57990f42ff2f82f2",
+     "status": " M"
+    }
+   ],
+   "head": "4220f249e351905deb3a3754de812a01acf152d7",
+   "head_matches_audit": true,
+   "path": "/Users/pyryouri/Developer/TuppiAI"
+  },
+  "CLIENT": {
+   "alias": "CLIENT",
+   "audit_head": "7ba8ca283f01794170d105ba08c5a799f7bd7909",
+   "branch": "feature/v3-locked-bids-sooli",
+   "dirty": [
+    {
+     "path": "Sources/TuppiClient/ReferencePolicy.swift",
+     "sha256": "03c80157e9751789f5827b6117cef32b113f6d208dfe2ff101f31ecc6de9ca28",
+     "status": "??"
+    },
+    {
+     "path": "Tests/TuppiClientTests/ReferencePolicyTests.swift",
+     "sha256": "bb537f5161a6799d30068b7a7fd0d49b17537b68fa3b4ebd4fe3f42ffdf2955a",
+     "status": "??"
+    }
+   ],
+   "head": "7ba8ca283f01794170d105ba08c5a799f7bd7909",
+   "head_matches_audit": true,
+   "path": "/Users/pyryouri/Developer/TuppiClient-current"
+  },
+  "ENGINE": {
+   "alias": "ENGINE",
+   "audit_head": "1347153f7d6e7bed95edddce9d35d28a3df91750",
+   "branch": "rules/project-target-v3-locked-bids",
+   "dirty": [],
+   "head": "1347153f7d6e7bed95edddce9d35d28a3df91750",
+   "head_matches_audit": true,
+   "path": "/Users/pyryouri/Developer/TuppiProject-current"
+  },
+  "RESEARCH": {
+   "alias": "RESEARCH",
+   "audit_head": "622d5599318e4f1b2a82ef53bfc141970edc24de",
+   "branch": "phase7/reference-policy-identity",
+   "dirty": [
+    {
+     "path": "README.md",
+     "sha256": "8255a9950c99661f6a9154d8f05c263dd7810ccc0b122cf42bb4699e3d71c96b",
+     "status": " M"
+    },
+    {
+     "path": "docs/nolo/compact_backend.md",
+     "sha256": "58e44562d3f70a69d7b86596de0ad3da6d90024c07bcffd6d87ed2864e5cc047",
+     "status": "??"
+    },
+    {
+     "path": "docs/nolo/hypotheses-n10.md",
+     "sha256": "95a76b5d135f490b9628d028add9fe0394e623e14e5e611db72646721c8c114f",
+     "status": "??"
+    },
+    {
+     "path": "docs/nolo/hypotheses-n11.md",
+     "sha256": "ec2dd3e2ded2eaf1cfd94e2f26ca365e6a345ba002f98a8098dec468ccb470a3",
+     "status": "??"
+    },
+    {
+     "path": "docs/nolo/n10_positions.json",
+     "sha256": "daba7411fc237352582cb1189643a3f7c47505633e940212e76ab5f0477315ab",
+     "status": "??"
+    },
+    {
+     "path": "docs/nolo/results/N10.md",
+     "sha256": "afd4c481bde6422c7bb037e52c5eafb4a62d526537067fe0ad208f011bef8cb4",
+     "status": "??"
+    },
+    {
+     "path": "docs/nolo/results/N10_sources.json",
+     "sha256": "c1f63346f5e16b8d7dedc181c99289637dad95e0a2dcbd28f3dada199888e492",
+     "status": "??"
+    },
+    {
+     "path": "docs/nolo/results/N11.md",
+     "sha256": "a365a852e411110fd2a7fc650a6df1b503131965c6c79551ff8e725f1df7ec1a",
+     "status": "??"
+    },
+    {
+     "path": "docs/nolo/tasks/README.md",
+     "sha256": "723b3c2dc37dca38453e401bc40882cc9a000597f554f787d5896b0aaefcba41",
+     "status": " M"
+    },
+    {
+     "path": "docs/nolo/tasks/fixtures.json",
+     "sha256": "b05adf7da1731f8d96968020e28ce7d16632028d8c5b1ba37906b89d7d44af2a",
+     "status": " M"
+    },
+    {
+     "path": "docs/nolo/tasks/source_manifest.json",
+     "sha256": "400264f419241539fdf9d5711b81b854db482ba6c5e3b98bacef6da123b9a303",
+     "status": " M"
+    },
+    {
+     "path": "docs/valuation/handoff.md",
+     "sha256": "ea36aa2a6a333842053dc97feb3d6da5942274123ac96b9deffeb0212b78c542",
+     "status": "??"
+    },
+    {
+     "path": "docs/valuation/holding_valuation.md",
+     "sha256": "626cda248acd33bf0c10598f3c8bf37b7b7a856ba970a1888c10915d20ba5c74",
+     "status": "??"
+    },
+    {
+     "path": "docs/valuation/hypotheses_nolo_ducking.md",
+     "sha256": "9422b938466dd7b12ecdbd0a9de75658cb93d328cd5299993e958e7ec121466d",
+     "status": "??"
+    },
+    {
+     "path": "docs/valuation/nolo_ducking_results.md",
+     "sha256": "5f048b9925858b53721fdeeb50c93df51866609fb5698ecab5e25a82cedf7284",
+     "status": "??"
+    },
+    {
+     "path": "docs/valuation/phase_a_results.md",
+     "sha256": "6dcfc092cea6b254284aa475dc7535e01fe6aae4c0a8b143f5b12bba474cdec3",
+     "status": "??"
+    },
+    {
+     "path": "docs/valuation/phase_c_results.md",
+     "sha256": "d1df5c00835123491060bb13346d6a545b7036e71c84e19e48bcfd6b63e9e04b",
+     "status": "??"
+    },
+    {
+     "path": "docs/valuation/phase_d_results.md",
+     "sha256": "cb5f75b85a10c52aebbbb74ca345a64aaddab8607a520c8388a62524319fdac3",
+     "status": "??"
+    },
+    {
+     "path": "docs/valuation/rami_declaration.md",
+     "sha256": "1b6785e72b78e94379df57e29fe002fc6bb5b6359d38b6b4b391c3cc4e80d894",
+     "status": "??"
+    },
+    {
+     "path": "docs/valuation/void_seeking_lead.md",
+     "sha256": "371f99c36b91ca8afc278092c9347e63ab7ce54645111a164b5f60b03f5afb91",
+     "status": "??"
+    },
+    {
+     "path": "pyproject.toml",
+     "sha256": "cb13c3515c5e39ea283e70812211e89e5068f6b77909159b912747f7bdb56d34",
+     "status": " M"
+    },
+    {
+     "path": "schemas/network/completed_deal_analysis_v3.schema.json",
+     "sha256": "b35eae04de694cd3cde74175d03a1eecb13be1392218f33557b554b717848654",
+     "status": " M"
+    },
+    {
+     "path": "src/tuppi_eval/agents.py",
+     "sha256": "4512539a87be2d972fa55d340448bad3d238def8373c1bc4311dc85f10f3078c",
+     "status": " M"
+    },
+    {
+     "path": "src/tuppi_llm/__init__.py",
+     "sha256": "ebe5713e68bd1dafa5a20d8445cb84b4f3ecd1e4ccf037edf348f19a22e8724d",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_llm/agent.py",
+     "sha256": "ecba7c83375355bc54ddab615fd7bb0a26230391166665bfbf01b717385e18a5",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_llm/case_codec.py",
+     "sha256": "6feb6becd38ca69c013b7093c1cd6a3d0451b0e06089183412eee8109edac286",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_llm/cli_invocation.py",
+     "sha256": "4c1f3cf6285ad26f3088fa5dac4ecd75dca85e82e513e82b45b7041012140d12",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_llm/config.py",
+     "sha256": "8f504bf8893faf0e29c2fa1325e38578f032735832ca6659154bb841d7a9e663",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_llm/diagnostics.py",
+     "sha256": "548cae60d6052521f4c5deaae6e9803a49d6fc16e5e5d84c9b46a6756d405b3c",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_llm/errors.py",
+     "sha256": "efd9706b1b2b1a997c309556197ddd14c75d42834a713926f1775914f1c95b74",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_llm/evaluation.py",
+     "sha256": "4c037389d2c9404ec4f2e5bda3fb34a9c00a5dacb0a0d8ad9da324673b136c7e",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_llm/prompting.py",
+     "sha256": "5bf4f154f321be3d27a2b80438da2e21b86223ad5a926c3ec8728add64d90035",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_llm/tools.py",
+     "sha256": "aa4c115f3563ba5dea1a3f4a7160f31a35131aae28eb42b3c778b0d6d8dc9c4a",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_llm/tools_server.py",
+     "sha256": "ef5a4e431e475e34e22f9f43144cccfc551f76ec43ea06f599efa6e98ce0c3fd",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_nolo/adapter.py",
+     "sha256": "1ed68ba7a468da131fc5d730b23905bdc241061c56a5cb43bdcc7425736f9bf6",
+     "status": " M"
+    },
+    {
+     "path": "src/tuppi_nolo/certificates.py",
+     "sha256": "05993f0ec2e148cac440a6afaec0561b7325e4595915a8b0c8a88c2ac386f5c0",
+     "status": " M"
+    },
+    {
+     "path": "src/tuppi_nolo/compact.py",
+     "sha256": "cb539ff061fe9bc51312ba724f9ae166eb4c22f30fbdaddd951485d2333a8202",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_nolo/coverage.py",
+     "sha256": "eedd46beb316969f6837a5fb137f46be6e50fd75469aad482e8aec3f39ae20da",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_nolo/performance.py",
+     "sha256": "bec8dfeaf34e92fd35eb0390a5234975aa33586dd3bb17edeb83de26687d6efb",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_nolo/security.py",
+     "sha256": "38c06318d9369f476eeb33b6721d83c17d35f18f7dae7a00f4998267ec52813f",
+     "status": " M"
+    },
+    {
+     "path": "src/tuppi_nolo/support.py",
+     "sha256": "c984fe4084c26aa4f551ef5632c14ea24a2c687dfd3f47dbe85826295dd546c2",
+     "status": " M"
+    },
+    {
+     "path": "src/tuppi_server/analysis.py",
+     "sha256": "bf1f04d71f6b4534d40c9597b410cb9d2cd8472a9b95050c502296117f1c07ec",
+     "status": " M"
+    },
+    {
+     "path": "src/tuppi_server/completed_deal_review.py",
+     "sha256": "a3663da4f8504adf3981bbe3224541fe131d838f122341e57ecd136ab06b3103",
+     "status": " M"
+    },
+    {
+     "path": "src/tuppi_server/match_runner.py",
+     "sha256": "42dc6a77ee57895a2c1c37b40ff01edf527bc1c4c600df0cf2825e3f37ab1020",
+     "status": " M"
+    },
+    {
+     "path": "src/tuppi_server/post_match_diagnostics.py",
+     "sha256": "202237189171dc5503922ef4bc2bd1de424f9e8baa202a6a457b77cbaa295d64",
+     "status": " M"
+    },
+    {
+     "path": "src/tuppi_valuation/__init__.py",
+     "sha256": "0b7c13f75f27fe23872404f88103ea34e4b407c596f27f991496018987a899d6",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/agents.py",
+     "sha256": "75414871e283c5f26e30fbd96f464c8d69a42cac43a561998dff452f61913e30",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/attribution.py",
+     "sha256": "ea6d3c82f287502bc472a28903d9382f22e674feccd2518d58046f4ecb7c60e2",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/corpus.py",
+     "sha256": "9207a0ce8778408cbf375f229342d717f7d72ca784ee533c9f9b10779ce3e3a3",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/designed.py",
+     "sha256": "612ad3eb6f7a66388b59c5333960b875138691a1c89bde670e72a58de5ebaa4d",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/equity.py",
+     "sha256": "360dc9e77c894aa85faf5f03dd64e6cb5bf160855e91324fc5e0911a53375886",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/errors.py",
+     "sha256": "65c211df000c1f08a0351347f64f191ef479a73fe42f0593578b3bfe63d47c66",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/holdings.py",
+     "sha256": "4733ab1271684314af94bf0106ab47c0f90fc86b9668f5610ef9093abfe34abb",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/metrics.py",
+     "sha256": "6559dce1df385dff89282e563cae9f01ec4a3d2a0fac0e5fe8d4fed71cbb70ec",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/play.py",
+     "sha256": "6230f15d3e205745227a779f0749683d15abde6337e8681cf82dc43e2fd8fec7",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/runner.py",
+     "sha256": "bab5726aa4d8fa04d903dcea8ac9d08fc40c2d21a8b31e5f36b2b6e678718e3b",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/suits.py",
+     "sha256": "e8f8dcddc83d6353dd4b13c820479afc13540a3cb47994a702594971723e86f0",
+     "status": "??"
+    },
+    {
+     "path": "tests/agents/test_nolo_discard.py",
+     "sha256": "52f234aa5c6417df709e9fbdd5b9cc362b65f1396937a209f6a95ada0fe42a27",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/__init__.py",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/conftest.py",
+     "sha256": "8657f8644d3458bf6038cf4db3a94dde4a1e5a85a6ff13f31c90ff3825925591",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/test_agent.py",
+     "sha256": "d58097a59e1f7988ef5f6d5d80082a599680580b6e672f2bb3c62504511ce06a",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/test_case_codec.py",
+     "sha256": "3a394deb53c96b4b80a4faec54c3b1098af97f09a23fc716ac5b79578061b1c0",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/test_cli_invocation.py",
+     "sha256": "4663223ae4bf8544dc781c7ab6a19a3a952b8b4b50a05aab485d48d057b79473",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/test_config.py",
+     "sha256": "e599a51ffbb6f6d44be974a20ee940124c3a2a10d46c89409d8c7202633e5f81",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/test_evaluation.py",
+     "sha256": "764e963e45bfa966dfb853b64c92c2aa7255f7a7ef5f8ed5e5676c29de0d2ebd",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/test_live_smoke.py",
+     "sha256": "620a85b43fd76b6d5862efcece44320518d193c2d3d0efd70806e09c93729d1a",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/test_prompting.py",
+     "sha256": "dbd81dc66726053e607a79a55ed03c53665437883ed06065f6c90ea183fb136e",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/test_tools.py",
+     "sha256": "b66f3867ac7b2150b93e42c4a26711df5233abd07742d7bc0215560365452eea",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/test_wiring.py",
+     "sha256": "7bbaa3745603ee6af523698411e1a352b9428b2cf4529c024af8550e67e91aa8",
+     "status": "??"
+    },
+    {
+     "path": "tests/nolo/test_compact.py",
+     "sha256": "4362366f656599df34c4343db9a1023de914e15ac10e5d24c1204bf5d1fe9b1f",
+     "status": "??"
+    },
+    {
+     "path": "tests/nolo/test_support.py",
+     "sha256": "99b0392e6a88d70c5fa112a01aecab4b108e10867ac1ce0db46dad861f0c6436",
+     "status": " M"
+    },
+    {
+     "path": "tests/server/test_completed_deal_review.py",
+     "sha256": "0851f55cc12c3266d9096b82131c720441578a81b5a14de45f9f5b29729a3fd7",
+     "status": " M"
+    },
+    {
+     "path": "tests/server/test_match_runner.py",
+     "sha256": "bc6c1f940675ef8df7c4ae1dc972f843b6012dc7346913c4cf4571a813b05bf2",
+     "status": " M"
+    },
+    {
+     "path": "tests/server/test_post_match_diagnostics.py",
+     "sha256": "0ee30593f27505d929b95abdb74eb747551c4d1d1b613310771001138391c283",
+     "status": " M"
+    },
+    {
+     "path": "tests/valuation/test_agents.py",
+     "sha256": "9a3f75eb921e6246e29f0eed8d982f1adaa665eda66ea95d08437473d69d3fa6",
+     "status": "??"
+    },
+    {
+     "path": "tests/valuation/test_attribution_and_corpus.py",
+     "sha256": "aa767346be5809902fd6ca3c695c45613c92944c4829024123d1a269ba2da7ca",
+     "status": "??"
+    },
+    {
+     "path": "tests/valuation/test_equity.py",
+     "sha256": "55440c70caa78bfca40c0b23747330a0d391e823503a59236bad9e7aa6dca8fe",
+     "status": "??"
+    },
+    {
+     "path": "tests/valuation/test_metrics.py",
+     "sha256": "6ece2b3fcdedf53a4cd415576700fafb57f9a56d878fe66f1a23a2fedb4a0401",
+     "status": "??"
+    },
+    {
+     "path": "tests/valuation/test_play_and_designed.py",
+     "sha256": "a6ddb4b34eb296417b938a2ba94876fea1017927727fab36fbca42fce9c7c871",
+     "status": "??"
+    },
+    {
+     "path": "tests/valuation/test_suits.py",
+     "sha256": "d118a381329744e61c712abb0fafb486f28d376ca2761bb15e11bb6907bb14e3",
+     "status": "??"
+    },
+    {
+     "path": "tools/human_vs_bot.py",
+     "sha256": "4d567193a5e07aa6c1c9d4a3cce5f71aaa275c837f142a57cf5133d024323b7a",
+     "status": "??"
+    },
+    {
+     "path": "tools/measure_nolo_discard.py",
+     "sha256": "c3ca1f3de584cdf172b558490174479b83811fe277d2e3717a1914e9843f2357",
+     "status": "??"
+    },
+    {
+     "path": "tools/measure_odds_calibration.py",
+     "sha256": "96854dda8335573b493fdb7b621feb07792a83b28ecb1b316a5e734612e89679",
+     "status": "??"
+    },
+    {
+     "path": "tools/measure_odds_ceiling.py",
+     "sha256": "ce8bfc04c2cbf5e4be7d11503442a10eafe5755f1a7de9f5d868f79b012ec4a5",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/NOLO-0-observation.pstats",
+     "sha256": "3d752013cc8c6de7a69ad9be7a4f38484a45c0c07002a6a3cefcad09defdca8c",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/NOLO-0-transition.pstats",
+     "sha256": "e62b2697dabeab676e78097046edb17929c4becfadc4d60dc5d9f7c2d4ce8621",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/NOLO-12-observation.pstats",
+     "sha256": "0ffa2687786849e0834c77c36d6fee86ebb9c96d73c99c8bd7ab0406233f5d0e",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/NOLO-12-transition.pstats",
+     "sha256": "71623094b45998e74abf474f580e024972b84af4078d90cf0f9ea3f9eab72734",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/NOLO-6-observation.pstats",
+     "sha256": "d04333ba3cf3b1549dace1f2346c7ee0d08267e6b056608b00b73b136e0b5236",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/NOLO-6-transition.pstats",
+     "sha256": "18933b925555daa62288c5b98c87deaa496be1b04a797ef6b839f078a75a166f",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/RAMI-0-observation.pstats",
+     "sha256": "1e8a988f7701dcd91b3deddd0389e4fc97ff09618cb7a2deb0351e964c7e0595",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/RAMI-0-transition.pstats",
+     "sha256": "e7c88905153ca9d12522da09c069af72e68fec76537a1abf494452ca6f4467e0",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/RAMI-12-observation.pstats",
+     "sha256": "ddf8b7cafc571351e28dadbf8eb064311994db779411fa1bacdc7b68dda21cbb",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/RAMI-12-transition.pstats",
+     "sha256": "385d32eaccb93ce251c0da452af46d64a02fdf2bbd2971336017047630d401cb",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/RAMI-6-observation.pstats",
+     "sha256": "bcd4d9e0158b30e933380289a8e8745cc3abc5d2361443359ce407acae996ec4",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/RAMI-6-transition.pstats",
+     "sha256": "a2c6da914bb98d645dc6472d79264802ca1153375417261ece1527b08948e986",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/bot.pstats",
+     "sha256": "41ffd155fbfc2c588a2bab425392e065f060f088b918181bd2a9fb257b48cd13",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/broadcast-1.pstats",
+     "sha256": "80a62a4d5e29ad1f3b19c7b1f8ddf80c5452b4997c0c26e9e0416221c571801e",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/broadcast-4.pstats",
+     "sha256": "2f1c2ec56214245101e3606806f04487971bf6241d1ab6a664f4bd3dc129a868",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/broadcast-40.pstats",
+     "sha256": "3997279272c15989421b405ec61b627b7f4a806daf28530a2ea563c4ea1de445",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/broadcast-76.pstats",
+     "sha256": "e64d7b08ff0077a58ced59b267f0a676991ea7892683f45d64934840a6dcf55b",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/broadcast-84.pstats",
+     "sha256": "426d458a196ceea86d1fff4e5390eb4e03e62f0559d3e88e569590e311fa1fb4",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/components.json",
+     "sha256": "c69819e35ddf246a6b7ffb606fd5c7649adebdd33cde33de6755ef29c9a8ffe8",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/contract-eight.pstats",
+     "sha256": "1205235960b1938a7d82bdb2de4cb172a32b9df0e25bf4708785b09a565b8662",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/engine.json",
+     "sha256": "9c500090274d317e6daa85b77870c3776710a550c303d15af61997f82559f547",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/fast-uct-NOLO-0.pstats",
+     "sha256": "8a73b7343f26337b0342e0b03ca6e19d4a3133a94f3e610af389aaab961ac154",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/fast-uct-NOLO-12.pstats",
+     "sha256": "876600cbb74a46cc47f72650ab9d83de88087c5b0fca2af49a6a21a5eeb3bf82",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/fast-uct-NOLO-6.pstats",
+     "sha256": "b042b65da3a57867fcdf5b3f3d73beb03bd1fda7067021ea8cc63ece01bc594f",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/fast-uct-RAMI-0.pstats",
+     "sha256": "ab517c4d5018ba076ca7a530dfad71e602af2059c65d799fc0efdd988611f2ea",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/fast-uct-RAMI-12.pstats",
+     "sha256": "fea6d162165a1b2f88c4dd1a26579aa69d15fb752723707a4949656723b447dd",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/fast-uct-RAMI-6.pstats",
+     "sha256": "5f3be4cfc617ea20bcdc8cf0d39c56053935bba59b892b0dda1b5912cb12704c",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/match.pstats",
+     "sha256": "6f86b16ac3aa914ee9692db51a72edd33c3afc3f456b254cdcec0d8c473cb0a8",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/probe.py",
+     "sha256": "2a30bca881061799682f13efeaf651000ae26b1ebf21d240c1298025d5f24d10",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/report.json",
+     "sha256": "2537ae3ab4a0166e316b7e4f1c394b99d8e153dddc4c96c90c4f01deb07bab5a",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/review-cached.pstats",
+     "sha256": "56d65fa50e27497381e1bde871ccf8cf79013e49dc1c7df405e7d8681c5c0124",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/secondary.json",
+     "sha256": "c0480606e14248e329b55d51e6b27d867a2d8f041a53909ff0896f8323936d70",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/secondary.py",
+     "sha256": "d22f278cd434081dd226ae6254dcc41d05b9e40644482e0cd7d5ae810113183d",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/before_sources.json",
+     "sha256": "46f5bbc42222f77169343ebf488a69a62eb396d749a3d6b597f0bb3326b9eb15",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/benchmark/records.jsonl",
+     "sha256": "041080925dc673bd44f6d7c2165654028bd3a83dc5bc5a1c503102f46c3dbec5",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/benchmark/report.json",
+     "sha256": "652949a599c2912313eb708f2c58615422f058e06397ad4109c653677c604133",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/benchmark/run.json",
+     "sha256": "9c9d63d9e502b2c051ff4b2ccdb65e03d6e3888bc140692f82874dbfaebb6f85",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/check_comparators.py",
+     "sha256": "5a1c3cfa607989734b0bb42a9b55b61592e0a5636f4d787c8ec6ff209c58af87",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/check_screen.py",
+     "sha256": "adae502d509198b978d088778886f1fa69f348a9b025bbe75067644d5f565b67",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/comparator-checks.json",
+     "sha256": "6f0e1de15e97d4fc74746df9fbaaeb2f0e3af20ea64492e68e43b5af72cc7042",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/deal39.json",
+     "sha256": "8b4533b530988ee1a9781bd3ef19a35705ae7e947c20ecf9e1f2f584ea412cf2",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/final-signatures.json",
+     "sha256": "190da81c0476e93a1c935c91b642ee11fdad9c9ab55670785f877515ee6c8580",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/positions.json",
+     "sha256": "daba7411fc237352582cb1189643a3f7c47505633e940212e76ab5f0477315ab",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/profile-2trick90world-compact.txt",
+     "sha256": "0061a3dfcb6987db3776d3b727a30b5b458b36d7fbdfab48370be6b013a9c7b0",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/profile-2trick90world-reference.txt",
+     "sha256": "70075d2a5df628745d94780ee6b6457db44a70f74e2c204abdbfc30d17bd9a73",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/profile-B-compact.txt",
+     "sha256": "459972f6f4b8b66c05b40aef20e23c00c0d92035044dce15e2689b39127ab535",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/profile-B-reference.txt",
+     "sha256": "6907664551fd5c2d9ec94a2938de5f518f9db8f86d5c9f13a0ecf0fe3db87254",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/profiles.json",
+     "sha256": "2932b01e846b9b0f6749bd2509d3c5b689782a48b4f788146437c0a97fc8ae7d",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/screen-check.json",
+     "sha256": "a1638c97182f3709b32d6d4299bef39d3f0ec425d5db8028069aca07fcd713a0",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/screen-check.jsonl",
+     "sha256": "345a5fd3608ec633d44fba152740d4d37371ef62307d728575ee218fb56cccfe",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n11/before_sources.json",
+     "sha256": "12cc2841a75e2dc4147b888da3b764ab2cf3d07dc7751717b476261ad76cf524",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n11/census.json",
+     "sha256": "7c27e14a618d1e5f389c66c20095b161597af4aff17a38c9a5e482529140de2b",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n11/census.py",
+     "sha256": "48a5161a4abd0e07955cde3b06b5a610961317ac3480f3fa2d67e3682795d0b3",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n11/final_sources.json",
+     "sha256": "30cbfd0528e99af04a41edc5168196941a61f826c8764a76ab698d39f906ad1f",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n11/pricing-329/STOPPED.json",
+     "sha256": "ae002a019d7079511089a29d502e88f5b5e83c132fc893e14a1b5f4f5139c7ff",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n11/pricing-329/records.jsonl",
+     "sha256": "20b08bf05600bcb23e18c807e47be38797a79acb6719a67f602ac9cd6e1a0ed7",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n11/pricing-329/run.json",
+     "sha256": "b4105c9697965a0bdf37ca401e76aca7d0000016bc4746c899882f77a29555bf",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n11/probe.json",
+     "sha256": "7aea155f5df659f10353ae22552b6a89736bd79b54f8aa367af66c8c6b4fd601",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo_discard/paired/records.jsonl",
+     "sha256": "486f6675121889834b229fdba35ab8da7ed7e6f4c4e36adec61a40778b7d5184",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo_discard/paired/report.json",
+     "sha256": "cece2363029e0a5ebf582ae12d64cb3a0007e15c68f69ae75b39cb38b428dba6",
+     "status": "??"
+    }
+   ],
+   "head": "622d5599318e4f1b2a82ef53bfc141970edc24de",
+   "head_matches_audit": true,
+   "path": "/Users/pyryouri/Developer/TuppiProject"
+  }
+ },
+ "input_packages": {
+  "audit": {
+   "DEPENDENCY_SOURCE_CAPSULES.txt": "4b61cec2c04bf95104c28cc1babd9630ec84454e7029b2ee7fd921947d54dd07",
+   "FIXTURE_RECIPES.json": "01ccc251781881f320b761a0e5a29a93097c71d4f3938c944fc3b65fbb195e58",
+   "NATIVE_SOURCE_CAPSULES.txt": "5d09a03b4c1c625ade3877348b589d0d828d7cc54ac9b39f00d5ebdb3b31e877",
+   "SHA256SUMS.txt": "a751b2004ff3c9ce0ed5b04b2ec39a7bc6b703a2e3b4f0e7847e67de3190a499",
+   "TUPPI_DESIGN_HANDOFF.md": "87b0efd3666d7b97493a845f30d2c19619d09cd489fe9e802de25d334f3adb38",
+   "TUPPI_DESIGN_HANDOFF.txt": "87b0efd3666d7b97493a845f30d2c19619d09cd489fe9e802de25d334f3adb38",
+   "TUPPI_DESIGN_HANDOFF_BUNDLE.zip": "48ee753b48a1b44fa584fb67ede3299efda64a941d22293a949b59d183c47692",
+   "TUPPI_DESIGN_HANDOFF_BUNDLE/DEPENDENCY_SOURCE_CAPSULES.txt": "4b61cec2c04bf95104c28cc1babd9630ec84454e7029b2ee7fd921947d54dd07",
+   "TUPPI_DESIGN_HANDOFF_BUNDLE/FIXTURE_RECIPES.json": "01ccc251781881f320b761a0e5a29a93097c71d4f3938c944fc3b65fbb195e58",
+   "TUPPI_DESIGN_HANDOFF_BUNDLE/NATIVE_SOURCE_CAPSULES.txt": "5d09a03b4c1c625ade3877348b589d0d828d7cc54ac9b39f00d5ebdb3b31e877",
+   "TUPPI_DESIGN_HANDOFF_BUNDLE/SHA256SUMS.txt": "a751b2004ff3c9ce0ed5b04b2ec39a7bc6b703a2e3b4f0e7847e67de3190a499",
+   "TUPPI_DESIGN_HANDOFF_BUNDLE/TUPPI_DESIGN_HANDOFF.md": "87b0efd3666d7b97493a845f30d2c19619d09cd489fe9e802de25d334f3adb38",
+   "TUPPI_DESIGN_HANDOFF_BUNDLE/TUPPI_DESIGN_HANDOFF.txt": "87b0efd3666d7b97493a845f30d2c19619d09cd489fe9e802de25d334f3adb38",
+   "TUPPI_DESIGN_HANDOFF_BUNDLE/TUPPI_DESIGN_HANDOFF_INDEX.json": "0cef7c1d9be29150b64df918f97c208e5ec3e15b8a58337a75e8d33b93f2414a",
+   "TUPPI_DESIGN_HANDOFF_BUNDLE/asset_identities.json": "d8ddb5f86d04211923a809220b38b9f5a7f19cbe10b109ddfec97b54f3e6d3c4",
+   "TUPPI_DESIGN_HANDOFF_BUNDLE/capsule_omissions.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+   "TUPPI_DESIGN_HANDOFF_BUNDLE/evidence.json": "29bb10002bc33a5db929626c1ddc6383c6080da3dbc23a689cf41cbd10ac5ab3",
+   "TUPPI_DESIGN_HANDOFF_BUNDLE/post_state.json": "30ffecac7c333a836b7a6b3410b60f3a3b6a39e219ea18a98ce1136b8d6dc4f9",
+   "TUPPI_DESIGN_HANDOFF_BUNDLE/pre_state.json": "44e580bd82866bae874f64340dedbd05d7f0fde405a1bd8694d2b97da4a21104",
+   "TUPPI_DESIGN_HANDOFF_INDEX.json": "0cef7c1d9be29150b64df918f97c208e5ec3e15b8a58337a75e8d33b93f2414a",
+   "analysis.md": "86dfeac8b4f71cfaa3e1a82372058b847ebdcde24604b1a9a6ba8b899253e85b",
+   "assemble_audit.py": "38b006af8a5018383bb43900bff5b8e33a11e93190b7f04c349484a27b15d9d9",
+   "asset_identities.json": "d8ddb5f86d04211923a809220b38b9f5a7f19cbe10b109ddfec97b54f3e6d3c4",
+   "capsule_omissions.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+   "capsules.tmp.txt": "ac9bb62139117056dba023e4bf21d96985f230a7668a602bbc2d76ac3c144b07",
+   "closing.md": "bc5f80450d7c32d99395b467ec15ea9431971458e8c7dc4f762b9adc5c4b5f7b",
+   "evidence.json": "29bb10002bc33a5db929626c1ddc6383c6080da3dbc23a689cf41cbd10ac5ab3",
+   "finalize_audit.py": "5c706dd41031e9a1ba9d02cc976323e09a867cb444851eda982a0cfd75575a15",
+   "post_state.json": "30ffecac7c333a836b7a6b3410b60f3a3b6a39e219ea18a98ce1136b8d6dc4f9",
+   "pre_state.json": "44e580bd82866bae874f64340dedbd05d7f0fde405a1bd8694d2b97da4a21104"
+  },
+  "plan": {
+   "ACCEPTANCE_TESTS.md": "744b87a4ce98a57fae75ad478feefe7969220885ae3e14554bdc51f1e82ef7c2",
+   "DESIGN_MATH_RESULTS.json": "126d98680cde3fa22e9e3cd6cf7c650c1c5722b8c4da86a7a85fa95c1aa6f394",
+   "DESIGN_MATH_TEST_LOG.txt": "855ec3f7c6221f2fd1d4ecd4e5a9b9bbaa275a588322125c192ccc3851ed6df3",
+   "EXECUTION_PLAN.json": "cc5fb22128e526a2ef7c3d3c4609a985592ef32d59a82b78292218a3a695817f",
+   "IMPLEMENTATION_MASTER_PROMPT.md": "bd320ab2814411dda55b83e98356996ad1f68da9c735151976414d530f0a16e7",
+   "IMPLEMENTATION_MASTER_PROMPT.txt": "bd320ab2814411dda55b83e98356996ad1f68da9c735151976414d530f0a16e7",
+   "IMPLEMENTATION_SPEC.md": "da042c6c38ade696c2fc1082e7ad6b15118287525b8cf63f2413a78d0d55c1b6",
+   "INPUT_VERIFICATION.json": "eef4839a4a1785481602f69f41ef0170d6f84a4a604175792386dbcd8b795817",
+   "PACKAGE_MANIFEST.json": "b6d2146bea793f3a279848ec89942794b948a4e22f9d0fc6905a0e7f11b5d2c0",
+   "PACKAGE_VALIDATION.json": "cb45669b3bdd9ad6384777477181746fa2d34d845c1d07ce0b4eef5cffc4cadf",
+   "PILOT_MANIFEST_TEMPLATE.json": "9faefe6d021e85ef2bbe54bbbe3f45b73d8e10c6c405a1b414ea06fb05e1e399",
+   "README_START_HERE.md": "cc15c9660905fe8af107755f97878c05608d6fd0e272a02a19a018b26d88731f",
+   "SOURCE_MAP.json": "c562c34964cde3e73170c608150f4682cf529f85ab3ddb142dfeb8863f78eb65",
+   "reference_math.py": "5512783bf81c3d7124234ef1ba2c566c9f697b20d0e2297ae95386f5660c8cd0",
+   "verify_package.py": "dab9e3b4f078281e11e4944a55be87ead70eab1b661f8fe94c1984261c12c010"
+  }
+ },
+ "private_excluded_not_read": [
+  "/Users/pyryouri/Library/Application Support/Tuppi"
+ ],
+ "stat_only": {
+  "/Users/pyryouri/Developer/TuppiAI/runs": {
+   "bc/v1/shard_00000.npz": [
+    11472788,
+    1790107911440273580
+   ],
+   "bc/v1/shard_00001.npz": [
+    11507368,
+    1790107911331208455
+   ],
+   "bc/v1/shard_00002.npz": [
+    11454700,
+    1790107911478698112
+   ],
+   "bc/v1/shard_00003.npz": [
+    11493802,
+    1790107911362068680
+   ],
+   "bc/v1/shard_00004.npz": [
+    11481034,
+    1790107911464094459
+   ],
+   "bc/v1/shard_00005.npz": [
+    11455498,
+    1790107911300963105
+   ],
+   "bc/v1/shard_00006.npz": [
+    11521732,
+    1790107911585164982
+   ],
+   "bc/v1/shard_00007.npz": [
+    11487950,
+    1790107911493894641
+   ],
+   "bc/v1/shard_00008.npz": [
+    11510826,
+    1790107911714289103
+   ],
+   "bc/v1/shard_00009.npz": [
+    11477310,
+    1790107911221833955
+   ],
+   "bc/v1/shard_00010.npz": [
+    11514550,
+    1790107911367599774
+   ],
+   "bc/v1/shard_00011.npz": [
+    11480768,
+    1790107911317372387
+   ],
+   "bc/v1/shard_00012.npz": [
+    11460818,
+    1790107911457327362
+   ],
+   "bc/v1/shard_00013.npz": [
+    11466404,
+    1790107929088153079
+   ],
+   "bc/v1/shard_00014.npz": [
+    11468798,
+    1790107929403753806
+   ],
+   "bc/v1/shard_00015.npz": [
+    11494600,
+    1790107929497205276
+   ],
+   "bc/v1/shard_00016.npz": [
+    11461350,
+    1790107929329398705
+   ],
+   "bc/v1/shard_00017.npz": [
+    11496196,
+    1790107929509261882
+   ],
+   "bc/v1/shard_00018.npz": [
+    11484492,
+    1790107929521026280
+   ],
+   "bc/v1/shard_00019.npz": [
+    11503910,
+    1790107929719761618
+   ],
+   "bc/v1/shard_00020.npz": [
+    11493004,
+    1790107929714827859
+   ],
+   "bc/v1/shard_00021.npz": [
+    11491940,
+    1790107929400603341
+   ],
+   "bc/v1/shard_00022.npz": [
+    11487152,
+    1790107929554017760
+   ],
+   "bc/v1/shard_00023.npz": [
+    11490876,
+    1790107929582733981
+   ],
+   "bc/v1/shard_00024.npz": [
+    11507102,
+    1790107929784566992
+   ],
+   "bc/v1/shard_00025.npz": [
+    11477576,
+    1790107930055314551
+   ],
+   "bc/v1/shard_00026.npz": [
+    11500984,
+    1790107947645308105
+   ],
+   "bc/v1/shard_00027.npz": [
+    11506570,
+    1790107947495577277
+   ],
+   "bc/v1/shard_00028.npz": [
+    11495930,
+    1790107947822272110
+   ],
+   "bc/v1/shard_00029.npz": [
+    11478640,
+    1790107947957592451
+   ],
+   "bc/v1/shard_00030.npz": [
+    11481566,
+    1790107947867843447
+   ],
+   "bc/v1/shard_00031.npz": [
+    11500984,
+    1790107948129577405
+   ],
+   "bc/v1/shard_00032.npz": [
+    11470394,
+    1790107947961019833
+   ],
+   "bc/v1/shard_00033.npz": [
+    11464010,
+    1790107947944148218
+   ],
+   "bc/v1/shard_00034.npz": [
+    11448316,
+    1790107948091323249
+   ],
+   "bc/v1/shard_00035.npz": [
+    11454966,
+    1790107948325521612
+   ],
+   "bc/v1/shard_00036.npz": [
+    11486620,
+    1790107948331730999
+   ],
+   "bc/v1/shard_00037.npz": [
+    11476246,
+    1790107948562090772
+   ],
+   "bc/v1/shard_00038.npz": [
+    11504176,
+    1790107948575733590
+   ],
+   "bc/v1/shard_00039.npz": [
+    11469064,
+    1790107966242857308
+   ],
+   "bc/v1/shard_00040.npz": [
+    11497260,
+    1790107966301206572
+   ],
+   "bc/v1/shard_00041.npz": [
+    11477842,
+    1790107966562010578
+   ],
+   "bc/v1/shard_00042.npz": [
+    11473586,
+    1790107966943400100
+   ],
+   "bc/v1/shard_00043.npz": [
+    11493536,
+    1790107966768227776
+   ],
+   "bc/v1/shard_00044.npz": [
+    11487418,
+    1790107966739679387
+   ],
+   "bc/v1/shard_00045.npz": [
+    11480236,
+    1790107966854752325
+   ],
+   "bc/v1/shard_00046.npz": [
+    11483162,
+    1790107966926499025
+   ],
+   "bc/v1/shard_00047.npz": [
+    11512688,
+    1790107967047164958
+   ],
+   "bc/v1/shard_00048.npz": [
+    11485822,
+    1790107967264462592
+   ],
+   "bc/v1/shard_00049.npz": [
+    11479970,
+    1790107967280297362
+   ],
+   "bc/v1/shard_00050.npz": [
+    11466404,
+    1790107967394746517
+   ],
+   "bc/v1/shard_00051.npz": [
+    11500186,
+    1790107967693734003
+   ],
+   "bc/v1/shard_00052.npz": [
+    11477576,
+    1790107984839106575
+   ],
+   "bc/v1/shard_00053.npz": [
+    11491408,
+    1790107984816145231
+   ],
+   "bc/v1/shard_00054.npz": [
+    11455498,
+    1790107985184325274
+   ],
+   "bc/v1/shard_00055.npz": [
+    11472522,
+    1790107985547879830
+   ],
+   "bc/v1/shard_00056.npz": [
+    11481832,
+    1790107985432347924
+   ],
+   "bc/v1/shard_00057.npz": [
+    11443528,
+    1790107985143420389
+   ],
+   "bc/v1/shard_00058.npz": [
+    11489280,
+    1790107985528303111
+   ],
+   "bc/v1/shard_00059.npz": [
+    11452572,
+    1790107985682568239
+   ],
+   "bc/v1/shard_00060.npz": [
+    11467202,
+    1790107985543044995
+   ],
+   "bc/v1/shard_00061.npz": [
+    11507634,
+    1790107986053404014
+   ],
+   "bc/v1/shard_00062.npz": [
+    11510560,
+    1790107986153774098
+   ],
+   "bc/v1/shard_00063.npz": [
+    11506038,
+    1790107986129620488
+   ],
+   "bc/v1/shard_00064.npz": [
+    11512422,
+    1790107986535426315
+   ],
+   "bc/v1/shard_00065.npz": [
+    11493536,
+    1790108002685415948
+   ],
+   "bc/v1/shard_00066.npz": [
+    11520402,
+    1790108002934997353
+   ],
+   "bc/v1/shard_00067.npz": [
+    11491674,
+    1790108003117186302
+   ],
+   "bc/v1/shard_00068.npz": [
+    11487152,
+    1790108003346155455
+   ],
+   "bc/v1/shard_00069.npz": [
+    11460818,
+    1790108003671923831
+   ],
+   "bc/v1/shard_00070.npz": [
+    11459222,
+    1790108003656699349
+   ],
+   "bc/v1/shard_00071.npz": [
+    11503910,
+    1790108003789767452
+   ],
+   "bc/v1/shard_00072.npz": [
+    11512688,
+    1790108003704586686
+   ],
+   "bc/v1/shard_00073.npz": [
+    11491674,
+    1790108003924005970
+   ],
+   "bc/v1/shard_00074.npz": [
+    11488482,
+    1790108004208952890
+   ],
+   "bc/v1/shard_00075.npz": [
+    11519870,
+    1790108004319693303
+   ],
+   "bc/v1/shard_00076.npz": [
+    11500984,
+    1790108004411142752
+   ],
+   "bc/v1/shard_00077.npz": [
+    11452572,
+    1790108004554637386
+   ],
+   "bc/v1/shard_00078.npz": [
+    11479704,
+    1790108020628445831
+   ],
+   "bc/v1/shard_00079.npz": [
+    11487950,
+    1790108020823072287
+   ],
+   "bc/v1/shard_00080.npz": [
+    11470660,
+    1790108021042670115
+   ],
+   "bc/v1/shard_00081.npz": [
+    11485556,
+    1790108021387152028
+   ],
+   "bc/v1/shard_00082.npz": [
+    11517476,
+    1790108021526854801
+   ],
+   "bc/v1/shard_00083.npz": [
+    11517210,
+    1790108021544816451
+   ],
+   "bc/v1/shard_00084.npz": [
+    11482896,
+    1790108021703443712
+   ],
+   "bc/v1/shard_00085.npz": [
+    11466670,
+    1790108021722451991
+   ],
+   "bc/v1/shard_00086.npz": [
+    11503644,
+    1790108021936095327
+   ],
+   "bc/v1/shard_00087.npz": [
+    11479704,
+    1790108022363857012
+   ],
+   "bc/v1/shard_00088.npz": [
+    11485822,
+    1790108022432434346
+   ],
+   "bc/v1/shard_00089.npz": [
+    11535032,
+    1790108022677402906
+   ],
+   "bc/v1/shard_00090.npz": [
+    11486620,
+    1790108022751686260
+   ],
+   "bc/v1/shard_00091.npz": [
+    11469330,
+    1790108038557748277
+   ],
+   "bc/v1/shard_00092.npz": [
+    11490610,
+    1790108038723173063
+   ],
+   "bc/v1/shard_00093.npz": [
+    11476512,
+    1790108039001863074
+   ],
+   "bc/v1/shard_00094.npz": [
+    11434750,
+    1790108039325705368
+   ],
+   "bc/v1/shard_00095.npz": [
+    11513220,
+    1790108039509966200
+   ],
+   "bc/v1/shard_00096.npz": [
+    11495664,
+    1790108039335714103
+   ],
+   "bc/v1/shard_00097.npz": [
+    11484492,
+    1790108039787828994
+   ],
+   "bc/v1/shard_00098.npz": [
+    11495664,
+    1790108039993368923
+   ],
+   "bc/v1/shard_00099.npz": [
+    11459488,
+    1790108040306891639
+   ],
+   "bc/v1/shard_00100.npz": [
+    11503378,
+    1790108040619366892
+   ],
+   "bc/v1/shard_00101.npz": [
+    11464276,
+    1790108040305720969
+   ],
+   "bc/v1/shard_00102.npz": [
+    11470128,
+    1790108040715433275
+   ],
+   "bc/v1/shard_00103.npz": [
+    11492472,
+    1790108040982072111
+   ],
+   "bc/v1/shard_00104.npz": [
+    11479438,
+    1790108056470453315
+   ],
+   "bc/v1/shard_00105.npz": [
+    11520934,
+    1790108056602933424
+   ],
+   "bc/v1/shard_00106.npz": [
+    11461084,
+    1790108057015025326
+   ],
+   "bc/v1/shard_00107.npz": [
+    11482630,
+    1790108057145240679
+   ],
+   "bc/v1/shard_00108.npz": [
+    11514550,
+    1790108057498432022
+   ],
+   "bc/v1/shard_00109.npz": [
+    11540352,
+    1790108057523644624
+   ],
+   "bc/v1/shard_00110.npz": [
+    11469330,
+    1790108057804057918
+   ],
+   "bc/v1/shard_00111.npz": [
+    11481566,
+    1790108057955384737
+   ],
+   "bc/v1/shard_00112.npz": [
+    11491142,
+    1790108058322568068
+   ],
+   "bc/v1/shard_00113.npz": [
+    11481300,
+    1790108058343757535
+   ],
+   "bc/v1/shard_00114.npz": [
+    11436612,
+    1790108058580893848
+   ],
+   "bc/v1/shard_00115.npz": [
+    11486620,
+    1790108059000754095
+   ],
+   "bc/v1/shard_00116.npz": [
+    11471458,
+    1790108059196476226
+   ],
+   "bc/v1/shard_00117.npz": [
+    11491142,
+    1790108074404376331
+   ],
+   "bc/v1/shard_00118.npz": [
+    11511624,
+    1790108074529655327
+   ],
+   "bc/v1/shard_00119.npz": [
+    11498856,
+    1790108074855352905
+   ],
+   "bc/v1/shard_00120.npz": [
+    11480768,
+    1790108074935673631
+   ],
+   "bc/v1/shard_00121.npz": [
+    11520668,
+    1790108075548674031
+   ],
+   "bc/v1/shard_00122.npz": [
+    11524126,
+    1790108075354409921
+   ],
+   "bc/v1/shard_00123.npz": [
+    11483694,
+    1790108075819043232
+   ],
+   "bc/v1/shard_00124.npz": [
+    11498856,
+    1790108075798727894
+   ],
+   "bc/v1/shard_00125.npz": [
+    11465872,
+    1790108076305515635
+   ],
+   "bc/v1/shard_00126.npz": [
+    11516678,
+    1790108076600104390
+   ],
+   "bc/v1/shard_00127.npz": [
+    11468798,
+    1790108076699197866
+   ],
+   "bc/v1/shard_00128.npz": [
+    11470660,
+    1790108077044081820
+   ],
+   "bc/v1/shard_00129.npz": [
+    11522796,
+    1790108077318090611
+   ],
+   "bc/v1/shard_00130.npz": [
+    11500452,
+    1790108092179593980
+   ],
+   "bc/v1/shard_00131.npz": [
+    11478906,
+    1790108092305850265
+   ],
+   "bc/v1/shard_00132.npz": [
+    11486354,
+    1790108092625027359
+   ],
+   "bc/v1/shard_00133.npz": [
+    11448848,
+    1790108092746197507
+   ],
+   "bc/v1/shard_00134.npz": [
+    11457360,
+    1790108093273413987
+   ],
+   "bc/v1/shard_00135.npz": [
+    11506570,
+    1790108093465775379
+   ],
+   "bc/v1/shard_00136.npz": [
+    11481300,
+    1790108093648380916
+   ],
+   "bc/v1/shard_00137.npz": [
+    11487950,
+    1790108093692422098
+   ],
+   "bc/v1/shard_00138.npz": [
+    11504442,
+    1790108094169645214
+   ],
+   "bc/v1/shard_00139.npz": [
+    11445656,
+    1790108094378371684
+   ],
+   "bc/v1/shard_00140.npz": [
+    11451774,
+    1790108094609727414
+   ],
+   "bc/v1/shard_00141.npz": [
+    11500186,
+    1790108095017048248
+   ],
+   "bc/v1/shard_00142.npz": [
+    11489280,
+    1790108095394528139
+   ],
+   "bc/v1/shard_00143.npz": [
+    11511358,
+    1790108109678336485
+   ],
+   "bc/v1/shard_00144.npz": [
+    11507102,
+    1790108110087147194
+   ],
+   "bc/v1/shard_00145.npz": [
+    11446720,
+    1790108110373567587
+   ],
+   "bc/v1/shard_00146.npz": [
+    11470660,
+    1790108110596090378
+   ],
+   "bc/v1/shard_00147.npz": [
+    11485024,
+    1790108111005676463
+   ],
+   "bc/v1/shard_00148.npz": [
+    11470926,
+    1790108111148362658
+   ],
+   "bc/v1/shard_00149.npz": [
+    11475182,
+    1790108111451146671
+   ],
+   "bc/v1/shard_00150.npz": [
+    11479438,
+    1790108111675740049
+   ],
+   "bc/v1/shard_00151.npz": [
+    11494068,
+    1790108112162495391
+   ],
+   "bc/v1/shard_00152.npz": [
+    11436080,
+    1790108112254425014
+   ],
+   "bc/v1/shard_00153.npz": [
+    11496994,
+    1790108112549174592
+   ],
+   "bc/v1/shard_00154.npz": [
+    11474118,
+    1790108112945786482
+   ],
+   "bc/v1/shard_00155.npz": [
+    11496728,
+    1790108113455168874
+   ],
+   "bc/v1/shard_00156.npz": [
+    11489280,
+    1790108127467165239
+   ],
+   "bc/v1/shard_00157.npz": [
+    11502846,
+    1790108127852874104
+   ],
+   "bc/v1/shard_00158.npz": [
+    11469596,
+    1790108128090909512
+   ],
+   "bc/v1/shard_00159.npz": [
+    11490078,
+    1790108128194621369
+   ],
+   "bc/v1/shard_00160.npz": [
+    11514018,
+    1790108128886742253
+   ],
+   "bc/v1/shard_00161.npz": [
+    11432356,
+    1790108128913348979
+   ],
+   "bc/v1/shard_00162.npz": [
+    11513752,
+    1790108129220545209
+   ],
+   "bc/v1/shard_00163.npz": [
+    11491408,
+    1790108129611764460
+   ],
+   "bc/v1/shard_00164.npz": [
+    11460286,
+    1790108130300501128
+   ],
+   "bc/v1/shard_00165.npz": [
+    11470394,
+    1790108129982929833
+   ],
+   "bc/v1/shard_00166.npz": [
+    11472522,
+    1790108130269836310
+   ],
+   "bc/v1/shard_00167.npz": [
+    11471192,
+    1790108130811173022
+   ],
+   "bc/v1/shard_00168.npz": [
+    11492206,
+    1790108131328456473
+   ],
+   "bc/v1/shard_00169.npz": [
+    11446454,
+    1790108145082583152
+   ],
+   "bc/v1/shard_00170.npz": [
+    11504974,
+    1790108145336449595
+   ],
+   "bc/v1/shard_00171.npz": [
+    11477310,
+    1790108145824337938
+   ],
+   "bc/v1/shard_00172.npz": [
+    11489546,
+    1790108145938635694
+   ],
+   "bc/v1/shard_00173.npz": [
+    11514816,
+    1790108146552050151
+   ],
+   "bc/v1/shard_00174.npz": [
+    11498324,
+    1790108146509271764
+   ],
+   "bc/v1/shard_00175.npz": [
+    11518806,
+    1790108146898080259
+   ],
+   "bc/v1/shard_00176.npz": [
+    11485556,
+    1790108147355527450
+   ],
+   "bc/v1/shard_00177.npz": [
+    11503378,
+    1790108147805586499
+   ],
+   "bc/v1/shard_00178.npz": [
+    11491940,
+    1790108148077268815
+   ],
+   "bc/v1/shard_00179.npz": [
+    11485822,
+    1790108148184017721
+   ],
+   "bc/v1/shard_00180.npz": [
+    11486354,
+    1790108148740498009
+   ],
+   "bc/v1/shard_00181.npz": [
+    11489014,
+    1790108149239369751
+   ],
+   "bc/v1/shard_00182.npz": [
+    11506038,
+    1790108162714746135
+   ],
+   "bc/v1/shard_00183.npz": [
+    11485556,
+    1790108163033723891
+   ],
+   "bc/v1/shard_00184.npz": [
+    11469596,
+    1790108163424558058
+   ],
+   "bc/v1/shard_00185.npz": [
+    11484226,
+    1790108163610773142
+   ],
+   "bc/v1/shard_00186.npz": [
+    11502048,
+    1790108164083138699
+   ],
+   "bc/v1/shard_00187.npz": [
+    11459754,
+    1790108164353044512
+   ],
+   "bc/v1/shard_00188.npz": [
+    11452306,
+    1790108164453101319
+   ],
+   "bc/v1/shard_00189.npz": [
+    11510560,
+    1790108165182999204
+   ],
+   "bc/v1/shard_00190.npz": [
+    11515348,
+    1790108165527698309
+   ],
+   "bc/v1/shard_00191.npz": [
+    11523062,
+    1790108165773235234
+   ],
+   "bc/v1/shard_00192.npz": [
+    11491408,
+    1790108165996146858
+   ],
+   "bc/v1/shard_00193.npz": [
+    11470660,
+    1790108166527516298
+   ],
+   "bc/v1/shard_00194.npz": [
+    11488216,
+    1790108166884152638
+   ],
+   "bc/v1/shard_00195.npz": [
+    11508964,
+    1790108180383866033
+   ],
+   "bc/v1/shard_00196.npz": [
+    11489812,
+    1790108180763733884
+   ],
+   "bc/v1/shard_00197.npz": [
+    11489546,
+    1790108181093044413
+   ],
+   "bc/v1/shard_00198.npz": [
+    11497526,
+    1790108181212134513
+   ],
+   "bc/v1/shard_00199.npz": [
+    11479970,
+    1790108181619286883
+   ],
+   "bc/v1/shard_00200.npz": [
+    11496994,
+    1790108182034076020
+   ],
+   "bc/v1/shard_00201.npz": [
+    11470660,
+    1790108182147351815
+   ],
+   "bc/v1/shard_00202.npz": [
+    11464808,
+    1790108182814089766
+   ],
+   "bc/v1/shard_00203.npz": [
+    11489812,
+    1790108183128464845
+   ],
+   "bc/v1/shard_00204.npz": [
+    11477310,
+    1790108183556598554
+   ],
+   "bc/v1/shard_00205.npz": [
+    11521732,
+    1790108183766196815
+   ],
+   "bc/v1/shard_00206.npz": [
+    11477044,
+    1790108184304114061
+   ],
+   "bc/v1/shard_00207.npz": [
+    11505506,
+    1790108184815919165
+   ],
+   "bc/v1/shard_00208.npz": [
+    11451242,
+    1790108198087087173
+   ],
+   "bc/v1/shard_00209.npz": [
+    11456562,
+    1790108198523733442
+   ],
+   "bc/v1/shard_00210.npz": [
+    11494866,
+    1790108198883460289
+   ],
+   "bc/v1/shard_00211.npz": [
+    11489546,
+    1790108199173230271
+   ],
+   "bc/v1/shard_00212.npz": [
+    11466138,
+    1790108199430388264
+   ],
+   "bc/v1/shard_00213.npz": [
+    11455498,
+    1790108199727806055
+   ],
+   "bc/v1/shard_00214.npz": [
+    11493536,
+    1790108199959883616
+   ],
+   "bc/v1/shard_00215.npz": [
+    11503644,
+    1790108200851584738
+   ],
+   "bc/v1/shard_00216.npz": [
+    11481300,
+    1790108201294896855
+   ],
+   "bc/v1/shard_00217.npz": [
+    11488482,
+    1790108201559172197
+   ],
+   "bc/v1/shard_00218.npz": [
+    11481832,
+    1790108201780264275
+   ],
+   "bc/v1/shard_00219.npz": [
+    11497526,
+    1790108202180569588
+   ],
+   "bc/v1/shard_00220.npz": [
+    11485024,
+    1790108203161501826
+   ],
+   "bc/v1/shard_00221.npz": [
+    11504708,
+    1790108215948145624
+   ],
+   "bc/v1/shard_00222.npz": [
+    11501782,
+    1790108216757915562
+   ],
+   "bc/v1/shard_00223.npz": [
+    11491674,
+    1790108217014255761
+   ],
+   "bc/v1/shard_00224.npz": [
+    11475448,
+    1790108217338808571
+   ],
+   "bc/v1/shard_00225.npz": [
+    11503644,
+    1790108217480258179
+   ],
+   "bc/v1/shard_00226.npz": [
+    11446188,
+    1790108217784561694
+   ],
+   "bc/v1/shard_00227.npz": [
+    11496462,
+    1790108217984910392
+   ],
+   "bc/v1/shard_00228.npz": [
+    11493004,
+    1790108218748622519
+   ],
+   "bc/v1/shard_00229.npz": [
+    11517210,
+    1790108219468305214
+   ],
+   "bc/v1/shard_00230.npz": [
+    11478374,
+    1790108219509111430
+   ],
+   "bc/v1/shard_00231.npz": [
+    11450976,
+    1790108219938026141
+   ],
+   "bc/v1/shard_00232.npz": [
+    11508432,
+    1790108220240864860
+   ],
+   "bc/v1/shard_00233.npz": [
+    11482630,
+    1790108221500444097
+   ],
+   "bc/v1/shard_00234.npz": [
+    11518274,
+    1790108233891724259
+   ],
+   "bc/v1/shard_00235.npz": [
+    11481566,
+    1790108234569631610
+   ],
+   "bc/v1/shard_00236.npz": [
+    11479704,
+    1790108234962134364
+   ],
+   "bc/v1/shard_00237.npz": [
+    11463212,
+    1790108235480363650
+   ],
+   "bc/v1/shard_00238.npz": [
+    11485822,
+    1790108235172372377
+   ],
+   "bc/v1/shard_00239.npz": [
+    11482364,
+    1790108235848417474
+   ],
+   "bc/v1/shard_00240.npz": [
+    11507900,
+    1790108236069698261
+   ],
+   "bc/v1/shard_00241.npz": [
+    11487684,
+    1790108236592784724
+   ],
+   "bc/v1/shard_00242.npz": [
+    11469064,
+    1790108237530905491
+   ],
+   "bc/v1/shard_00243.npz": [
+    11495132,
+    1790108237465223136
+   ],
+   "bc/v1/shard_00244.npz": [
+    11503910,
+    1790108237936645024
+   ],
+   "bc/v1/shard_00245.npz": [
+    11469064,
+    1790108238430067254
+   ],
+   "bc/v1/shard_00246.npz": [
+    11499122,
+    1790108239808857175
+   ],
+   "bc/v1/shard_00247.npz": [
+    11539288,
+    1790108251742652937
+   ],
+   "bc/v1/shard_00248.npz": [
+    11476778,
+    1790108252422348917
+   ],
+   "bc/v1/shard_00249.npz": [
+    11506570,
+    1790108252910648594
+   ],
+   "bc/v1/shard_00250.npz": [
+    11485822,
+    1790108252968652599
+   ],
+   "bc/v1/shard_00251.npz": [
+    11476246,
+    1790108253432355429
+   ],
+   "bc/v1/shard_00252.npz": [
+    11477842,
+    1790108253651701795
+   ],
+   "bc/v1/shard_00253.npz": [
+    11499388,
+    1790108254099879840
+   ],
+   "bc/v1/shard_00254.npz": [
+    11494334,
+    1790108254861075878
+   ],
+   "bc/v1/shard_00255.npz": [
+    11485556,
+    1790108255279222814
+   ],
+   "bc/v1/shard_00256.npz": [
+    11451774,
+    1790108255561182487
+   ],
+   "bc/v1/shard_00257.npz": [
+    11473054,
+    1790108255855791230
+   ],
+   "bc/v1/shard_00258.npz": [
+    11504176,
+    1790108256522725974
+   ],
+   "bc/v1/shard_00259.npz": [
+    11498590,
+    1790108258030203391
+   ],
+   "bc/v1/shard_00260.npz": [
+    11490610,
+    1790108269610929654
+   ],
+   "bc/v1/shard_00261.npz": [
+    11484758,
+    1790108270456515423
+   ],
+   "bc/v1/shard_00262.npz": [
+    11461882,
+    1790108270845507210
+   ],
+   "bc/v1/shard_00263.npz": [
+    11497792,
+    1790108270854398438
+   ],
+   "bc/v1/shard_00264.npz": [
+    11498856,
+    1790108271468229313
+   ],
+   "bc/v1/shard_00265.npz": [
+    11479970,
+    1790108271536301507
+   ],
+   "bc/v1/shard_00266.npz": [
+    11526520,
+    1790108272255966243
+   ],
+   "bc/v1/shard_00267.npz": [
+    11472788,
+    1790108272934460346
+   ],
+   "bc/v1/shard_00268.npz": [
+    11495132,
+    1790108273305252176
+   ],
+   "bc/v1/shard_00269.npz": [
+    11498856,
+    1790108273409769035
+   ],
+   "bc/v1/shard_00270.npz": [
+    11499654,
+    1790108273896074582
+   ],
+   "bc/v1/shard_00271.npz": [
+    11499920,
+    1790108274421556426
+   ],
+   "bc/v1/shard_00272.npz": [
+    11511624,
+    1790108276265671721
+   ],
+   "bc/v1/shard_00273.npz": [
+    11506304,
+    1790108287808559067
+   ],
+   "bc/v1/shard_00274.npz": [
+    11495664,
+    1790108288188046500
+   ],
+   "bc/v1/shard_00275.npz": [
+    11501250,
+    1790108288807264803
+   ],
+   "bc/v1/shard_00276.npz": [
+    11466936,
+    1790108288914689085
+   ],
+   "bc/v1/shard_00277.npz": [
+    11485556,
+    1790108289345130674
+   ],
+   "bc/v1/shard_00278.npz": [
+    11473320,
+    1790108289210820040
+   ],
+   "bc/v1/shard_00279.npz": [
+    11514550,
+    1790108290205358309
+   ],
+   "bc/v1/shard_00280.npz": [
+    11464010,
+    1790108290891988138
+   ],
+   "bc/v1/shard_00281.npz": [
+    11439006,
+    1790108291420588363
+   ],
+   "bc/v1/shard_00282.npz": [
+    11460552,
+    1790108291569420030
+   ],
+   "bc/v1/shard_00283.npz": [
+    11461882,
+    1790108291911283837
+   ],
+   "bc/v1/shard_00284.npz": [
+    11492206,
+    1790108292525978921
+   ],
+   "bc/v1/shard_00285.npz": [
+    11468798,
+    1790108294525338232
+   ],
+   "bc/v1/shard_00286.npz": [
+    11514284,
+    1790108305628118217
+   ],
+   "bc/v1/shard_00287.npz": [
+    11436878,
+    1790108306241518007
+   ],
+   "bc/v1/shard_00288.npz": [
+    11469064,
+    1790108306477367618
+   ],
+   "bc/v1/shard_00289.npz": [
+    11485556,
+    1790108306576689882
+   ],
+   "bc/v1/shard_00290.npz": [
+    11440602,
+    1790108307164783116
+   ],
+   "bc/v1/shard_00291.npz": [
+    11504442,
+    1790108307353562122
+   ],
+   "bc/v1/shard_00292.npz": [
+    11505506,
+    1790108307981473611
+   ],
+   "bc/v1/shard_00293.npz": [
+    11466670,
+    1790108308548328880
+   ],
+   "bc/v1/shard_00294.npz": [
+    11487152,
+    1790108308880240582
+   ],
+   "bc/v1/shard_00295.npz": [
+    11480502,
+    1790108308908652937
+   ],
+   "bc/v1/shard_00296.npz": [
+    11451508,
+    1790108309328507169
+   ],
+   "bc/v1/shard_00297.npz": [
+    11539022,
+    1790108309773982750
+   ],
+   "bc/v1/shard_00298.npz": [
+    11471724,
+    1790108311626161980
+   ],
+   "bc/v1/shard_00299.npz": [
+    11528648,
+    1790108320376663323
+   ],
+   "bc_small.pt": [
+    3224261,
+    1790111066932493188
+   ],
+   "bc_v1.out": [
+    663,
+    1790108639140486149
+   ],
+   "bc_v1.pt": [
+    25413569,
+    1790108639135183970
+   ],
+   "belief/tuppi_v3.log": [
+    1269,
+    1790237779191380650
+   ],
+   "belief/tuppi_v3/games_000000.jsonl": [
+    73982,
+    1790237293549289281
+   ],
+   "belief/tuppi_v3/games_000025.jsonl": [
+    73315,
+    1790237286782119018
+   ],
+   "belief/tuppi_v3/games_000050.jsonl": [
+    74334,
+    1790237345817612173
+   ],
+   "belief/tuppi_v3/games_000075.jsonl": [
+    71068,
+    1790237349772509512
+   ],
+   "belief/tuppi_v3/games_000100.jsonl": [
+    73457,
+    1790237403933255173
+   ],
+   "belief/tuppi_v3/games_000125.jsonl": [
+    68406,
+    1790237404505387132
+   ],
+   "belief/tuppi_v3/games_000150.jsonl": [
+    71453,
+    1790237455140100546
+   ],
+   "belief/tuppi_v3/games_000175.jsonl": [
+    71609,
+    1790237461773973619
+   ],
+   "belief/tuppi_v3/games_000200.jsonl": [
+    70068,
+    1790237505072218439
+   ],
+   "belief/tuppi_v3/games_000225.jsonl": [
+    73698,
+    1790237512486479721
+   ],
+   "belief/tuppi_v3/games_000250.jsonl": [
+    73589,
+    1790237557590493823
+   ],
+   "belief/tuppi_v3/games_000275.jsonl": [
+    72124,
+    1790237564562511417
+   ],
+   "belief/tuppi_v3/games_000300.jsonl": [
+    70460,
+    1790237608434769364
+   ],
+   "belief/tuppi_v3/games_000325.jsonl": [
+    73505,
+    1790237615467023215
+   ],
+   "belief/tuppi_v3/games_000350.jsonl": [
+    68527,
+    1790237658506832203
+   ],
+   "belief/tuppi_v3/games_000375.jsonl": [
+    69463,
+    1790237667670343679
+   ],
+   "belief/tuppi_v3/games_000400.jsonl": [
+    72196,
+    1790237716797251384
+   ],
+   "belief/tuppi_v3/games_000425.jsonl": [
+    73497,
+    1790237724609796819
+   ],
+   "belief/tuppi_v3/games_000450.jsonl": [
+    72202,
+    1790237773889866105
+   ],
+   "belief/tuppi_v3/games_000475.jsonl": [
+    71957,
+    1790237779007032502
+   ],
+   "belief/tuppi_v3/shard_tuppi_000000.npz": [
+    1293428,
+    1790237293548074113
+   ],
+   "belief/tuppi_v3/shard_tuppi_000025.npz": [
+    1354996,
+    1790237286781109518
+   ],
+   "belief/tuppi_v3/shard_tuppi_000050.npz": [
+    1354996,
+    1790237345816604922
+   ],
+   "belief/tuppi_v3/shard_tuppi_000075.npz": [
+    1416564,
+    1790237349770136469
+   ],
+   "belief/tuppi_v3/shard_tuppi_000100.npz": [
+    1293428,
+    1790237403919482787
+   ],
+   "belief/tuppi_v3/shard_tuppi_000125.npz": [
+    1293428,
+    1790237404502988713
+   ],
+   "belief/tuppi_v3/shard_tuppi_000150.npz": [
+    1170292,
+    1790237455138638420
+   ],
+   "belief/tuppi_v3/shard_tuppi_000175.npz": [
+    1231860,
+    1790237461772831201
+   ],
+   "belief/tuppi_v3/shard_tuppi_000200.npz": [
+    1170292,
+    1790237505071149105
+   ],
+   "belief/tuppi_v3/shard_tuppi_000225.npz": [
+    1416564,
+    1790237512485493761
+   ],
+   "belief/tuppi_v3/shard_tuppi_000250.npz": [
+    1293428,
+    1790237557589296072
+   ],
+   "belief/tuppi_v3/shard_tuppi_000275.npz": [
+    1293428,
+    1790237564561586916
+   ],
+   "belief/tuppi_v3/shard_tuppi_000300.npz": [
+    1108724,
+    1790237608433799155
+   ],
+   "belief/tuppi_v3/shard_tuppi_000325.npz": [
+    1416564,
+    1790237615465687547
+   ],
+   "belief/tuppi_v3/shard_tuppi_000350.npz": [
+    1047156,
+    1790237658504473534
+   ],
+   "belief/tuppi_v3/shard_tuppi_000375.npz": [
+    1047156,
+    1790237667669422220
+   ],
+   "belief/tuppi_v3/shard_tuppi_000400.npz": [
+    1293428,
+    1790237716794959382
+   ],
+   "belief/tuppi_v3/shard_tuppi_000425.npz": [
+    1416564,
+    1790237724608655276
+   ],
+   "belief/tuppi_v3/shard_tuppi_000450.npz": [
+    1231860,
+    1790237773888659979
+   ],
+   "belief/tuppi_v3/shard_tuppi_000475.npz": [
+    1231860,
+    1790237779005958709
+   ],
+   "belief/v1/shard_00_000.npz": [
+    296471436,
+    1790136573856780239
+   ],
+   "belief/v1/shard_00_001.npz": [
+    296507548,
+    1790136580754625598
+   ],
+   "belief/v1/shard_00_002.npz": [
+    296586876,
+    1790136587719647741
+   ],
+   "belief/v1/shard_00_003.npz": [
+    296092852,
+    1790136594596873660
+   ],
+   "belief/v1/shard_00_004.npz": [
+    296955692,
+    1790136601578383571
+   ],
+   "belief/v1/shard_00_005.npz": [
+    296628316,
+    1790136608519048603
+   ],
+   "belief/v1/shard_00_006.npz": [
+    296734284,
+    1790136615410303872
+   ],
+   "belief/v1/shard_00_007.npz": [
+    292236860,
+    1790136622284302663
+   ],
+   "belief_eval_pilot1.json": [
+    16786,
+    1790237855786996226
+   ],
+   "belief_eval_pilot1_low_alpha.json": [
+    11935,
+    1790237895172604032
+   ],
+   "belief_tuppi_v3_e10.pt": [
+    10646083,
+    1790237822518845577
+   ],
+   "belief_tuppi_v3_e3.pt": [
+    10646053,
+    1790237805718493140
+   ],
+   "belief_v1.pt": [
+    10645783,
+    1790136734756117552
+   ],
+   "cmp_bdirect025.json": [
+    3621,
+    1790137494879291626
+   ],
+   "cmp_bdirect05.json": [
+    3619,
+    1790137159729605911
+   ],
+   "cmp_bdirect1.json": [
+    3638,
+    1790137813699608469
+   ],
+   "cmp_belief.json": [
+    3670,
+    1790111557439217064
+   ],
+   "cmp_belief.out": [
+    1025,
+    1790111557439495439
+   ],
+   "cmp_belief2.out": [
+    1063,
+    1790111862584986652
+   ],
+   "cmp_belief_opp.json": [
+    3685,
+    1790111720169070733
+   ],
+   "cmp_belief_opp_soft.json": [
+    3639,
+    1790111862584841151
+   ],
+   "cmp_keep0.json": [
+    3614,
+    1790135717231856832
+   ],
+   "cmp_keep05.json": [
+    1896,
+    1790136054418204452
+   ],
+   "cmp_native_w64.json": [
+    188269,
+    1790151096584472929
+   ],
+   "cmp_nobelief.json": [
+    3632,
+    1790111405673776714
+   ],
+   "cmp_ot4_home.json": [
+    188286,
+    1790140040189441147
+   ],
+   "cmp_ot4_legacy.json": [
+    188254,
+    1790139703693553274
+   ],
+   "cmp_rb01.json": [
+    188129,
+    1790146733070987609
+   ],
+   "cmp_rb02.json": [
+    188039,
+    1790147038586699097
+   ],
+   "cmp_rb05.json": [
+    187969,
+    1790146118476349006
+   ],
+   "cmp_rb10.json": [
+    187979,
+    1790146408085443428
+   ],
+   "cmp_show.json": [
+    3576,
+    1790112030691256412
+   ],
+   "cmp_show.out": [
+    507,
+    1790112030691397996
+   ],
+   "cmp_show2.json": [
+    3613,
+    1790113629964495416
+   ],
+   "cmp_sw256.json": [
+    3565,
+    1790136541939268894
+   ],
+   "cmp_team_xi1.json": [
+    3578,
+    1790138299982311564
+   ],
+   "cmp_v3_best_v6.json": [
+    1169067,
+    1790179121412737555
+   ],
+   "cmp_v3_best_v6.out": [
+    612,
+    1790179121416423978
+   ],
+   "cmp_v3_best_v6_parallel_sooli.json": [
+    292676,
+    1790235964818953636
+   ],
+   "cmp_w128.json": [
+    3597,
+    1790117470583454241
+   ],
+   "cmp_w128_v6.json": [
+    751319,
+    1790156149297016352
+   ],
+   "cmp_w32.json": [
+    3596,
+    1790116485792020138
+   ],
+   "cmp_w64.json": [
+    3558,
+    1790116805189159799
+   ],
+   "cmp_w64_dd4.json": [
+    3569,
+    1790133175331909002
+   ],
+   "cmp_w64_dd8.json": [
+    3609,
+    1790132716367766210
+   ],
+   "cmp_w64_v6.json": [
+    751475,
+    1790155292372575850
+   ],
+   "cmp_xi1_search_show.json": [
+    3628,
+    1790116311963812925
+   ],
+   "cmp_xi2_w64.json": [
+    3590,
+    1790131216330093881
+   ],
+   "confirm_w64_v4.json": [
+    9755,
+    1790118398368807890
+   ],
+   "confirm_w64_v4.out": [
+    537,
+    1790118398368953390
+   ],
+   "detail_inc.json": [
+    372855,
+    1790138922627366530
+   ],
+   "detail_w64.json": [
+    376121,
+    1790138917828226105
+   ],
+   "dmc1.out": [
+    5783,
+    1790105244550084736
+   ],
+   "dmc1/args.json": [
+    335,
+    1790103319689937088
+   ],
+   "dmc1/ckpt_0001615244.pt": [
+    23179369,
+    1790104520753913737
+   ],
+   "dmc1/eval_zero.jsonl": [
+    564,
+    1790104584332992506
+   ],
+   "dmc1/latest.pt": [
+    23177189,
+    1790104520776151738
+   ],
+   "dmc1/log.jsonl": [
+    5783,
+    1790105244550109236
+   ],
+   "dmc1_eval.out": [
+    79,
+    1790104584333101756
+   ],
+   "equity_incumbent.json": [
+    2112,
+    1790102934390041294
+   ],
+   "eval_xi1_small_v1.json": [
+    21811,
+    1790116212332199716
+   ],
+   "eval_xi1_v1.json": [
+    20514,
+    1790116200037554389
+   ],
+   "eval_xi2_small_v1.json": [
+    19884,
+    1790130885370147176
+   ],
+   "eval_xi2_v1.json": [
+    19054,
+    1790130872751007050
+   ],
+   "human_server/1-incumbent_2-search_3-incumbent/deal-analysis-HL5A9B-0-0.json": [
+    62363,
+    1790161943277493663
+   ],
+   "human_server/1-incumbent_2-search_3-incumbent/room-09JEZM.json": [
+    611667,
+    1790161866970131950
+   ],
+   "human_server/1-incumbent_2-search_3-incumbent/room-8RK8KI.json": [
+    9505,
+    1790150858098059880
+   ],
+   "human_server/1-incumbent_2-search_3-incumbent/room-HL5A9B.json": [
+    752971,
+    1790172768384102085
+   ],
+   "human_server/1-incumbent_2-search_3-incumbent/room-I3PNVZ.json": [
+    1028921,
+    1790174333324711860
+   ],
+   "human_server/1-incumbent_2-search_3-incumbent/room-OAMH7O.json": [
+    205267,
+    1790146777603855516
+   ],
+   "human_server/1-incumbent_2-search_3-incumbent/room-QDXQFB.json": [
+    201754,
+    1790146565964959418
+   ],
+   "human_server/1-incumbent_2-search_3-incumbent/room-W3HKJY.json": [
+    7654,
+    1790146380757466806
+   ],
+   "human_server/1-incumbent_2-search_3-incumbent/room-W95JJX.json": [
+    543576,
+    1790138958129704117
+   ],
+   "match_w64.json": [
+    352,
+    1790119856646064179
+   ],
+   "match_w64.out": [
+    353,
+    1790119856646240846
+   ],
+   "match_w64_legacy.json": [
+    377,
+    1790150222841668667
+   ],
+   "match_w64_v2.json": [
+    350,
+    1790149649951442676
+   ],
+   "match_w64_v2.out": [
+    351,
+    1790149649951624134
+   ],
+   "odds_calibration.json": [
+    10149,
+    1790233840236849756
+   ],
+   "pair1.out": [
+    6913,
+    1790107242896528573
+   ],
+   "pair1/args.json": [
+    451,
+    1790105440437671165
+   ],
+   "pair1/ckpt_0000434745.pt": [
+    25415849,
+    1790106341244331679
+   ],
+   "pair1/ckpt_0000753341.pt": [
+    25415849,
+    1790107241261600367
+   ],
+   "pair1/eval_zero.jsonl": [
+    556,
+    1790106421937105626
+   ],
+   "pair1/latest.pt": [
+    25413669,
+    1790107241290667797
+   ],
+   "pair1/log.jsonl": [
+    6913,
+    1790107242896555656
+   ],
+   "pair1_eval.out": [
+    79,
+    1790106421937188543
+   ],
+   "pi1.out": [
+    8519,
+    1790110933760759000
+   ],
+   "pi1/args.json": [
+    506,
+    1790108710166765809
+   ],
+   "pi1/ckpt_0000165477.pt": [
+    25415849,
+    1790109311149401011
+   ],
+   "pi1/ckpt_0000360161.pt": [
+    25415849,
+    1790109911297544428
+   ],
+   "pi1/ckpt_0000487914.pt": [
+    25415849,
+    1790110511348795599
+   ],
+   "pi1/eval_zero.jsonl": [
+    1688,
+    1790110627207637858
+   ],
+   "pi1/latest.pt": [
+    25413669,
+    1790110511552824297
+   ],
+   "pi1/log.jsonl": [
+    8519,
+    1790110933760777876
+   ],
+   "pi1_eval.out": [
+    237,
+    1790110627207764983
+   ],
+   "review_calib_v1.json": [
+    336346,
+    1790179705947571040
+   ],
+   "scores_w64.json": [
+    4790,
+    1790122201712341847
+   ],
+   "scores_w64.out": [
+    546,
+    1790122201712494431
+   ],
+   "search_bc_w16_dd6_v2.json": [
+    528,
+    1790110913606460426
+   ],
+   "search_confirm.out": [
+    529,
+    1790110913606640801
+   ],
+   "sooli/bank_v1.pkl": [
+    499651,
+    1790166397605751595
+   ],
+   "sooli/odds_calibration.json": [
+    1413,
+    1790234019996859313
+   ],
+   "sooli/play_rami_tilt.json": [
+    22116,
+    1790171694422706966
+   ],
+   "sooli/play_s_vs_strong.json": [
+    7394,
+    1790173899845238740
+   ],
+   "transfer.out": [
+    0,
+    1790120183900859898
+   ],
+   "transfer_incumbent_legacy_heuristic_port_v1.json": [
+    3364,
+    1790121059150901197
+   ],
+   "transfer_incumbent_partner_aware_v1.json": [
+    3127,
+    1790120615626237694
+   ],
+   "transfer_incumbent_reactive_contract_v1.json": [
+    3128,
+    1790121478682750699
+   ],
+   "transfer_search_legacy_heuristic_port_v1.json": [
+    3539,
+    1790121054349837499
+   ],
+   "transfer_search_partner_aware_v1.json": [
+    3559,
+    1790120610306443094
+   ],
+   "transfer_search_reactive_contract_v1.json": [
+    3568,
+    1790121474174719958
+   ],
+   "untrained.pt": [
+    23179089,
+    1790103732065485237
+   ],
+   "xi/r1/shard_001_0000.npz": [
+    44675567,
+    1790111233245443881
+   ],
+   "xi/r1/shard_001_0001.npz": [
+    44795229,
+    1790111377237106261
+   ],
+   "xi/r1/shard_001_0002.npz": [
+    44764867,
+    1790111536412891611
+   ],
+   "xi/r1/shard_001_0003.npz": [
+    44654135,
+    1790111686077433171
+   ],
+   "xi/r1/shard_001_0004.npz": [
+    44722003,
+    1790111852935317950
+   ],
+   "xi/r1/shard_001_0005.npz": [
+    44670209,
+    1790112012256906706
+   ],
+   "xi/r1/shard_001_0006.npz": [
+    44668423,
+    1790112169424227355
+   ],
+   "xi/r1/shard_001_0007.npz": [
+    44853274,
+    1790112333646644159
+   ],
+   "xi/r1/shard_001_0008.npz": [
+    44769332,
+    1790112491804651103
+   ],
+   "xi/r1/shard_001_0009.npz": [
+    44830949,
+    1790112655830461078
+   ],
+   "xi/r1/shard_001_0010.npz": [
+    44701464,
+    1790112816512048704
+   ],
+   "xi/r1/shard_001_0011.npz": [
+    44704143,
+    1790112985603360180
+   ],
+   "xi/r1/shard_001_0012.npz": [
+    44750579,
+    1790113147962658997
+   ],
+   "xi/r1/shard_001_0013.npz": [
+    44662172,
+    1790113322294526282
+   ],
+   "xi/r1/shard_001_0014.npz": [
+    44805052,
+    1790113491713061097
+   ],
+   "xi/r1/shard_001_0015.npz": [
+    44774690,
+    1790113683060498868
+   ],
+   "xi/r1/shard_001_0016.npz": [
+    44687176,
+    1790113855683441332
+   ],
+   "xi/r1/shard_001_0017.npz": [
+    44721110,
+    1790114035762198586
+   ],
+   "xi/r1/shard_001_0018.npz": [
+    44769332,
+    1790114215397562960
+   ],
+   "xi/r1/shard_001_0019.npz": [
+    44715752,
+    1790114395176976963
+   ],
+   "xi/r1/shard_001_0020.npz": [
+    44819340,
+    1790114579452748830
+   ],
+   "xi/r1/shard_001_0021.npz": [
+    44817554,
+    1790114761777525004
+   ],
+   "xi/r1/shard_001_0022.npz": [
+    44805052,
+    1790114948990421646
+   ],
+   "xi/r1/shard_001_0023.npz": [
+    44766653,
+    1790115131488469675
+   ],
+   "xi/r1/shard_001_0024.npz": [
+    44790764,
+    1790115321204664076
+   ],
+   "xi/r1/shard_001_0025.npz": [
+    44755044,
+    1790115505509383058
+   ],
+   "xi/r1/shard_001_0026.npz": [
+    44833628,
+    1790115696242165660
+   ],
+   "xi/r2/shard_002_0000.npz": [
+    22378250,
+    1790120150802288523
+   ],
+   "xi/r2/shard_002_0001.npz": [
+    22362176,
+    1790120459052084089
+   ],
+   "xi/r2/shard_002_0002.npz": [
+    22340744,
+    1790120816075712091
+   ],
+   "xi/r2/shard_002_0003.npz": [
+    22365748,
+    1790121142660203584
+   ],
+   "xi/r2/shard_002_0004.npz": [
+    22352353,
+    1790121505762269648
+   ],
+   "xi/r2/shard_002_0005.npz": [
+    22380036,
+    1790121816793919196
+   ],
+   "xi/r2/shard_002_0006.npz": [
+    22413077,
+    1790122170347463258
+   ],
+   "xi/r2/shard_002_0007.npz": [
+    22339851,
+    1790122428841478806
+   ],
+   "xi/r2/shard_002_0008.npz": [
+    22371999,
+    1790122704725779640
+   ],
+   "xi/r2/shard_002_0009.npz": [
+    22346995,
+    1790122964020937395
+   ],
+   "xi/r2/shard_002_0010.npz": [
+    22409505,
+    1790123237504094993
+   ],
+   "xi/r2/shard_002_0011.npz": [
+    22397896,
+    1790123499319945974
+   ],
+   "xi/r2/shard_002_0012.npz": [
+    22355032,
+    1790123779223223537
+   ],
+   "xi/r2/shard_002_0013.npz": [
+    22370213,
+    1790124039646172806
+   ],
+   "xi/r2/shard_002_0014.npz": [
+    22331814,
+    1790124322542183819
+   ],
+   "xi/r2/shard_002_0015.npz": [
+    22380929,
+    1790124588975756813
+   ],
+   "xi/r2/shard_002_0016.npz": [
+    22389859,
+    1790124873513638640
+   ],
+   "xi/r2/shard_002_0017.npz": [
+    22349674,
+    1790125138315907803
+   ],
+   "xi/r2/shard_002_0018.npz": [
+    22355032,
+    1790125421451171791
+   ],
+   "xi/r2/shard_002_0019.npz": [
+    22374678,
+    1790125692766667335
+   ],
+   "xi/r2/shard_002_0020.npz": [
+    22328242,
+    1790125975814034337
+   ],
+   "xi/r2/shard_002_0021.npz": [
+    22380929,
+    1790126250702870796
+   ],
+   "xi/r2/shard_002_0022.npz": [
+    22397003,
+    1790126535547307229
+   ],
+   "xi/r2/shard_002_0023.npz": [
+    22330028,
+    1790126805918729202
+   ],
+   "xi/r2/shard_002_0024.npz": [
+    22346995,
+    1790127085621203835
+   ],
+   "xi/r2/shard_002_0025.npz": [
+    22340744,
+    1790127359773528298
+   ],
+   "xi/r2/shard_002_0026.npz": [
+    22384501,
+    1790127643878783542
+   ],
+   "xi/r2/shard_002_0027.npz": [
+    22355032,
+    1790127920109351947
+   ],
+   "xi/r2/shard_002_0028.npz": [
+    22346102,
+    1790128203642877122
+   ],
+   "xi/r2/shard_002_0029.npz": [
+    22393431,
+    1790128483168222172
+   ],
+   "xi/r2/shard_002_0030.npz": [
+    22422007,
+    1790128763241652894
+   ],
+   "xi/r2/shard_002_0031.npz": [
+    22369320,
+    1790129040947208799
+   ],
+   "xi/r2/shard_002_0032.npz": [
+    22344316,
+    1790129329454912933
+   ],
+   "xi/r2/shard_002_0033.npz": [
+    22383608,
+    1790129614353811267
+   ],
+   "xi/r2/shard_002_0034.npz": [
+    22382715,
+    1790129903616448100
+   ],
+   "xi/r2/shard_002_0035.npz": [
+    22388966,
+    1790130184744639962
+   ],
+   "xi/r2/shard_002_0036.npz": [
+    22350567,
+    1790130468949826420
+   ],
+   "xi/r2/shard_002_0037.npz": [
+    18119533,
+    1790130699442832316
+   ],
+   "xi1.pt": [
+    25413625,
+    1790116132741926844
+   ],
+   "xi1_small.pt": [
+    3224349,
+    1790116146382555799
+   ],
+   "xi1_small_soft0.03.pt": [
+    3224629,
+    1790117482062906757
+   ],
+   "xi1_small_soft0.1.pt": [
+    3224605,
+    1790117497087994181
+   ],
+   "xi2.pt": [
+    25413625,
+    1790130805932826040
+   ],
+   "xi2_small.pt": [
+    3224413,
+    1790130826844624637
+   ],
+   "xi_r1.out": [
+    2404,
+    1790115696242326285
+   ],
+   "xi_r1_trial.pt": [
+    25415705,
+    1790112154012791427
+   ],
+   "xi_r2.out": [
+    3339,
+    1790130699442966691
+   ],
+   "xi_round2.out": [
+    475,
+    1790131216495217515
+   ]
+  }
+ }
+}

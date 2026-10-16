@@ -1,0 +1,169 @@
+{
+  "schema": "tuppi.cheap_wins.mechanism_probes.v1",
+  "synthetic_unforced_states": 2058,
+  "adaptive_anchor": {
+    "drawn_worlds": 1024,
+    "action_world_counts": [
+      1024,
+      128,
+      1024
+    ],
+    "returned_means": [
+      0.04625,
+      0.008,
+      0.046249999999999986
+    ],
+    "post_search_anchor_choice": 0,
+    "fully_priced_means": [
+      0.04625,
+      0.036,
+      0.04625
+    ],
+    "fully_priced_anchor_choice": 1,
+    "scope": "Controlled actual-method example; demonstrates objective/sample mismatch, not game-strength damage."
+  },
+  "suit_symmetry": {
+    "n_positions": 248,
+    "positions": {
+      "bid": {
+        "n": 120,
+        "transformed_comparisons": 360,
+        "different_argmax": 188,
+        "positions_with_any_different_argmax": 91,
+        "probability_ensemble_changes_argmax": 38,
+        "positions_with_contract_disagreement": 8,
+        "probability_ensemble_changes_contract": 3,
+        "different_argmax_outside_rank_equivalence": 0,
+        "probability_ensemble_changes_outside_rank_equivalence": 0,
+        "median_max_legal_logit_spread": 6.452012419700623,
+        "batched_four_view_forward_seconds": 0.004314416088163853,
+        "root_inference_timing": {
+          "n": 32,
+          "one_view_median_ms": 0.05264603532850742,
+          "four_view_median_ms": 0.20027090795338154,
+          "scope": "Native model inference only; excludes transformations, Python controller and search."
+        }
+      },
+      "play": {
+        "n": 128,
+        "transformed_comparisons": 384,
+        "different_argmax": 105,
+        "positions_with_any_different_argmax": 57,
+        "probability_ensemble_changes_argmax": 22,
+        "positions_with_contract_disagreement": 0,
+        "probability_ensemble_changes_contract": 0,
+        "different_argmax_outside_rank_equivalence": 75,
+        "probability_ensemble_changes_outside_rank_equivalence": 15,
+        "median_max_legal_logit_spread": 7.288129657506943,
+        "batched_four_view_forward_seconds": 0.005912750028073788,
+        "root_inference_timing": {
+          "n": 32,
+          "one_view_median_ms": 0.05627109203487635,
+          "four_view_median_ms": 0.21054188255220652,
+          "scope": "Native model inference only; excludes transformations, Python controller and search."
+        }
+      }
+    },
+    "commuting_transition_checks": 992,
+    "scope": "Random-legal synthetic ordinary v3 states; suit inconsistency is not strength loss.",
+    "native_forward_seconds_total": 0.01022716611623764
+  },
+  "suit_symmetry_actor_trajectories": {
+    "n_positions": 256,
+    "positions": {
+      "bid": {
+        "n": 128,
+        "transformed_comparisons": 384,
+        "different_argmax": 178,
+        "positions_with_any_different_argmax": 90,
+        "probability_ensemble_changes_argmax": 42,
+        "positions_with_contract_disagreement": 10,
+        "probability_ensemble_changes_contract": 4,
+        "different_argmax_outside_rank_equivalence": 0,
+        "probability_ensemble_changes_outside_rank_equivalence": 0,
+        "median_max_legal_logit_spread": 6.487955749034882,
+        "batched_four_view_forward_seconds": 0.004240792011842132,
+        "root_inference_timing": {
+          "n": 32,
+          "one_view_median_ms": 0.05266640800982714,
+          "four_view_median_ms": 0.20022899843752384,
+          "scope": "Native model inference only; excludes transformations, Python controller and search."
+        }
+      },
+      "play": {
+        "n": 128,
+        "transformed_comparisons": 384,
+        "different_argmax": 143,
+        "positions_with_any_different_argmax": 75,
+        "probability_ensemble_changes_argmax": 29,
+        "positions_with_contract_disagreement": 0,
+        "probability_ensemble_changes_contract": 0,
+        "different_argmax_outside_rank_equivalence": 96,
+        "probability_ensemble_changes_outside_rank_equivalence": 19,
+        "median_max_legal_logit_spread": 8.326356053352356,
+        "batched_four_view_forward_seconds": 0.005614708177745342,
+        "root_inference_timing": {
+          "n": 32,
+          "one_view_median_ms": 0.05666643846780062,
+          "four_view_median_ms": 0.21124992053955793,
+          "scope": "Native model inference only; excludes transformations, Python controller and search."
+        }
+      }
+    },
+    "commuting_transition_checks": 1024,
+    "scope": "Native VRPO3-greedy synthetic v3 trajectories with all sooli offers declined; not current searched-bot self-play; suit inconsistency is not strength loss.",
+    "native_forward_seconds_total": 0.009855500189587474
+  },
+  "equity_tail": {
+    "n_positions": 256,
+    "flat_payoff_ranges": 45,
+    "median_distinct_payoff_buckets": 3.0,
+    "scope": "Synthetic random-legal tail states; payoff buckets are exact float reward bits, not an outcome model fit.",
+    "measurements": {
+      "full": {
+        "wall_seconds": 0.009829242248088121,
+        "nodes": 220247,
+        "null_window_probes": 584
+      },
+      "bucket": {
+        "wall_seconds": 0.004975880263373256,
+        "nodes": 126676,
+        "null_window_probes": 373
+      }
+    },
+    "float_reward_mismatches": 0,
+    "installed_solver_trick_mismatches": 0,
+    "node_reduction_fraction": 0.42484574137218667,
+    "microbenchmark_speedup": 1.9753775669482585,
+    "timing_scope": "One ordered synthetic corpus, independent empty TT per method then retained TT within method. Not full-bot latency.",
+    "solver_suit_canonicalization": {
+      "full": {
+        "wall_seconds": 0.014716217759996653,
+        "nodes": 199727,
+        "null_window_probes": 584,
+        "mismatches": 0,
+        "node_reduction_vs_original_full": 0.09316812487797788
+      },
+      "bucket": {
+        "wall_seconds": 0.006179369753226638,
+        "nodes": 115028,
+        "null_window_probes": 373,
+        "mismatches": 0,
+        "node_reduction_vs_original_full": 0.47773181927563146
+      }
+    }
+  },
+  "wall_seconds": 0.8425713339820504,
+  "source_hashes": {
+    "TuppiAI/tuppi_ai/best.py": "bbeb165c44302b1ea2cc5fe863af8c5d272487ec903e661f01d0201bd86f812a",
+    "TuppiAI/tuppi_ai/search.py": "9f611604f2f9da61d065f7ef6e0c653bf3a6c19ff3b08aee758a331fe8655014",
+    "TuppiAI/native/tuppi_core.h": "fc301b9484d6bc1e6af5dacd4937542ff429eab51ca3cbfe6380220f8571033b",
+    "TuppiAI/native/tuppi_core.c": "2c3f0a539f6569d0927aea0d08fc8911304a88108e84667826b5c8a0c810ecbf",
+    "TuppiAI/native/tuppi_env.c": "68d0cb2da0fe1dec76c20c96c226645e978004ae7abd2376fb51ecb5889425f1",
+    "TuppiAI/native/tuppi_dd.c": "abcb117b29d64e2f51d5d6739623ad89429b0421f57f8c09d4e48c9948ac2260",
+    "TuppiAI/native/tuppi_mlp.c": "117c2de9420994030c1fedd0105df1741d5edacc26ab677d3e0086d32b100b33",
+    "TuppiAI/native/libtuppi.dylib": "285d186ebc08521bc83bbaecc4a3962c1dc07f83444704e0d6efa95e6f0ca5da",
+    "TuppiAI/models/equity_incumbent.json": "1496f77104f411c5cb55e2cef4573a10aead59acbd643261b755886bfeb60b91"
+  },
+  "source_unchanged_during_probes": true
+}

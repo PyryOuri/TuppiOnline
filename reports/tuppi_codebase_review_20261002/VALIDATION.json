@@ -1,0 +1,241 @@
+{
+  "checked_utc": "2026-10-02T08:08:05.062372+00:00",
+  "scope": "source metadata and documentation checks only; no game/native/Torch execution",
+  "snapshot_times": {
+    "earlier": "2026-10-02T06:14:06.025599+00:00",
+    "ending_started": "2026-10-02T07:31:39.648066+00:00",
+    "ending_completed": "2026-10-02T07:50:30.502331+00:00"
+  },
+  "files": {
+    "earlier": 1906,
+    "ending": 1908
+  },
+  "ast_errors": {
+    "earlier": [],
+    "ending": []
+  },
+  "source_drift": {
+    "changed": [
+      "AGENTS.md",
+      "README.md",
+      "TuppiAI-prior/tests/test_experiment_queue_stdlib.py",
+      "TuppiAI-prior/tests/test_paired_results_stdlib.py",
+      "TuppiAI-prior/tuppi_ai/experiment_queue.py",
+      "TuppiAI-prior/tuppi_ai/paired_results.py",
+      "TuppiAI/docs/RAMI_ANALYSIS.md",
+      "TuppiAI/tuppi_ai/search.py"
+    ],
+    "added": [
+      "TuppiAI-prior/docs/EXPERIMENT_TOOLS.md",
+      "TuppiAI-prior/tests/test_experiment_process_stdlib.py"
+    ],
+    "removed": []
+  },
+  "repository_identities": {
+    "TuppiAI": {
+      "earlier_head": "decd7e807098d2541e79825ee8547d4dc6d830d2",
+      "ending_head": "8ced46dc647ae3576f0490b92063eae6850b0850",
+      "ending_branch": "main",
+      "ending_status": [
+        " M .DS_Store",
+        " M docs/TASKS.md",
+        "?? native/research/",
+        "?? tests/conftest.py",
+        "?? tests/research/",
+        "?? tuppi_ai/research/"
+      ]
+    },
+    "TuppiAI-prior": {
+      "earlier_head": "319e12134ef10945d842f8306b811061128d9ad7",
+      "ending_head": "0799508ad5a48a5db9eca99693534f998f0ebcf2",
+      "ending_branch": "research/policy-prior-infra-20261002",
+      "ending_status": []
+    },
+    "TuppiAI-sp": {
+      "earlier_head": "ca031fcab3b939ec3a0f7de9f32bfb6572f7eee8",
+      "ending_head": "ca031fcab3b939ec3a0f7de9f32bfb6572f7eee8",
+      "ending_branch": "sp/selfplay",
+      "ending_status": []
+    },
+    "TuppiAI-vn": {
+      "earlier_head": "c58127998729c193d0f3a8273f3d2c00b3d74549",
+      "ending_head": "c58127998729c193d0f3a8273f3d2c00b3d74549",
+      "ending_branch": "vn/value-net",
+      "ending_status": []
+    },
+    "TuppiAI-perf": {
+      "earlier_head": "da299a3f2789325d304b79713208169e9815027a",
+      "ending_head": "da299a3f2789325d304b79713208169e9815027a",
+      "ending_branch": "perf/e6-e9",
+      "ending_status": []
+    },
+    "TuppiProject-current": {
+      "earlier_head": "dc554c4b3b0e48850a3570cab454c68841aa07fc",
+      "ending_head": "dc554c4b3b0e48850a3570cab454c68841aa07fc",
+      "ending_branch": "rules/project-target-v3-locked-bids",
+      "ending_status": [
+        " M src/tuppi_server/match_runner.py",
+        " M tests/server/test_locked_bids_and_sooli_server.py"
+      ]
+    },
+    "TuppiProject": {
+      "earlier_head": "622d5599318e4f1b2a82ef53bfc141970edc24de",
+      "ending_head": "622d5599318e4f1b2a82ef53bfc141970edc24de",
+      "ending_branch": "phase7/reference-policy-identity",
+      "ending_status": [
+        " M README.md",
+        " M docs/nolo/tasks/README.md",
+        " M docs/nolo/tasks/fixtures.json",
+        " M docs/nolo/tasks/source_manifest.json",
+        " M pyproject.toml",
+        " M schemas/network/completed_deal_analysis_v3.schema.json",
+        " M src/tuppi_eval/agents.py",
+        " M src/tuppi_nolo/adapter.py",
+        " M src/tuppi_nolo/certificates.py",
+        " M src/tuppi_nolo/security.py",
+        " M src/tuppi_nolo/support.py",
+        " M src/tuppi_server/analysis.py",
+        " M src/tuppi_server/completed_deal_review.py",
+        " M src/tuppi_server/match_runner.py",
+        " M src/tuppi_server/post_match_diagnostics.py",
+        " M tests/nolo/test_support.py",
+        " M tests/server/test_completed_deal_review.py",
+        " M tests/server/test_match_runner.py",
+        " M tests/server/test_post_match_diagnostics.py",
+        "?? docs/nolo/compact_backend.md",
+        "?? docs/nolo/hypotheses-n10.md",
+        "?? docs/nolo/hypotheses-n11.md",
+        "?? docs/nolo/n10_positions.json",
+        "?? docs/nolo/results/N10.md",
+        "?? docs/nolo/results/N10_sources.json",
+        "?? docs/nolo/results/N11.md",
+        "?? docs/valuation/",
+        "?? src/tuppi_llm/",
+        "?? src/tuppi_nolo/compact.py",
+        "?? src/tuppi_nolo/coverage.py",
+        "?? src/tuppi_nolo/performance.py",
+        "?? src/tuppi_valuation/",
+        "?? tests/agents/test_nolo_discard.py",
+        "?? tests/llm/",
+        "?? tests/nolo/test_compact.py",
+        "?? tests/valuation/",
+        "?? tools/human_vs_bot.py",
+        "?? tools/measure_nolo_discard.py",
+        "?? tools/measure_odds_calibration.py",
+        "?? tools/measure_odds_ceiling.py",
+        "?? work/infrastructure_audit/",
+        "?? work/nolo/n10/",
+        "?? work/nolo/n11/",
+        "?? work/nolo_discard/"
+      ]
+    },
+    "TuppiClient-current": {
+      "earlier_head": "7ba8ca283f01794170d105ba08c5a799f7bd7909",
+      "ending_head": "7ba8ca283f01794170d105ba08c5a799f7bd7909",
+      "ending_branch": "feature/v3-locked-bids-sooli",
+      "ending_status": [
+        "?? Sources/TuppiClient/ReferencePolicy.swift",
+        "?? Tests/TuppiClientTests/ReferencePolicyTests.swift"
+      ]
+    },
+    "TuppiClient": {
+      "earlier_head": "1d82b4b36097f08684b3e4838166bda708ee8b19",
+      "ending_head": "1d82b4b36097f08684b3e4838166bda708ee8b19",
+      "ending_branch": "main",
+      "ending_status": [
+        " M Sources/TuppiClient/Resources/Fixtures/manifest.json",
+        " M Sources/TuppiClient/Resources/Fixtures/sha256sums.json",
+        "?? Sources/TuppiClient/ReferencePolicy.swift",
+        "?? Tests/TuppiClientTests/ReferencePolicyTests.swift"
+      ]
+    }
+  },
+  "git_read_errors": [],
+  "documentation": {
+    "documents": [
+      "ARCHITECTURE.md",
+      "EFFICIENCY.md",
+      "FINDINGS.md",
+      "METHODS_AND_EVIDENCE.md",
+      "REPORT.md",
+      "SOURCE_INDEX.md",
+      "VALIDATION.md"
+    ],
+    "checked_local_links": 193,
+    "broken_links": [],
+    "workspace_readme_link_present": true
+  },
+  "probe_hash_checks": [
+    {
+      "id": "F01",
+      "path": "TuppiAI/tuppi_ai/best.py",
+      "matches_ending_inventory": true,
+      "original_matches_current_file": false,
+      "latest_probe_matches_current_file": true,
+      "latest_probe_source": {
+        "path": "TuppiAI/tuppi_ai/best.py",
+        "function": "best_agents",
+        "line": 80,
+        "sha256": "ec1ecc658b0ff161019a432cc3ca3c6f5cba6a7f577d91bf2199466eac378951"
+      }
+    },
+    {
+      "id": "F02",
+      "path": "TuppiAI/tuppi_ai/evaluate.py",
+      "matches_ending_inventory": true,
+      "original_matches_current_file": true,
+      "latest_probe_matches_current_file": true,
+      "latest_probe_source": {
+        "path": "TuppiAI/tuppi_ai/evaluate.py",
+        "function": "_make_candidate",
+        "line": 60,
+        "sha256": "84e1bae06b9732c066bcd4661577eb9271bec58ee2933ff3dc1e2d092d6478b9"
+      }
+    },
+    {
+      "id": "F03",
+      "path": "TuppiAI/tuppi_ai/match_eval.py",
+      "matches_ending_inventory": true,
+      "original_matches_current_file": true,
+      "latest_probe_matches_current_file": true,
+      "latest_probe_source": {
+        "path": "TuppiAI/tuppi_ai/match_eval.py",
+        "function": "_leg",
+        "line": 31,
+        "sha256": "215d4669644a3ad0b2a67b18cc624181c2756e78329ba33ed0d8ad6edbd58cc0"
+      }
+    },
+    {
+      "id": "F04",
+      "path": "TuppiAI/tuppi_ai/search.py",
+      "matches_ending_inventory": true,
+      "original_matches_current_file": true,
+      "latest_probe_matches_current_file": true,
+      "latest_probe_source": {
+        "path": "TuppiAI/tuppi_ai/search.py",
+        "function": "adaptive_values",
+        "line": 122,
+        "sha256": "3a08e88301881da96363991e7e43009483745dc57909850d61ceabd3414476f1"
+      }
+    }
+  ],
+  "review_script_checks": [
+    {
+      "path": "tools/inventory.py",
+      "ast_parse": true,
+      "sha256": "cc8d983e51a466c01ac99a760b3a7cb986f755fd739df7a73a93c842ba4c99d3"
+    },
+    {
+      "path": "tools/source_probes.py",
+      "ast_parse": true,
+      "sha256": "fc2cb67ab9cb718a6c29f51bde20573d7ee7a9a2a77488d6a15d805c0027ca60"
+    },
+    {
+      "path": "tools/validate_review.py",
+      "ast_parse": true,
+      "sha256": "392162ca0d7df174d59a9dea2e70fb0b3750e4e0ff6e4dc42ba82e9f94823e3a"
+    }
+  ],
+  "ending_inventory_paths_missing_now": [],
+  "passed": true
+}

@@ -1,0 +1,1523 @@
+{
+  "schema_version": "tuppi.implementation_source_map.v1",
+  "scope": "Returned audit evidence and proposed task mapping; no independent source execution",
+  "audit_handoff_sha256": "87b0efd3666d7b97493a845f30d2c19619d09cd489fe9e802de25d334f3adb38",
+  "repositories": {
+    "AI": {
+      "path": "TuppiAI",
+      "head": "4220f249e351905deb3a3754de812a01acf152d7",
+      "branch": "main",
+      "status": "M .DS_Store",
+      "diff_stat": ".DS_Store | Bin 8196 -> 10244 bytes\n 1 file changed, 0 insertions(+), 0 deletions(-)"
+    },
+    "RESEARCH": {
+      "path": "TuppiProject",
+      "head": "622d5599318e4f1b2a82ef53bfc141970edc24de",
+      "branch": "phase7/reference-policy-identity",
+      "status": "M README.md\n M docs/nolo/tasks/README.md\n M docs/nolo/tasks/fixtures.json\n M docs/nolo/tasks/source_manifest.json\n M pyproject.toml\n M schemas/network/completed_deal_analysis_v3.schema.json\n M src/tuppi_eval/agents.py\n M src/tuppi_nolo/adapter.py\n M src/tuppi_nolo/certificates.py\n M src/tuppi_nolo/security.py\n M src/tuppi_nolo/support.py\n M src/tuppi_server/analysis.py\n M src/tuppi_server/completed_deal_review.py\n M src/tuppi_server/match_runner.py\n M src/tuppi_server/post_match_diagnostics.py\n M tests/nolo/test_support.py\n M tests/server/test_completed_deal_review.py\n M tests/server/test_match_runner.py\n M tests/server/test_post_match_diagnostics.py\n?? docs/nolo/compact_backend.md\n?? docs/nolo/hypotheses-n10.md\n?? docs/nolo/hypotheses-n11.md\n?? docs/nolo/n10_positions.json\n?? docs/nolo/results/N10.md\n?? docs/nolo/results/N10_sources.json\n?? docs/nolo/results/N11.md\n?? docs/valuation/\n?? src/tuppi_llm/\n?? src/tuppi_nolo/compact.py\n?? src/tuppi_nolo/coverage.py\n?? src/tuppi_nolo/performance.py\n?? src/tuppi_valuation/\n?? tests/agents/test_nolo_discard.py\n?? tests/llm/\n?? tests/nolo/test_compact.py\n?? tests/valuation/\n?? tools/human_vs_bot.py\n?? tools/measure_nolo_discard.py\n?? tools/measure_odds_calibration.py\n?? tools/measure_odds_ceiling.py\n?? work/infrastructure_audit/\n?? work/nolo/n10/\n?? work/nolo/n11/\n?? work/nolo_discard/",
+      "diff_stat": "README.md                                          |  8 +++-\n docs/nolo/tasks/README.md                          | 24 +++++-----\n docs/nolo/tasks/fixtures.json                      | 25 ++++++++++-\n docs/nolo/tasks/source_manifest.json               | 29 +++++++++---\n pyproject.toml                                     |  4 ++\n .../network/completed_deal_analysis_v3.schema.json |  4 +-\n src/tuppi_eval/agents.py                           |  9 ++++\n src/tuppi_nolo/adapter.py                          | 17 ++++---\n src/tuppi_nolo/certificates.py                     | 48 ++++++++++++--------\n src/tuppi_nolo/security.py                         | 33 +++++++++-----\n src/tuppi_nolo/support.py                          | 52 +++++++++++++++-------\n src/tuppi_server/analysis.py                       |  4 +-\n src/tuppi_server/completed_deal_review.py          | 21 ++++++++-\n src/tuppi_server/match_runner.py                   | 11 ++---\n src/tuppi_server/post_match_diagnostics.py         | 21 +++++++--\n tests/nolo/test_support.py                         | 21 ++++++++-\n tests/server/test_completed_deal_review.py         | 49 +++++++++++++++-----\n tests/server/test_match_runner.py                  |  2 +-\n tests/server/test_post_match_diagnostics.py        | 51 ++++++++++++---------\n 19 files changed, 317 insertions(+), 116 deletions(-)"
+    },
+    "ENGINE": {
+      "path": "TuppiProject-current",
+      "head": "1347153f7d6e7bed95edddce9d35d28a3df91750",
+      "branch": "rules/project-target-v3-locked-bids",
+      "status": "",
+      "diff_stat": ""
+    },
+    "CLIENT": {
+      "path": "TuppiClient-current",
+      "head": "7ba8ca283f01794170d105ba08c5a799f7bd7909",
+      "branch": "feature/v3-locked-bids-sooli",
+      "status": "?? Sources/TuppiClient/ReferencePolicy.swift\n?? Tests/TuppiClientTests/ReferencePolicyTests.swift",
+      "diff_stat": ""
+    },
+    "CLIENT_OLD": {
+      "path": "TuppiClient",
+      "head": "1d82b4b36097f08684b3e4838166bda708ee8b19",
+      "branch": "main",
+      "status": "M Sources/TuppiClient/Resources/Fixtures/manifest.json\n M Sources/TuppiClient/Resources/Fixtures/sha256sums.json\n?? Sources/TuppiClient/ReferencePolicy.swift\n?? Tests/TuppiClientTests/ReferencePolicyTests.swift",
+      "diff_stat": "Sources/TuppiClient/Resources/Fixtures/manifest.json   | 2 +-\n Sources/TuppiClient/Resources/Fixtures/sha256sums.json | 2 +-\n 2 files changed, 2 insertions(+), 2 deletions(-)"
+    }
+  },
+  "baseline": {
+    "factory": "tuppi_ai.best.best_agents",
+    "ruleset": "project_target_v3",
+    "worlds": 128,
+    "tail": 6,
+    "clone": {
+      "encoder": 2,
+      "width": 256,
+      "blocks": 2,
+      "input_width": 1951
+    },
+    "assets": {
+      "TuppiAI/native/libtuppi.dylib": {
+        "sha256": "02d9b4fad98ebb342e12cd9ecb4723aaee1406c6c6b539a1dc4a5b2b002c1ab8",
+        "bytes": 121024
+      },
+      "TuppiAI/models/rollout_clone_small.pt": {
+        "sha256": "38737c9042695a4c960157fb77a8d17f308c5773899c2ec0c65b0d20546324f1",
+        "bytes": 3224261
+      },
+      "TuppiAI/models/equity_incumbent.json": {
+        "sha256": "1496f77104f411c5cb55e2cef4573a10aead59acbd643261b755886bfeb60b91",
+        "bytes": 2112
+      }
+    },
+    "source_binary_correspondence": null,
+    "historical_binary_sha256": null,
+    "running_process_environment": null,
+    "current_policy_state": null,
+    "effective_factory_seed": "seed + 2*seat",
+    "sooli_defaults": {
+      "give": "search",
+      "return": "heur",
+      "play": "search",
+      "belief": 17,
+      "lambda": 0.3,
+      "offer_play_heur": true,
+      "offer_margin": 0.02
+    },
+    "mutable_v3_configuration_bug_preserved": true,
+    "entrypoint_evidence": [
+      "E001",
+      "E002",
+      "E013",
+      "E014",
+      "E015",
+      "E020",
+      "E059",
+      "E061"
+    ]
+  },
+  "evidence_files": [
+    {
+      "evidence_id": "E001",
+      "repo": "AI",
+      "path": "tuppi_ai/best.py",
+      "lines": [
+        1,
+        36
+      ],
+      "sha256": "bdec3507cbf2bfaa248d513244353c4a02aad36650f368c5ecc8e2aa1f7568db",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E002",
+      "repo": "AI",
+      "path": "tuppi_ai/search.py",
+      "lines": [
+        1,
+        316
+      ],
+      "sha256": "ec43cb390dd1ba571991de1523995791df936292f5a4408c8207e90c73366612",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E003",
+      "repo": "AI",
+      "path": "tuppi_ai/native.py",
+      "lines": [
+        1,
+        385
+      ],
+      "sha256": "3c6c13f50a710aee52dcc0a4b8f0b89d68c499b04cd2a6fb8726aa2325b4ef84",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E004",
+      "repo": "AI",
+      "path": "native/tuppi_env.c",
+      "lines": [
+        1,
+        447
+      ],
+      "sha256": "243a4fea05410e6699b9770450059424b695a54fc4b3b23c2b8c27fee3949a2e",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E005",
+      "repo": "AI",
+      "path": "native/tuppi_search.c",
+      "lines": [
+        1,
+        561
+      ],
+      "sha256": "c23b311ca10a04db1df64ffd3adef55dcb3a8b7ce6275d4b659176b0896bcb45",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E006",
+      "repo": "AI",
+      "path": "native/tuppi_core.h",
+      "lines": [
+        1,
+        131
+      ],
+      "sha256": "7f38088fc44f5b67997a7b616aea4caea78fe07e18393c9b2cd3e7e59767837b",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E007",
+      "repo": "AI",
+      "path": "native/tuppi_core.c",
+      "lines": [
+        1,
+        450
+      ],
+      "sha256": "2c3f0a539f6569d0927aea0d08fc8911304a88108e84667826b5c8a0c810ecbf",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E008",
+      "repo": "AI",
+      "path": "native/tuppi_sooli_policy.c",
+      "lines": [
+        1,
+        320
+      ],
+      "sha256": "3e0f7b839220559f0d66ed28b7a00b76550654ec8fda090abbc6db01f962e702",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E009",
+      "repo": "AI",
+      "path": "native/tuppi_dd.c",
+      "lines": [
+        1,
+        170
+      ],
+      "sha256": "156ea39dbef442dcdf8229af9495a50b9b6fea02f10d5b77dff1d7e129f88898",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E010",
+      "repo": "AI",
+      "path": "native/tuppi_sooli.c",
+      "lines": [
+        1,
+        244
+      ],
+      "sha256": "5a867cacf552578a9b3b73b3352684825c524b27986aa03fd2221a60be47cb85",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E011",
+      "repo": "AI",
+      "path": "tuppi_ai/bridge.py",
+      "lines": [
+        1,
+        111
+      ],
+      "sha256": "f2d24345e289c78dbf9efb07f0c7007519b638beb15b414446aaa78ffda429d2",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E012",
+      "repo": "AI",
+      "path": "tuppi_ai/equity.py",
+      "lines": [
+        1,
+        130
+      ],
+      "sha256": "c03de75eb6f249f77d5066226fb68d3f6a1b48452a6cafc6202a543d925e3976",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E013",
+      "repo": "AI",
+      "path": "tuppi_ai/evaluate.py",
+      "lines": [
+        1,
+        218
+      ],
+      "sha256": "b133798fcb65a6ba8337e7da6bd346735b4d2d90762b6195d198060ae3a21d3b",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E014",
+      "repo": "AI",
+      "path": "tuppi_ai/match_eval.py",
+      "lines": [
+        1,
+        104
+      ],
+      "sha256": "eca0f709d010b9e1df0e23938718443480de3dcd9ea2ffab8b3ea6feb24c34d9",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E015",
+      "repo": "AI",
+      "path": "tuppi_ai/review.py",
+      "lines": [
+        1,
+        170
+      ],
+      "sha256": "eac6d53a0555afaa8e31cdc01edc8dd8aa5b1964f68fd2898752ff53d8c6d6db",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E016",
+      "repo": "ENGINE",
+      "path": "src/tuppi_engine/observations.py",
+      "lines": [
+        1,
+        245
+      ],
+      "sha256": "b0b9dee374a0857d63d59ef3e5c7e0d40f70ba6ad07f35b0eaa0086c4717a1dc",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E017",
+      "repo": "ENGINE",
+      "path": "src/tuppi_engine/serialization.py",
+      "lines": [
+        1,
+        844
+      ],
+      "sha256": "73344ed1c52cfac03196a3ca14824e9b2fcf20462624622079f17857a2b1cae5",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E018",
+      "repo": "ENGINE",
+      "path": "src/tuppi_engine/match.py",
+      "lines": [
+        1,
+        370
+      ],
+      "sha256": "bdf4eb2a5a9c967e66e6242aab9a8befead2b420b57710cffc7198eafd02a94e",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E019",
+      "repo": "ENGINE",
+      "path": "src/tuppi_rules/match.py",
+      "lines": [
+        1,
+        69
+      ],
+      "sha256": "985c5596582baa99002fc7e803d98dceb2ce340cd0b75f5d505d0f6961178f22",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E020",
+      "repo": "ENGINE",
+      "path": "src/tuppi_server/match_runner.py",
+      "lines": [
+        1,
+        1189
+      ],
+      "sha256": "4ac6e656b3a69292f04d36eeabddb6f9cdbd7c51e4665996c34ec0e77fe5be58",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E021",
+      "repo": "ENGINE",
+      "path": "src/tuppi_server/rooms.py",
+      "lines": [
+        1,
+        878
+      ],
+      "sha256": "7b16536bfe4e1a09437691e8656c2b64d9256091e3a94693fd840bab939f6d3e",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E022",
+      "repo": "RESEARCH",
+      "path": "src/tuppi_valuation/suits.py",
+      "lines": [
+        1,
+        897
+      ],
+      "sha256": "e8f8dcddc83d6353dd4b13c820479afc13540a3cb47994a702594971723e86f0",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E023",
+      "repo": "RESEARCH",
+      "path": "src/tuppi_agents/nolo_discard.py",
+      "lines": [
+        1,
+        364
+      ],
+      "sha256": "260bd4f4544075e0b1eaac16bfe740e73fd02ed5b33095f2d420e8a77363a44d",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E024",
+      "repo": "RESEARCH",
+      "path": "tests/agents/test_nolo_discard.py",
+      "lines": [
+        1,
+        145
+      ],
+      "sha256": "52f234aa5c6417df709e9fbdd5b9cc362b65f1396937a209f6a95ada0fe42a27",
+      "type": "TEST",
+      "test_execution": "NOT RUN"
+    },
+    {
+      "evidence_id": "E025",
+      "repo": "RESEARCH",
+      "path": "src/tuppi_nolo/support.py",
+      "lines": [
+        1,
+        330
+      ],
+      "sha256": "c984fe4084c26aa4f551ef5632c14ea24a2c687dfd3f47dbe85826295dd546c2",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E026",
+      "repo": "RESEARCH",
+      "path": "src/tuppi_nolo/security.py",
+      "lines": [
+        1,
+        392
+      ],
+      "sha256": "38c06318d9369f476eeb33b6721d83c17d35f18f7dae7a00f4998267ec52813f",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E027",
+      "repo": "ENGINE",
+      "path": "src/tuppi_exact/constraints.py",
+      "lines": [
+        1,
+        532
+      ],
+      "sha256": "cfc71ed53e6dcae5acc922f5381751d3b1a4cce8cb4b67ec958574165ebab1f3",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E028",
+      "repo": "ENGINE",
+      "path": "src/tuppi_exact/continuation.py",
+      "lines": [
+        1,
+        285
+      ],
+      "sha256": "4da5ceeff4a340133230ddf4431713cad8726d4260949a3991010f64852c7d9a",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E029",
+      "repo": "ENGINE",
+      "path": "src/tuppi_search/fast_trick.py",
+      "lines": [
+        1,
+        284
+      ],
+      "sha256": "de687c25d1bfd3c7ed1af91d7c2ce8d4d6f3d84741ebba911b5d1fe7fbcdf92f",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E030",
+      "repo": "AI",
+      "path": "tools/sooli_bank.py",
+      "lines": [
+        1,
+        109
+      ],
+      "sha256": "adb670c2577fd60c54aac6e7bca622180f74ef36c49ff43f31b17b3280947d87",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E031",
+      "repo": "AI",
+      "path": "tools/sooli_play_eval.py",
+      "lines": [
+        1,
+        144
+      ],
+      "sha256": "a0b0ba0bb52a1fd20f5bd53bc244a058bc9e30a9af1e5de3f75444cc3564ee45",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E032",
+      "repo": "AI",
+      "path": "tools/gen_game_db.py",
+      "lines": [
+        1,
+        237
+      ],
+      "sha256": "0f05251e954820ff7d6678853d4fcadbf4cb9c14fc65d425b848ecb5d47bfdba",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E033",
+      "repo": "AI",
+      "path": "tuppi_ai/bc.py",
+      "lines": [
+        1,
+        96
+      ],
+      "sha256": "26c3a8159628e8478aa0dbdbb58937f1afe8066a0af7ab23ae653a655f20bf61",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E034",
+      "repo": "AI",
+      "path": "tuppi_ai/distill.py",
+      "lines": [
+        1,
+        128
+      ],
+      "sha256": "1d4aa27a2c8e6cb4125ff71ef0177964c0673547432ad62c80802c29cec03ff3",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E035",
+      "repo": "AI",
+      "path": "tuppi_ai/model.py",
+      "lines": [
+        1,
+        59
+      ],
+      "sha256": "07527cbf1eb97a13f3b5510078e4bc07053da2ad56057b393f141787741c7c16",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E036",
+      "repo": "AI",
+      "path": "tools/fit_equity.py",
+      "lines": [
+        1,
+        78
+      ],
+      "sha256": "16aeb0fbbd2247dc47db5fde7691d7c01705150e5943aabd8ca77de16abc6c46",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E037",
+      "repo": "AI",
+      "path": "docs/STATUS.md",
+      "lines": [
+        1,
+        499
+      ],
+      "sha256": "911bf188d7d3745383e89813dcffaa5e8e00ff0002d59b470a981f9fd071f4ae",
+      "type": "REPORT",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E038",
+      "repo": "AI",
+      "path": "tests/test_sampler.py",
+      "lines": [
+        1,
+        182
+      ],
+      "sha256": "0edf6155966a32f13b237c12f0ab3d9be033d35f0ed746ffd8e7cb536f8ce4e9",
+      "type": "TEST",
+      "test_execution": "NOT RUN"
+    },
+    {
+      "evidence_id": "E039",
+      "repo": "AI",
+      "path": "tests/test_sampler_v2.py",
+      "lines": [
+        1,
+        237
+      ],
+      "sha256": "49e5cd5d690727e59261a95a836c050871bc87504b690209ddbab2a0ca6dbf61",
+      "type": "TEST",
+      "test_execution": "NOT RUN"
+    },
+    {
+      "evidence_id": "E040",
+      "repo": "AI",
+      "path": "tests/test_sooli_solver.py",
+      "lines": [
+        1,
+        97
+      ],
+      "sha256": "3ba888daa7b811a11c3f8202bb4dcc0f1fa645c1956534c8e32e71b71da8866c",
+      "type": "TEST",
+      "test_execution": "NOT RUN"
+    },
+    {
+      "evidence_id": "E041",
+      "repo": "ENGINE",
+      "path": "tests/engine/test_locked_bids_engine.py",
+      "lines": [
+        1,
+        166
+      ],
+      "sha256": "bfcdb3fb586e67de99435c2cd2afe0637330a2f06a10aa1b41fe56ac577a8f41",
+      "type": "TEST",
+      "test_execution": "NOT RUN"
+    },
+    {
+      "evidence_id": "E042",
+      "repo": "ENGINE",
+      "path": "tests/engine/test_sooli_engine.py",
+      "lines": [
+        1,
+        263
+      ],
+      "sha256": "bb650a40a262b3fe61b3558000fdc515db16c601f215a3a4b28c04ce2dd49ec2",
+      "type": "TEST",
+      "test_execution": "NOT RUN"
+    },
+    {
+      "evidence_id": "E043",
+      "repo": "ENGINE",
+      "path": "tests/engine/test_sooli_locked_serialization.py",
+      "lines": [
+        1,
+        122
+      ],
+      "sha256": "c9a25d69f26bab96e93721d002e106dcd5920279f78da12915303f6c04123f25",
+      "type": "TEST",
+      "test_execution": "NOT RUN"
+    },
+    {
+      "evidence_id": "E044",
+      "repo": "RESEARCH",
+      "path": "docs/agents/architecture.md",
+      "lines": [
+        1,
+        162
+      ],
+      "sha256": "321a98e695a90587a5d39c7873b9df9ba4c34167cfa18b1c3b97f7548e54362e",
+      "type": "REPORT",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E045",
+      "repo": "RESEARCH",
+      "path": "docs/exact/architecture.md",
+      "lines": [
+        1,
+        119
+      ],
+      "sha256": "bf829cd3859016a22386d650220baefaa4b10414875fe9201d8e7973b4b39d9b",
+      "type": "REPORT",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E046",
+      "repo": "RESEARCH",
+      "path": "docs/match/bank_lifecycle.md",
+      "lines": [
+        1,
+        94
+      ],
+      "sha256": "a0953fb2ef282c6a78fb82409687864233dd751625a6c563576208b7bc971a2d",
+      "type": "REPORT",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E047",
+      "repo": "RESEARCH",
+      "path": "tests/agents/test_architecture.py",
+      "lines": [
+        1,
+        292
+      ],
+      "sha256": "7713aadb5d7edab793ce84668c1978c7a574102d557a5f36064de9666d38481b",
+      "type": "TEST",
+      "test_execution": "NOT RUN"
+    },
+    {
+      "evidence_id": "E048",
+      "repo": "RESEARCH",
+      "path": "tests/search/test_architecture.py",
+      "lines": [
+        1,
+        198
+      ],
+      "sha256": "dd94ef56b867014bd9bbc345de97fb3eb1c10c28e0fdde3f3b370c7daecf5dc6",
+      "type": "TEST",
+      "test_execution": "NOT RUN"
+    },
+    {
+      "evidence_id": "E049",
+      "repo": "CLIENT",
+      "path": "Sources/TuppiClient/ReferencePolicy.swift",
+      "lines": [
+        1,
+        43
+      ],
+      "sha256": "03c80157e9751789f5827b6117cef32b113f6d208dfe2ff101f31ecc6de9ca28",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E050",
+      "repo": "AI",
+      "path": "native/build.sh",
+      "lines": [
+        1,
+        13
+      ],
+      "sha256": "be5b4eb04b71b3ed8eafaf5c284b6b6db1ad586b2f987f6c9efa7e957775178b",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E051",
+      "repo": "ENGINE",
+      "path": "src/tuppi_engine/transitions.py",
+      "lines": [
+        1,
+        608
+      ],
+      "sha256": "014fa25be32cdb5ebdbc1ac582d15e224af0681082182daf1c41b0d4c32d0c23",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E052",
+      "repo": "ENGINE",
+      "path": "src/tuppi_rules/showing.py",
+      "lines": [
+        1,
+        176
+      ],
+      "sha256": "d6dbcbc61758e2a2285b3f011f9d8ef67acc5fb48100a91f4fb67342b1633329",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E053",
+      "repo": "RESEARCH",
+      "path": "docs/nolo/results/N11.md",
+      "lines": [
+        1,
+        201
+      ],
+      "sha256": "a365a852e411110fd2a7fc650a6df1b503131965c6c79551ff8e725f1df7ec1a",
+      "type": "REPORT",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E054",
+      "repo": "RESEARCH",
+      "path": "docs/nolo/tasks/README.md",
+      "lines": [
+        1,
+        89
+      ],
+      "sha256": "723b3c2dc37dca38453e401bc40882cc9a000597f554f787d5896b0aaefcba41",
+      "type": "REPORT",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E055",
+      "repo": "ENGINE",
+      "path": "src/tuppi_exact/counting.py",
+      "lines": [
+        1,
+        363
+      ],
+      "sha256": "582ed07387a3a89869d79c886b483faa7bf2819ad5f04e328ac0ebcdc9ba3796",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E056",
+      "repo": "ENGINE",
+      "path": "src/tuppi_exact/sampling.py",
+      "lines": [
+        1,
+        498
+      ],
+      "sha256": "a05d577f3fbcf9fb927b160d06fd8e91a4229c2e458d4533bab6f43839a43087",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E057",
+      "repo": "ENGINE",
+      "path": "configs/rules/project_target_v3.json",
+      "lines": [
+        1,
+        321
+      ],
+      "sha256": "0ca4212a04d2993cf4deb3024e6027423f924e9964fdd44fbee8a728b3fa7f37",
+      "type": "REPORT",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E058",
+      "repo": "AI",
+      "path": "docs/BIDDING_EXPLANATION_PLAN.md",
+      "lines": [
+        1,
+        164
+      ],
+      "sha256": "e0172b922f15d97d13e6b571dee2ca7db40803e11b7442e0af9fa868ded0848a",
+      "type": "REPORT",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E059",
+      "repo": "AI",
+      "path": "tools/serve_human.py",
+      "lines": [
+        1,
+        85
+      ],
+      "sha256": "168032daa3a262d5105de78e4f6486a40ee0d140d5c404f2021909120abc9955",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E060",
+      "repo": "AI",
+      "path": "tuppi_ai/incumbent.py",
+      "lines": [
+        1,
+        19
+      ],
+      "sha256": "4ea9a7521c4ee2de7853f0d1d7f493656a37233fc08371e6c3e177e0c7522b80",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E061",
+      "repo": "ENGINE",
+      "path": "src/tuppi_server/real_game_deal_analysis.py",
+      "lines": [
+        1,
+        260
+      ],
+      "sha256": "decf2a53bbb9e63c4ec51a7c06b415a7c64a5b256757476a48bbd8ecae895473",
+      "type": "CODE",
+      "test_execution": null
+    },
+    {
+      "evidence_id": "E062",
+      "repo": "AI",
+      "path": "docs/HUMAN_BENCHMARK.md",
+      "lines": [
+        1,
+        65
+      ],
+      "sha256": "c4c0b74fd2cd55c888889d0a6f17ef1d7b5cc51d91cd775e7fbc6a98e5dc6cd0",
+      "type": "REPORT",
+      "test_execution": null
+    }
+  ],
+  "question_mapping": [
+    {
+      "question_id": "G01",
+      "audit_status": "ESTABLISHED-IN-CODE, binary provenance UNKNOWN",
+      "evidence_ids": [
+        "E001",
+        "E002",
+        "E003",
+        "E004",
+        "E011",
+        "E012",
+        "E013",
+        "E014",
+        "E015",
+        "E020",
+        "E035",
+        "E050",
+        "E059",
+        "E060",
+        "E061",
+        "E062"
+      ],
+      "proposed_task_ids": [
+        "C0.01",
+        "C0.02",
+        "C0.03",
+        "C0.04",
+        "C0.05",
+        "C0.06",
+        "C0.07"
+      ],
+      "design_consequence": "Pin entrypoint plus construction history, not \u201cW128\u201d alone",
+      "unresolved_item": "historical binary/process snapshot unavailable."
+    },
+    {
+      "question_id": "G02",
+      "audit_status": "ESTABLISHED-IN-CODE / UNKNOWN for historical runtime state",
+      "evidence_ids": [
+        "E002",
+        "E003",
+        "E004",
+        "E008",
+        "E009",
+        "E010",
+        "E013",
+        "E014",
+        "E015",
+        "E020",
+        "E058"
+      ],
+      "proposed_task_ids": [
+        "C0.01",
+        "C0.02",
+        "C0.03",
+        "C0.04",
+        "C0.05",
+        "C0.06",
+        "C0.07"
+      ],
+      "design_consequence": "PolicyFork and lifecycle ledger prerequisite to exact comparisons",
+      "unresolved_item": "no supported complete snapshot/restore API."
+    },
+    {
+      "question_id": "G03",
+      "audit_status": "ESTABLISHED-IN-CODE",
+      "evidence_ids": [
+        "E006",
+        "E007",
+        "E011",
+        "E016",
+        "E017",
+        "E041",
+        "E042",
+        "E043"
+      ],
+      "proposed_task_ids": [
+        "C0.01",
+        "C0.02",
+        "C0.03",
+        "C0.04",
+        "C0.05",
+        "C0.06",
+        "C0.07"
+      ],
+      "design_consequence": "Use full typed observations; neural vectors are insufficient information keys",
+      "unresolved_item": "own hidden-commit memory is not in the engine observation."
+    },
+    {
+      "question_id": "G04",
+      "audit_status": "ESTABLISHED-IN-CODE with mathematical-law qualifications",
+      "evidence_ids": [
+        "E005",
+        "E006",
+        "E007",
+        "E008",
+        "E027",
+        "E038",
+        "E039"
+      ],
+      "proposed_task_ids": [
+        "C0.01",
+        "C0.02",
+        "C0.03",
+        "C0.04",
+        "C0.05",
+        "C0.06",
+        "C0.07"
+      ],
+      "design_consequence": "Name the exact sampler version and approximation; do not call it all legal information",
+      "unresolved_item": "fallback constraints absent natively; sooli rejection truncation."
+    },
+    {
+      "question_id": "G05",
+      "audit_status": "ESTABLISHED-IN-CODE / MISSING-INTERFACE",
+      "evidence_ids": [
+        "E003",
+        "E004",
+        "E009",
+        "E012"
+      ],
+      "proposed_task_ids": [
+        "C0.01",
+        "C0.02",
+        "C0.03",
+        "C0.04",
+        "C0.05",
+        "C0.06",
+        "C0.07"
+      ],
+      "design_consequence": "Existing per-world output is useful but does not accept explicit worlds",
+      "unresolved_item": "add one research-only input seam without altering baseline entrypoints."
+    },
+    {
+      "question_id": "G06",
+      "audit_status": "PARTIAL / MISSING-INTERFACE",
+      "evidence_ids": [
+        "E003",
+        "E016",
+        "E017",
+        "E025",
+        "E028",
+        "E029"
+      ],
+      "proposed_task_ids": [
+        "C0.01",
+        "C0.02",
+        "C0.03",
+        "C0.04",
+        "C0.05",
+        "C0.06",
+        "C0.07"
+      ],
+      "design_consequence": "Observation serialization is real; exact policy replay is not solved by it",
+      "unresolved_item": "v3 continuation and policy-state reconstruction need narrow additions."
+    },
+    {
+      "question_id": "G07",
+      "audit_status": "ESTABLISHED-IN-CODE, v3 match runner MISSING",
+      "evidence_ids": [
+        "E013",
+        "E014",
+        "E018"
+      ],
+      "proposed_task_ids": [
+        "C0.01",
+        "C0.02",
+        "C0.03",
+        "C0.04",
+        "C0.05",
+        "C0.06",
+        "C0.07"
+      ],
+      "design_consequence": "Repair the research instrument under a new identity before confirmation",
+      "unresolved_item": "current opponent API only takes incumbent profiles."
+    },
+    {
+      "question_id": "G08",
+      "audit_status": "DOCUMENTED-ONLY for bank contents, ESTABLISHED-IN-CODE for generator schemas",
+      "evidence_ids": [
+        "E030",
+        "E031",
+        "E032",
+        "E033",
+        "E034",
+        "E037",
+        "E046",
+        "E053"
+      ],
+      "proposed_task_ids": [
+        "C0.01",
+        "C0.02",
+        "C0.03",
+        "C0.04",
+        "C0.05",
+        "C0.06",
+        "C0.07"
+      ],
+      "design_consequence": "Reuse development material only with its selection/split lineage",
+      "unresolved_item": "no new independent confirmation bank established."
+    },
+    {
+      "question_id": "G09",
+      "audit_status": "metadata inspected; hardware details partly BLOCKED",
+      "evidence_ids": [
+        "E050"
+      ],
+      "proposed_task_ids": [
+        "C0.01",
+        "C0.02",
+        "C0.03",
+        "C0.04",
+        "C0.05",
+        "C0.06",
+        "C0.07"
+      ],
+      "design_consequence": "Budget before execution; historical timings are not capacity promises",
+      "unresolved_item": "chip/core/memory and designated-venv package versions unknown."
+    },
+    {
+      "question_id": "G10",
+      "audit_status": "ESTABLISHED-IN-CODE / DOCUMENTED-ONLY",
+      "evidence_ids": [
+        "E020",
+        "E021",
+        "E044",
+        "E045",
+        "E046",
+        "E047",
+        "E048",
+        "E049",
+        "E054"
+      ],
+      "proposed_task_ids": [
+        "C0.01",
+        "C0.02",
+        "C0.03",
+        "C0.04",
+        "C0.05",
+        "C0.06",
+        "C0.07"
+      ],
+      "design_consequence": "Add isolated AI research modules; preserve frozen registries",
+      "unresolved_item": "deployment identity/schema migration remains later work."
+    },
+    {
+      "question_id": "C1-01",
+      "audit_status": "ESTABLISHED-IN-CODE / DERIVED-WITH-ASSUMPTIONS",
+      "evidence_ids": [
+        "E022",
+        "E023",
+        "E024"
+      ],
+      "proposed_task_ids": [
+        "C1.01",
+        "C1.02",
+        "C1.03"
+      ],
+      "design_consequence": "Use the tested contested-round oracle as a layout proxy",
+      "unresolved_item": "no exact deployed-law analytical mean."
+    },
+    {
+      "question_id": "C1-02",
+      "audit_status": "MISSING-INTERFACE",
+      "evidence_ids": [
+        "E002",
+        "E003",
+        "E004"
+      ],
+      "proposed_task_ids": [
+        "C1.01",
+        "C1.02",
+        "C1.03"
+      ],
+      "design_consequence": "Factor native initial-world loop; retain its continuation loop",
+      "unresolved_item": "no current explicit-world action evaluator."
+    },
+    {
+      "question_id": "C1-03",
+      "audit_status": "ESTABLISHED-IN-CODE / DERIVED-WITH-ASSUMPTIONS",
+      "evidence_ids": [
+        "E002",
+        "E003",
+        "E004",
+        "E005"
+      ],
+      "proposed_task_ids": [
+        "C1.01",
+        "C1.02",
+        "C1.03"
+      ],
+      "design_consequence": "Explicit independent stream namespaces; preserve comparator call schedule",
+      "unresolved_item": "batching invariance not newly tested."
+    },
+    {
+      "question_id": "C1-04",
+      "audit_status": "ESTABLISHED-IN-CODE",
+      "evidence_ids": [
+        "E005",
+        "E022",
+        "E023",
+        "E024",
+        "E027"
+      ],
+      "proposed_task_ids": [
+        "C1.01",
+        "C1.02",
+        "C1.03"
+      ],
+      "design_consequence": "Monte Carlo mean under exact chosen law, not imported closed form",
+      "unresolved_item": "strengthen constraints only as a separate candidate."
+    },
+    {
+      "question_id": "C1-05",
+      "audit_status": "UNKNOWN for proposed-branch costs/covariance",
+      "evidence_ids": [
+        "E037",
+        "E053"
+      ],
+      "proposed_task_ids": [
+        "C1.01",
+        "C1.02",
+        "C1.03"
+      ],
+      "design_consequence": "Pilot must measure attainable end-to-end benefit",
+      "unresolved_item": "no W128 NOLO-discard frequency, proxy/target covariance or buffer cost established."
+    },
+    {
+      "question_id": "C2-01",
+      "audit_status": "ESTABLISHED-IN-CODE",
+      "evidence_ids": [
+        "E005",
+        "E007",
+        "E016",
+        "E020",
+        "E041"
+      ],
+      "proposed_task_ids": [
+        "C2.01",
+        "C2.02"
+      ],
+      "design_consequence": "Define commitment versus reached-call estimands separately",
+      "unresolved_item": "native reconstruction is not behavioural conditioning."
+    },
+    {
+      "question_id": "C2-02",
+      "audit_status": "DERIVED-WITH-ASSUMPTIONS / BLOCKED for literal cancellation",
+      "evidence_ids": [
+        "E002",
+        "E004",
+        "E020"
+      ],
+      "proposed_task_ids": [
+        "C2.01",
+        "C2.02"
+      ],
+      "design_consequence": "Side-effect-isolated policy forks are required",
+      "unresolved_item": "querying all four is not behaviourally neutral."
+    },
+    {
+      "question_id": "C2-03",
+      "audit_status": "ESTABLISHED-IN-CODE / MISSING-INTERFACE",
+      "evidence_ids": [
+        "E003",
+        "E004",
+        "E011",
+        "E035"
+      ],
+      "proposed_task_ids": [
+        "C2.01",
+        "C2.02"
+      ],
+      "design_consequence": "Begin with the deterministic clone predecessor model",
+      "unresolved_item": "actual-search cache needs complete configuration and seed key."
+    },
+    {
+      "question_id": "C2-04",
+      "audit_status": "ESTABLISHED-IN-CODE / UNKNOWN frequencies",
+      "evidence_ids": [
+        "E005",
+        "E032"
+      ],
+      "proposed_task_ids": [
+        "C2.01",
+        "C2.02"
+      ],
+      "design_consequence": "Separate predecessor-event computation from public shown-card generation",
+      "unresolved_item": "unconditional reach denominators absent from inspected summaries."
+    },
+    {
+      "question_id": "C2-05",
+      "audit_status": "ESTABLISHED-IN-CODE",
+      "evidence_ids": [
+        "E005",
+        "E027",
+        "E039",
+        "E052"
+      ],
+      "proposed_task_ids": [
+        "C2.01",
+        "C2.02"
+      ],
+      "design_consequence": "Missing sound constraints are an independent engineering intervention",
+      "unresolved_item": "re-derive after exchange before use."
+    },
+    {
+      "question_id": "C3-01",
+      "audit_status": "ESTABLISHED-IN-CODE / lineage partly UNKNOWN",
+      "evidence_ids": [
+        "E004",
+        "E007",
+        "E012",
+        "E018",
+        "E019",
+        "E036"
+      ],
+      "proposed_task_ids": [
+        "C3b.01",
+        "C3a.01"
+      ],
+      "design_consequence": "Distinguish surrogate equity from score and match wins",
+      "unresolved_item": "equity artifact's exact generation sample not recorded."
+    },
+    {
+      "question_id": "C3-02",
+      "audit_status": "BLOCKED for unaugmented literal 100-state model",
+      "evidence_ids": [
+        "E002",
+        "E003",
+        "E004",
+        "E013",
+        "E014",
+        "E020"
+      ],
+      "proposed_task_ids": [
+        "C3b.01",
+        "C3a.01"
+      ],
+      "design_consequence": "A stationary score/dealer kernel requires an explicitly justified policy-state model",
+      "unresolved_item": "no practical finite reduction established for full persistent state."
+    },
+    {
+      "question_id": "C3-03",
+      "audit_status": "PARTIAL",
+      "evidence_ids": [
+        "E018",
+        "E019",
+        "E020"
+      ],
+      "proposed_task_ids": [
+        "C3b.01",
+        "C3a.01"
+      ],
+      "design_consequence": "Engine supports legal starting scores/dealers; correct policy row state is missing",
+      "unresolved_item": "cannot assume seat-rotation symmetry."
+    },
+    {
+      "question_id": "C3-04",
+      "audit_status": "PARTIAL / UNKNOWN available populated logs",
+      "evidence_ids": [
+        "E013",
+        "E014",
+        "E032"
+      ],
+      "proposed_task_ids": [
+        "C3b.01",
+        "C3a.01"
+      ],
+      "design_consequence": "Add retained joint transition rows; existing summaries insufficient",
+      "unresolved_item": "no inspected unsealed complete transition dataset with lifecycle snapshots."
+    },
+    {
+      "question_id": "C3-05",
+      "audit_status": "ESTABLISHED-IN-CODE / PROPOSED addition",
+      "evidence_ids": [
+        "E004",
+        "E007",
+        "E008",
+        "E009",
+        "E010"
+      ],
+      "proposed_task_ids": [
+        "C3b.01",
+        "C3a.01"
+      ],
+      "design_consequence": "Ordinary score-utility stopping is distinct from existing solver pruning",
+      "unresolved_item": "finite-seed equivalence needs RNG accounting."
+    },
+    {
+      "question_id": "C4-01",
+      "audit_status": "ESTABLISHED-IN-CODE",
+      "evidence_ids": [
+        "E006",
+        "E007",
+        "E008",
+        "E016",
+        "E017",
+        "E042",
+        "E043"
+      ],
+      "proposed_task_ids": [
+        "C4.01",
+        "C4.02"
+      ],
+      "design_consequence": "Giver and receiver have different inputs/masks",
+      "unresolved_item": "full learned-feature parity not present."
+    },
+    {
+      "question_id": "C4-02",
+      "audit_status": "ESTABLISHED-IN-CODE for schema / DOCUMENTED-ONLY population",
+      "evidence_ids": [
+        "E030",
+        "E037"
+      ],
+      "proposed_task_ids": [
+        "C4.01",
+        "C4.02"
+      ],
+      "design_consequence": "Pre-offer bytes are promising but selected population differs",
+      "unresolved_item": "manifest and ABI verification before later reuse."
+    },
+    {
+      "question_id": "C4-03",
+      "audit_status": "ESTABLISHED-IN-CODE",
+      "evidence_ids": [
+        "E002",
+        "E008",
+        "E030",
+        "E031"
+      ],
+      "proposed_task_ids": [
+        "C4.01",
+        "C4.02"
+      ],
+      "design_consequence": "Change give and return jointly; freeze offer/play explicitly",
+      "unresolved_item": "rollout conventions and defenders' beliefs remain hidden coupling."
+    },
+    {
+      "question_id": "C4-04",
+      "audit_status": "ESTABLISHED-IN-CODE with limits",
+      "evidence_ids": [
+        "E005",
+        "E016",
+        "E039"
+      ],
+      "proposed_task_ids": [
+        "C4.01",
+        "C4.02"
+      ],
+      "design_consequence": "Preserve uncertainty of privately transferred public cards",
+      "unresolved_item": "no blanket proof of all exchange constraints."
+    },
+    {
+      "question_id": "C4-05",
+      "audit_status": "PARTIAL / MISSING-INTERFACE",
+      "evidence_ids": [
+        "E003",
+        "E007",
+        "E033",
+        "E034",
+        "E035"
+      ],
+      "proposed_task_ids": [
+        "C4.01",
+        "C4.02"
+      ],
+      "design_consequence": "Add stage-specific legal scorers and data schema",
+      "unresolved_item": "existing156-head clone omits exchange action/message features."
+    },
+    {
+      "question_id": "C4-06",
+      "audit_status": "PARTIAL",
+      "evidence_ids": [
+        "E003",
+        "E007",
+        "E030",
+        "E031"
+      ],
+      "proposed_task_ids": [
+        "C4.01",
+        "C4.02"
+      ],
+      "design_consequence": "Branch from identical accepted pre-give state and restore policy forks",
+      "unresolved_item": "four-arm paired replay and full lifecycle cache missing."
+    },
+    {
+      "question_id": "C5-01",
+      "audit_status": "PARTIAL / objective mismatch ESTABLISHED-IN-CODE",
+      "evidence_ids": [
+        "E025",
+        "E026",
+        "E027",
+        "E028",
+        "E055",
+        "E056"
+      ],
+      "proposed_task_ids": [
+        "C5.01",
+        "C5.02"
+      ],
+      "design_consequence": "Reuse support machinery, replace objective/recursion",
+      "unresolved_item": "ordinary RAMI and v3 adapters not established."
+    },
+    {
+      "question_id": "C5-02",
+      "audit_status": "PARTIAL / BLOCKED for generic lossless key",
+      "evidence_ids": [
+        "E006",
+        "E007",
+        "E016",
+        "E017",
+        "E025",
+        "E028",
+        "E029"
+      ],
+      "proposed_task_ids": [
+        "C5.01",
+        "C5.02"
+      ],
+      "design_consequence": "Key complete actor legal history and personal state",
+      "unresolved_item": "reconstruction may lose ruleset and other-seat hand order."
+    },
+    {
+      "question_id": "C5-03",
+      "audit_status": "ESTABLISHED-IN-CODE / proposed adapter",
+      "evidence_ids": [
+        "E003",
+        "E004",
+        "E011",
+        "E035"
+      ],
+      "proposed_task_ids": [
+        "C5.01",
+        "C5.02"
+      ],
+      "design_consequence": "Deterministic native clone is the simplest fixed-policy model",
+      "unresolved_item": "actual search integration requires PolicyFork."
+    },
+    {
+      "question_id": "C5-04",
+      "audit_status": "MISSING-INTERFACE",
+      "evidence_ids": [
+        "E025",
+        "E026"
+      ],
+      "proposed_task_ids": [
+        "C5.01",
+        "C5.02"
+      ],
+      "design_consequence": "Add weighted-history groups and persistent root option",
+      "unresolved_item": "no existing expected-value contingent-plan store."
+    },
+    {
+      "question_id": "C5-05",
+      "audit_status": "PARTIAL / costs UNKNOWN for new objective",
+      "evidence_ids": [
+        "E025",
+        "E026",
+        "E053"
+      ],
+      "proposed_task_ids": [
+        "C5.01",
+        "C5.02"
+      ],
+      "design_consequence": "Gate on public information and full-support completion, enforce caps",
+      "unresolved_item": "1680 is a count ceiling, not a runtime proof."
+    },
+    {
+      "question_id": "C5-06",
+      "audit_status": "MISSING-INTERFACE",
+      "evidence_ids": [
+        "E002",
+        "E003",
+        "E004",
+        "E025",
+        "E026"
+      ],
+      "proposed_task_ids": [
+        "C5.01",
+        "C5.02"
+      ],
+      "design_consequence": "Compare complete options, not just first actions",
+      "unresolved_item": "W128 future-call state fork is prerequisite."
+    }
+  ]
+}

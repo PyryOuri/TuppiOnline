@@ -1,0 +1,43 @@
+# Isolated local qualification only. No user home, credentials or live app mounts.
+minimumLimaVersion: 2.2.1
+vmType: vz
+cpus: 1
+memory: 3GiB
+disk: 12GiB
+images:
+  - location: /Users/pyryouri/Developer/toolchains/lima-2.2.1/ubuntu-26.04-minimal-arm64.img
+    arch: aarch64
+    digest: sha256:768d6339844cb8a86c7287e9ac7b9d71ddc391531ad2521b72d22f0833660b01
+mounts:
+  - location: /Users/pyryouri/Developer/deploy/TuppiNetwork
+    writable: false
+  - location: /Users/pyryouri/Developer/deploy/TuppiNetwork-compact128
+    writable: false
+mountType: virtiofs
+ssh:
+  loadDotSSHPubKeys: false
+  forwardAgent: false
+vmOpts:
+  vz:
+    rosetta:
+      enabled: true
+      binfmt: true
+containerd:
+  system: false
+  user: false
+provision:
+  - mode: system
+    script: |
+      #!/bin/sh
+      set -eu
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update
+      apt-get install -y --no-install-recommends docker.io
+      systemctl enable --now docker
+portForwards:
+  - guestPort: 18741
+    hostPort: 18741
+    hostIP: 127.0.0.1
+  - guestPortRange: [1, 65535]
+    proto: any
+    ignore: true

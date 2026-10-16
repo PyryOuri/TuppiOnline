@@ -1,0 +1,49 @@
+{
+  "schema": "tuppi.cheap_wins.plan.v1",
+  "name": "heuristic_guard_costing",
+  "stage": "costing",
+  "execution_enabled": false,
+  "budget_cpu_seconds": 540,
+  "budget_wall_seconds": 720,
+  "jobs": [
+    {
+      "id": "baseline_vs_heuristic",
+      "kind": "duplicate",
+      "arm": "baseline",
+      "worlds": 1024,
+      "samples": 2,
+      "seed": "cw-guard-costing-v1",
+      "scores": "uniform",
+      "serial": true,
+      "cpu_seconds": 180,
+      "wall_seconds": 240,
+      "opponent": "heuristic_v3"
+    },
+    {
+      "id": "hard_anchor_vs_heuristic",
+      "kind": "duplicate",
+      "arm": "hard_anchor",
+      "worlds": 1024,
+      "samples": 2,
+      "seed": "cw-guard-costing-v1",
+      "scores": "uniform",
+      "serial": true,
+      "cpu_seconds": 180,
+      "wall_seconds": 240,
+      "opponent": "heuristic_v3"
+    },
+    {
+      "id": "suit_ensemble_vs_heuristic",
+      "kind": "duplicate",
+      "arm": "suit_ensemble",
+      "worlds": 1024,
+      "samples": 2,
+      "seed": "cw-guard-costing-v1",
+      "scores": "uniform",
+      "serial": true,
+      "cpu_seconds": 180,
+      "wall_seconds": 240,
+      "opponent": "heuristic_v3"
+    }
+  ]
+}

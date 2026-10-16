@@ -1,0 +1,21 @@
+{
+  "job": {
+    "id": "match_smoke",
+    "kind": "match_cost",
+    "arm": "baseline",
+    "worlds": 4,
+    "samples": 1,
+    "seed": "cw-match_smoke-v1",
+    "scores": "zero",
+    "serial": true,
+    "cpu_seconds": 25,
+    "wall_seconds": 30,
+    "opponent": "baseline",
+    "match_cap": 2
+  },
+  "context": {
+    "package_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "controller_lifecycle": "retained",
+    "design": "preparation_smoke"
+  }
+}

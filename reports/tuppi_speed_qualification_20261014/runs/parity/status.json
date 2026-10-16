@@ -1,0 +1,153 @@
+{
+  "schema": "tuppi.speed_qualification.stage.v1",
+  "stage": "parity",
+  "complete": true,
+  "all_exact": true,
+  "cpu_charged_seconds": 86.250885,
+  "wall_charged_seconds": 90.6659499539528,
+  "jobs": [
+    {
+      "job": "native_roots_reference",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 1.96851,
+      "wall_seconds": 2.2637382498942316,
+      "result_sha256": "dc725b1c9ae564a334ed01ee06787daf8be10619ccc379f8ac2ed0221342603d"
+    },
+    {
+      "job": "native_roots_combo32",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 1.3538749999999997,
+      "wall_seconds": 2.0583334157709032,
+      "result_sha256": "bf28b3e0b31e29de3794f481c978f95984234ed3f01186056a99e6d9588881d0"
+    },
+    {
+      "job": "native_roots_combo128",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 1.3111560000000004,
+      "wall_seconds": 1.7992226670030504,
+      "result_sha256": "586b045bef547626729e755e53701227252a157ae44286c5625e487fd03e8844"
+    },
+    {
+      "job": "native_roots_compact128",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 1.2489690000000002,
+      "wall_seconds": 1.662698291009292,
+      "result_sha256": "02f4314dcbc806b11d9d83df1a13af6b6434014eaaac7c554fa1cc7461ec8fe6"
+    },
+    {
+      "job": "history_bank_reference",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 12.539896000000002,
+      "wall_seconds": 12.9187624999322,
+      "result_sha256": "11efd42b147b3a83facfe091d765ad452762b328e776872c89f8e1c382710282"
+    },
+    {
+      "job": "history_bank_combo32",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 11.356193999999997,
+      "wall_seconds": 11.689807958202437,
+      "result_sha256": "1815b0c2ea89338a48664c76efd8ecd251f0490bad0952f129e8048682bb6dcd"
+    },
+    {
+      "job": "history_bank_combo128",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 10.972050000000001,
+      "wall_seconds": 11.26574583305046,
+      "result_sha256": "4efb2c652b12abe773fd2e0fff4d982f8aab0b7c4635478e66c89004377d35a4"
+    },
+    {
+      "job": "history_bank_compact128",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 10.664739000000004,
+      "wall_seconds": 10.949730541091412,
+      "result_sha256": "b8486ffe7da891d2631c64aa1d3e44bd96d3f1d3de5931458ffe422a4a8a3090"
+    },
+    {
+      "job": "forced_sooli_reference",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 8.319716999999992,
+      "wall_seconds": 8.596491791075096,
+      "result_sha256": "cf8630ac6595758e63c573e8b934e28c5e47a933d972f108ad69110a9473bf66"
+    },
+    {
+      "job": "forced_sooli_combo32",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 8.871581999999993,
+      "wall_seconds": 9.173504750011489,
+      "result_sha256": "d7e6c7cdc8032149e8c79dad48b050d0cccc738efa37133846b21b6e37b4aef1"
+    },
+    {
+      "job": "forced_sooli_combo128",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 8.843889000000015,
+      "wall_seconds": 9.160941791022196,
+      "result_sha256": "81947328083f165551568bed3a539e4355715b63125a72e629a0e9909bbc5d66"
+    },
+    {
+      "job": "forced_sooli_compact128",
+      "success": true,
+      "returncode": 0,
+      "child_cpu_seconds": 8.80030799999999,
+      "wall_seconds": 9.126972165890038,
+      "result_sha256": "3905d5c1de8e55169a8e3af96560f548d02ea00f33c0196a4a9163efe0d0e46d"
+    }
+  ],
+  "comparisons": [
+    {
+      "job": "native_roots_combo32",
+      "reference": "native_roots_reference",
+      "exact": true
+    },
+    {
+      "job": "native_roots_combo128",
+      "reference": "native_roots_reference",
+      "exact": true
+    },
+    {
+      "job": "native_roots_compact128",
+      "reference": "native_roots_reference",
+      "exact": true
+    },
+    {
+      "job": "history_bank_combo32",
+      "reference": "history_bank_reference",
+      "exact": true
+    },
+    {
+      "job": "history_bank_combo128",
+      "reference": "history_bank_reference",
+      "exact": true
+    },
+    {
+      "job": "history_bank_compact128",
+      "reference": "history_bank_reference",
+      "exact": true
+    },
+    {
+      "job": "forced_sooli_combo32",
+      "reference": "forced_sooli_reference",
+      "exact": true
+    },
+    {
+      "job": "forced_sooli_combo128",
+      "reference": "forced_sooli_reference",
+      "exact": true
+    },
+    {
+      "job": "forced_sooli_compact128",
+      "reference": "forced_sooli_reference",
+      "exact": true
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "schema": "tuppi.compact128.integration.validation.v1",
+  "passed": true,
+  "completed_utc": "2026-10-14T16:21:24.843076+00:00",
+  "gates": [
+    "PROMOTION.json",
+    "HOSTED_HTTP_CHECKS.json",
+    "checks/release-regressions.json",
+    "checks/linux-image-game.json",
+    "checks/native-oracles-macos.json",
+    "checks/native-oracles-linux.json",
+    "checks/frozen-models-preserved.json",
+    "checks/context-preserved.json",
+    "checks/cleanup.json",
+    "checks/macos-w128-parity.json",
+    "checks/macos-w1024-parity.json",
+    "checks/wasm-w128-parity.json",
+    "checks/wasm-w1024-parity.json",
+    "checks/macos-pair-1-exact.json",
+    "checks/macos-pair-2-exact.json",
+    "checks/macos-pair-3-exact.json",
+    "checks/linux-pair-1-exact.json",
+    "checks/linux-pair-2-exact.json",
+    "checks/linux-pair-3-exact.json",
+    "checks/wasm-pair-1-exact.json",
+    "checks/wasm-pair-2-exact.json",
+    "checks/wasm-pair-3-exact.json"
+  ],
+  "source_commits": {
+    "TuppiAI-hosted": {
+      "commit": "e8bb6b8cb28b7e64345cb7eaef64bdbd75a7c52d",
+      "branch": "maintenance/hosted-bot-20261014",
+      "status": ""
+    },
+    "TuppiBrowser": {
+      "commit": "ef67d99523466e968a268668abb3c4ed48011cf9",
+      "branch": "main",
+      "status": ""
+    },
+    "TuppiBrowser-offline-release": {
+      "commit": "64f3347aca00787bef1494e6b83e69779f9df616",
+      "branch": "maintenance/hosted-offline-20261014",
+      "status": ""
+    },
+    "TuppiProject-browser-network": {
+      "commit": "3cfd8be26c6afa31482c3a8e4767fcd5db890b5e",
+      "branch": "feature/browser-network-20261014",
+      "status": ""
+    },
+    "deploy/TuppiOffline": {
+      "commit": "87146bf0f77afb8a556ff7f0aae17cfde8c9ba8b",
+      "branch": "main",
+      "status": ""
+    }
+  },
+  "sealed_original_files_verified": 337,
+  "offline_release": "2a95a46c2300ffa8280607c137a33ba94763840b62ce591a93ad528af458d70d",
+  "runtime_identity": "95497f1ebdf0979b8463f3822cf3db85ad8495ed85ae1fe3e5b3b09962871b5d",
+  "site_deployment": {
+    "id": "appgdep_6acfaba3a37c8191bb55292185760724",
+    "project_id": "appgprj_6acf1b2a186481918355036974056546",
+    "title": "Tuppi",
+    "version_id": "appgprj_6acf1b2a186481918355036974056546~appgver_38eb4edd8d448191996035892a795689",
+    "type": "publish",
+    "status": "succeeded",
+    "url": "https://tuppi-offline-202b74f.sos-health-p-7158.chatgpt.site",
+    "has_mcp": false,
+    "screenshot_asset_pointer": null,
+    "provider_deployment_id": "site---6acf1b2a186481918355036974056546",
+    "failure_message": null,
+    "env_set_revision": 0,
+    "updated_at": "2026-10-14T16:20:24.142703+00:00"
+  },
+  "linux_image": {
+    "id": "sha256:4e06ba23054169287c40f6cbeb2894549f7fff8c8c99b90e986056d4d6fce525",
+    "architecture": "amd64",
+    "os": "linux"
+  },
+  "pending": [
+    "physical iPhone installation/offline/lifecycle/performance acceptance",
+    "native production-host capacity qualification and hosting/billing selection",
+    "public friends/network release"
+  ],
+  "scope": "Qualified compact128 integration and finite exactness/timing; no training, new research mechanisms, strength claim, live native replacement or paid hosting"
+}

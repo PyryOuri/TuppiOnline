@@ -1,0 +1,90 @@
+{
+  "schema": "tuppi.additional_exact_wins.probes.v1",
+  "native_root_parity": {
+    "reference": true,
+    "forced_rows": true,
+    "scratch": true,
+    "chunk128": true,
+    "combined_speed": true
+  },
+  "mlp_parity": {
+    "reference": true,
+    "scratch": true
+  },
+  "game_parity": {
+    "forced_rows": true,
+    "scratch": true,
+    "chunk128": true,
+    "combined_speed": true
+  },
+  "timing_observations": {
+    "reference": {
+      "worlds": 128,
+      "deals": 2,
+      "cpu_seconds": 11.063543000000001,
+      "wall_seconds": 11.308997499989346,
+      "cpu_reduction_vs_reference": 0.0,
+      "rollout_rows": 693081,
+      "forced_rows": 109888,
+      "all_forced_chunk_rows": 994,
+      "mlp_calls": 39277,
+      "mlp_rows": 693081,
+      "scratch_grows": 0
+    },
+    "forced_rows": {
+      "worlds": 128,
+      "deals": 2,
+      "cpu_seconds": 10.840949,
+      "wall_seconds": 11.11276966589503,
+      "cpu_reduction_vs_reference": 0.0201195946000301,
+      "rollout_rows": 693081,
+      "forced_rows": 109888,
+      "all_forced_chunk_rows": 994,
+      "mlp_calls": 39245,
+      "mlp_rows": 692087,
+      "scratch_grows": 0
+    },
+    "scratch": {
+      "worlds": 128,
+      "deals": 2,
+      "cpu_seconds": 11.136695000000001,
+      "wall_seconds": 11.411587666952983,
+      "cpu_reduction_vs_reference": -0.006611986774941903,
+      "rollout_rows": 693081,
+      "forced_rows": 109888,
+      "all_forced_chunk_rows": 994,
+      "mlp_calls": 39277,
+      "mlp_rows": 693081,
+      "scratch_grows": 1
+    },
+    "chunk128": {
+      "worlds": 128,
+      "deals": 2,
+      "cpu_seconds": 10.274735,
+      "wall_seconds": 10.536609166068956,
+      "cpu_reduction_vs_reference": 0.07129795581758946,
+      "rollout_rows": 693081,
+      "forced_rows": 109888,
+      "all_forced_chunk_rows": 512,
+      "mlp_calls": 9878,
+      "mlp_rows": 693081,
+      "scratch_grows": 0
+    },
+    "combined_speed": {
+      "worlds": 128,
+      "deals": 2,
+      "cpu_seconds": 8.526352,
+      "wall_seconds": 8.789496207842603,
+      "cpu_reduction_vs_reference": 0.22932897716400624,
+      "rollout_rows": 693081,
+      "forced_rows": 109888,
+      "all_forced_chunk_rows": 994,
+      "mlp_calls": 21704,
+      "mlp_rows": 692087,
+      "scratch_grows": 1
+    }
+  },
+  "wall_seconds": 67.62413112493232,
+  "prior_harness_failure": "checks/roots_installed.log: double snapshot activation before gameplay, corrected in this explicit second attempt",
+  "qualification": "Exact only on checked inputs. Two retained W128 deals, one execution per variant; cost observations include process startup, not strength evidence or repeated speed estimates."
+}

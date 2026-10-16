@@ -1,0 +1,919 @@
+{
+ "assets": {
+  "equity": {
+   "audit_sha256": "1496f77104f411c5cb55e2cef4573a10aead59acbd643261b755886bfeb60b91",
+   "matches_audit": true,
+   "path": "/Users/pyryouri/Developer/TuppiAI/models/equity_incumbent.json",
+   "sha256": "1496f77104f411c5cb55e2cef4573a10aead59acbd643261b755886bfeb60b91"
+  },
+  "installed_dylib": {
+   "audit_sha256": "02d9b4fad98ebb342e12cd9ecb4723aaee1406c6c6b539a1dc4a5b2b002c1ab8",
+   "matches_audit": true,
+   "path": "/Users/pyryouri/Developer/TuppiAI/native/libtuppi.dylib",
+   "sha256": "02d9b4fad98ebb342e12cd9ecb4723aaee1406c6c6b539a1dc4a5b2b002c1ab8"
+  },
+  "rollout_model": {
+   "audit_sha256": "38737c9042695a4c960157fb77a8d17f308c5773899c2ec0c65b0d20546324f1",
+   "matches_audit": true,
+   "path": "/Users/pyryouri/Developer/TuppiAI/models/rollout_clone_small.pt",
+   "sha256": "38737c9042695a4c960157fb77a8d17f308c5773899c2ec0c65b0d20546324f1"
+  }
+ },
+ "checkouts": {
+  "AI": {
+   "alias": "AI",
+   "audit_head": "4220f249e351905deb3a3754de812a01acf152d7",
+   "branch": "main",
+   "dirty": [
+    {
+     "path": ".DS_Store",
+     "sha256": "48b4fda6ba4f162a2d51ebd03996bd08377ef41dc22a5e5e2b23f2785de7c9ac",
+     "status": " M"
+    },
+    {
+     "path": "docs/TASKS.md",
+     "sha256": "d4097aa0b168388717c43460ef157a5d415a7e17848108ea57990f42ff2f82f2",
+     "status": " M"
+    }
+   ],
+   "head": "4220f249e351905deb3a3754de812a01acf152d7",
+   "head_matches_audit": true,
+   "path": "/Users/pyryouri/Developer/TuppiAI"
+  },
+  "CLIENT": {
+   "alias": "CLIENT",
+   "audit_head": "7ba8ca283f01794170d105ba08c5a799f7bd7909",
+   "branch": "feature/v3-locked-bids-sooli",
+   "dirty": [
+    {
+     "path": "Sources/TuppiClient/ReferencePolicy.swift",
+     "sha256": "03c80157e9751789f5827b6117cef32b113f6d208dfe2ff101f31ecc6de9ca28",
+     "status": "??"
+    },
+    {
+     "path": "Tests/TuppiClientTests/ReferencePolicyTests.swift",
+     "sha256": "bb537f5161a6799d30068b7a7fd0d49b17537b68fa3b4ebd4fe3f42ffdf2955a",
+     "status": "??"
+    }
+   ],
+   "head": "7ba8ca283f01794170d105ba08c5a799f7bd7909",
+   "head_matches_audit": true,
+   "path": "/Users/pyryouri/Developer/TuppiClient-current"
+  },
+  "ENGINE": {
+   "alias": "ENGINE",
+   "audit_head": "1347153f7d6e7bed95edddce9d35d28a3df91750",
+   "branch": "rules/project-target-v3-locked-bids",
+   "dirty": [],
+   "head": "1347153f7d6e7bed95edddce9d35d28a3df91750",
+   "head_matches_audit": true,
+   "path": "/Users/pyryouri/Developer/TuppiProject-current"
+  },
+  "RESEARCH": {
+   "alias": "RESEARCH",
+   "audit_head": "622d5599318e4f1b2a82ef53bfc141970edc24de",
+   "branch": "phase7/reference-policy-identity",
+   "dirty": [
+    {
+     "path": "README.md",
+     "sha256": "8255a9950c99661f6a9154d8f05c263dd7810ccc0b122cf42bb4699e3d71c96b",
+     "status": " M"
+    },
+    {
+     "path": "docs/nolo/compact_backend.md",
+     "sha256": "58e44562d3f70a69d7b86596de0ad3da6d90024c07bcffd6d87ed2864e5cc047",
+     "status": "??"
+    },
+    {
+     "path": "docs/nolo/hypotheses-n10.md",
+     "sha256": "95a76b5d135f490b9628d028add9fe0394e623e14e5e611db72646721c8c114f",
+     "status": "??"
+    },
+    {
+     "path": "docs/nolo/hypotheses-n11.md",
+     "sha256": "ec2dd3e2ded2eaf1cfd94e2f26ca365e6a345ba002f98a8098dec468ccb470a3",
+     "status": "??"
+    },
+    {
+     "path": "docs/nolo/n10_positions.json",
+     "sha256": "daba7411fc237352582cb1189643a3f7c47505633e940212e76ab5f0477315ab",
+     "status": "??"
+    },
+    {
+     "path": "docs/nolo/results/N10.md",
+     "sha256": "afd4c481bde6422c7bb037e52c5eafb4a62d526537067fe0ad208f011bef8cb4",
+     "status": "??"
+    },
+    {
+     "path": "docs/nolo/results/N10_sources.json",
+     "sha256": "c1f63346f5e16b8d7dedc181c99289637dad95e0a2dcbd28f3dada199888e492",
+     "status": "??"
+    },
+    {
+     "path": "docs/nolo/results/N11.md",
+     "sha256": "a365a852e411110fd2a7fc650a6df1b503131965c6c79551ff8e725f1df7ec1a",
+     "status": "??"
+    },
+    {
+     "path": "docs/nolo/tasks/README.md",
+     "sha256": "723b3c2dc37dca38453e401bc40882cc9a000597f554f787d5896b0aaefcba41",
+     "status": " M"
+    },
+    {
+     "path": "docs/nolo/tasks/fixtures.json",
+     "sha256": "b05adf7da1731f8d96968020e28ce7d16632028d8c5b1ba37906b89d7d44af2a",
+     "status": " M"
+    },
+    {
+     "path": "docs/nolo/tasks/source_manifest.json",
+     "sha256": "400264f419241539fdf9d5711b81b854db482ba6c5e3b98bacef6da123b9a303",
+     "status": " M"
+    },
+    {
+     "path": "docs/valuation/handoff.md",
+     "sha256": "ea36aa2a6a333842053dc97feb3d6da5942274123ac96b9deffeb0212b78c542",
+     "status": "??"
+    },
+    {
+     "path": "docs/valuation/holding_valuation.md",
+     "sha256": "626cda248acd33bf0c10598f3c8bf37b7b7a856ba970a1888c10915d20ba5c74",
+     "status": "??"
+    },
+    {
+     "path": "docs/valuation/hypotheses_nolo_ducking.md",
+     "sha256": "9422b938466dd7b12ecdbd0a9de75658cb93d328cd5299993e958e7ec121466d",
+     "status": "??"
+    },
+    {
+     "path": "docs/valuation/nolo_ducking_results.md",
+     "sha256": "5f048b9925858b53721fdeeb50c93df51866609fb5698ecab5e25a82cedf7284",
+     "status": "??"
+    },
+    {
+     "path": "docs/valuation/phase_a_results.md",
+     "sha256": "6dcfc092cea6b254284aa475dc7535e01fe6aae4c0a8b143f5b12bba474cdec3",
+     "status": "??"
+    },
+    {
+     "path": "docs/valuation/phase_c_results.md",
+     "sha256": "d1df5c00835123491060bb13346d6a545b7036e71c84e19e48bcfd6b63e9e04b",
+     "status": "??"
+    },
+    {
+     "path": "docs/valuation/phase_d_results.md",
+     "sha256": "cb5f75b85a10c52aebbbb74ca345a64aaddab8607a520c8388a62524319fdac3",
+     "status": "??"
+    },
+    {
+     "path": "docs/valuation/rami_declaration.md",
+     "sha256": "1b6785e72b78e94379df57e29fe002fc6bb5b6359d38b6b4b391c3cc4e80d894",
+     "status": "??"
+    },
+    {
+     "path": "docs/valuation/void_seeking_lead.md",
+     "sha256": "371f99c36b91ca8afc278092c9347e63ab7ce54645111a164b5f60b03f5afb91",
+     "status": "??"
+    },
+    {
+     "path": "pyproject.toml",
+     "sha256": "cb13c3515c5e39ea283e70812211e89e5068f6b77909159b912747f7bdb56d34",
+     "status": " M"
+    },
+    {
+     "path": "schemas/network/completed_deal_analysis_v3.schema.json",
+     "sha256": "b35eae04de694cd3cde74175d03a1eecb13be1392218f33557b554b717848654",
+     "status": " M"
+    },
+    {
+     "path": "src/tuppi_eval/agents.py",
+     "sha256": "4512539a87be2d972fa55d340448bad3d238def8373c1bc4311dc85f10f3078c",
+     "status": " M"
+    },
+    {
+     "path": "src/tuppi_llm/__init__.py",
+     "sha256": "ebe5713e68bd1dafa5a20d8445cb84b4f3ecd1e4ccf037edf348f19a22e8724d",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_llm/agent.py",
+     "sha256": "ecba7c83375355bc54ddab615fd7bb0a26230391166665bfbf01b717385e18a5",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_llm/case_codec.py",
+     "sha256": "6feb6becd38ca69c013b7093c1cd6a3d0451b0e06089183412eee8109edac286",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_llm/cli_invocation.py",
+     "sha256": "4c1f3cf6285ad26f3088fa5dac4ecd75dca85e82e513e82b45b7041012140d12",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_llm/config.py",
+     "sha256": "8f504bf8893faf0e29c2fa1325e38578f032735832ca6659154bb841d7a9e663",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_llm/diagnostics.py",
+     "sha256": "548cae60d6052521f4c5deaae6e9803a49d6fc16e5e5d84c9b46a6756d405b3c",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_llm/errors.py",
+     "sha256": "efd9706b1b2b1a997c309556197ddd14c75d42834a713926f1775914f1c95b74",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_llm/evaluation.py",
+     "sha256": "4c037389d2c9404ec4f2e5bda3fb34a9c00a5dacb0a0d8ad9da324673b136c7e",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_llm/prompting.py",
+     "sha256": "5bf4f154f321be3d27a2b80438da2e21b86223ad5a926c3ec8728add64d90035",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_llm/tools.py",
+     "sha256": "aa4c115f3563ba5dea1a3f4a7160f31a35131aae28eb42b3c778b0d6d8dc9c4a",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_llm/tools_server.py",
+     "sha256": "ef5a4e431e475e34e22f9f43144cccfc551f76ec43ea06f599efa6e98ce0c3fd",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_nolo/adapter.py",
+     "sha256": "1ed68ba7a468da131fc5d730b23905bdc241061c56a5cb43bdcc7425736f9bf6",
+     "status": " M"
+    },
+    {
+     "path": "src/tuppi_nolo/certificates.py",
+     "sha256": "05993f0ec2e148cac440a6afaec0561b7325e4595915a8b0c8a88c2ac386f5c0",
+     "status": " M"
+    },
+    {
+     "path": "src/tuppi_nolo/compact.py",
+     "sha256": "cb539ff061fe9bc51312ba724f9ae166eb4c22f30fbdaddd951485d2333a8202",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_nolo/coverage.py",
+     "sha256": "eedd46beb316969f6837a5fb137f46be6e50fd75469aad482e8aec3f39ae20da",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_nolo/performance.py",
+     "sha256": "bec8dfeaf34e92fd35eb0390a5234975aa33586dd3bb17edeb83de26687d6efb",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_nolo/security.py",
+     "sha256": "38c06318d9369f476eeb33b6721d83c17d35f18f7dae7a00f4998267ec52813f",
+     "status": " M"
+    },
+    {
+     "path": "src/tuppi_nolo/support.py",
+     "sha256": "c984fe4084c26aa4f551ef5632c14ea24a2c687dfd3f47dbe85826295dd546c2",
+     "status": " M"
+    },
+    {
+     "path": "src/tuppi_server/analysis.py",
+     "sha256": "bf1f04d71f6b4534d40c9597b410cb9d2cd8472a9b95050c502296117f1c07ec",
+     "status": " M"
+    },
+    {
+     "path": "src/tuppi_server/completed_deal_review.py",
+     "sha256": "a3663da4f8504adf3981bbe3224541fe131d838f122341e57ecd136ab06b3103",
+     "status": " M"
+    },
+    {
+     "path": "src/tuppi_server/match_runner.py",
+     "sha256": "42dc6a77ee57895a2c1c37b40ff01edf527bc1c4c600df0cf2825e3f37ab1020",
+     "status": " M"
+    },
+    {
+     "path": "src/tuppi_server/post_match_diagnostics.py",
+     "sha256": "202237189171dc5503922ef4bc2bd1de424f9e8baa202a6a457b77cbaa295d64",
+     "status": " M"
+    },
+    {
+     "path": "src/tuppi_valuation/__init__.py",
+     "sha256": "0b7c13f75f27fe23872404f88103ea34e4b407c596f27f991496018987a899d6",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/agents.py",
+     "sha256": "75414871e283c5f26e30fbd96f464c8d69a42cac43a561998dff452f61913e30",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/attribution.py",
+     "sha256": "ea6d3c82f287502bc472a28903d9382f22e674feccd2518d58046f4ecb7c60e2",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/corpus.py",
+     "sha256": "9207a0ce8778408cbf375f229342d717f7d72ca784ee533c9f9b10779ce3e3a3",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/designed.py",
+     "sha256": "612ad3eb6f7a66388b59c5333960b875138691a1c89bde670e72a58de5ebaa4d",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/equity.py",
+     "sha256": "360dc9e77c894aa85faf5f03dd64e6cb5bf160855e91324fc5e0911a53375886",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/errors.py",
+     "sha256": "65c211df000c1f08a0351347f64f191ef479a73fe42f0593578b3bfe63d47c66",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/holdings.py",
+     "sha256": "4733ab1271684314af94bf0106ab47c0f90fc86b9668f5610ef9093abfe34abb",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/metrics.py",
+     "sha256": "6559dce1df385dff89282e563cae9f01ec4a3d2a0fac0e5fe8d4fed71cbb70ec",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/play.py",
+     "sha256": "6230f15d3e205745227a779f0749683d15abde6337e8681cf82dc43e2fd8fec7",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/runner.py",
+     "sha256": "bab5726aa4d8fa04d903dcea8ac9d08fc40c2d21a8b31e5f36b2b6e678718e3b",
+     "status": "??"
+    },
+    {
+     "path": "src/tuppi_valuation/suits.py",
+     "sha256": "e8f8dcddc83d6353dd4b13c820479afc13540a3cb47994a702594971723e86f0",
+     "status": "??"
+    },
+    {
+     "path": "tests/agents/test_nolo_discard.py",
+     "sha256": "52f234aa5c6417df709e9fbdd5b9cc362b65f1396937a209f6a95ada0fe42a27",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/__init__.py",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/conftest.py",
+     "sha256": "8657f8644d3458bf6038cf4db3a94dde4a1e5a85a6ff13f31c90ff3825925591",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/test_agent.py",
+     "sha256": "d58097a59e1f7988ef5f6d5d80082a599680580b6e672f2bb3c62504511ce06a",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/test_case_codec.py",
+     "sha256": "3a394deb53c96b4b80a4faec54c3b1098af97f09a23fc716ac5b79578061b1c0",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/test_cli_invocation.py",
+     "sha256": "4663223ae4bf8544dc781c7ab6a19a3a952b8b4b50a05aab485d48d057b79473",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/test_config.py",
+     "sha256": "e599a51ffbb6f6d44be974a20ee940124c3a2a10d46c89409d8c7202633e5f81",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/test_evaluation.py",
+     "sha256": "764e963e45bfa966dfb853b64c92c2aa7255f7a7ef5f8ed5e5676c29de0d2ebd",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/test_live_smoke.py",
+     "sha256": "620a85b43fd76b6d5862efcece44320518d193c2d3d0efd70806e09c93729d1a",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/test_prompting.py",
+     "sha256": "dbd81dc66726053e607a79a55ed03c53665437883ed06065f6c90ea183fb136e",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/test_tools.py",
+     "sha256": "b66f3867ac7b2150b93e42c4a26711df5233abd07742d7bc0215560365452eea",
+     "status": "??"
+    },
+    {
+     "path": "tests/llm/test_wiring.py",
+     "sha256": "7bbaa3745603ee6af523698411e1a352b9428b2cf4529c024af8550e67e91aa8",
+     "status": "??"
+    },
+    {
+     "path": "tests/nolo/test_compact.py",
+     "sha256": "4362366f656599df34c4343db9a1023de914e15ac10e5d24c1204bf5d1fe9b1f",
+     "status": "??"
+    },
+    {
+     "path": "tests/nolo/test_support.py",
+     "sha256": "99b0392e6a88d70c5fa112a01aecab4b108e10867ac1ce0db46dad861f0c6436",
+     "status": " M"
+    },
+    {
+     "path": "tests/server/test_completed_deal_review.py",
+     "sha256": "0851f55cc12c3266d9096b82131c720441578a81b5a14de45f9f5b29729a3fd7",
+     "status": " M"
+    },
+    {
+     "path": "tests/server/test_match_runner.py",
+     "sha256": "bc6c1f940675ef8df7c4ae1dc972f843b6012dc7346913c4cf4571a813b05bf2",
+     "status": " M"
+    },
+    {
+     "path": "tests/server/test_post_match_diagnostics.py",
+     "sha256": "0ee30593f27505d929b95abdb74eb747551c4d1d1b613310771001138391c283",
+     "status": " M"
+    },
+    {
+     "path": "tests/valuation/test_agents.py",
+     "sha256": "9a3f75eb921e6246e29f0eed8d982f1adaa665eda66ea95d08437473d69d3fa6",
+     "status": "??"
+    },
+    {
+     "path": "tests/valuation/test_attribution_and_corpus.py",
+     "sha256": "aa767346be5809902fd6ca3c695c45613c92944c4829024123d1a269ba2da7ca",
+     "status": "??"
+    },
+    {
+     "path": "tests/valuation/test_equity.py",
+     "sha256": "55440c70caa78bfca40c0b23747330a0d391e823503a59236bad9e7aa6dca8fe",
+     "status": "??"
+    },
+    {
+     "path": "tests/valuation/test_metrics.py",
+     "sha256": "6ece2b3fcdedf53a4cd415576700fafb57f9a56d878fe66f1a23a2fedb4a0401",
+     "status": "??"
+    },
+    {
+     "path": "tests/valuation/test_play_and_designed.py",
+     "sha256": "a6ddb4b34eb296417b938a2ba94876fea1017927727fab36fbca42fce9c7c871",
+     "status": "??"
+    },
+    {
+     "path": "tests/valuation/test_suits.py",
+     "sha256": "d118a381329744e61c712abb0fafb486f28d376ca2761bb15e11bb6907bb14e3",
+     "status": "??"
+    },
+    {
+     "path": "tools/human_vs_bot.py",
+     "sha256": "4d567193a5e07aa6c1c9d4a3cce5f71aaa275c837f142a57cf5133d024323b7a",
+     "status": "??"
+    },
+    {
+     "path": "tools/measure_nolo_discard.py",
+     "sha256": "c3ca1f3de584cdf172b558490174479b83811fe277d2e3717a1914e9843f2357",
+     "status": "??"
+    },
+    {
+     "path": "tools/measure_odds_calibration.py",
+     "sha256": "96854dda8335573b493fdb7b621feb07792a83b28ecb1b316a5e734612e89679",
+     "status": "??"
+    },
+    {
+     "path": "tools/measure_odds_ceiling.py",
+     "sha256": "ce8bfc04c2cbf5e4be7d11503442a10eafe5755f1a7de9f5d868f79b012ec4a5",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/NOLO-0-observation.pstats",
+     "sha256": "3d752013cc8c6de7a69ad9be7a4f38484a45c0c07002a6a3cefcad09defdca8c",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/NOLO-0-transition.pstats",
+     "sha256": "e62b2697dabeab676e78097046edb17929c4becfadc4d60dc5d9f7c2d4ce8621",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/NOLO-12-observation.pstats",
+     "sha256": "0ffa2687786849e0834c77c36d6fee86ebb9c96d73c99c8bd7ab0406233f5d0e",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/NOLO-12-transition.pstats",
+     "sha256": "71623094b45998e74abf474f580e024972b84af4078d90cf0f9ea3f9eab72734",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/NOLO-6-observation.pstats",
+     "sha256": "d04333ba3cf3b1549dace1f2346c7ee0d08267e6b056608b00b73b136e0b5236",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/NOLO-6-transition.pstats",
+     "sha256": "18933b925555daa62288c5b98c87deaa496be1b04a797ef6b839f078a75a166f",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/RAMI-0-observation.pstats",
+     "sha256": "1e8a988f7701dcd91b3deddd0389e4fc97ff09618cb7a2deb0351e964c7e0595",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/RAMI-0-transition.pstats",
+     "sha256": "e7c88905153ca9d12522da09c069af72e68fec76537a1abf494452ca6f4467e0",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/RAMI-12-observation.pstats",
+     "sha256": "ddf8b7cafc571351e28dadbf8eb064311994db779411fa1bacdc7b68dda21cbb",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/RAMI-12-transition.pstats",
+     "sha256": "385d32eaccb93ce251c0da452af46d64a02fdf2bbd2971336017047630d401cb",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/RAMI-6-observation.pstats",
+     "sha256": "bcd4d9e0158b30e933380289a8e8745cc3abc5d2361443359ce407acae996ec4",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/RAMI-6-transition.pstats",
+     "sha256": "a2c6da914bb98d645dc6472d79264802ca1153375417261ece1527b08948e986",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/bot.pstats",
+     "sha256": "41ffd155fbfc2c588a2bab425392e065f060f088b918181bd2a9fb257b48cd13",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/broadcast-1.pstats",
+     "sha256": "80a62a4d5e29ad1f3b19c7b1f8ddf80c5452b4997c0c26e9e0416221c571801e",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/broadcast-4.pstats",
+     "sha256": "2f1c2ec56214245101e3606806f04487971bf6241d1ab6a664f4bd3dc129a868",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/broadcast-40.pstats",
+     "sha256": "3997279272c15989421b405ec61b627b7f4a806daf28530a2ea563c4ea1de445",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/broadcast-76.pstats",
+     "sha256": "e64d7b08ff0077a58ced59b267f0a676991ea7892683f45d64934840a6dcf55b",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/broadcast-84.pstats",
+     "sha256": "426d458a196ceea86d1fff4e5390eb4e03e62f0559d3e88e569590e311fa1fb4",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/components.json",
+     "sha256": "c69819e35ddf246a6b7ffb606fd5c7649adebdd33cde33de6755ef29c9a8ffe8",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/contract-eight.pstats",
+     "sha256": "1205235960b1938a7d82bdb2de4cb172a32b9df0e25bf4708785b09a565b8662",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/engine.json",
+     "sha256": "9c500090274d317e6daa85b77870c3776710a550c303d15af61997f82559f547",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/fast-uct-NOLO-0.pstats",
+     "sha256": "8a73b7343f26337b0342e0b03ca6e19d4a3133a94f3e610af389aaab961ac154",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/fast-uct-NOLO-12.pstats",
+     "sha256": "876600cbb74a46cc47f72650ab9d83de88087c5b0fca2af49a6a21a5eeb3bf82",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/fast-uct-NOLO-6.pstats",
+     "sha256": "b042b65da3a57867fcdf5b3f3d73beb03bd1fda7067021ea8cc63ece01bc594f",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/fast-uct-RAMI-0.pstats",
+     "sha256": "ab517c4d5018ba076ca7a530dfad71e602af2059c65d799fc0efdd988611f2ea",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/fast-uct-RAMI-12.pstats",
+     "sha256": "fea6d162165a1b2f88c4dd1a26579aa69d15fb752723707a4949656723b447dd",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/fast-uct-RAMI-6.pstats",
+     "sha256": "5f3be4cfc617ea20bcdc8cf0d39c56053935bba59b892b0dda1b5912cb12704c",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/match.pstats",
+     "sha256": "6f86b16ac3aa914ee9692db51a72edd33c3afc3f456b254cdcec0d8c473cb0a8",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/probe.py",
+     "sha256": "2a30bca881061799682f13efeaf651000ae26b1ebf21d240c1298025d5f24d10",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/report.json",
+     "sha256": "2537ae3ab4a0166e316b7e4f1c394b99d8e153dddc4c96c90c4f01deb07bab5a",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/review-cached.pstats",
+     "sha256": "56d65fa50e27497381e1bde871ccf8cf79013e49dc1c7df405e7d8681c5c0124",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/secondary.json",
+     "sha256": "c0480606e14248e329b55d51e6b27d867a2d8f041a53909ff0896f8323936d70",
+     "status": "??"
+    },
+    {
+     "path": "work/infrastructure_audit/secondary.py",
+     "sha256": "d22f278cd434081dd226ae6254dcc41d05b9e40644482e0cd7d5ae810113183d",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/before_sources.json",
+     "sha256": "46f5bbc42222f77169343ebf488a69a62eb396d749a3d6b597f0bb3326b9eb15",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/benchmark/records.jsonl",
+     "sha256": "041080925dc673bd44f6d7c2165654028bd3a83dc5bc5a1c503102f46c3dbec5",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/benchmark/report.json",
+     "sha256": "652949a599c2912313eb708f2c58615422f058e06397ad4109c653677c604133",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/benchmark/run.json",
+     "sha256": "9c9d63d9e502b2c051ff4b2ccdb65e03d6e3888bc140692f82874dbfaebb6f85",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/check_comparators.py",
+     "sha256": "5a1c3cfa607989734b0bb42a9b55b61592e0a5636f4d787c8ec6ff209c58af87",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/check_screen.py",
+     "sha256": "adae502d509198b978d088778886f1fa69f348a9b025bbe75067644d5f565b67",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/comparator-checks.json",
+     "sha256": "6f0e1de15e97d4fc74746df9fbaaeb2f0e3af20ea64492e68e43b5af72cc7042",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/deal39.json",
+     "sha256": "8b4533b530988ee1a9781bd3ef19a35705ae7e947c20ecf9e1f2f584ea412cf2",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/final-signatures.json",
+     "sha256": "190da81c0476e93a1c935c91b642ee11fdad9c9ab55670785f877515ee6c8580",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/positions.json",
+     "sha256": "daba7411fc237352582cb1189643a3f7c47505633e940212e76ab5f0477315ab",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/profile-2trick90world-compact.txt",
+     "sha256": "0061a3dfcb6987db3776d3b727a30b5b458b36d7fbdfab48370be6b013a9c7b0",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/profile-2trick90world-reference.txt",
+     "sha256": "70075d2a5df628745d94780ee6b6457db44a70f74e2c204abdbfc30d17bd9a73",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/profile-B-compact.txt",
+     "sha256": "459972f6f4b8b66c05b40aef20e23c00c0d92035044dce15e2689b39127ab535",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/profile-B-reference.txt",
+     "sha256": "6907664551fd5c2d9ec94a2938de5f518f9db8f86d5c9f13a0ecf0fe3db87254",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/profiles.json",
+     "sha256": "2932b01e846b9b0f6749bd2509d3c5b689782a48b4f788146437c0a97fc8ae7d",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/screen-check.json",
+     "sha256": "a1638c97182f3709b32d6d4299bef39d3f0ec425d5db8028069aca07fcd713a0",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n10/screen-check.jsonl",
+     "sha256": "345a5fd3608ec633d44fba152740d4d37371ef62307d728575ee218fb56cccfe",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n11/before_sources.json",
+     "sha256": "12cc2841a75e2dc4147b888da3b764ab2cf3d07dc7751717b476261ad76cf524",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n11/census.json",
+     "sha256": "7c27e14a618d1e5f389c66c20095b161597af4aff17a38c9a5e482529140de2b",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n11/census.py",
+     "sha256": "48a5161a4abd0e07955cde3b06b5a610961317ac3480f3fa2d67e3682795d0b3",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n11/final_sources.json",
+     "sha256": "30cbfd0528e99af04a41edc5168196941a61f826c8764a76ab698d39f906ad1f",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n11/pricing-329/STOPPED.json",
+     "sha256": "ae002a019d7079511089a29d502e88f5b5e83c132fc893e14a1b5f4f5139c7ff",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n11/pricing-329/records.jsonl",
+     "sha256": "20b08bf05600bcb23e18c807e47be38797a79acb6719a67f602ac9cd6e1a0ed7",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n11/pricing-329/run.json",
+     "sha256": "b4105c9697965a0bdf37ca401e76aca7d0000016bc4746c899882f77a29555bf",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo/n11/probe.json",
+     "sha256": "7aea155f5df659f10353ae22552b6a89736bd79b54f8aa367af66c8c6b4fd601",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo_discard/paired/records.jsonl",
+     "sha256": "486f6675121889834b229fdba35ab8da7ed7e6f4c4e36adec61a40778b7d5184",
+     "status": "??"
+    },
+    {
+     "path": "work/nolo_discard/paired/report.json",
+     "sha256": "cece2363029e0a5ebf582ae12d64cb3a0007e15c68f69ae75b39cb38b428dba6",
+     "status": "??"
+    }
+   ],
+   "head": "622d5599318e4f1b2a82ef53bfc141970edc24de",
+   "head_matches_audit": true,
+   "path": "/Users/pyryouri/Developer/TuppiProject"
+  }
+ },
+ "comparator_ids": {
+  "B0-installed": "installed native/libtuppi.dylib + unmodified tuppi_ai.best entrypoint",
+  "B0-source": "separately built unmodified-source library (see builds/)",
+  "R0-parity": "research overlay build with every research switch disabled (see builds/)"
+ },
+ "entrypoint": {
+  "dd_left": 6,
+  "entrypoint": "tuppi_ai.best.best_agents",
+  "retained_v3_issue": "SearchAgent.choose_action sets rollout sooli options only for ruleset 2 (owner decision 2026-09-24: left unchanged; part of the as-is comparator)",
+  "rollout_chunk_default": 32,
+  "search_showing": 1,
+  "seat_seed_map": {
+   "0": {
+    "best_agents_seed_arg": 0,
+    "env_seed": 0,
+    "numpy_default_rng_seed": 0,
+    "scalar_rng_initial": 1,
+    "searcher_seed": 0
+   },
+   "1": {
+    "best_agents_seed_arg": 1,
+    "env_seed": 2,
+    "numpy_default_rng_seed": 2,
+    "scalar_rng_initial": 5308871523,
+    "searcher_seed": 2
+   },
+   "2": {
+    "best_agents_seed_arg": 2,
+    "env_seed": 4,
+    "numpy_default_rng_seed": 4,
+    "scalar_rng_initial": 10617743045,
+    "searcher_seed": 4
+   },
+   "3": {
+    "best_agents_seed_arg": 3,
+    "env_seed": 6,
+    "numpy_default_rng_seed": 6,
+    "scalar_rng_initial": 15926614567,
+    "searcher_seed": 6
+   }
+  },
+  "show_searcher": null,
+  "sooli_defaults": {
+   "belief": 17,
+   "give": "search",
+   "lam": 0.3,
+   "offer_margin": 0.02,
+   "offer_play_heur": true,
+   "play": "search",
+   "return": "heur"
+  },
+  "sources": {
+   "best.py": "bdec3507cbf2bfaa248d513244353c4a02aad36650f368c5ecc8e2aa1f7568db",
+   "search.py": "ec43cb390dd1ba571991de1523995791df936292f5a4408c8207e90c73366612"
+  },
+  "worlds": 128
+ },
+ "equity": {
+  "dealer_win": 0.49575,
+  "note": "Equity.load recomputes the table from the stored DealModel",
+  "path": "/Users/pyryouri/Developer/TuppiAI/models/equity_incumbent.json",
+  "sha256": "1496f77104f411c5cb55e2cef4573a10aead59acbd643261b755886bfeb60b91",
+  "table_float64_sha256": "8e01246f723210a8e0364a63748de460b94b6e5a513e8e747dc91744f1bc3f0b",
+  "table_shape": [
+   25,
+   2
+  ]
+ },
+ "imports": {
+  "engine_resolves_to_v3_checkout": true,
+  "executable": "/Users/pyryouri/.venvs/tuppi-v2/bin/python",
+  "prefix": "/Users/pyryouri/.venvs/tuppi-v2",
+  "python": "3.14.2 (v3.14.2:df793163d58, Dec  5 2025, 12:18:06) [Clang 16.0.0 (clang-1600.0.26.6)]",
+  "research_modules_loaded": [],
+  "tuppi_engine": "/Users/pyryouri/Developer/TuppiProject-current/src/tuppi_engine/__init__.py",
+  "tuppi_rules": "/Users/pyryouri/Developer/TuppiProject-current/src/tuppi_rules/__init__.py"
+ },
+ "installed_source_correspondence": "UNPROVEN until the B0-installed vs B0-source parity boundary is tested (builds/parity_report.json)",
+ "model": {
+  "config": {
+   "blocks": 2,
+   "encoder": 2,
+   "width": 256
+  },
+  "input_width": 1951,
+  "outputs": 156,
+  "parameter_bytes_sha256": "3ac9d5f6bc2c948d0c619d9a566aaa174a988c51cb2679cd688c91e4d747debc",
+  "path": "/Users/pyryouri/Developer/TuppiAI/models/rollout_clone_small.pt",
+  "sha256": "38737c9042695a4c960157fb77a8d17f308c5773899c2ec0c65b0d20546324f1"
+ },
+ "native_installed": {
+  "bytes": 121024,
+  "ctypes_sizes": {
+   "TcDeal": 184,
+   "TcObs": 152
+  },
+  "feature_dim": {
+   "v1": 1223,
+   "v2": 1951
+  },
+  "mapped_tuppi_images": [
+   "/Users/pyryouri/Developer/TuppiAI/native/libtuppi.dylib"
+  ],
+  "num_actions": 156,
+  "num_actions_v2": 210,
+  "path": "/Users/pyryouri/Developer/TuppiAI/native/libtuppi.dylib",
+  "sha256": "02d9b4fad98ebb342e12cd9ecb4723aaee1406c6c6b539a1dc4a5b2b002c1ab8",
+  "struct_sizes": {
+   "TcDeal": 184,
+   "TcObs": 152
+  }
+ },
+ "private_paths_excluded": [
+  "/Users/pyryouri/Library/Application Support/Tuppi"
+ ],
+ "schema_version": "tuppi.research.baseline_manifest.v1"
+}

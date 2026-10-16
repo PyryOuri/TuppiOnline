@@ -1,0 +1,340 @@
+{
+  "passed": true,
+  "url": "https://tuppi-offline-202b74f.sos-health-p-7158.chatgpt.site",
+  "files": 36,
+  "bytes": 16304057,
+  "checks": [
+    "authenticated HTTPS retrieval",
+    "exact asset and plain-text shell comparison; document decoration recorded"
+  ],
+  "assets": [
+    {
+      "path": "app.mjs",
+      "bytes": 27465,
+      "expected_bytes": 27465,
+      "sha256": "db40ed3f739bce6e2a48f7f1adddebd9a7e9eaf401ae4de9b262a31d62cd3682",
+      "exact": true,
+      "content_type": "text/javascript"
+    },
+    {
+      "path": "bootstrap.7855a0066b3b9a30.mjs",
+      "bytes": 2520,
+      "expected_bytes": 2520,
+      "sha256": "7855a0066b3b9a30e9ce6fc11693af084fb4c109d8755930049719c9fee10f58",
+      "exact": true,
+      "content_type": "text/javascript"
+    },
+    {
+      "path": "bootstrap.mjs",
+      "bytes": 2503,
+      "expected_bytes": 2503,
+      "sha256": "84af2e289162bc0aa22a4807161be5241c2324880d4121e2ed74d95377762564",
+      "exact": true,
+      "content_type": "text/javascript"
+    },
+    {
+      "path": "client.b7db600672e32994.mjs",
+      "bytes": 38145,
+      "expected_bytes": 38145,
+      "sha256": "b7db600672e3299448df1d0d34935a07ce519faf62ead40642f23079323e9c12",
+      "exact": true,
+      "content_type": "text/javascript"
+    },
+    {
+      "path": "current-release.json",
+      "bytes": 578,
+      "expected_bytes": 578,
+      "sha256": "cbc2cd76f638231ffd62bbd94c4ac9775eb09be9a23a5f8e494c684f8c6e62d3",
+      "exact": true,
+      "content_type": "application/json"
+    },
+    {
+      "path": "engine.ba679a5bb2e66563.mjs",
+      "bytes": 17979,
+      "expected_bytes": 17979,
+      "sha256": "ba679a5bb2e66563e9be5e290e891df55fa2e4e321281da7cafc44cfbc0e7c56",
+      "exact": true,
+      "content_type": "text/javascript"
+    },
+    {
+      "path": "frontend.7c0e50f20d42b17e.json",
+      "bytes": 578,
+      "expected_bytes": 578,
+      "sha256": "cbc2cd76f638231ffd62bbd94c4ac9775eb09be9a23a5f8e494c684f8c6e62d3",
+      "exact": true,
+      "content_type": "application/json"
+    },
+    {
+      "path": "frontend.json",
+      "bytes": 578,
+      "expected_bytes": 578,
+      "sha256": "cbc2cd76f638231ffd62bbd94c4ac9775eb09be9a23a5f8e494c684f8c6e62d3",
+      "exact": true,
+      "content_type": "application/json"
+    },
+    {
+      "path": "icon-180.png",
+      "bytes": 4495,
+      "expected_bytes": 4495,
+      "sha256": "f12122f5933634846592afaa7b6ed8e89cfbebde39526910ab63844312e5e9a9",
+      "exact": true,
+      "content_type": "image/png"
+    },
+    {
+      "path": "icon-192.png",
+      "bytes": 4684,
+      "expected_bytes": 4684,
+      "sha256": "3ba0356df63c9d51b30ef4ed32d6878bb4f7233da7356094ab31a21016108dfb",
+      "exact": true,
+      "content_type": "image/png"
+    },
+    {
+      "path": "icon-512.png",
+      "bytes": 17323,
+      "expected_bytes": 17323,
+      "sha256": "cdb05c6e2745c938ab8a84ad0bacd3bd33488c017d0889f9466bcace453e807f",
+      "exact": true,
+      "content_type": "image/png"
+    },
+    {
+      "path": "icon.svg",
+      "bytes": 346,
+      "expected_bytes": 346,
+      "sha256": "5ddfb27fe2fc146ba4a3fa984f3fd94158089a524c2095e445e258a658b6480c",
+      "exact": true,
+      "content_type": "image/svg+xml"
+    },
+    {
+      "path": "index.html",
+      "bytes": 8092,
+      "expected_bytes": 7154,
+      "sha256": "508342654a22d8ba786afc380774d4c1ebbe31b83530b2c1f7068461a73438a9",
+      "exact": false,
+      "content_type": "text/html",
+      "html_diagnostic": {
+        "expected_title_present": true,
+        "expected_table_present": true,
+        "similarity": 0.938475665748393,
+        "changes": [
+          [
+            "insert",
+            0,
+            938
+          ]
+        ]
+      },
+      "verified_shell": true
+    },
+    {
+      "path": "launch.7c0e50f20d42b17e.html",
+      "bytes": 8126,
+      "expected_bytes": 7188,
+      "sha256": "7b658d1c3bfa06620191d105cf33b291f0b335ea44d3f3872e326722356b9e9e",
+      "exact": false,
+      "content_type": "text/html",
+      "html_diagnostic": {
+        "expected_title_present": true,
+        "expected_table_present": true,
+        "similarity": 0.9387488572547995,
+        "changes": [
+          [
+            "insert",
+            0,
+            938
+          ]
+        ]
+      },
+      "verified_shell": true
+    },
+    {
+      "path": "manifest.webmanifest",
+      "bytes": 415,
+      "expected_bytes": 415,
+      "sha256": "e19b09834a05463e6dbadac914c34fb7e27139789bbd1b2e1571f93d37f705a3",
+      "exact": true,
+      "content_type": "application/manifest+json"
+    },
+    {
+      "path": "offline-manifest.json",
+      "bytes": 7044,
+      "expected_bytes": 7044,
+      "sha256": "952bf3626c28ab1610900149e064efa39b09e75a1605295033ff5ab197f09cbe",
+      "exact": true,
+      "content_type": "application/json"
+    },
+    {
+      "path": "offline-shell.3ad16aa0937c9f80.txt",
+      "bytes": 7188,
+      "expected_bytes": 7188,
+      "sha256": "3ad16aa0937c9f805ad802cb45bea7ff5e1c7e71fc056ec7ceb4cbc1fedf6dc8",
+      "exact": true,
+      "content_type": "text/plain"
+    },
+    {
+      "path": "offline-shell.46eccaf756dfa811.txt",
+      "bytes": 7154,
+      "expected_bytes": 7154,
+      "sha256": "46eccaf756dfa8113dc756a9435a3954e3a1418f24a3b2ff63224dd2dc18fcfc",
+      "exact": true,
+      "content_type": "text/plain"
+    },
+    {
+      "path": "offline-shell.482b90f06d06e4ac.txt",
+      "bytes": 2610,
+      "expected_bytes": 2610,
+      "sha256": "482b90f06d06e4acf23c4475ee2ae46c55ac7b0646959680afa85e899d15617c",
+      "exact": true,
+      "content_type": "text/plain"
+    },
+    {
+      "path": "offline.mjs",
+      "bytes": 4022,
+      "expected_bytes": 4022,
+      "sha256": "20eaf519c4e751c062232e197f5453ab86001197386d7bae0d2abdd320bd4943",
+      "exact": true,
+      "content_type": "text/javascript"
+    },
+    {
+      "path": "recover.html",
+      "bytes": 3548,
+      "expected_bytes": 2610,
+      "sha256": "3a9527e42e4cee1b277b7268b7b5b9426514111d83fbf529e1331c0944b24d03",
+      "exact": false,
+      "content_type": "text/html",
+      "html_diagnostic": {
+        "expected_title_present": false,
+        "expected_table_present": false,
+        "similarity": 0.8476778174732056,
+        "changes": [
+          [
+            "insert",
+            0,
+            938
+          ]
+        ]
+      },
+      "verified_shell": true
+    },
+    {
+      "path": "runtime.mjs",
+      "bytes": 8316,
+      "expected_bytes": 8316,
+      "sha256": "4dc23e1c27228258c5884ab18afc41523d3d5f2ed3e395e4050d903f3b351ccc",
+      "exact": true,
+      "content_type": "text/javascript"
+    },
+    {
+      "path": "runtime/95497f1ebdf0979b8463f3822cf3db85ad8495ed85ae1fe3e5b3b09962871b5d/build.json",
+      "bytes": 4140,
+      "expected_bytes": 4140,
+      "sha256": "c31f8c1e857f438b5f95e0b984ca9ed07ff42043016703a12bbe8b5810ffe854",
+      "exact": true,
+      "content_type": "application/json"
+    },
+    {
+      "path": "runtime/95497f1ebdf0979b8463f3822cf3db85ad8495ed85ae1fe3e5b3b09962871b5d/equity.f64",
+      "bytes": 400,
+      "expected_bytes": 400,
+      "sha256": "8e01246f723210a8e0364a63748de460b94b6e5a513e8e747dc91744f1bc3f0b",
+      "exact": true,
+      "content_type": "application/octet-stream"
+    },
+    {
+      "path": "runtime/95497f1ebdf0979b8463f3822cf3db85ad8495ed85ae1fe3e5b3b09962871b5d/models.json",
+      "bytes": 1673,
+      "expected_bytes": 1673,
+      "sha256": "8cb282aa3be3c4ebc0c4bcfcaaeceda93a9c225e3e51488148df181771ae2124",
+      "exact": true,
+      "content_type": "application/json"
+    },
+    {
+      "path": "runtime/95497f1ebdf0979b8463f3822cf3db85ad8495ed85ae1fe3e5b3b09962871b5d/tuppi.mjs",
+      "bytes": 8153,
+      "expected_bytes": 8153,
+      "sha256": "1fdc0bb286a965c9b4daf8d54f80b1100b95db549affa52be96289eb170471c9",
+      "exact": true,
+      "content_type": "text/javascript"
+    },
+    {
+      "path": "runtime/95497f1ebdf0979b8463f3822cf3db85ad8495ed85ae1fe3e5b3b09962871b5d/tuppi.wasm",
+      "bytes": 87227,
+      "expected_bytes": 87227,
+      "sha256": "9d04dfd0e27a6af20b17594d1669422d4f5393515cf6e04c14e0c39389ced616",
+      "exact": true,
+      "content_type": "application/wasm"
+    },
+    {
+      "path": "runtime/95497f1ebdf0979b8463f3822cf3db85ad8495ed85ae1fe3e5b3b09962871b5d/vrpo1_actor_0504.f32",
+      "bytes": 3218032,
+      "expected_bytes": 3218032,
+      "sha256": "beb1f890947748a3df254dc200b9433547babc9fe40388fe76ba82e0f01abbda",
+      "exact": true,
+      "content_type": "application/octet-stream"
+    },
+    {
+      "path": "runtime/95497f1ebdf0979b8463f3822cf3db85ad8495ed85ae1fe3e5b3b09962871b5d/vrpo3_final.f32",
+      "bytes": 12743280,
+      "expected_bytes": 12743280,
+      "sha256": "0e4bba619908ad3fa92a75fb118470b436ffa571caaca5e8f6aab497be633b47",
+      "exact": true,
+      "content_type": "application/octet-stream"
+    },
+    {
+      "path": "session.mjs",
+      "bytes": 6948,
+      "expected_bytes": 6948,
+      "sha256": "e28510af4b0916aa70b2ea6fd1ad6d4b61ef13a52b038c0764dd379eaa73635f",
+      "exact": true,
+      "content_type": "text/javascript"
+    },
+    {
+      "path": "storage.mjs",
+      "bytes": 2865,
+      "expected_bytes": 2865,
+      "sha256": "50ee70fa5efff9f7eced464bb36895e87d052c695d335a4348c72ad35428efb5",
+      "exact": true,
+      "content_type": "text/javascript"
+    },
+    {
+      "path": "styles.0ae905d45ca37898.css",
+      "bytes": 16936,
+      "expected_bytes": 16936,
+      "sha256": "0ae905d45ca37898d199366d92ee64c7db49ef18ff2248001ac37219eb8dbd02",
+      "exact": true,
+      "content_type": "text/css"
+    },
+    {
+      "path": "styles.css",
+      "bytes": 16936,
+      "expected_bytes": 16936,
+      "sha256": "0ae905d45ca37898d199366d92ee64c7db49ef18ff2248001ac37219eb8dbd02",
+      "exact": true,
+      "content_type": "text/css"
+    },
+    {
+      "path": "sw.mjs",
+      "bytes": 17053,
+      "expected_bytes": 17053,
+      "sha256": "118e3d0041248ae35b3f2386652f406906e8f7b76104d0d74a6908ba06fe8574",
+      "exact": true,
+      "content_type": "text/javascript"
+    },
+    {
+      "path": "table.mjs",
+      "bytes": 4059,
+      "expected_bytes": 4059,
+      "sha256": "79e583d7a659ff002f0125680583c538a1ab5def8ed9a9836d28171b4912ee44",
+      "exact": true,
+      "content_type": "text/javascript"
+    },
+    {
+      "path": "worker.mjs",
+      "bytes": 2646,
+      "expected_bytes": 2646,
+      "sha256": "95f78f20a7859ea3f59954975468bd910798fe11d178b963c857d7b28c5a370e",
+      "exact": true,
+      "content_type": "text/javascript"
+    }
+  ],
+  "scope": "HTTP bytes; browser authentication, service workers and iPhone acceptance remain pending"
+}

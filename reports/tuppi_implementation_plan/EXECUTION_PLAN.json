@@ -1,0 +1,809 @@
+{
+  "schema_version": "tuppi.implementation_plan.v1",
+  "created": "2026-09-25",
+  "scope": "Proposed task DAG, not evidence of implemented code or game test passes",
+  "first_milestone": [
+    "C0.01",
+    "C0.02",
+    "C0.03",
+    "C0.04",
+    "C0.05",
+    "C0.06",
+    "C0.07",
+    "C1.01",
+    "C1.02",
+    "C1.03"
+  ],
+  "default_contract_caps": {
+    "python_workers": 1,
+    "concurrent_native_searches": 1,
+    "development_fixture_deals": 32,
+    "search_observation_probes": 32,
+    "max_worlds_per_probe": 128,
+    "complete_search_smoke_games": 2,
+    "wall_seconds": 900,
+    "total_cpu_seconds": 1800
+  },
+  "authority": "Contract scope applies only when the master prompt is supplied as a coding task; stricter user/repository restrictions prevail.",
+  "default_disabled_phases": [
+    "pilot",
+    "training_and_pilot",
+    "confirmation",
+    "deployment"
+  ],
+  "statuses": [
+    "NOT_STARTED",
+    "IN_PROGRESS",
+    "IMPLEMENTED_NOT_TESTED",
+    "CONTRACT_PASS",
+    "PILOT_READY",
+    "PILOT_COMPLETE",
+    "BLOCKED",
+    "NOT_AUTHORISED",
+    "REJECTED",
+    "CONFIRMATION_PASS"
+  ],
+  "tasks": [
+    {
+      "id": "C0.01",
+      "title": "Pin source/import/asset identities and protected paths",
+      "depends_on": [],
+      "proposed_outputs": [
+        "research/baseline_manifest.json",
+        "research/source_drift.json"
+      ],
+      "acceptance_test_ids": [
+        "A01",
+        "A02",
+        "A12"
+      ],
+      "phase": "contract",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [
+        "E001",
+        "E002",
+        "E003",
+        "E050",
+        "E059",
+        "E062"
+      ],
+      "gate": null,
+      "execution_enabled": true
+    },
+    {
+      "id": "C0.02",
+      "title": "Typed legal records, observation keys and split lineage",
+      "depends_on": [
+        "C0.01"
+      ],
+      "proposed_outputs": [
+        "tuppi_ai/research/records.py",
+        "tuppi_ai/research/observation.py"
+      ],
+      "acceptance_test_ids": [
+        "A03",
+        "A04",
+        "A05"
+      ],
+      "phase": "contract",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [
+        "E006",
+        "E011",
+        "E016",
+        "E017"
+      ],
+      "gate": null,
+      "execution_enabled": true
+    },
+    {
+      "id": "C0.03",
+      "title": "ReplayFork and isolated lifecycle/state accounting",
+      "depends_on": [
+        "C0.01",
+        "C0.02"
+      ],
+      "proposed_outputs": [
+        "tuppi_ai/research/lifecycle.py",
+        "tuppi_ai/research/streams.py"
+      ],
+      "acceptance_test_ids": [
+        "A06",
+        "A07",
+        "A08",
+        "A09"
+      ],
+      "phase": "contract",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [
+        "E002",
+        "E003",
+        "E004",
+        "E020",
+        "E058"
+      ],
+      "gate": null,
+      "execution_enabled": true
+    },
+    {
+      "id": "C0.04",
+      "title": "Separate native build and explicit-world ordinary NOLO evaluator",
+      "depends_on": [
+        "C0.01",
+        "C0.02"
+      ],
+      "proposed_outputs": [
+        "native/research/build_research.sh",
+        "native/research/research_api.h",
+        "native/research/overlay.patch",
+        "tuppi_ai/research/native_api.py"
+      ],
+      "acceptance_test_ids": [
+        "A02",
+        "A10",
+        "A11",
+        "V06",
+        "V07"
+      ],
+      "phase": "contract",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [
+        "E003",
+        "E004",
+        "E005",
+        "E006",
+        "E009",
+        "E050"
+      ],
+      "gate": null,
+      "execution_enabled": true
+    },
+    {
+      "id": "C0.05",
+      "title": "Bounded legal fixture builder",
+      "depends_on": [
+        "C0.02"
+      ],
+      "proposed_outputs": [
+        "tuppi_ai/research/fixtures.py",
+        "research/fixtures/"
+      ],
+      "acceptance_test_ids": [],
+      "phase": "contract",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [
+        "E016",
+        "E017",
+        "E018",
+        "E051",
+        "E052"
+      ],
+      "gate": "Complete the bounded builder and report each fixture as validated or unavailable. A rare missing fixture must block only mechanisms requiring it, not C1 when F02 passed.",
+      "execution_enabled": true,
+      "fixture_attempt_ids": [
+        "F01",
+        "F02",
+        "F03",
+        "F04",
+        "F05",
+        "F06"
+      ]
+    },
+    {
+      "id": "C0.06",
+      "title": "Authoritative v3 duplicate-deal and retained-state match runner",
+      "depends_on": [
+        "C0.02",
+        "C0.03"
+      ],
+      "proposed_outputs": [
+        "tuppi_ai/research/runner_v3.py"
+      ],
+      "acceptance_test_ids": [
+        "R01",
+        "R02",
+        "R03",
+        "R04",
+        "R05",
+        "R06"
+      ],
+      "phase": "contract",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [
+        "E013",
+        "E014",
+        "E018",
+        "E020"
+      ],
+      "gate": null,
+      "execution_enabled": true
+    },
+    {
+      "id": "C0.07",
+      "title": "Paired statistics, failure/censor bounds and manifests",
+      "depends_on": [
+        "C0.02",
+        "C0.06"
+      ],
+      "proposed_outputs": [
+        "tuppi_ai/research/statistics.py",
+        "tuppi_ai/research/cli.py"
+      ],
+      "acceptance_test_ids": [
+        "R04",
+        "R05",
+        "V08",
+        "V11"
+      ],
+      "phase": "contract",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [
+        "E013",
+        "E014",
+        "E046"
+      ],
+      "gate": null,
+      "execution_enabled": true
+    },
+    {
+      "id": "C1.01",
+      "title": "Independent contested-round world proxy",
+      "depends_on": [
+        "C0.02",
+        "C0.05"
+      ],
+      "proposed_outputs": [
+        "tuppi_ai/research/c1_control_variate.py"
+      ],
+      "acceptance_test_ids": [
+        "V01",
+        "V02",
+        "V05"
+      ],
+      "phase": "contract",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [
+        "E022",
+        "E023",
+        "E024"
+      ],
+      "gate": null,
+      "execution_enabled": true,
+      "required_fixture_ids": [
+        "F02"
+      ]
+    },
+    {
+      "id": "C1.02",
+      "title": "Fixed-coefficient independent-batch gap estimator",
+      "depends_on": [
+        "C1.01",
+        "C0.04"
+      ],
+      "proposed_outputs": [
+        "tuppi_ai/research/c1_control_variate.py"
+      ],
+      "acceptance_test_ids": [
+        "V03",
+        "V04",
+        "V05",
+        "V08",
+        "V11"
+      ],
+      "phase": "contract",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [
+        "E003",
+        "E004",
+        "E022",
+        "E023"
+      ],
+      "gate": null,
+      "execution_enabled": true
+    },
+    {
+      "id": "C1.03",
+      "title": "C1 branch dispatcher, shadow advancement and pilot readiness",
+      "depends_on": [
+        "C1.02",
+        "C0.03",
+        "C0.07"
+      ],
+      "proposed_outputs": [
+        "research/c1_contract_report.md",
+        "research/c1_pilot_manifest.json"
+      ],
+      "acceptance_test_ids": [
+        "V01",
+        "V02",
+        "V03",
+        "V04",
+        "V05",
+        "V06",
+        "V07",
+        "V08",
+        "V09",
+        "V10",
+        "V11"
+      ],
+      "phase": "contract",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [
+        "E002",
+        "E004",
+        "E005"
+      ],
+      "gate": "F02 and all C1 contract tests must pass. Pilot remains disabled.",
+      "execution_enabled": true
+    },
+    {
+      "id": "C3b.01",
+      "title": "Conservative utility-equivalence certificate",
+      "depends_on": [
+        "C0.04",
+        "C0.05"
+      ],
+      "proposed_outputs": [
+        "tuppi_ai/research/c3_utility_stop.py",
+        "native/research/overlay.patch"
+      ],
+      "acceptance_test_ids": [
+        "K01",
+        "K02",
+        "K03",
+        "K04"
+      ],
+      "phase": "contract",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [
+        "E004",
+        "E007",
+        "E009",
+        "E012",
+        "E019"
+      ],
+      "gate": null,
+      "execution_enabled": true,
+      "required_fixture_ids": [
+        "F06"
+      ]
+    },
+    {
+      "id": "C2.01",
+      "title": "Joint clone-predecessor precommitment model and ablations",
+      "depends_on": [
+        "C0.02",
+        "C0.03",
+        "C0.04",
+        "C0.05"
+      ],
+      "proposed_outputs": [
+        "tuppi_ai/research/c2_blind_bids.py",
+        "tuppi_ai/research/clone_policy.py"
+      ],
+      "acceptance_test_ids": [
+        "B01",
+        "B02",
+        "B03",
+        "B04",
+        "B05",
+        "B06",
+        "B07",
+        "B08"
+      ],
+      "phase": "contract",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [
+        "E005",
+        "E007",
+        "E011",
+        "E016",
+        "E020",
+        "E035",
+        "E052"
+      ],
+      "gate": null,
+      "execution_enabled": true,
+      "required_fixture_ids": [
+        "F01"
+      ]
+    },
+    {
+      "id": "C2.02",
+      "title": "Searching-predecessor lifecycle extension",
+      "depends_on": [
+        "C2.01"
+      ],
+      "proposed_outputs": [
+        "research/c2_search_predecessor_contract.md"
+      ],
+      "acceptance_test_ids": [
+        "B02",
+        "B06",
+        "B07",
+        "B08"
+      ],
+      "phase": "contract",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [
+        "E002",
+        "E004",
+        "E020"
+      ],
+      "gate": "Do not claim literal cancellation until call/state effects are explicitly reconciled. Contract-only by default.",
+      "execution_enabled": true
+    },
+    {
+      "id": "C4.01",
+      "title": "Stage-specific legal exchange features/scorers and replay",
+      "depends_on": [
+        "C0.02",
+        "C0.03",
+        "C0.05",
+        "C0.06"
+      ],
+      "proposed_outputs": [
+        "tuppi_ai/research/c4_exchange.py"
+      ],
+      "acceptance_test_ids": [
+        "X01",
+        "X02",
+        "X03",
+        "X07",
+        "X09",
+        "X10"
+      ],
+      "phase": "contract",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [
+        "E002",
+        "E003",
+        "E007",
+        "E016",
+        "E017",
+        "E030",
+        "E031",
+        "E035"
+      ],
+      "gate": null,
+      "execution_enabled": true,
+      "required_fixture_ids": [
+        "F03",
+        "F04"
+      ]
+    },
+    {
+      "id": "C4.02",
+      "title": "Giver-weighted joint objective and bounded synthetic optimiser checks",
+      "depends_on": [
+        "C4.01"
+      ],
+      "proposed_outputs": [
+        "tuppi_ai/research/c4_training.py",
+        "research/c4_training_manifest.json"
+      ],
+      "acceptance_test_ids": [
+        "X04",
+        "X05",
+        "X06",
+        "X08",
+        "X11",
+        "X12"
+      ],
+      "phase": "contract",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [
+        "E030",
+        "E033",
+        "E034",
+        "E035"
+      ],
+      "gate": "Implement/train on tiny mathematical fixtures only; real-bank training requires approval.",
+      "execution_enabled": true
+    },
+    {
+      "id": "C5.01",
+      "title": "v3-preserving complete support and legal information-group adapter",
+      "depends_on": [
+        "C0.02",
+        "C0.03",
+        "C0.05"
+      ],
+      "proposed_outputs": [
+        "tuppi_ai/research/c5_option.py"
+      ],
+      "acceptance_test_ids": [
+        "O01",
+        "O02",
+        "O03",
+        "O04",
+        "O09"
+      ],
+      "phase": "contract",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [
+        "E025",
+        "E027",
+        "E028",
+        "E055",
+        "E056"
+      ],
+      "gate": null,
+      "execution_enabled": true,
+      "required_fixture_ids": [
+        "F05"
+      ]
+    },
+    {
+      "id": "C5.02",
+      "title": "Contingent option store and full-policy comparator",
+      "depends_on": [
+        "C5.01",
+        "C0.04"
+      ],
+      "proposed_outputs": [
+        "tuppi_ai/research/c5_option.py",
+        "research/c5_contract_report.md"
+      ],
+      "acceptance_test_ids": [
+        "O01",
+        "O02",
+        "O03",
+        "O04",
+        "O05",
+        "O06",
+        "O07",
+        "O08",
+        "O09",
+        "O10"
+      ],
+      "phase": "contract",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [
+        "E002",
+        "E003",
+        "E026",
+        "E028",
+        "E035"
+      ],
+      "gate": null,
+      "execution_enabled": true
+    },
+    {
+      "id": "C3a.01",
+      "title": "Mode-state sufficiency report and pure kernel solver",
+      "depends_on": [
+        "C0.03",
+        "C0.07"
+      ],
+      "proposed_outputs": [
+        "tuppi_ai/research/c3_kernel.py",
+        "research/c3_state_sufficiency.md"
+      ],
+      "acceptance_test_ids": [
+        "K05",
+        "K06",
+        "K07",
+        "K08",
+        "K09"
+      ],
+      "phase": "contract",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [
+        "E002",
+        "E004",
+        "E012",
+        "E018",
+        "E020",
+        "E058"
+      ],
+      "gate": "The proposed 8100-state ideal-randomness model is not assumed valid or equivalent to B0.",
+      "execution_enabled": true
+    },
+    {
+      "id": "P.C1",
+      "title": "C1 planning and independent screening",
+      "depends_on": [
+        "C1.03"
+      ],
+      "proposed_outputs": [
+        "research_runs/<id>/c1_results.json"
+      ],
+      "acceptance_test_ids": [
+        "V01",
+        "V02",
+        "V03",
+        "V04",
+        "V05",
+        "V06",
+        "V07",
+        "V08",
+        "V09",
+        "V10",
+        "V11"
+      ],
+      "phase": "pilot",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [],
+      "gate": "Approved numeric resource caps and completed manifest; fit/plan/screen parent deals disjoint.",
+      "execution_enabled": false
+    },
+    {
+      "id": "P.C3b",
+      "title": "Utility-stop cost/parity screen",
+      "depends_on": [
+        "C3b.01",
+        "C0.07"
+      ],
+      "proposed_outputs": [
+        "research_runs/<id>/c3b_results.json"
+      ],
+      "acceptance_test_ids": [
+        "K01",
+        "K02",
+        "K03",
+        "K04"
+      ],
+      "phase": "pilot",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [],
+      "gate": "Approved caps; distinguish numerical target equivalence from whole-seed parity.",
+      "execution_enabled": false
+    },
+    {
+      "id": "P.C2",
+      "title": "Consequential-bid independent screen",
+      "depends_on": [
+        "C2.01",
+        "C0.07"
+      ],
+      "proposed_outputs": [
+        "research_runs/<id>/c2_results.json"
+      ],
+      "acceptance_test_ids": [
+        "B01",
+        "B02",
+        "B03",
+        "B04",
+        "B05",
+        "B06",
+        "B07",
+        "B08"
+      ],
+      "phase": "pilot",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [],
+      "gate": "Approved caps; primary unconditional per-commitment unit. Strong-search calibration separately required.",
+      "execution_enabled": false
+    },
+    {
+      "id": "P.C4",
+      "title": "Joint exchange training and four-arm screen",
+      "depends_on": [
+        "C4.02",
+        "C0.07"
+      ],
+      "proposed_outputs": [
+        "research_runs/<id>/c4_results.json"
+      ],
+      "acceptance_test_ids": [
+        "X01",
+        "X02",
+        "X03",
+        "X04",
+        "X05",
+        "X06",
+        "X07",
+        "X08",
+        "X09",
+        "X10",
+        "X11",
+        "X12"
+      ],
+      "phase": "training_and_pilot",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [],
+      "gate": "Approved caps; fresh frozen-offer accepted population; no protected banks.",
+      "execution_enabled": false
+    },
+    {
+      "id": "P.C5",
+      "title": "Exact-option coverage, cost and transfer screen",
+      "depends_on": [
+        "C5.02",
+        "C0.07"
+      ],
+      "proposed_outputs": [
+        "research_runs/<id>/c5_results.json"
+      ],
+      "acceptance_test_ids": [
+        "O01",
+        "O02",
+        "O03",
+        "O04",
+        "O05",
+        "O06",
+        "O07",
+        "O08",
+        "O09",
+        "O10"
+      ],
+      "phase": "pilot",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [],
+      "gate": "Approved caps; complete support and full-policy comparator; search transfer separate from clone model.",
+      "execution_enabled": false
+    },
+    {
+      "id": "P.C3a",
+      "title": "State-row experiment and direct-match validation",
+      "depends_on": [
+        "C3a.01",
+        "C0.06"
+      ],
+      "proposed_outputs": [
+        "research_runs/<id>/c3a_results.json"
+      ],
+      "acceptance_test_ids": [
+        "K05",
+        "K06",
+        "K07",
+        "K08",
+        "K09"
+      ],
+      "phase": "pilot",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [],
+      "gate": "Sufficiency justification plus approved state model and row budget; otherwise BLOCKED.",
+      "execution_enabled": false
+    },
+    {
+      "id": "CONFIRM",
+      "title": "Independent full-game confirmation of a nominated survivor",
+      "depends_on": [
+        "C0.07"
+      ],
+      "proposed_outputs": [
+        "research_runs/<id>/confirmation_report.md"
+      ],
+      "acceptance_test_ids": [],
+      "phase": "confirmation",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [],
+      "gate": "At least one frozen survivor has a completed eligible pilot; nominate before opening fresh confirmation. Other failed branches need not finish.",
+      "execution_enabled": false
+    },
+    {
+      "id": "COMPOSE",
+      "title": "One-at-a-time composition and interaction tests",
+      "depends_on": [
+        "CONFIRM"
+      ],
+      "proposed_outputs": [
+        "research_runs/<id>/composition_report.md"
+      ],
+      "acceptance_test_ids": [],
+      "phase": "confirmation",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [],
+      "gate": "Independent positive results are not assumed additive; new immutable parent and explicit interaction plan.",
+      "execution_enabled": false
+    },
+    {
+      "id": "DEPLOY",
+      "title": "Separately authorised live integration and restoration validation",
+      "depends_on": [
+        "COMPOSE"
+      ],
+      "proposed_outputs": [
+        "research/deployment_migration_plan.md"
+      ],
+      "acceptance_test_ids": [],
+      "phase": "deployment",
+      "status": "NOT_STARTED",
+      "source_evidence_ids": [],
+      "gate": "Explicit owner approval required; no live changes authorised by the default implementation prompt.",
+      "execution_enabled": false
+    }
+  ]
+}

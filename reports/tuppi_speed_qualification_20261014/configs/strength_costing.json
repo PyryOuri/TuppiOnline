@@ -1,0 +1,88 @@
+{
+  "schema": "tuppi.cheap_wins.plan.v1",
+  "name": "strength_costing",
+  "stage": "costing",
+  "execution_enabled": false,
+  "budget_cpu_seconds": 3600,
+  "budget_wall_seconds": 4320,
+  "jobs": [
+    {
+      "id": "baseline_vs_baseline",
+      "kind": "duplicate",
+      "arm": "baseline",
+      "worlds": 1024,
+      "samples": 2,
+      "seed": "cw-strength-costing-v1",
+      "scores": "uniform",
+      "serial": true,
+      "cpu_seconds": 600,
+      "wall_seconds": 720,
+      "opponent": "baseline"
+    },
+    {
+      "id": "hard_anchor_vs_baseline",
+      "kind": "duplicate",
+      "arm": "hard_anchor",
+      "worlds": 1024,
+      "samples": 2,
+      "seed": "cw-strength-costing-v1",
+      "scores": "uniform",
+      "serial": true,
+      "cpu_seconds": 600,
+      "wall_seconds": 720,
+      "opponent": "baseline"
+    },
+    {
+      "id": "suit_ensemble_vs_baseline",
+      "kind": "duplicate",
+      "arm": "suit_ensemble",
+      "worlds": 1024,
+      "samples": 2,
+      "seed": "cw-strength-costing-v1",
+      "scores": "uniform",
+      "serial": true,
+      "cpu_seconds": 600,
+      "wall_seconds": 720,
+      "opponent": "baseline"
+    },
+    {
+      "id": "baseline_vs_vrpo3",
+      "kind": "duplicate",
+      "arm": "baseline",
+      "worlds": 1024,
+      "samples": 2,
+      "seed": "cw-strength-costing-v1",
+      "scores": "uniform",
+      "serial": true,
+      "cpu_seconds": 600,
+      "wall_seconds": 720,
+      "opponent": "vrpo3"
+    },
+    {
+      "id": "hard_anchor_vs_vrpo3",
+      "kind": "duplicate",
+      "arm": "hard_anchor",
+      "worlds": 1024,
+      "samples": 2,
+      "seed": "cw-strength-costing-v1",
+      "scores": "uniform",
+      "serial": true,
+      "cpu_seconds": 600,
+      "wall_seconds": 720,
+      "opponent": "vrpo3"
+    },
+    {
+      "id": "suit_ensemble_vs_vrpo3",
+      "kind": "duplicate",
+      "arm": "suit_ensemble",
+      "worlds": 1024,
+      "samples": 2,
+      "seed": "cw-strength-costing-v1",
+      "scores": "uniform",
+      "serial": true,
+      "cpu_seconds": 600,
+      "wall_seconds": 720,
+      "opponent": "vrpo3"
+    }
+  ]
+}

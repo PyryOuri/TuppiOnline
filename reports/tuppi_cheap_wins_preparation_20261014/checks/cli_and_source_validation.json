@@ -1,0 +1,120 @@
+{
+  "all_four_plan_previews_pass": true,
+  "all_four_run_defaults_are_dry": true,
+  "dry_run_created_no_output": true,
+  "production_source_drift": [],
+  "checks": [
+    {
+      "plan": "heuristic_guard_costing.json",
+      "command": "preview",
+      "result": {
+        "name": "heuristic_guard_costing",
+        "stage": "costing",
+        "jobs": 3,
+        "workers": 1,
+        "cpu_reserved_seconds": 540,
+        "wall_reserved_seconds": 720,
+        "status": "PREPARED_NOT_EXECUTED",
+        "automatic_confirmation": false
+      }
+    },
+    {
+      "plan": "heuristic_guard_costing.json",
+      "command": "run",
+      "result": {
+        "name": "heuristic_guard_costing",
+        "stage": "costing",
+        "jobs": 3,
+        "workers": 1,
+        "cpu_reserved_seconds": 540,
+        "wall_reserved_seconds": 720,
+        "status": "PREPARED_NOT_EXECUTED",
+        "automatic_confirmation": false
+      }
+    },
+    {
+      "plan": "match_costing.json",
+      "command": "preview",
+      "result": {
+        "name": "match_costing",
+        "stage": "costing",
+        "jobs": 1,
+        "workers": 1,
+        "cpu_reserved_seconds": 600,
+        "wall_reserved_seconds": 660,
+        "status": "PREPARED_NOT_EXECUTED",
+        "automatic_confirmation": false
+      }
+    },
+    {
+      "plan": "match_costing.json",
+      "command": "run",
+      "result": {
+        "name": "match_costing",
+        "stage": "costing",
+        "jobs": 1,
+        "workers": 1,
+        "cpu_reserved_seconds": 600,
+        "wall_reserved_seconds": 660,
+        "status": "PREPARED_NOT_EXECUTED",
+        "automatic_confirmation": false
+      }
+    },
+    {
+      "plan": "speed_validation.json",
+      "command": "preview",
+      "result": {
+        "name": "speed_validation",
+        "stage": "speed_validation",
+        "jobs": 4,
+        "workers": 1,
+        "cpu_reserved_seconds": 960,
+        "wall_reserved_seconds": 1200,
+        "status": "PREPARED_NOT_EXECUTED",
+        "automatic_confirmation": false
+      }
+    },
+    {
+      "plan": "speed_validation.json",
+      "command": "run",
+      "result": {
+        "name": "speed_validation",
+        "stage": "speed_validation",
+        "jobs": 4,
+        "workers": 1,
+        "cpu_reserved_seconds": 960,
+        "wall_reserved_seconds": 1200,
+        "status": "PREPARED_NOT_EXECUTED",
+        "automatic_confirmation": false
+      }
+    },
+    {
+      "plan": "strength_costing.json",
+      "command": "preview",
+      "result": {
+        "name": "strength_costing",
+        "stage": "costing",
+        "jobs": 6,
+        "workers": 1,
+        "cpu_reserved_seconds": 1800,
+        "wall_reserved_seconds": 2160,
+        "status": "PREPARED_NOT_EXECUTED",
+        "automatic_confirmation": false
+      }
+    },
+    {
+      "plan": "strength_costing.json",
+      "command": "run",
+      "result": {
+        "name": "strength_costing",
+        "stage": "costing",
+        "jobs": 6,
+        "workers": 1,
+        "cpu_reserved_seconds": 1800,
+        "wall_reserved_seconds": 2160,
+        "status": "PREPARED_NOT_EXECUTED",
+        "automatic_confirmation": false
+      }
+    }
+  ]
+}

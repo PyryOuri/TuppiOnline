@@ -1,0 +1,59 @@
+{
+  "schema": "tuppi.speed_qualification.zero_plan.v1",
+  "seed": "speed-zero-start-11",
+  "score": [
+    0,
+    0
+  ],
+  "selection": "First finite seed whose designated score cell is 0, without outcome/cost screening",
+  "stages": {
+    "zero_serial": [
+      {
+        "id": "reference",
+        "mode": "games",
+        "variant": "reference",
+        "worlds": 1024,
+        "parallel": false,
+        "seed": "speed-zero-start-11",
+        "samples": 1,
+        "cpu_seconds": 90,
+        "wall_seconds": 120
+      },
+      {
+        "id": "compact128",
+        "mode": "games",
+        "variant": "compact128",
+        "worlds": 1024,
+        "parallel": false,
+        "seed": "speed-zero-start-11",
+        "samples": 1,
+        "cpu_seconds": 90,
+        "wall_seconds": 120
+      }
+    ],
+    "zero_parallel": [
+      {
+        "id": "reference",
+        "mode": "games",
+        "variant": "reference",
+        "worlds": 1024,
+        "parallel": true,
+        "seed": "speed-zero-start-11",
+        "samples": 1,
+        "cpu_seconds": 150,
+        "wall_seconds": 180
+      },
+      {
+        "id": "compact128",
+        "mode": "games",
+        "variant": "compact128",
+        "worlds": 1024,
+        "parallel": true,
+        "seed": "speed-zero-start-11",
+        "samples": 1,
+        "cpu_seconds": 150,
+        "wall_seconds": 180
+      }
+    ]
+  }
+}

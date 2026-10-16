@@ -1,0 +1,26 @@
+{
+  "schema": "tuppi.experiment_static_check.v1",
+  "syntax_files": [
+    "tuppi_ai/experiment_io.py",
+    "tuppi_ai/experiment_queue.py",
+    "tuppi_ai/experiment_worker.py",
+    "tuppi_ai/paired_results.py",
+    "tuppi_ai/evaluate.py",
+    "tests/test_paired_results_stdlib.py",
+    "tests/test_experiment_queue_stdlib.py",
+    "tests/test_experiment_process_stdlib.py"
+  ],
+  "syntax_passed": true,
+  "imports": [
+    "tuppi_ai.experiment_queue",
+    "tuppi_ai.paired_results",
+    "tuppi_ai.evaluate"
+  ],
+  "heavy_modules_absent": [
+    "torch",
+    "numpy",
+    "tuppi_ai.native"
+  ],
+  "isolated_native_library_exists": false,
+  "workload": "Syntax parsing and standard-library imports only; no model files read."
+}

@@ -1,0 +1,4456 @@
+{
+  "schema": "tuppi.speed_qualification.result.v1",
+  "job": {
+    "id": "reference_088",
+    "mode": "games",
+    "variant": "reference",
+    "worlds": 1024,
+    "parallel": false,
+    "seed": "speed-differential-88",
+    "samples": 2,
+    "cpu_seconds": 900,
+    "wall_seconds": 1800
+  },
+  "rows": [
+    {
+      "exact": {
+        "label": "game0:0",
+        "seat": 1,
+        "phase": "SHOWING",
+        "contract": null,
+        "input_sha256": "ee990d6f19ebfd15cc3f2a5a80ce1d3b258efe5527340871a0f176b1b2d756f8",
+        "legal": [
+          92,
+          97,
+          93,
+          98,
+          85,
+          80,
+          84,
+          120,
+          110
+        ],
+        "action": 98,
+        "values": {
+          "92": "-0x1.3ca447a000000p-5",
+          "97": "-0x1.28512a7b00000p-5",
+          "93": "-0x1.53708d9400000p-5",
+          "98": "-0x1.37e47fb600000p-5",
+          "85": "-0x1.cfa3ffc400000p-5",
+          "80": "-0x1.8192a92355555p-5",
+          "84": "-0x1.512e4ba400000p-5",
+          "120": "-0x1.cd16f14c00000p-4",
+          "110": "-0x1.13b6fc5400000p-3"
+        },
+        "rng": 10793942511207608392,
+        "world_counts": {
+          "92": 1024,
+          "97": 1024,
+          "93": 1024,
+          "98": 1024,
+          "85": 128,
+          "80": 768,
+          "84": 896,
+          "120": 128,
+          "110": 128
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 7.632046208018437,
+      "cpu_seconds": 7.5876220000000005
+    },
+    {
+      "exact": {
+        "label": "game0:1",
+        "seat": 2,
+        "phase": "SHOWING",
+        "contract": null,
+        "input_sha256": "2f5bd1346af7ed18e372b4d51f9a835f67a03683750806739bc124b1ae3d1982",
+        "legal": [
+          79,
+          95,
+          82,
+          119,
+          111,
+          123
+        ],
+        "action": 79,
+        "values": {
+          "79": "0x1.5689b96c40000p-4",
+          "95": "0x1.3e3d131140000p-4",
+          "82": "0x1.47f2603ec0000p-4",
+          "119": "-0x1.11d64b5000000p-6",
+          "111": "-0x1.173b9a0000000p-6",
+          "123": "-0x1.ff4e4bd000000p-7"
+        },
+        "rng": 9364920659287725826,
+        "world_counts": {
+          "79": 1024,
+          "95": 1024,
+          "82": 1024,
+          "119": 128,
+          "111": 128,
+          "123": 128
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 1.9332625831011683,
+      "cpu_seconds": 1.9156220000000008
+    },
+    {
+      "exact": {
+        "label": "game0:2",
+        "seat": 3,
+        "phase": "SHOWING",
+        "contract": null,
+        "input_sha256": "f70840acd68fd6ef22227cab5cfd2379426d12aa7fe0f67e496806afb475e4f8",
+        "legal": [
+          94,
+          81,
+          124,
+          105,
+          118,
+          106
+        ],
+        "action": 118,
+        "values": {
+          "94": "0x1.9a7f7b9380000p-5",
+          "81": "0x1.8724cc9780000p-5",
+          "124": "0x1.46a1175300000p-5",
+          "105": "0x1.5781fa6600000p-5",
+          "118": "0x1.44d1da7400000p-5",
+          "106": "0x1.4b1e787400000p-5"
+        },
+        "rng": 13953926247792026191,
+        "world_counts": {
+          "94": 1024,
+          "81": 1024,
+          "124": 1024,
+          "105": 1024,
+          "118": 1024,
+          "106": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 6.638739000074565,
+      "cpu_seconds": 6.599299000000002
+    },
+    {
+      "exact": {
+        "label": "game0:3",
+        "seat": 0,
+        "phase": "SOOLI_OFFER",
+        "contract": "RAMI",
+        "input_sha256": "5bd80eb974dc6797a8a97483caca043317b60dbd20180cf9c168d9ea770be6a1",
+        "legal": [
+          156,
+          157
+        ],
+        "action": 156,
+        "values": {
+          "156": "0x1.4ed641e000000p-6",
+          "157": "-0x1.3c26f00000000p-3"
+        },
+        "rng": 2802274887648468718,
+        "world_counts": {
+          "156": 1024,
+          "157": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 1.4321762919425964,
+      "cpu_seconds": 1.4283079999999977
+    },
+    {
+      "exact": {
+        "label": "game0:4",
+        "seat": 2,
+        "phase": "SOOLI_OFFER",
+        "contract": "RAMI",
+        "input_sha256": "7f8f0434fa6788fa515d562507b5626460a37a9319def93f75acc79652561791",
+        "legal": [
+          156,
+          157
+        ],
+        "action": 156,
+        "values": {
+          "156": "0x1.d44b2dbb80000p-4",
+          "157": "-0x1.4427b30400000p-4"
+        },
+        "rng": 3642735939384932119,
+        "world_counts": {
+          "156": 1024,
+          "157": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 0.37897387496195734,
+      "cpu_seconds": 0.37873400000000146
+    },
+    {
+      "exact": {
+        "label": "game0:5",
+        "seat": 2,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "72ec1cd13f42b2121dfdbac8481f250a1dd9212fbefe0d50b2a1672018678fb4",
+        "legal": [
+          27,
+          10,
+          26,
+          15,
+          37,
+          0,
+          43,
+          7,
+          30,
+          36,
+          19,
+          13,
+          25
+        ],
+        "action": 36,
+        "values": {
+          "27": "0x1.78060ce400000p-4",
+          "10": "0x1.c4e0af0e00000p-5",
+          "26": "0x1.9714f75100000p-4",
+          "15": "0x1.b79e45b900000p-5",
+          "37": "0x1.8ee2f6e200000p-4",
+          "0": "0x1.02df0b2180000p-4",
+          "43": "0x1.4f147f8c00000p-5",
+          "7": "0x1.2fbeaf3180000p-4",
+          "30": "0x1.95eee7c700000p-4",
+          "36": "0x1.8b060c0980000p-4",
+          "19": "0x1.bd53247d00000p-5",
+          "13": "0x1.f86a3ed500000p-5",
+          "25": "0x1.6083b2ed00000p-5"
+        },
+        "rng": 4966580473868491543,
+        "world_counts": {
+          "27": 1024,
+          "10": 1024,
+          "26": 1024,
+          "15": 1024,
+          "37": 1024,
+          "0": 1024,
+          "43": 1024,
+          "7": 1024,
+          "30": 1024,
+          "36": 1024,
+          "19": 1024,
+          "13": 1024,
+          "25": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 4.079244083026424,
+      "cpu_seconds": 4.055222999999998
+    },
+    {
+      "exact": {
+        "label": "game0:6",
+        "seat": 3,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "5cb82598b17f50ba49c23a2100e56cb26173d4b3126603e6f1434778106069ba",
+        "legal": [
+          29,
+          38
+        ],
+        "action": 38,
+        "values": {
+          "29": "0x1.73cd1f7400000p-6",
+          "38": "0x1.751ef5ab00000p-5"
+        },
+        "rng": 17734794453466509903,
+        "world_counts": {
+          "29": 1024,
+          "38": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 0.6400171660352498,
+      "cpu_seconds": 0.633890000000001
+    },
+    {
+      "exact": {
+        "label": "game0:7",
+        "seat": 0,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "7869e04a1c9c3ac11fce927a100052064c4d02761e69c5a28a2500aa67c55605",
+        "legal": [
+          35,
+          31
+        ],
+        "action": 31,
+        "values": {
+          "35": "-0x1.09e2c96d00000p-4",
+          "31": "-0x1.39db903300000p-5"
+        },
+        "rng": 11497190435704801006,
+        "world_counts": {
+          "35": 1024,
+          "31": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 0.5454280839767307,
+      "cpu_seconds": 0.5451440000000005
+    },
+    {
+      "exact": {
+        "label": "game0:8",
+        "seat": 1,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "bfe83abf9cb97e5ab4595fcadd5145f79c1849c558d1153ed17bfb0246968a91",
+        "legal": [
+          34,
+          33,
+          28,
+          32
+        ],
+        "action": 34,
+        "values": {
+          "34": "-0x1.014d454200000p-5",
+          "33": "-0x1.2551bb8e00000p-5",
+          "28": "-0x1.308f2df600000p-5",
+          "32": "-0x1.27ca25c200000p-5"
+        },
+        "rng": 1042113985554389064,
+        "world_counts": {
+          "34": 1024,
+          "33": 1024,
+          "28": 1024,
+          "32": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 1.0030972079839557,
+      "cpu_seconds": 0.9918449999999979
+    },
+    {
+      "exact": {
+        "label": "game0:9",
+        "seat": 3,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "08c45b246af2b1982252e416a4f17d25d3f04e2c03a6d0d7f3a2f1a4c9a2f3b9",
+        "legal": [
+          42,
+          20,
+          51,
+          48,
+          47,
+          1,
+          14,
+          29,
+          12,
+          2,
+          22,
+          39
+        ],
+        "action": 42,
+        "values": {
+          "42": "0x1.f83efc9b00000p-5",
+          "20": "-0x1.387d305c00000p-7",
+          "51": "0x1.e8733f6c00000p-6",
+          "48": "0x1.d7777f5200000p-6",
+          "47": "0x1.1c23b7e700000p-5",
+          "1": "-0x1.7574f5ac00000p-7",
+          "14": "-0x1.cdd8743400000p-7",
+          "29": "-0x1.1a5aecda00000p-6",
+          "12": "-0x1.9541020000000p-12",
+          "2": "-0x1.c24ce36000000p-6",
+          "22": "-0x1.10d0d16400000p-7",
+          "39": "0x1.c95f191500000p-5"
+        },
+        "rng": 7982965927813290575,
+        "world_counts": {
+          "42": 1024,
+          "20": 1024,
+          "51": 1024,
+          "48": 1024,
+          "47": 1024,
+          "1": 1024,
+          "14": 1024,
+          "29": 1024,
+          "12": 1024,
+          "2": 1024,
+          "22": 1024,
+          "39": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 3.313339542131871,
+      "cpu_seconds": 3.292185
+    },
+    {
+      "exact": {
+        "label": "game0:10",
+        "seat": 0,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "abc167105744e1bf8d801ed1dfdc4e3589927de143d1a42db89af38dc182700a",
+        "legal": [
+          50,
+          44
+        ],
+        "action": 44,
+        "values": {
+          "50": "-0x1.75e48d6000000p-7",
+          "44": "0x1.0f6c669800000p-8"
+        },
+        "rng": 6659409252433430254,
+        "world_counts": {
+          "50": 1024,
+          "44": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 0.5605509579181671,
+      "cpu_seconds": 0.5601170000000018
+    },
+    {
+      "exact": {
+        "label": "game0:11",
+        "seat": 1,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "f96d96817269e3b162b77cc535efccae408bc0c24c2cdf4f526764d0b08260b9",
+        "legal": [
+          40,
+          45,
+          41,
+          46,
+          49
+        ],
+        "action": 49,
+        "values": {
+          "40": "-0x1.8536503e80000p-4",
+          "45": "-0x1.2e2074e980000p-4",
+          "41": "-0x1.80d3cc2480000p-4",
+          "46": "-0x1.3139556600000p-4",
+          "49": "-0x1.2612088e00000p-4"
+        },
+        "rng": 14651076875992569928,
+        "world_counts": {
+          "40": 1024,
+          "45": 1024,
+          "41": 1024,
+          "46": 1024,
+          "49": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 1.2236752500757575,
+      "cpu_seconds": 1.220638000000001
+    },
+    {
+      "exact": {
+        "label": "game0:12",
+        "seat": 2,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "bdfcf1e2ac24308a9ea6e0eaf15bcc6a1be36ea62ce06e52f3e9fe5590890ab2",
+        "legal": [
+          43
+        ],
+        "action": 43,
+        "values": null,
+        "rng": 4966580473868491543,
+        "world_counts": null,
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 4.833098500967026e-06,
+      "cpu_seconds": 5.000000001587068e-06
+    },
+    {
+      "exact": {
+        "label": "game0:13",
+        "seat": 1,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "64238f9f6fe2d0eacdd5f8fe63c7a987dc6093df0924ed6600194a2725765969",
+        "legal": [
+          40,
+          45,
+          41,
+          24,
+          16,
+          6,
+          46,
+          33,
+          28,
+          23,
+          32
+        ],
+        "action": 24,
+        "values": {
+          "40": "-0x1.519dd36600000p-6",
+          "45": "-0x1.c60e395000000p-6",
+          "41": "-0x1.6f55abb200000p-6",
+          "24": "-0x1.2e4dfe5000000p-8",
+          "16": "-0x1.3cc664c800000p-5",
+          "6": "-0x1.2cc962c880000p-4",
+          "46": "-0x1.0ca5103e00000p-6",
+          "33": "-0x1.4fa2cfda00000p-5",
+          "28": "-0x1.4803d73000000p-5",
+          "23": "-0x1.ffefdaf800000p-8",
+          "32": "-0x1.450e8ac700000p-5"
+        },
+        "rng": 12270319363912123464,
+        "world_counts": {
+          "40": 1024,
+          "45": 1024,
+          "41": 1024,
+          "24": 1024,
+          "16": 1024,
+          "6": 1024,
+          "46": 1024,
+          "33": 1024,
+          "28": 1024,
+          "23": 1024,
+          "32": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 2.310518957907334,
+      "cpu_seconds": 2.3046919999999993
+    },
+    {
+      "exact": {
+        "label": "game0:14",
+        "seat": 2,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "156582efcc8ccef5f63b5509b9a7069cb1b0a3bbac226e64204589a03d93383c",
+        "legal": [
+          15,
+          19,
+          13,
+          25
+        ],
+        "action": 25,
+        "values": {
+          "15": "-0x1.19403c9000000p-9",
+          "19": "0x1.9cfbdbe000000p-10",
+          "13": "-0x1.f40d470000000p-13",
+          "25": "0x1.03738b0800000p-7"
+        },
+        "rng": 5042846632978969367,
+        "world_counts": {
+          "15": 1024,
+          "19": 1024,
+          "13": 1024,
+          "25": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 0.9289971669204533,
+      "cpu_seconds": 0.9273629999999997
+    },
+    {
+      "exact": {
+        "label": "game0:15",
+        "seat": 3,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "0bde7a84cda77d651544b21735a3d2dc2da6ae8765019b94c8387e842c730317",
+        "legal": [
+          20,
+          14,
+          22
+        ],
+        "action": 14,
+        "values": {
+          "20": "0x1.dd974dbf00000p-5",
+          "14": "0x1.fc90129c00000p-5",
+          "22": "0x1.9109854e00000p-6"
+        },
+        "rng": 10516255758114692687,
+        "world_counts": {
+          "20": 1024,
+          "14": 1024,
+          "22": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 0.671674040844664,
+      "cpu_seconds": 0.6692639999999983
+    },
+    {
+      "exact": {
+        "label": "game0:16",
+        "seat": 0,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "db482deab9d3a63ecf66e80c0e9ef1c78036fa3a41d178c6b64cd6aea4b9b4b8",
+        "legal": [
+          17,
+          18,
+          21
+        ],
+        "action": 17,
+        "values": {
+          "17": "-0x1.c30cc7a000000p-10",
+          "18": "-0x1.70a3e04000000p-10",
+          "21": "-0x1.e276d1a400000p-7"
+        },
+        "rng": 11649722753925756654,
+        "world_counts": {
+          "17": 1024,
+          "18": 1024,
+          "21": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 0.5960279998835176,
+      "cpu_seconds": 0.5927590000000009
+    },
+    {
+      "exact": {
+        "label": "game0:17",
+        "seat": 2,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "7fdc0eff46df1db82079227f32ec8fae1b7153fd0cbddb4f839b01f3c174662c",
+        "legal": [
+          27,
+          10,
+          26,
+          15,
+          37,
+          0,
+          7,
+          30,
+          19,
+          13
+        ],
+        "action": 26,
+        "values": {
+          "27": "-0x1.1525e40000000p-13",
+          "10": "-0x1.4d6a978800000p-5",
+          "26": "-0x1.7f20fe2000000p-9",
+          "15": "-0x1.dff7d80800000p-7",
+          "37": "-0x1.80f4274f00000p-5",
+          "0": "-0x1.075d32ef00000p-5",
+          "7": "-0x1.bc0bc61a00000p-6",
+          "30": "-0x1.85c89e3000000p-8",
+          "19": "-0x1.c04b6e0200000p-6",
+          "13": "-0x1.188f318a00000p-6"
+        },
+        "rng": 7576136463280371479,
+        "world_counts": {
+          "27": 1024,
+          "10": 1024,
+          "26": 1024,
+          "15": 1024,
+          "37": 1024,
+          "0": 1024,
+          "7": 1024,
+          "30": 1024,
+          "19": 1024,
+          "13": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 2.5922866249457,
+      "cpu_seconds": 2.400480999999999
+    },
+    {
+      "exact": {
+        "label": "game0:18",
+        "seat": 3,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "549738dab9f59b3865e8804aab5912ab1defdbff63ee56e8311a4804e9fe028f",
+        "legal": [
+          29
+        ],
+        "action": 29,
+        "values": null,
+        "rng": 10516255758114692687,
+        "world_counts": null,
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 4.292000085115433e-06,
+      "cpu_seconds": 4.0000000041118255e-06
+    },
+    {
+      "exact": {
+        "label": "game0:19",
+        "seat": 0,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "c24f6ca6e9a059c22be5928718168111cb5dc27b7bbb11f74f368f748c5b1025",
+        "legal": [
+          35
+        ],
+        "action": 35,
+        "values": null,
+        "rng": 11649722753925756654,
+        "world_counts": null,
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 1.458916813135147e-06,
+      "cpu_seconds": 2.0000000020559128e-06
+    },
+    {
+      "exact": {
+        "label": "game0:20",
+        "seat": 1,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "6f08c7281553e6b797818aac6808acd32cd3a229919efa1542339f36641d2f04",
+        "legal": [
+          33,
+          28,
+          32
+        ],
+        "action": 28,
+        "values": {
+          "33": "-0x1.1add4d3280000p-4",
+          "28": "-0x1.261abf9a80000p-4",
+          "32": "-0x1.1f63656000000p-4"
+        },
+        "rng": 3727936134076746824,
+        "world_counts": {
+          "33": 1024,
+          "28": 1024,
+          "32": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 0.739229999948293,
+      "cpu_seconds": 0.6807439999999971
+    },
+    {
+      "exact": {
+        "label": "game0:21",
+        "seat": 0,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "160c4e0849b5928cc15697161fd9602ffa99478508ef59f049dccd2e57bcbca4",
+        "legal": [
+          11,
+          4,
+          18,
+          5,
+          21,
+          50,
+          8,
+          9,
+          3
+        ],
+        "action": 3,
+        "values": {
+          "11": "0x1.31e273f000000p-6",
+          "4": "0x1.585fd8e300000p-5",
+          "18": "-0x1.d4f5a63000000p-6",
+          "5": "0x1.7927da9f00000p-5",
+          "21": "-0x1.25d99a0a00000p-6",
+          "50": "-0x1.207d518600000p-6",
+          "8": "0x1.13da890200000p-5",
+          "9": "0x1.468ea05400000p-5",
+          "3": "0x1.66f49ce200000p-5"
+        },
+        "rng": 5564363195281304302,
+        "world_counts": {
+          "11": 1024,
+          "4": 1024,
+          "18": 1024,
+          "5": 1024,
+          "21": 1024,
+          "50": 1024,
+          "8": 1024,
+          "9": 1024,
+          "3": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 1.4249449169728905,
+      "cpu_seconds": 1.4109219999999993
+    },
+    {
+      "exact": {
+        "label": "game0:22",
+        "seat": 1,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "02cd8eeae91f0cc466e1d491da4eca282b87e3d8c70acbdb13e5498d10df5158",
+        "legal": [
+          6
+        ],
+        "action": 6,
+        "values": null,
+        "rng": 3727936134076746824,
+        "world_counts": null,
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 4.207948222756386e-06,
+      "cpu_seconds": 4.0000000041118255e-06
+    },
+    {
+      "exact": {
+        "label": "game0:23",
+        "seat": 2,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "c02109e84e7f01ce63d9f2af3f4bbb1f5f62b165a939ae8c52936f61792992d7",
+        "legal": [
+          10,
+          0,
+          7
+        ],
+        "action": 10,
+        "values": {
+          "10": "0x1.6cb0f65e00000p-6",
+          "0": "-0x1.05e24a8100000p-4",
+          "7": "-0x1.ac0ad35000000p-7"
+        },
+        "rng": 3947800575826843415,
+        "world_counts": {
+          "10": 1024,
+          "0": 1024,
+          "7": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 0.6611354581546038,
+      "cpu_seconds": 0.647950999999999
+    },
+    {
+      "exact": {
+        "label": "game0:24",
+        "seat": 3,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "ae221cdfe734d797155544dc0e1653ca6b8fc9f85b041cc08a54409c1c418e64",
+        "legal": [
+          1,
+          12,
+          2
+        ],
+        "action": 1,
+        "values": {
+          "1": "0x1.e993c87400000p-7",
+          "12": "-0x1.0ff7d76000000p-8",
+          "2": "-0x1.0e06605800000p-7"
+        },
+        "rng": 11801967213043013199,
+        "world_counts": {
+          "1": 1024,
+          "12": 1024,
+          "2": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 0.39557633409276605,
+      "cpu_seconds": 0.39465700000000226
+    },
+    {
+      "exact": {
+        "label": "game0:25",
+        "seat": 2,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "fb60273f27749cd05b615e6897a70d758beeeb33f353835d3a2411ae00a58526",
+        "legal": [
+          27,
+          15,
+          37,
+          0,
+          7,
+          30,
+          19,
+          13
+        ],
+        "action": 37,
+        "values": {
+          "27": "-0x1.62da49d500000p-5",
+          "15": "0x1.e5f7d81c00000p-5",
+          "37": "0x1.af20a7e580000p-4",
+          "0": "0x1.3b08960200000p-5",
+          "7": "0x1.3980814a00000p-5",
+          "30": "-0x1.5d6c933800000p-5",
+          "19": "0x1.5eab072000000p-5",
+          "13": "0x1.cb61975900000p-5"
+        },
+        "rng": 2776488359564239639,
+        "world_counts": {
+          "27": 1024,
+          "15": 1024,
+          "37": 1024,
+          "0": 1024,
+          "7": 1024,
+          "30": 1024,
+          "19": 1024,
+          "13": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 1.1507859169505537,
+      "cpu_seconds": 1.1468950000000007
+    },
+    {
+      "exact": {
+        "label": "game0:26",
+        "seat": 3,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "c6a997958715f9b0c9562e457a195076f829ef99bee6134de1a318693c564969",
+        "legal": [
+          20,
+          51,
+          48,
+          47,
+          12,
+          2,
+          22,
+          39
+        ],
+        "action": 2,
+        "values": {
+          "20": "-0x1.82f79fae00000p-4",
+          "51": "-0x1.1418a59140000p-3",
+          "48": "-0x1.b5098ebb00000p-5",
+          "47": "-0x1.c0c3e35800000p-5",
+          "12": "-0x1.7e76601440000p-3",
+          "2": "-0x1.c6e4363800000p-5",
+          "22": "-0x1.8a73044480000p-4",
+          "39": "-0x1.d864d7b200000p-5"
+        },
+        "rng": 15544702339162257999,
+        "world_counts": {
+          "20": 1024,
+          "51": 1024,
+          "48": 1024,
+          "47": 1024,
+          "12": 1024,
+          "2": 1024,
+          "22": 1024,
+          "39": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 1.0869019581004977,
+      "cpu_seconds": 1.0834799999999944
+    },
+    {
+      "exact": {
+        "label": "game0:27",
+        "seat": 0,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "42df59cf9fc0ebb637a5fd046e28cabd6c3978ed980e37f9d0a46076780585d1",
+        "legal": [
+          11,
+          4,
+          18,
+          5,
+          21,
+          50,
+          8,
+          9
+        ],
+        "action": 11,
+        "values": {
+          "11": "0x1.25bd930040000p-3",
+          "4": "0x1.1cbc756d40000p-3",
+          "18": "0x1.0b778d6180000p-3",
+          "5": "0x1.16bbb70b40000p-3",
+          "21": "0x1.08eafd6840000p-3",
+          "50": "0x1.e29cc92900000p-4",
+          "8": "0x1.17a3557ac0000p-3",
+          "9": "0x1.1b30052f00000p-3"
+        },
+        "rng": 11764121992591473390,
+        "world_counts": {
+          "11": 1024,
+          "4": 1024,
+          "18": 1024,
+          "5": 1024,
+          "21": 1024,
+          "50": 1024,
+          "8": 1024,
+          "9": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 0.665840124944225,
+      "cpu_seconds": 0.6634180000000001
+    },
+    {
+      "exact": {
+        "label": "game0:28",
+        "seat": 1,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "04754b42ece84b073a18a6a534c395b5f4e707bb7638251b33dd3cc886d5db45",
+        "legal": [
+          33,
+          32
+        ],
+        "action": 32,
+        "values": {
+          "33": "-0x1.aa2264fa00000p-4",
+          "32": "-0x1.abf1a1d900000p-4"
+        },
+        "rng": 9927694931386915912,
+        "world_counts": {
+          "33": 1024,
+          "32": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 0.15423366706818342,
+      "cpu_seconds": 0.15400999999999954
+    },
+    {
+      "exact": {
+        "label": "game0:29",
+        "seat": 2,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "8163dfbf1659910d93d73dc8ed8fd246e0cb1aa0fa8276706f189ecf6811574c",
+        "legal": [
+          27,
+          15,
+          0,
+          7,
+          30,
+          19,
+          13
+        ],
+        "action": 13,
+        "values": {
+          "27": "-0x1.28015e5e00000p-4",
+          "15": "0x1.0851819400000p-7",
+          "0": "-0x1.b98dd56400000p-7",
+          "7": "-0x1.ce75987800000p-8",
+          "30": "-0x1.2a32a06b00000p-4",
+          "19": "0x1.5ace713000000p-9",
+          "13": "0x1.16cb688c00000p-7"
+        },
+        "rng": 8976247156874408727,
+        "world_counts": {
+          "27": 1024,
+          "15": 1024,
+          "0": 1024,
+          "7": 1024,
+          "30": 1024,
+          "19": 1024,
+          "13": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 0.550555249908939,
+      "cpu_seconds": 0.5492509999999982
+    },
+    {
+      "exact": {
+        "label": "game0:30",
+        "seat": 3,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "e1c73f8dfa738268397bc65063b093bf65e5ddcf07b63b065883d63f849866e7",
+        "legal": [
+          20,
+          22
+        ],
+        "action": 20,
+        "values": {
+          "20": "0x1.932fe8aa00000p-6",
+          "22": "-0x1.0415c21800000p-6"
+        },
+        "rng": 8211764405144724047,
+        "world_counts": {
+          "20": 1024,
+          "22": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 0.1324207081925124,
+      "cpu_seconds": 0.13225599999999815
+    },
+    {
+      "exact": {
+        "label": "game0:31",
+        "seat": 0,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "b34933b672f207d05d5fccee42d57cc5bcc292399872eaf816a00ac3a83a4d8b",
+        "legal": [
+          18,
+          21
+        ],
+        "action": 21,
+        "values": {
+          "18": "-0x1.4caf01ff00000p-4",
+          "21": "0x1.617cf2e400000p-6"
+        },
+        "rng": 6888207729764863726,
+        "world_counts": {
+          "18": 1024,
+          "21": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 0.1620585829950869,
+      "cpu_seconds": 0.16154399999999924
+    },
+    {
+      "exact": {
+        "label": "game0:32",
+        "seat": 1,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "9e1e1aa0b6de75810a89735ecc91b94ddbc8eabae578964afc6ca8479ccce81a",
+        "legal": [
+          16,
+          23
+        ],
+        "action": 23,
+        "values": {
+          "16": "-0x1.fad5f9cc80000p-3",
+          "23": "-0x1.97e1b8b980000p-4"
+        },
+        "rng": 5051780668560306248,
+        "world_counts": {
+          "16": 1024,
+          "23": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 0.1331482499372214,
+      "cpu_seconds": 0.13245799999999974
+    },
+    {
+      "exact": {
+        "label": "game0:33",
+        "seat": 1,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "6844f7f0d1799efbfb57c1f29b065950bce1b81ac6e2dcf44c3390e346df42a4",
+        "legal": [
+          40,
+          45,
+          41,
+          16,
+          46,
+          33
+        ],
+        "action": 33,
+        "values": {
+          "40": "-0x1.75c9d92bc0000p-3",
+          "45": "-0x1.75c9d92bc0000p-3",
+          "41": "-0x1.75c9d92bc0000p-3",
+          "16": "-0x1.9865734d00000p-3",
+          "46": "-0x1.75c9d92bc0000p-3",
+          "33": "-0x1.cc7b327a80000p-4"
+        },
+        "rng": 175866405733696584,
+        "world_counts": {
+          "40": 1024,
+          "45": 1024,
+          "41": 1024,
+          "16": 1024,
+          "46": 1024,
+          "33": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 0.11667370889335871,
+      "cpu_seconds": 0.11619699999999966
+    },
+    {
+      "exact": {
+        "label": "game0:34",
+        "seat": 2,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "b7c5a367e3446df0d94bf1000f0e9c5fc04cb4f97c8d634898eac69564a428a8",
+        "legal": [
+          27,
+          30
+        ],
+        "action": 30,
+        "values": {
+          "27": "-0x1.3c276d0d80000p-4",
+          "30": "-0x1.3c276d0d80000p-4"
+        },
+        "rng": 4100332894047799063,
+        "world_counts": {
+          "27": 1024,
+          "30": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 0.10004733293317258,
+      "cpu_seconds": 0.09991499999999576
+    },
+    {
+      "exact": {
+        "label": "game0:35",
+        "seat": 3,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "42beedb27bba1313ab0364dd6bd8617f745541c7fa93a1d96b2878b15a4568f4",
+        "legal": [
+          51,
+          48,
+          47,
+          12,
+          22,
+          39
+        ],
+        "action": 39,
+        "values": {
+          "51": "0x1.3c26f00000000p-3",
+          "48": "0x1.3c26f00000000p-3",
+          "47": "0x1.3c26f00000000p-3",
+          "12": "0x1.c441b75380000p-4",
+          "22": "0x1.f266478a00000p-4",
+          "39": "0x1.3c26f00000000p-3"
+        },
+        "rng": 8249897484699962959,
+        "world_counts": {
+          "51": 1024,
+          "48": 1024,
+          "47": 1024,
+          "12": 1024,
+          "22": 1024,
+          "39": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 0.11842604097910225,
+      "cpu_seconds": 0.11820500000000322
+    },
+    {
+      "exact": {
+        "label": "game0:36",
+        "seat": 0,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "6bb3a90eb2eab2b1636a4d94270b24cb7f3dd3a018bd4b321634f220be7e2ef3",
+        "legal": [
+          4,
+          18,
+          5,
+          50,
+          8,
+          9
+        ],
+        "action": 18,
+        "values": {
+          "4": "-0x1.41c6264180000p-4",
+          "18": "-0x1.4a7dbff200000p-4",
+          "5": "-0x1.41c6264180000p-4",
+          "50": "-0x1.82a844ed80000p-4",
+          "8": "-0x1.4795e20c80000p-4",
+          "9": "-0x1.4795e20c80000p-4"
+        },
+        "rng": 9383364480511026926,
+        "world_counts": {
+          "4": 1024,
+          "18": 1024,
+          "5": 1024,
+          "50": 1024,
+          "8": 1024,
+          "9": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 0.04531266610138118,
+      "cpu_seconds": 0.04531300000000016
+    },
+    {
+      "exact": {
+        "label": "game0:37",
+        "seat": 1,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "e76b75eca69c5f34e09c228064e9afdede0d2c31f5298f2083ca6cd1ef30af90",
+        "legal": [
+          40,
+          45,
+          41,
+          16,
+          46
+        ],
+        "action": 41,
+        "values": {
+          "40": "-0x1.548099b480000p-3",
+          "45": "-0x1.548099b480000p-3",
+          "41": "-0x1.548099b480000p-3",
+          "16": "-0x1.6de5b82580000p-3",
+          "46": "-0x1.548099b480000p-3"
+        },
+        "rng": 213999485288935496,
+        "world_counts": {
+          "40": 1024,
+          "45": 1024,
+          "41": 1024,
+          "16": 1024,
+          "46": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 0.023246250115334988,
+      "cpu_seconds": 0.023206000000001836
+    },
+    {
+      "exact": {
+        "label": "game0:38",
+        "seat": 2,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "32d50d198cc8579d8916e988a8dea26c0f9abfec0e0f8a62fe289168e821dd4a",
+        "legal": [
+          27,
+          15,
+          0,
+          7,
+          19
+        ],
+        "action": 0,
+        "values": {
+          "27": "-0x1.c391518000000p-6",
+          "15": "-0x1.f9da73a200000p-6",
+          "0": "-0x1.753257fa00000p-6",
+          "7": "-0x1.753257fa00000p-6",
+          "19": "-0x1.f9da73a200000p-6"
+        },
+        "rng": 6595489644793962263,
+        "world_counts": {
+          "27": 1024,
+          "15": 1024,
+          "0": 1024,
+          "7": 1024,
+          "19": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 0.03351958398707211,
+      "cpu_seconds": 0.03352000000000288
+    },
+    {
+      "exact": {
+        "label": "game0:39",
+        "seat": 3,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "5e6cba5f98698eacc953f405085be621e5a82b14a1ae2b1f11f7755146441ecf",
+        "legal": [
+          51,
+          48,
+          47
+        ],
+        "action": 51,
+        "values": {
+          "51": "0x1.3c26f00000000p-3",
+          "48": "0x1.3c26f00000000p-3",
+          "47": "0x1.3c26f00000000p-3"
+        },
+        "rng": 15659101577827974735,
+        "world_counts": {
+          "51": 1024,
+          "48": 1024,
+          "47": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 0.003172375028952956,
+      "cpu_seconds": 0.0031719999999992865
+    },
+    {
+      "exact": {
+        "label": "game0:40",
+        "seat": 0,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "9dd76c0af00b8103938279a142bf0f7a702e01a03aebf6870bc87ae44455a5bb",
+        "legal": [
+          50
+        ],
+        "action": 50,
+        "values": null,
+        "rng": 9383364480511026926,
+        "world_counts": null,
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 3.7499703466892242e-06,
+      "cpu_seconds": 3.999999997006398e-06
+    },
+    {
+      "exact": {
+        "label": "game0:41",
+        "seat": 3,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "3d5d250865d2ebb3bb5a07e3cc22c4922a84826a2b86ab5fe721f09ed318eca7",
+        "legal": [
+          48,
+          47,
+          12,
+          22
+        ],
+        "action": 48,
+        "values": {
+          "48": "0x1.3c26f00000000p-3",
+          "47": "0x1.3c26f00000000p-3",
+          "12": "0x1.3c26f00000000p-3",
+          "22": "0x1.3c26f00000000p-3"
+        },
+        "rng": 7078585268437359183,
+        "world_counts": {
+          "48": 1024,
+          "47": 1024,
+          "12": 1024,
+          "22": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 0.0024962921161204576,
+      "cpu_seconds": 0.0024970000000053005
+    },
+    {
+      "exact": {
+        "label": "game0:42",
+        "seat": 0,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "464516549b9ebea74310bade36a3cea5d0e8d0acd5eae7f0e84783960bbf92c6",
+        "legal": [
+          4,
+          5,
+          8,
+          9
+        ],
+        "action": 8,
+        "values": {
+          "4": "-0x1.3acb8258c0000p-3",
+          "5": "-0x1.3acb8258c0000p-3",
+          "8": "-0x1.3acb8258c0000p-3",
+          "9": "-0x1.3acb8258c0000p-3"
+        },
+        "rng": 3259871842311335662,
+        "world_counts": {
+          "4": 1024,
+          "5": 1024,
+          "8": 1024,
+          "9": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 0.00272145913913846,
+      "cpu_seconds": 0.002721999999998559
+    },
+    {
+      "exact": {
+        "label": "game0:43",
+        "seat": 1,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "44803e5fb60b80a66ebc8b3d9b4d653c0b7158096364fb2397caddfee0095af1",
+        "legal": [
+          40,
+          45,
+          46
+        ],
+        "action": 40,
+        "values": {
+          "40": "0x1.3c26f00000000p-3",
+          "45": "0x1.3c26f00000000p-3",
+          "46": "0x1.3c26f00000000p-3"
+        },
+        "rng": 12537250920798795848,
+        "world_counts": {
+          "40": 1024,
+          "45": 1024,
+          "46": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 0.0018555421847850084,
+      "cpu_seconds": 0.0018560000000036325
+    },
+    {
+      "exact": {
+        "label": "game0:44",
+        "seat": 2,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "ac213433c721186166626223400a1985851c051c241919e65a88b6a2fd2f8b47",
+        "legal": [
+          27,
+          15,
+          7,
+          19
+        ],
+        "action": 27,
+        "values": {
+          "27": "-0x1.372d089ac0000p-3",
+          "15": "-0x1.372d089ac0000p-3",
+          "7": "-0x1.372d089ac0000p-3",
+          "19": "-0x1.372d089ac0000p-3"
+        },
+        "rng": 2929020677785195287,
+        "world_counts": {
+          "27": 1024,
+          "15": 1024,
+          "7": 1024,
+          "19": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 0.0014168329071253538,
+      "cpu_seconds": 0.0014170000000035543
+    },
+    {
+      "exact": {
+        "label": "game0:45",
+        "seat": 3,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "563ba5120c7d12c34ec2ac32e24a211d68f5a2fb2c92b7a866abcbfd0f67f330",
+        "legal": [
+          47,
+          12,
+          22
+        ],
+        "action": 47,
+        "values": {
+          "47": "0x1.3c26f00000000p-3",
+          "12": "0x1.3c26f00000000p-3",
+          "22": "0x1.3c26f00000000p-3"
+        },
+        "rng": 3412116301428592207,
+        "world_counts": {
+          "47": 1024,
+          "12": 1024,
+          "22": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 0.001545208040624857,
+      "cpu_seconds": 0.0015459999999976048
+    },
+    {
+      "exact": {
+        "label": "game0:46",
+        "seat": 0,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "67e762e6af6f71d708406931dae903e87278b08781cf75178938c7d466ee86fa",
+        "legal": [
+          4,
+          5,
+          9
+        ],
+        "action": 9,
+        "values": {
+          "4": "-0x1.3c26f00000000p-3",
+          "5": "-0x1.3c26f00000000p-3",
+          "9": "-0x1.3c26f00000000p-3"
+        },
+        "rng": 2050426546493492974,
+        "world_counts": {
+          "4": 1024,
+          "5": 1024,
+          "9": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 0.0012082909233868122,
+      "cpu_seconds": 0.0012089999999957968
+    },
+    {
+      "exact": {
+        "label": "game0:47",
+        "seat": 1,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "20c1eb7cf6328c49b7aa325957c832eaf1a32fe42dc7ff234352b6935eacc46e",
+        "legal": [
+          45,
+          46
+        ],
+        "action": 46,
+        "values": {
+          "45": "0x1.3c26f00000000p-3",
+          "46": "0x1.3c26f00000000p-3"
+        },
+        "rng": 8870781953790028872,
+        "world_counts": {
+          "45": 1024,
+          "46": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 0.0008772918954491615,
+      "cpu_seconds": 0.0008770000000026812
+    },
+    {
+      "exact": {
+        "label": "game0:48",
+        "seat": 2,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "c85bcc0a32afea28145636e5a2e92e578f64afe785c8784c3df7be1e91fee8ad",
+        "legal": [
+          15,
+          7,
+          19
+        ],
+        "action": 15,
+        "values": {
+          "15": "-0x1.3c26f00000000p-3",
+          "7": "-0x1.3c26f00000000p-3",
+          "19": "-0x1.3c26f00000000p-3"
+        },
+        "rng": 4176599053158276887,
+        "world_counts": {
+          "15": 1024,
+          "7": 1024,
+          "19": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 0.0006699170917272568,
+      "cpu_seconds": 0.0006699999999995043
+    },
+    {
+      "exact": {
+        "label": "game0:49",
+        "seat": 3,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "db6821604468ee12339dcb58800142d4ca256c6dc449520ff57b068076bd451f",
+        "legal": [
+          12,
+          22
+        ],
+        "action": 12,
+        "values": {
+          "12": "0x1.3c26f00000000p-3",
+          "22": "0x1.3c26f00000000p-3"
+        },
+        "rng": 4659694676801673807,
+        "world_counts": {
+          "12": 1024,
+          "22": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 0.000639250036329031,
+      "cpu_seconds": 0.0006389999999996121
+    },
+    {
+      "exact": {
+        "label": "game0:50",
+        "seat": 0,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "2da1e0507332a988337571bd36041fab1c32270670609bd9df7a9ba4cbdba05f",
+        "legal": [
+          4,
+          5
+        ],
+        "action": 4,
+        "values": {
+          "4": "-0x1.3c26f00000000p-3",
+          "5": "-0x1.3c26f00000000p-3"
+        },
+        "rng": 5755028593057498862,
+        "world_counts": {
+          "4": 1024,
+          "5": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 0.0006109578534960747,
+      "cpu_seconds": 0.000610999999999251
+    },
+    {
+      "exact": {
+        "label": "game0:51",
+        "seat": 1,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "502189ba9702e090c88d22e93695076be9a5f22b507266f497b7399c4ad85160",
+        "legal": [
+          45,
+          16
+        ],
+        "action": 16,
+        "values": {
+          "45": "0x1.3c26f00000000p-3",
+          "16": "0x1.3c26f00000000p-3"
+        },
+        "rng": 12575384000354034760,
+        "world_counts": {
+          "45": 1024,
+          "16": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 0.0005521669518202543,
+      "cpu_seconds": 0.0005519999999989977
+    },
+    {
+      "exact": {
+        "label": "game0:52",
+        "seat": 2,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "0aba81fce9c85413db6ceb708deb984e2ff874b42597be924f74e7fb8502427f",
+        "legal": [
+          7
+        ],
+        "action": 7,
+        "values": null,
+        "rng": 4176599053158276887,
+        "world_counts": null,
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 2.209097146987915e-06,
+      "cpu_seconds": 1.9999999949504854e-06
+    },
+    {
+      "exact": {
+        "label": "game0:53",
+        "seat": 3,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "b6c41a48b5728c54e4821849cbd65ee9c240befec1115007c51d65dce82b13dd",
+        "legal": [
+          22
+        ],
+        "action": 22,
+        "values": null,
+        "rng": 4659694676801673807,
+        "world_counts": null,
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 1.7499551177024841e-06,
+      "cpu_seconds": 1.00000000458067e-06
+    },
+    {
+      "exact": {
+        "label": "game0:54",
+        "seat": 0,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "931070984713e7255027dce91b0b58b1779a4bbe83092f307d588da03fe33cc1",
+        "legal": [
+          5
+        ],
+        "action": 5,
+        "values": null,
+        "rng": 5755028593057498862,
+        "world_counts": null,
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 1.0828953236341476e-06,
+      "cpu_seconds": 1.00000000458067e-06
+    },
+    {
+      "exact": {
+        "label": "game0:55",
+        "seat": 1,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "1fce8242fadecb77a6853231baf207c8f54f2b85012b08830a859d7ba4156c59",
+        "legal": [
+          45
+        ],
+        "action": 45,
+        "values": null,
+        "rng": 12575384000354034760,
+        "world_counts": null,
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 9.59029421210289e-07,
+      "cpu_seconds": 1.9999999949504854e-06
+    },
+    {
+      "exact": {
+        "label": "game0:56",
+        "seat": 2,
+        "phase": "TRICK_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "3fd3560e6dd1713d97c2b77fb7c757805e76070ae3ca62b89fd39b11214afaac",
+        "legal": [
+          19
+        ],
+        "action": 19,
+        "values": null,
+        "rng": 4176599053158276887,
+        "world_counts": null,
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 1.125037670135498e-06,
+      "cpu_seconds": 9.999999974752427e-07
+    },
+    {
+      "exact": {
+        "label": "game1:0",
+        "seat": 2,
+        "phase": "SHOWING",
+        "contract": null,
+        "input_sha256": "f9b3668f631afb96a53ba3491dd9e1d88d16a5cb75e19b0d3385b285ecfc6c9f",
+        "legal": [
+          95,
+          94,
+          93,
+          106,
+          124
+        ],
+        "action": 93,
+        "values": {
+          "95": "-0x1.202a7f8100000p-5",
+          "94": "-0x1.3ba44cb980000p-5",
+          "93": "-0x1.2dcb237080000p-5",
+          "106": "-0x1.a29c9ed800000p-5",
+          "124": "-0x1.a0ba7d2b00000p-5"
+        },
+        "rng": 6211761933247167843,
+        "world_counts": {
+          "95": 1024,
+          "94": 1024,
+          "93": 1024,
+          "106": 256,
+          "124": 512
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 2.2084958751220256,
+      "cpu_seconds": 2.1929450000000017
+    },
+    {
+      "exact": {
+        "label": "game1:1",
+        "seat": 3,
+        "phase": "SHOWING",
+        "contract": null,
+        "input_sha256": "7a31c500fa69214f2cdfd46a8fa773990b9c1bc75382bfd0a36687b98ad7f0e1",
+        "legal": [
+          97,
+          96,
+          79,
+          84,
+          122,
+          118,
+          120
+        ],
+        "action": 120,
+        "values": {
+          "97": "0x1.be399b7000000p-6",
+          "96": "0x1.71327e5800000p-6",
+          "79": "0x1.4181de7000000p-6",
+          "84": "0x1.680f763800000p-6",
+          "122": "0x1.6bcad4399999ap-4",
+          "118": "0x1.66a5c49000000p-4",
+          "120": "0x1.6a40d54b33333p-4"
+        },
+        "rng": 4592362558581404386,
+        "world_counts": {
+          "97": 128,
+          "96": 128,
+          "79": 128,
+          "84": 128,
+          "122": 640,
+          "118": 640,
+          "120": 640
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          0,
+          false,
+          false,
+          0.0
+        ]
+      },
+      "seconds": 1.534212333150208,
+      "cpu_seconds": 1.522439999999996
+    },
+    {
+      "exact": {
+        "label": "game1:2",
+        "seat": 0,
+        "phase": "SOOLI_OFFER",
+        "contract": "RAMI",
+        "input_sha256": "0d20790a96fc652330c7520bdde4ca64ef92f8a2d0ecc280aec7d222ff81bc09",
+        "legal": [
+          156,
+          157
+        ],
+        "action": 157,
+        "values": {
+          "156": "0x1.0c03e22c00000p-6",
+          "157": "0x1.2b41cb4d00000p-5"
+        },
+        "rng": 32843873154705155,
+        "world_counts": {
+          "156": 1024,
+          "157": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 0.8344340410549194,
+      "cpu_seconds": 0.8264060000000057
+    },
+    {
+      "exact": {
+        "label": "game1:3",
+        "seat": 0,
+        "phase": "SOOLI_GIVE",
+        "contract": "RAMI",
+        "input_sha256": "36355b0068d3573a6c257186ce77fe87b1a98863316b3f7b8d2e16a175f8f40e",
+        "legal": [
+          173,
+          187,
+          168,
+          167,
+          162,
+          165,
+          186,
+          188,
+          175,
+          163,
+          181,
+          159,
+          170
+        ],
+        "action": 181,
+        "values": {
+          "181": "-0x1.c061808000000p-5",
+          "173": "-0x1.c6143eea80000p-4",
+          "187": "-0x1.5c21620900000p-4",
+          "168": "-0x1.9c19737900000p-4",
+          "167": "-0x1.9c19737900000p-4",
+          "162": "-0x1.9c19737900000p-4",
+          "165": "-0x1.9c19737900000p-4",
+          "186": "-0x1.5c21620900000p-4",
+          "188": "-0x1.5c21620900000p-4",
+          "175": "-0x1.c4147e5f00000p-4",
+          "163": "-0x1.9c19737900000p-4",
+          "159": "-0x1.b815fb1a00000p-4",
+          "170": "-0x1.c4147e5f00000p-4"
+        },
+        "rng": 12757403226961463064,
+        "world_counts": {
+          "181": 1024,
+          "173": 1024,
+          "187": 1024,
+          "168": 1024,
+          "167": 1024,
+          "162": 1024,
+          "165": 1024,
+          "186": 1024,
+          "188": 1024,
+          "175": 1024,
+          "163": 1024,
+          "159": 1024,
+          "170": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 2.773970125010237,
+      "cpu_seconds": 2.7135740000000013
+    },
+    {
+      "exact": {
+        "label": "game1:4",
+        "seat": 2,
+        "phase": "SOOLI_RETURN",
+        "contract": "RAMI",
+        "input_sha256": "12d973edde328d9363b96e145bc934b3e087eca89fe5ecd9e7b826eba3bcf668",
+        "legal": [
+          184,
+          160,
+          171,
+          207,
+          193,
+          206,
+          201,
+          200,
+          195,
+          199,
+          178,
+          197,
+          158
+        ],
+        "action": 158,
+        "values": null,
+        "rng": 6211761933247167843,
+        "world_counts": null,
+        "sooli_before": [
+          17,
+          false,
+          true,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          true,
+          0.3
+        ]
+      },
+      "seconds": 3.200001083314419e-05,
+      "cpu_seconds": 3.199999999736747e-05
+    },
+    {
+      "exact": {
+        "label": "game1:5",
+        "seat": 3,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "636df883dda8f9839c30ba63a137f4936e782066ae913ae8d0cc38f3e6ff63f9",
+        "legal": [
+          25,
+          45,
+          18,
+          44,
+          14,
+          22,
+          27,
+          16,
+          38,
+          32,
+          51,
+          50,
+          24
+        ],
+        "action": 27,
+        "values": {
+          "38": "0x1.187652ba00000p-5",
+          "25": "0x1.9866759a00000p-5",
+          "45": "0x1.cc6003c500000p-5",
+          "18": "0x1.8868713e00000p-5",
+          "44": "0x1.cc6003c500000p-5",
+          "14": "0x1.b462fd3b00000p-5",
+          "22": "0x1.40715da000000p-5",
+          "27": "0x1.2228923b80000p-4",
+          "16": "0x1.a06577c800000p-5",
+          "32": "0x1.102acd5400000p-4",
+          "51": "0x1.686c688600000p-5",
+          "50": "0x1.786a6ce200000p-5",
+          "24": "0x1.38725b7200000p-5"
+        },
+        "rng": 6532857448119479016,
+        "world_counts": {
+          "38": 1024,
+          "25": 1024,
+          "45": 1024,
+          "18": 1024,
+          "44": 1024,
+          "14": 1024,
+          "22": 1024,
+          "27": 1024,
+          "16": 1024,
+          "32": 1024,
+          "51": 1024,
+          "50": 1024,
+          "24": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 9.021445458987728,
+      "cpu_seconds": 8.856608999999999
+    },
+    {
+      "exact": {
+        "label": "game1:6",
+        "seat": 1,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "7748b7e66dab08ead2530deb5834f60c84fe7bb75b655f81f416bcdd205f0742",
+        "legal": [
+          31,
+          34,
+          36,
+          33
+        ],
+        "action": 31,
+        "values": {
+          "31": "-0x1.69ace10580000p-3",
+          "34": "-0x1.72abc37940000p-3",
+          "36": "-0x1.84a98860c0000p-3",
+          "33": "-0x1.72abc37940000p-3"
+        },
+        "rng": 13622363395817170800,
+        "world_counts": {
+          "31": 1024,
+          "34": 1024,
+          "36": 1024,
+          "33": 1024
+        },
+        "sooli_before": [
+          0,
+          false,
+          false,
+          0.0
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 2.1353089581243694,
+      "cpu_seconds": 2.064498999999998
+    },
+    {
+      "exact": {
+        "label": "game1:7",
+        "seat": 0,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "17ceba8753cf443b620ef738b35a40d4150f2c579cfb5b4276d194d8a4a01c82",
+        "legal": [
+          29,
+          28,
+          30
+        ],
+        "action": 30,
+        "values": {
+          "30": "-0x1.111056fc00000p-6",
+          "29": "-0x1.111056fc00000p-6",
+          "28": "-0x1.111056fc00000p-6"
+        },
+        "rng": 14406289520631442221,
+        "world_counts": {
+          "30": 1024,
+          "29": 1024,
+          "28": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.3805781251285225,
+      "cpu_seconds": 0.37123499999999865
+    },
+    {
+      "exact": {
+        "label": "game1:8",
+        "seat": 1,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "7bdb4c515c01d3f6ac6777066f69f084d2fceda726b8d142c8085223fa138f21",
+        "legal": [
+          19,
+          47,
+          21,
+          11,
+          6,
+          34,
+          3,
+          36,
+          8,
+          46,
+          33,
+          40
+        ],
+        "action": 19,
+        "values": {
+          "40": "-0x1.6baca19100000p-3",
+          "19": "-0x1.5eae3e0640000p-3",
+          "47": "-0x1.91a7ebeb80000p-3",
+          "21": "-0x1.5fae1e4c00000p-3",
+          "11": "-0x1.97a72d8e00000p-3",
+          "6": "-0x1.75ab644a80000p-3",
+          "34": "-0x1.63ad9f6300000p-3",
+          "3": "-0x1.6aacc14b40000p-3",
+          "36": "-0x1.68ad00bfc0000p-3",
+          "8": "-0x1.83a9a81b00000p-3",
+          "46": "-0x1.91a7ebeb80000p-3",
+          "33": "-0x1.63ad9f6300000p-3"
+        },
+        "rng": 11770727080872448810,
+        "world_counts": {
+          "40": 1024,
+          "19": 1024,
+          "47": 1024,
+          "21": 1024,
+          "11": 1024,
+          "6": 1024,
+          "34": 1024,
+          "3": 1024,
+          "36": 1024,
+          "8": 1024,
+          "46": 1024,
+          "33": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 1.9404655830003321,
+      "cpu_seconds": 1.9314889999999991
+    },
+    {
+      "exact": {
+        "label": "game1:9",
+        "seat": 3,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "50872bce9cc8445f68a91d64e01a0ad9dcd01164bb354251066b3231106cedf9",
+        "legal": [
+          25,
+          18,
+          14,
+          22,
+          16,
+          24
+        ],
+        "action": 18,
+        "values": {
+          "18": "0x1.8102758000000p-6",
+          "25": "0x1.61066cc800000p-6",
+          "14": "0x1.8102758000000p-6",
+          "22": "0x1.f226a0e400000p-7",
+          "16": "0x1.8102758000000p-6",
+          "24": "0x1.b22e8f7400000p-7"
+        },
+        "rng": 4086453067599939503,
+        "world_counts": {
+          "18": 1024,
+          "25": 1024,
+          "14": 1024,
+          "22": 1024,
+          "16": 1024,
+          "24": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 1.1911402910482138,
+      "cpu_seconds": 1.1889400000000023
+    },
+    {
+      "exact": {
+        "label": "game1:10",
+        "seat": 0,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "9e316d01d83a4b42079909740ba46f3a57ccc5a7b3a5bad0408b60defe57850d",
+        "legal": [
+          15,
+          17
+        ],
+        "action": 17,
+        "values": {
+          "17": "-0x1.8102758000000p-6",
+          "15": "-0x1.4a239d2180000p-4"
+        },
+        "rng": 2522479082973718338,
+        "world_counts": {
+          "17": 1024,
+          "15": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.06807045894674957,
+      "cpu_seconds": 0.06806500000000426
+    },
+    {
+      "exact": {
+        "label": "game1:11",
+        "seat": 1,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "80eadb92071d86e6bbfbba0fbe08ff7ede572f4778e6c0f0a9d6eb5a6008437d",
+        "legal": [
+          47,
+          21,
+          11,
+          6,
+          34,
+          3,
+          36,
+          8,
+          46,
+          33,
+          40
+        ],
+        "action": 21,
+        "values": {
+          "40": "-0x1.44b176f0c0000p-3",
+          "47": "-0x1.71abe33380000p-3",
+          "21": "-0x1.30b3f17dc0000p-3",
+          "11": "-0x1.73aba3bf00000p-3",
+          "6": "-0x1.53af9b0700000p-3",
+          "34": "-0x1.3cb274c2c0000p-3",
+          "3": "-0x1.41b1d61f80000p-3",
+          "36": "-0x1.48b0f807c0000p-3",
+          "8": "-0x1.5cae7d7ac0000p-3",
+          "46": "-0x1.71abe33380000p-3",
+          "33": "-0x1.3cb274c2c0000p-3"
+        },
+        "rng": 13174961940642773372,
+        "world_counts": {
+          "40": 1024,
+          "47": 1024,
+          "21": 1024,
+          "11": 1024,
+          "6": 1024,
+          "34": 1024,
+          "3": 1024,
+          "36": 1024,
+          "8": 1024,
+          "46": 1024,
+          "33": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.8164909998886287,
+      "cpu_seconds": 0.8115859999999913
+    },
+    {
+      "exact": {
+        "label": "game1:12",
+        "seat": 3,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "ecf7a462d9b7aa3de9ab9f3574acd87d4f636f19d457947e2c8bbdcd17c58fdd",
+        "legal": [
+          25,
+          14,
+          22,
+          16,
+          24
+        ],
+        "action": 22,
+        "values": {
+          "16": "0x1.523a754c00000p-7",
+          "25": "0x1.8960cfa000000p-9",
+          "14": "0x1.523a754c00000p-7",
+          "22": "0x1.e2289c8800000p-7",
+          "24": "0x1.a2308b1800000p-7"
+        },
+        "rng": 16386136963848925800,
+        "world_counts": {
+          "16": 1024,
+          "25": 1024,
+          "14": 1024,
+          "22": 1024,
+          "24": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.3360953750088811,
+      "cpu_seconds": 0.3343179999999961
+    },
+    {
+      "exact": {
+        "label": "game1:13",
+        "seat": 0,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "c79974f16ee5588bc4632d4287aea8e0f118ec3a76766daa3dfe1917ccdc0478",
+        "legal": [
+          15
+        ],
+        "action": 15,
+        "values": null,
+        "rng": 2522479082973718338,
+        "world_counts": null,
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 4.790956154465675e-06,
+      "cpu_seconds": 5.000000001587068e-06
+    },
+    {
+      "exact": {
+        "label": "game1:14",
+        "seat": 3,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "251aca82be4456762b8d3d369e69da529f4c5a0a93cd2f74c14f6031e512d812",
+        "legal": [
+          25,
+          45,
+          44,
+          14,
+          16,
+          38,
+          32,
+          51,
+          50,
+          24
+        ],
+        "action": 32,
+        "values": {
+          "51": "-0x1.06ad3b0e00000p-6",
+          "25": "-0x1.d97eef8000000p-11",
+          "45": "-0x1.bb00469000000p-8",
+          "44": "-0x1.bb00469000000p-8",
+          "14": "-0x1.1d7834b800000p-7",
+          "16": "-0x1.1d7834b800000p-7",
+          "38": "-0x1.869d5dee00000p-6",
+          "32": "0x1.d22a982c00000p-7",
+          "50": "-0x1.fd5c71c000000p-7",
+          "24": "-0x1.3d743d7000000p-7"
+        },
+        "rng": 12540951306409910947,
+        "world_counts": {
+          "51": 1024,
+          "25": 1024,
+          "45": 1024,
+          "44": 1024,
+          "14": 1024,
+          "16": 1024,
+          "38": 1024,
+          "32": 1024,
+          "50": 1024,
+          "24": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.24946091696619987,
+      "cpu_seconds": 0.24902600000000064
+    },
+    {
+      "exact": {
+        "label": "game1:15",
+        "seat": 1,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "c38e8c2a1a3af6826633e20af23d6f1efa0d29b817a92c6f1a9aa5eb49767ce8",
+        "legal": [
+          34,
+          36,
+          33
+        ],
+        "action": 33,
+        "values": {
+          "33": "-0x1.27b50f0a00000p-3",
+          "34": "-0x1.27b50f0a00000p-3",
+          "36": "-0x1.37b3136600000p-3"
+        },
+        "rng": 17401834226740791809,
+        "world_counts": {
+          "33": 1024,
+          "34": 1024,
+          "36": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.11588633293285966,
+      "cpu_seconds": 0.11438799999999105
+    },
+    {
+      "exact": {
+        "label": "game1:16",
+        "seat": 0,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "610df46825be93de612e15720bcae32a840d9564262fcf234b2212fab1aa8493",
+        "legal": [
+          29,
+          28
+        ],
+        "action": 29,
+        "values": {
+          "29": "0x1.8da86ad480000p-3",
+          "28": "0x1.8da86ad480000p-3"
+        },
+        "rng": 466763330079691607,
+        "world_counts": {
+          "29": 1024,
+          "28": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.004029165953397751,
+      "cpu_seconds": 0.0040300000000002
+    },
+    {
+      "exact": {
+        "label": "game1:17",
+        "seat": 1,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "71bc4777060c743db382f46dd7d3a85206976fe723f95cf032deb79fbf8a614d",
+        "legal": [
+          47,
+          11,
+          6,
+          34,
+          3,
+          36,
+          8,
+          46,
+          40
+        ],
+        "action": 34,
+        "values": {
+          "40": "-0x1.33b3924f00000p-3",
+          "47": "-0x1.57af1c1e00000p-3",
+          "11": "-0x1.5cae7d7ac0000p-3",
+          "6": "-0x1.38b2f3abc0000p-3",
+          "34": "-0x1.2ab4afdb40000p-3",
+          "3": "-0x1.2ab4afdb40000p-3",
+          "36": "-0x1.30b3f17dc0000p-3",
+          "8": "-0x1.44b176f0c0000p-3",
+          "46": "-0x1.57af1c1e00000p-3"
+        },
+        "rng": 8834376124416671974,
+        "world_counts": {
+          "40": 1024,
+          "47": 1024,
+          "11": 1024,
+          "6": 1024,
+          "34": 1024,
+          "3": 1024,
+          "36": 1024,
+          "8": 1024,
+          "46": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.11542762513272464,
+      "cpu_seconds": 0.11483299999999019
+    },
+    {
+      "exact": {
+        "label": "game1:18",
+        "seat": 3,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "9276afec3c165b49051142cfb30952115b7597a9b5818aad798f220196fe12ca",
+        "legal": [
+          38
+        ],
+        "action": 38,
+        "values": null,
+        "rng": 12540951306409910947,
+        "world_counts": null,
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 4.833098500967026e-06,
+      "cpu_seconds": 3.999999989900971e-06
+    },
+    {
+      "exact": {
+        "label": "game1:19",
+        "seat": 0,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "6bfd7ae2cc8b81f3a1d74819a73da5c13dae9f182921d588e65f0e62169ea427",
+        "legal": [
+          28
+        ],
+        "action": 28,
+        "values": null,
+        "rng": 466763330079691607,
+        "world_counts": null,
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 1.7909333109855652e-06,
+      "cpu_seconds": 9.999999974752427e-07
+    },
+    {
+      "exact": {
+        "label": "game1:20",
+        "seat": 1,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "bed87a11a3f9078146c2b0bf2bcd8d1ad2423004bcada164b81b9f6d572cb6bc",
+        "legal": [
+          47,
+          11,
+          6,
+          3,
+          36,
+          8,
+          46,
+          40
+        ],
+        "action": 3,
+        "values": {
+          "40": "-0x1.68ad00bfc0000p-3",
+          "47": "-0x1.99a6ee1980000p-3",
+          "11": "-0x1.92a7cc3140000p-3",
+          "6": "-0x1.6aacc14b40000p-3",
+          "3": "-0x1.61added780000p-3",
+          "36": "-0x1.a2a5d08d40000p-3",
+          "8": "-0x1.73aba3bf00000p-3",
+          "46": "-0x1.99a6ee1980000p-3"
+        },
+        "rng": 16969176228414066470,
+        "world_counts": {
+          "40": 1024,
+          "47": 1024,
+          "11": 1024,
+          "6": 1024,
+          "3": 1024,
+          "36": 1024,
+          "8": 1024,
+          "46": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.03211649996228516,
+      "cpu_seconds": 0.03211699999999951
+    },
+    {
+      "exact": {
+        "label": "game1:21",
+        "seat": 3,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "e0ccb055725ac44c140a4646f9e5c42481e949aa28cd5bf7ef03c2404c42d6a9",
+        "legal": [
+          25,
+          45,
+          44,
+          14,
+          16,
+          51,
+          50,
+          24
+        ],
+        "action": 45,
+        "values": {
+          "50": "-0x1.eb29ff9d00000p-5",
+          "25": "-0x1.0393439f00000p-4",
+          "45": "-0x1.1344c4c300000p-5",
+          "44": "-0x1.1344c4c300000p-5",
+          "14": "-0x1.1344c4c300000p-5",
+          "16": "-0x1.1344c4c300000p-5",
+          "51": "-0x1.3b8c52e100000p-4",
+          "24": "-0x1.7b37e11900000p-5"
+        },
+        "rng": 15650319495815478411,
+        "world_counts": {
+          "50": 1024,
+          "25": 1024,
+          "45": 1024,
+          "44": 1024,
+          "14": 1024,
+          "16": 1024,
+          "51": 1024,
+          "24": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.026467583142220974,
+      "cpu_seconds": 0.026467999999994163
+    },
+    {
+      "exact": {
+        "label": "game1:22",
+        "seat": 0,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "061d1bc824b0d40eebba8a89e4bce3b96fe93ee477def778db58f44691327eea",
+        "legal": [
+          10,
+          9,
+          4,
+          7,
+          5,
+          1,
+          12,
+          0
+        ],
+        "action": 1,
+        "values": {
+          "1": "0x1.87bc4a0000000p-2",
+          "10": "-0x1.e011060000000p-4",
+          "9": "-0x1.e011060000000p-4",
+          "4": "-0x1.e011060000000p-4",
+          "7": "-0x1.e011060000000p-4",
+          "5": "-0x1.e011060000000p-4",
+          "12": "0x1.87bc4a0000000p-2",
+          "0": "0x1.87bc4a0000000p-2"
+        },
+        "rng": 8239142261949362028,
+        "world_counts": {
+          "1": 1024,
+          "10": 1024,
+          "9": 1024,
+          "4": 1024,
+          "7": 1024,
+          "5": 1024,
+          "12": 1024,
+          "0": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.000671332934871316,
+      "cpu_seconds": 0.0006719999999944548
+    },
+    {
+      "exact": {
+        "label": "game1:23",
+        "seat": 1,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "5d14cc7323b1318269a973f27308c863035f76858b25c64a10e7acdea0c7744a",
+        "legal": [
+          47,
+          11,
+          6,
+          36,
+          8,
+          46,
+          40
+        ],
+        "action": 6,
+        "values": {
+          "40": "-0x1.a0a61001c0000p-3",
+          "47": "-0x1.d99eff8980000p-3",
+          "11": "-0x1.7caa8632c0000p-3",
+          "6": "-0x1.73aba3bf00000p-3",
+          "36": "-0x1.cea05c8a40000p-3",
+          "8": "-0x1.73aba3bf00000p-3",
+          "46": "-0x1.d99eff8980000p-3"
+        },
+        "rng": 16896678402373261496,
+        "world_counts": {
+          "40": 1024,
+          "47": 1024,
+          "11": 1024,
+          "6": 1024,
+          "36": 1024,
+          "8": 1024,
+          "46": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.005216707941144705,
+      "cpu_seconds": 0.005216000000004328
+    },
+    {
+      "exact": {
+        "label": "game1:24",
+        "seat": 3,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "438a7df51eaf94eed9509a34a1b7294731a58d48529305bbef51a91ca8b13120",
+        "legal": [
+          25,
+          44,
+          14,
+          16,
+          51,
+          50,
+          24
+        ],
+        "action": 14,
+        "values": {
+          "50": "-0x1.458b159a80000p-4",
+          "25": "-0x1.558919f680000p-4",
+          "44": "-0x1.bf2f73a000000p-5",
+          "14": "-0x1.a7326d1600000p-5",
+          "16": "-0x1.a7326d1600000p-5",
+          "51": "-0x1.9f7fee2000000p-4",
+          "24": "-0x1.0d92065880000p-4"
+        },
+        "rng": 10473218888093636738,
+        "world_counts": {
+          "50": 1024,
+          "25": 1024,
+          "44": 1024,
+          "14": 1024,
+          "16": 1024,
+          "51": 1024,
+          "24": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.007730541983619332,
+      "cpu_seconds": 0.00772999999999513
+    },
+    {
+      "exact": {
+        "label": "game1:25",
+        "seat": 0,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "6fd3c78a85492bc13700434c633d08d23a31e4d332737b19d903fa57fe556dfc",
+        "legal": [
+          10,
+          9,
+          4,
+          7,
+          5,
+          12,
+          0
+        ],
+        "action": 5,
+        "values": {
+          "5": "0x1.87bc4a0000000p-2",
+          "10": "-0x1.e011060000000p-4",
+          "9": "-0x1.e011060000000p-4",
+          "4": "0x1.87bc4a0000000p-2",
+          "7": "-0x1.e011060000000p-4",
+          "12": "0x1.87bc4a0000000p-2",
+          "0": "0x1.87bc4a0000000p-2"
+        },
+        "rng": 2478824462491329409,
+        "world_counts": {
+          "5": 1024,
+          "10": 1024,
+          "9": 1024,
+          "4": 1024,
+          "7": 1024,
+          "12": 1024,
+          "0": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.0006221251096576452,
+      "cpu_seconds": 0.0006220000000070058
+    },
+    {
+      "exact": {
+        "label": "game1:26",
+        "seat": 1,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "b9467d2777a773a5b02b305f1bdd97dd97bcdd35c81d614d7f767c128217c059",
+        "legal": [
+          47,
+          11,
+          36,
+          8,
+          46,
+          40
+        ],
+        "action": 8,
+        "values": {
+          "40": "-0x1.02ccc5c340000p-2",
+          "47": "-0x1.2cc79134c0000p-2",
+          "11": "-0x1.d49f9e2cc0000p-3",
+          "36": "-0x1.28481ffae0000p-2",
+          "8": "-0x1.d29fdda140000p-3",
+          "46": "-0x1.2cc79134c0000p-2"
+        },
+        "rng": 14233890043451856095,
+        "world_counts": {
+          "40": 1024,
+          "47": 1024,
+          "11": 1024,
+          "36": 1024,
+          "8": 1024,
+          "46": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.0025435828138142824,
+      "cpu_seconds": 0.0025430000000028485
+    },
+    {
+      "exact": {
+        "label": "game1:27",
+        "seat": 3,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "88d5a0ebf5229a74a841c4f07a01a7d3f4cf2859996552567c4a3ac9241133a8",
+        "legal": [
+          25,
+          44,
+          16,
+          51,
+          50,
+          24
+        ],
+        "action": 16,
+        "values": {
+          "50": "-0x1.b57d341e80000p-4",
+          "25": "-0x1.f974c6a580000p-4",
+          "44": "-0x1.478ad62600000p-4",
+          "16": "-0x1.398c925580000p-4",
+          "51": "-0x1.19b6cb3980000p-3",
+          "24": "-0x1.7f83e56800000p-4"
+        },
+        "rng": 14406509453512069661,
+        "world_counts": {
+          "50": 1024,
+          "25": 1024,
+          "44": 1024,
+          "16": 1024,
+          "51": 1024,
+          "24": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.003280875040218234,
+      "cpu_seconds": 0.0032799999999895135
+    },
+    {
+      "exact": {
+        "label": "game1:28",
+        "seat": 0,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "afe77c61a03407ede01c0d164690b7bc31ccfa813811d6344972486e2c41dd96",
+        "legal": [
+          10,
+          9,
+          4,
+          7,
+          12,
+          0
+        ],
+        "action": 7,
+        "values": {
+          "7": "0x1.87bc4a0000000p-2",
+          "10": "-0x1.e011060000000p-4",
+          "9": "-0x1.e011060000000p-4",
+          "4": "0x1.87bc4a0000000p-2",
+          "12": "0x1.87bc4a0000000p-2",
+          "0": "0x1.87bc4a0000000p-2"
+        },
+        "rng": 17622274407933772694,
+        "world_counts": {
+          "7": 1024,
+          "10": 1024,
+          "9": 1024,
+          "4": 1024,
+          "12": 1024,
+          "0": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.0005884580314159393,
+      "cpu_seconds": 0.0005880000000075825
+    },
+    {
+      "exact": {
+        "label": "game1:29",
+        "seat": 1,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "5132e701701df312b8659ec268fddf0c4fabd0a2164681ed398c3d1845ab68f5",
+        "legal": [
+          47,
+          11,
+          36,
+          46,
+          40
+        ],
+        "action": 11,
+        "values": {
+          "40": "-0x1.2e47619d60000p-2",
+          "47": "-0x1.57c23cec00000p-2",
+          "11": "-0x1.2148fe12a0000p-2",
+          "36": "-0x1.49c3f91b80000p-2",
+          "46": "-0x1.57c23cec00000p-2"
+        },
+        "rng": 5032311337800124354,
+        "world_counts": {
+          "40": 1024,
+          "47": 1024,
+          "11": 1024,
+          "36": 1024,
+          "46": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.0015279578510671854,
+      "cpu_seconds": 0.0015269999999958372
+    },
+    {
+      "exact": {
+        "label": "game1:30",
+        "seat": 3,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "99482fcf93f571f7271daa10cdb9658ffa0a518f21957356f7d9da8c7af91bba",
+        "legal": [
+          25,
+          44,
+          51,
+          50,
+          24
+        ],
+        "action": 44,
+        "values": {
+          "50": "-0x1.54af7b4cc0000p-3",
+          "25": "-0x1.81a9e78f80000p-3",
+          "44": "-0x1.03b9853b00000p-3",
+          "51": "-0x1.73aba3bf00000p-3",
+          "24": "-0x1.16b72a6840000p-3"
+        },
+        "rng": 5006017017731568732,
+        "world_counts": {
+          "50": 1024,
+          "25": 1024,
+          "44": 1024,
+          "51": 1024,
+          "24": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.0015643748920410872,
+      "cpu_seconds": 0.0015640000000018972
+    },
+    {
+      "exact": {
+        "label": "game1:31",
+        "seat": 0,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "1cb7eca6cc6ef1c1bf3bb7d2390ae27d495b3e95d1e2ec120ac6d62e55042afd",
+        "legal": [
+          10,
+          9,
+          4,
+          12,
+          0
+        ],
+        "action": 10,
+        "values": {
+          "10": "0x1.87bc4a0000000p-2",
+          "9": "0x1.87bc4a0000000p-2",
+          "4": "0x1.87bc4a0000000p-2",
+          "12": "0x1.87bc4a0000000p-2",
+          "0": "0x1.87bc4a0000000p-2"
+        },
+        "rng": 786283548338961323,
+        "world_counts": {
+          "10": 1024,
+          "9": 1024,
+          "4": 1024,
+          "12": 1024,
+          "0": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.000557582825422287,
+      "cpu_seconds": 0.0005570000000005848
+    },
+    {
+      "exact": {
+        "label": "game1:32",
+        "seat": 1,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "d4afff1ec35cfeadc93431465b5030b2f23f8c9cd2a560d5b3a304416ebe5324",
+        "legal": [
+          47,
+          36,
+          46,
+          40
+        ],
+        "action": 40,
+        "values": {
+          "40": "-0x1.4cc399ecc0000p-2",
+          "47": "-0x1.6bbfc25f00000p-2",
+          "36": "-0x1.6340d00e20000p-2",
+          "46": "-0x1.6bbfc25f00000p-2"
+        },
+        "rng": 16549110645570215947,
+        "world_counts": {
+          "40": 1024,
+          "47": 1024,
+          "36": 1024,
+          "46": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.0010623750276863575,
+      "cpu_seconds": 0.0010630000000020345
+    },
+    {
+      "exact": {
+        "label": "game1:33",
+        "seat": 3,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "3a00d8a2e56f4d865633a7c4542c7628b2ac92cfd0e18d2113c528724383c76d",
+        "legal": [
+          51,
+          50
+        ],
+        "action": 51,
+        "values": {
+          "51": "-0x1.0ecb490840000p-2",
+          "50": "-0x1.27c82fd800000p-2"
+        },
+        "rng": 16716564347809893960,
+        "world_counts": {
+          "51": 1024,
+          "50": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.000809249933809042,
+      "cpu_seconds": 0.0008090000000038344
+    },
+    {
+      "exact": {
+        "label": "game1:34",
+        "seat": 0,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "06c09b0823f8d642c6b7c4d413eaa4832d6d7a6b584224b40f1ca51fd8024848",
+        "legal": [
+          9,
+          4,
+          12,
+          0
+        ],
+        "action": 9,
+        "values": {
+          "9": "0x1.87bc4a0000000p-2",
+          "4": "0x1.87bc4a0000000p-2",
+          "12": "0x1.87bc4a0000000p-2",
+          "0": "0x1.87bc4a0000000p-2"
+        },
+        "rng": 7311084104835550144,
+        "world_counts": {
+          "9": 1024,
+          "4": 1024,
+          "12": 1024,
+          "0": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.0004970000591129065,
+      "cpu_seconds": 0.0004980000000074369
+    },
+    {
+      "exact": {
+        "label": "game1:35",
+        "seat": 1,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "6f5be16d8d3355ed972491a6d104b2b841632627f6fe24b3849f283ecc0f1c2e",
+        "legal": [
+          47,
+          36,
+          46
+        ],
+        "action": 36,
+        "values": {
+          "36": "-0x1.7d3d9723a0000p-2",
+          "47": "-0x1.873c59dd20000p-2",
+          "46": "-0x1.873c59dd20000p-2"
+        },
+        "rng": 15702840188494031904,
+        "world_counts": {
+          "36": 1024,
+          "47": 1024,
+          "46": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.0007556669879704714,
+      "cpu_seconds": 0.000755999999995538
+    },
+    {
+      "exact": {
+        "label": "game1:36",
+        "seat": 3,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "a9ad96387e846a326c66edb8a3aea9764938c90e3c0e64f52f6e004b3d4647e6",
+        "legal": [
+          25,
+          50,
+          24
+        ],
+        "action": 50,
+        "values": {
+          "50": "-0x1.57c23cec00000p-2",
+          "25": "-0x1.58c21d31c0000p-2",
+          "24": "-0x1.57c23cec00000p-2"
+        },
+        "rng": 18327317561924634205,
+        "world_counts": {
+          "50": 1024,
+          "25": 1024,
+          "24": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.0006553330458700657,
+      "cpu_seconds": 0.0006549999999947431
+    },
+    {
+      "exact": {
+        "label": "game1:37",
+        "seat": 0,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "f129880410f6117eb360153581ac7757a6907c14f7f6f1ff05d508071ec9c162",
+        "legal": [
+          4,
+          12,
+          0
+        ],
+        "action": 4,
+        "values": {
+          "4": "0x1.87bc4a0000000p-2",
+          "12": "0x1.87bc4a0000000p-2",
+          "0": "0x1.87bc4a0000000p-2"
+        },
+        "rng": 303187930004435925,
+        "world_counts": {
+          "4": 1024,
+          "12": 1024,
+          "0": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.0004144590348005295,
+      "cpu_seconds": 0.0004139999999921429
+    },
+    {
+      "exact": {
+        "label": "game1:38",
+        "seat": 1,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "b73c9c52c1a5b8fca390aaef2a954cbfd1cf31f031baf5175f914595ae3399d3",
+        "legal": [
+          47,
+          46
+        ],
+        "action": 46,
+        "values": {
+          "46": "-0x1.873c59dd20000p-2",
+          "47": "-0x1.873c59dd20000p-2"
+        },
+        "rng": 17313593402608772149,
+        "world_counts": {
+          "46": 1024,
+          "47": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.0005767089314758778,
+      "cpu_seconds": 0.000575999999995247
+    },
+    {
+      "exact": {
+        "label": "game1:39",
+        "seat": 3,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "96acf0a2c24563a6a4a016e4af4d940a1a4850f7762e195b2ce2e94ec2d2d88b",
+        "legal": [
+          25,
+          24
+        ],
+        "action": 24,
+        "values": {
+          "24": "-0x1.84bca92ec0000p-2",
+          "25": "-0x1.84bca92ec0000p-2"
+        },
+        "rng": 3948350373520747122,
+        "world_counts": {
+          "24": 1024,
+          "25": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.0005219581071287394,
+      "cpu_seconds": 0.0005220000000036862
+    },
+    {
+      "exact": {
+        "label": "game1:40",
+        "seat": 0,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "07823ca6d9c9effef261c936fd3035c44e79a01728f0f719a72f51642b960a72",
+        "legal": [
+          12,
+          0
+        ],
+        "action": 0,
+        "values": {
+          "0": "0x1.87bc4a0000000p-2",
+          "12": "0x1.87bc4a0000000p-2"
+        },
+        "rng": 16656083171264721898,
+        "world_counts": {
+          "0": 1024,
+          "12": 1024
+        },
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 0.00034737493842840195,
+      "cpu_seconds": 0.0003470000000049822
+    },
+    {
+      "exact": {
+        "label": "game1:41",
+        "seat": 1,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "da708e8d5c964857c1a7c2dafd7c648e1714dd4dcb680ee9fa013e303b66d087",
+        "legal": [
+          47
+        ],
+        "action": 47,
+        "values": null,
+        "rng": 17313593402608772149,
+        "world_counts": null,
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 1.1669471859931946e-06,
+      "cpu_seconds": 9.999999974752427e-07
+    },
+    {
+      "exact": {
+        "label": "game1:42",
+        "seat": 3,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "c9b02b5fa63d7374e672ff7a6c0e0783d50d7c645a61f4356657e7eb065d1e66",
+        "legal": [
+          25
+        ],
+        "action": 25,
+        "values": null,
+        "rng": 3948350373520747122,
+        "world_counts": null,
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 1.0419171303510666e-06,
+      "cpu_seconds": 1.9999999949504854e-06
+    },
+    {
+      "exact": {
+        "label": "game1:43",
+        "seat": 0,
+        "phase": "SOOLI_PLAY",
+        "contract": "RAMI",
+        "input_sha256": "217a802e072d5125b9fa4c51c5c569bde017df9824abdb635d79234e3b36f01b",
+        "legal": [
+          12
+        ],
+        "action": 12,
+        "values": null,
+        "rng": 16656083171264721898,
+        "world_counts": null,
+        "sooli_before": [
+          17,
+          false,
+          false,
+          0.3
+        ],
+        "sooli_after": [
+          17,
+          false,
+          false,
+          0.3
+        ]
+      },
+      "seconds": 1.0409858077764511e-06,
+      "cpu_seconds": 9.999999974752427e-07
+    }
+  ],
+  "exact_sha256": "25387852de277b2b36500ddfb8f5d8a39c346ae9396b6b0832f21e549c5bcb24",
+  "seconds": 69.76258087507449,
+  "cpu_seconds": 68.59576200000001,
+  "construction": {
+    "seconds": 0.21726600010879338,
+    "cpu_seconds": 0.20840100000000006,
+    "factories": 1
+  },
+  "peak_rss_bytes_macos": 317292544,
+  "library_sha256": "285d186ebc08521bc83bbaecc4a3962c1dc07f83444704e0d6efa95e6f0ca5da",
+  "library": "/Users/pyryouri/Developer/audit_deliverables/tuppi_cheap_wins_preparation_20261014/frozen/ai/native/libtuppi.dylib",
+  "dependency_versions": {
+    "torch": "2.14.0",
+    "numpy": "2.5.3",
+    "python": "3.14.2 (v3.14.2:df793163d58, Dec  5 2025, 12:18:06) [Clang 16.0.0 (clang-1600.0.26.6)]",
+    "executable": "/Users/pyryouri/.venvs/tuppi-v2/bin/python"
+  },
+  "phase_counts": {
+    "SHOWING": 5,
+    "SOOLI_OFFER": 3,
+    "TRICK_PLAY": 52,
+    "SOOLI_GIVE": 1,
+    "SOOLI_RETURN": 1,
+    "SOOLI_PLAY": 39
+  },
+  "sooli_history_modes": {
+    "C": 34,
+    "O": 30,
+    "P": 37
+  }
+}

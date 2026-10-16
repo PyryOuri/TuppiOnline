@@ -1,0 +1,67 @@
+{
+  "passed": true,
+  "dd_oracle": {
+    "checks": 168,
+    "positions": 56,
+    "score_cells": 25,
+    "contracts": [
+      0,
+      1
+    ],
+    "remaining_tricks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "partial_trick_sizes": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  "batch_invariance": [
+    {
+      "model": "vrpo1_actor_0504.pt",
+      "mismatched_float32_values_by_batch_size": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "7": 0,
+        "31": 0,
+        "32": 0,
+        "33": 0,
+        "127": 0,
+        "128": 0,
+        "129": 0,
+        "257": 0
+      }
+    },
+    {
+      "model": "vrpo3_final.pt",
+      "mismatched_float32_values_by_batch_size": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "7": 0,
+        "31": 0,
+        "32": 0,
+        "33": 0,
+        "127": 0,
+        "128": 0,
+        "129": 0,
+        "257": 0
+      }
+    }
+  ],
+  "factory": {
+    "one_shared_immutable_rollout_model": true,
+    "four_distinct_environments_and_rngs": true,
+    "reference_factory_retains_separate_models": true
+  },
+  "scope": "Exact reward and controller ownership checks. Batch differences are reported, never hidden or padded; no strength claim."
+}

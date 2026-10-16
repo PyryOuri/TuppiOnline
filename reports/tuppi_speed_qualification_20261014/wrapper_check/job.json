@@ -1,0 +1,29 @@
+{
+  "job": {
+    "id": "qualified_identity_smoke",
+    "kind": "duplicate",
+    "arm": "baseline",
+    "opponent": "baseline",
+    "worlds": 4,
+    "samples": 2,
+    "seed": "qualified-identity-control-v1",
+    "scores": "uniform",
+    "serial": true,
+    "cpu_seconds": 30,
+    "wall_seconds": 45
+  },
+  "context": {
+    "package_sha256": "89ff82546ea2b8d22c2c1f621b87cee0ea6f6ccd3cfff9294adc841f129d0472",
+    "speed_definition_sha256": "779324a57c7c7339e300f31ced870c50041bf4678d1932aece0029fd1fc08d2a",
+    "scope": "preseal_wrapper_validation_only",
+    "controller_lifecycle": "fresh_indexed_game",
+    "design": "4_rotations_2_teams",
+    "worlds": 4,
+    "native_parallel": false,
+    "rollout_chunk": 128,
+    "speed_variant": "compact128",
+    "score_design": "uniform",
+    "sampler_fix": true,
+    "sooli_reset": "fresh_on_construction_only"
+  }
+}

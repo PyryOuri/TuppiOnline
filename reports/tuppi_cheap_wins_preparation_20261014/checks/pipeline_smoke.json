@@ -1,0 +1,181 @@
+{
+  "schema": "tuppi.cheap_wins.duplicate.v1",
+  "candidate": "baseline",
+  "opponent": "baseline",
+  "ruleset": "project_target_v3",
+  "seed": "cw-pipeline-control-v1",
+  "scores": "uniform",
+  "base_deals": 2,
+  "values": [
+    0.0,
+    0.0
+  ],
+  "deal_records": [
+    {
+      "index": 0,
+      "deal_id": "b3e45d8f3437d67d9f01aad37b1bc65d4460081a03987183f5e9f974e3733da4",
+      "score": [
+        8,
+        0
+      ],
+      "value": 0.0,
+      "games": [
+        {
+          "rotation": 0,
+          "team": 0,
+          "value": -0.03127314569438344,
+          "won": false,
+          "fingerprint": "300d4739bb0e637bd0229cbbf37a66b30733d79f576af8b9d77595636276397d"
+        },
+        {
+          "rotation": 0,
+          "team": 1,
+          "value": 0.03127314569438344,
+          "won": true,
+          "fingerprint": "300d4739bb0e637bd0229cbbf37a66b30733d79f576af8b9d77595636276397d"
+        },
+        {
+          "rotation": 1,
+          "team": 0,
+          "value": 0.030186759750221226,
+          "won": true,
+          "fingerprint": "afd8b0877371c9931bfab3baca7a808a2db83910b2b33d80449c6fb88c1ba07b"
+        },
+        {
+          "rotation": 1,
+          "team": 1,
+          "value": -0.030186759750221226,
+          "won": false,
+          "fingerprint": "afd8b0877371c9931bfab3baca7a808a2db83910b2b33d80449c6fb88c1ba07b"
+        },
+        {
+          "rotation": 2,
+          "team": 0,
+          "value": -0.03127314569438344,
+          "won": false,
+          "fingerprint": "1fa8cfd9500ca687b356e1b9db48f5e68be5d00eda1675068082a709caced438"
+        },
+        {
+          "rotation": 2,
+          "team": 1,
+          "value": 0.03127314569438344,
+          "won": true,
+          "fingerprint": "1fa8cfd9500ca687b356e1b9db48f5e68be5d00eda1675068082a709caced438"
+        },
+        {
+          "rotation": 3,
+          "team": 0,
+          "value": -0.03127314569438344,
+          "won": false,
+          "fingerprint": "1aad5df4448802216c3268a5bd5c31895ae808896fa12f6b793f98f4c819fac6"
+        },
+        {
+          "rotation": 3,
+          "team": 1,
+          "value": 0.03127314569438344,
+          "won": true,
+          "fingerprint": "1aad5df4448802216c3268a5bd5c31895ae808896fa12f6b793f98f4c819fac6"
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "deal_id": "967fa51723f80662bce63541a903a6cc0c8e3542e0fd3d3a78a7f98b9f543477",
+      "score": [
+        0,
+        40
+      ],
+      "value": 0.0,
+      "games": [
+        {
+          "rotation": 0,
+          "team": 0,
+          "value": -0.06377707105763225,
+          "won": false,
+          "fingerprint": "8e0ad0225a709856a24653c5af4140b266491442432b26b9767b0bc20c0dc27b"
+        },
+        {
+          "rotation": 0,
+          "team": 1,
+          "value": 0.06377707105763225,
+          "won": true,
+          "fingerprint": "8e0ad0225a709856a24653c5af4140b266491442432b26b9767b0bc20c0dc27b"
+        },
+        {
+          "rotation": 1,
+          "team": 0,
+          "value": -0.06377707105763225,
+          "won": false,
+          "fingerprint": "4af9fbad977e34b0da3500418081ed4f2061f2897b985842762206382ec6d53b"
+        },
+        {
+          "rotation": 1,
+          "team": 1,
+          "value": 0.06377707105763225,
+          "won": true,
+          "fingerprint": "4af9fbad977e34b0da3500418081ed4f2061f2897b985842762206382ec6d53b"
+        },
+        {
+          "rotation": 2,
+          "team": 0,
+          "value": -0.04007930576797175,
+          "won": false,
+          "fingerprint": "572985790db645e0ad646fb8d2c328f6d810692b237df8374ef9a956d75f3422"
+        },
+        {
+          "rotation": 2,
+          "team": 1,
+          "value": 0.04007930576797175,
+          "won": true,
+          "fingerprint": "572985790db645e0ad646fb8d2c328f6d810692b237df8374ef9a956d75f3422"
+        },
+        {
+          "rotation": 3,
+          "team": 0,
+          "value": 0.18373379936178103,
+          "won": true,
+          "fingerprint": "2679d3bf28af838838c4ad946e5d19fc6a1df569d149b8592dc2e7c34f40a67f"
+        },
+        {
+          "rotation": 3,
+          "team": 1,
+          "value": -0.18373379936178103,
+          "won": false,
+          "fingerprint": "2679d3bf28af838838c4ad946e5d19fc6a1df569d149b8592dc2e7c34f40a67f"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "mean": 0.0,
+    "ci95": [
+      0.0,
+      0.0
+    ],
+    "standard_error": 0.0
+  },
+  "context": {
+    "package_sha256": "b977fe06790aae6c3e8e829ff2a20557727e6d948c87d7e2b5ebb2793a5104d8",
+    "controller_lifecycle": "fresh_indexed_game",
+    "design": "4_rotations_2_teams",
+    "qualification": "preparation smoke"
+  },
+  "seconds": 3.283673415891826,
+  "cpu_seconds": 2.996043,
+  "job": {
+    "id": "pipeline_smoke",
+    "kind": "duplicate",
+    "arm": "baseline",
+    "opponent": "baseline",
+    "worlds": 4,
+    "samples": 2,
+    "seed": "cw-pipeline-control-v1",
+    "scores": "uniform",
+    "serial": true,
+    "cpu_seconds": 30,
+    "wall_seconds": 35
+  },
+  "dependency_versions": {
+    "torch": "2.14.0"
+  }
+}

@@ -1,0 +1,2081 @@
+{
+ "manifest": "/Users/pyryouri/Developer/audit_deliverables/tuppi_implementation_output/research/c2_stage2_manifest.json",
+ "run": {
+  "stopped_early": null,
+  "total_cpu_s": 518.142196,
+  "total_wall_s": 68.78717316698749
+ },
+ "summary": {
+  "source_deals": 30,
+  "evaluated_positions": 44,
+  "contracts": {
+   "NOLO": 5,
+   "RAMI": 25
+  },
+  "exclusion_rate_mean": 0.30486739529398155,
+  "shortfalls": 0,
+  "F128c": {
+   "changed_vs_live": 25,
+   "mean_per_reached_call": 0.0003572803498999829,
+   "se_across_positions": 0.00024367923690978656,
+   "per_deal_mean": 0.0005240111798533084,
+   "per_deal_se": 0.0003549440001779862,
+   "significantly_better": 1,
+   "significantly_worse": 0
+  },
+  "R128": {
+   "changed_vs_live": 28,
+   "mean_per_reached_call": -0.00027498721481771844,
+   "se_across_positions": 0.0004450070965949709,
+   "per_deal_mean": -0.0004033145817326537,
+   "per_deal_se": 0.0006561990078492834,
+   "significantly_better": 1,
+   "significantly_worse": 2
+  },
+  "RC128": {
+   "changed_vs_live": 31,
+   "mean_per_reached_call": -0.0001270744963800429,
+   "se_across_positions": 0.00029804418480011474,
+   "per_deal_mean": -0.0001863759280240629,
+   "per_deal_se": 0.0004170074841031709,
+   "significantly_better": 1,
+   "significantly_worse": 1
+  },
+  "R128_minus_F128c_control": {
+   "mean": -0.0006322675647177014,
+   "se": 0.0003950043365062445
+  },
+  "RC128_minus_F128c_control": {
+   "mean": -0.0004843548462800258,
+   "se": 0.00028005481899915177
+  }
+ },
+ "deals": [
+  {
+   "source": 0,
+   "dealer": 0,
+   "contract": "RAMI",
+   "bids": [
+    [
+     1,
+     0,
+     80
+    ],
+    [
+     2,
+     1,
+     84
+    ],
+    [
+     3,
+     2,
+     106
+    ]
+   ]
+  },
+  {
+   "source": 1,
+   "dealer": 1,
+   "contract": "RAMI",
+   "bids": [
+    [
+     2,
+     0,
+     92
+    ],
+    [
+     3,
+     1,
+     121
+    ]
+   ]
+  },
+  {
+   "source": 2,
+   "dealer": 2,
+   "contract": "RAMI",
+   "bids": [
+    [
+     3,
+     0,
+     110
+    ]
+   ]
+  },
+  {
+   "source": 3,
+   "dealer": 3,
+   "contract": "NOLO",
+   "bids": [
+    [
+     0,
+     0,
+     97
+    ],
+    [
+     1,
+     1,
+     81
+    ],
+    [
+     2,
+     2,
+     80
+    ],
+    [
+     3,
+     3,
+     95
+    ]
+   ]
+  },
+  {
+   "source": 4,
+   "dealer": 0,
+   "contract": "RAMI",
+   "bids": [
+    [
+     1,
+     0,
+     119
+    ]
+   ]
+  },
+  {
+   "source": 5,
+   "dealer": 1,
+   "contract": "NOLO",
+   "bids": [
+    [
+     2,
+     0,
+     84
+    ],
+    [
+     3,
+     1,
+     98
+    ],
+    [
+     0,
+     2,
+     92
+    ],
+    [
+     1,
+     3,
+     82
+    ]
+   ]
+  },
+  {
+   "source": 6,
+   "dealer": 2,
+   "contract": "RAMI",
+   "bids": [
+    [
+     3,
+     0,
+     97
+    ],
+    [
+     0,
+     1,
+     123
+    ]
+   ]
+  },
+  {
+   "source": 7,
+   "dealer": 3,
+   "contract": "RAMI",
+   "bids": [
+    [
+     0,
+     0,
+     81
+    ],
+    [
+     1,
+     1,
+     84
+    ],
+    [
+     2,
+     2,
+     98
+    ],
+    [
+     3,
+     3,
+     119
+    ]
+   ]
+  },
+  {
+   "source": 8,
+   "dealer": 0,
+   "contract": "RAMI",
+   "bids": [
+    [
+     1,
+     0,
+     96
+    ],
+    [
+     2,
+     1,
+     95
+    ],
+    [
+     3,
+     2,
+     110
+    ]
+   ]
+  },
+  {
+   "source": 9,
+   "dealer": 1,
+   "contract": "RAMI",
+   "bids": [
+    [
+     2,
+     0,
+     97
+    ],
+    [
+     3,
+     1,
+     111
+    ]
+   ]
+  },
+  {
+   "source": 10,
+   "dealer": 2,
+   "contract": "RAMI",
+   "bids": [
+    [
+     3,
+     0,
+     84
+    ],
+    [
+     0,
+     1,
+     81
+    ],
+    [
+     1,
+     2,
+     97
+    ],
+    [
+     2,
+     3,
+     123
+    ]
+   ]
+  },
+  {
+   "source": 11,
+   "dealer": 3,
+   "contract": "RAMI",
+   "bids": [
+    [
+     0,
+     0,
+     122
+    ]
+   ]
+  },
+  {
+   "source": 12,
+   "dealer": 0,
+   "contract": "RAMI",
+   "bids": [
+    [
+     1,
+     0,
+     82
+    ],
+    [
+     2,
+     1,
+     118
+    ]
+   ]
+  },
+  {
+   "source": 13,
+   "dealer": 1,
+   "contract": "RAMI",
+   "bids": [
+    [
+     2,
+     0,
+     83
+    ],
+    [
+     3,
+     1,
+     98
+    ],
+    [
+     0,
+     2,
+     133
+    ]
+   ]
+  },
+  {
+   "source": 14,
+   "dealer": 2,
+   "contract": "RAMI",
+   "bids": [
+    [
+     3,
+     0,
+     96
+    ],
+    [
+     0,
+     1,
+     121
+    ]
+   ]
+  },
+  {
+   "source": 15,
+   "dealer": 3,
+   "contract": "RAMI",
+   "bids": [
+    [
+     0,
+     0,
+     144
+    ]
+   ]
+  },
+  {
+   "source": 16,
+   "dealer": 0,
+   "contract": "RAMI",
+   "bids": [
+    [
+     1,
+     0,
+     94
+    ],
+    [
+     2,
+     1,
+     121
+    ]
+   ]
+  },
+  {
+   "source": 17,
+   "dealer": 1,
+   "contract": "RAMI",
+   "bids": [
+    [
+     2,
+     0,
+     98
+    ],
+    [
+     3,
+     1,
+     110
+    ]
+   ]
+  },
+  {
+   "source": 18,
+   "dealer": 2,
+   "contract": "RAMI",
+   "bids": [
+    [
+     3,
+     0,
+     95
+    ],
+    [
+     0,
+     1,
+     109
+    ]
+   ]
+  },
+  {
+   "source": 19,
+   "dealer": 3,
+   "contract": "RAMI",
+   "bids": [
+    [
+     0,
+     0,
+     93
+    ],
+    [
+     1,
+     1,
+     119
+    ]
+   ]
+  },
+  {
+   "source": 20,
+   "dealer": 0,
+   "contract": "RAMI",
+   "bids": [
+    [
+     1,
+     0,
+     97
+    ],
+    [
+     2,
+     1,
+     92
+    ],
+    [
+     3,
+     2,
+     122
+    ]
+   ]
+  },
+  {
+   "source": 21,
+   "dealer": 1,
+   "contract": "RAMI",
+   "bids": [
+    [
+     2,
+     0,
+     85
+    ],
+    [
+     3,
+     1,
+     81
+    ],
+    [
+     0,
+     2,
+     106
+    ]
+   ]
+  },
+  {
+   "source": 22,
+   "dealer": 2,
+   "contract": "NOLO",
+   "bids": [
+    [
+     3,
+     0,
+     95
+    ],
+    [
+     0,
+     1,
+     85
+    ],
+    [
+     1,
+     2,
+     82
+    ],
+    [
+     2,
+     3,
+     83
+    ]
+   ]
+  },
+  {
+   "source": 23,
+   "dealer": 3,
+   "contract": "RAMI",
+   "bids": [
+    [
+     0,
+     0,
+     106
+    ]
+   ]
+  },
+  {
+   "source": 24,
+   "dealer": 0,
+   "contract": "NOLO",
+   "bids": [
+    [
+     1,
+     0,
+     92
+    ],
+    [
+     2,
+     1,
+     85
+    ],
+    [
+     3,
+     2,
+     94
+    ],
+    [
+     0,
+     3,
+     79
+    ]
+   ]
+  },
+  {
+   "source": 25,
+   "dealer": 1,
+   "contract": "RAMI",
+   "bids": [
+    [
+     2,
+     0,
+     79
+    ],
+    [
+     3,
+     1,
+     84
+    ],
+    [
+     0,
+     2,
+     94
+    ],
+    [
+     1,
+     3,
+     118
+    ]
+   ]
+  },
+  {
+   "source": 26,
+   "dealer": 2,
+   "contract": "NOLO",
+   "bids": [
+    [
+     3,
+     0,
+     85
+    ],
+    [
+     0,
+     1,
+     97
+    ],
+    [
+     1,
+     2,
+     95
+    ],
+    [
+     2,
+     3,
+     84
+    ]
+   ]
+  },
+  {
+   "source": 27,
+   "dealer": 3,
+   "contract": "RAMI",
+   "bids": [
+    [
+     0,
+     0,
+     107
+    ]
+   ]
+  },
+  {
+   "source": 28,
+   "dealer": 0,
+   "contract": "RAMI",
+   "bids": [
+    [
+     1,
+     0,
+     84
+    ],
+    [
+     2,
+     1,
+     124
+    ]
+   ]
+  },
+  {
+   "source": 29,
+   "dealer": 1,
+   "contract": "RAMI",
+   "bids": [
+    [
+     2,
+     0,
+     111
+    ]
+   ]
+  }
+ ],
+ "positions": [
+  {
+   "source": 0,
+   "seat": 2,
+   "k": 1,
+   "legal": 9,
+   "draws": 206,
+   "accepted": 128,
+   "exclusion_rate": 0.3786407766990292,
+   "picks": {
+    "live": 84,
+    "F128c": 92,
+    "R128": 81,
+    "RC128": 92
+   },
+   "arm_cpu_s": 13.285435999999999,
+   "validation": {
+    "accepted": 256,
+    "draws": 433,
+    "F128c": {
+     "mean": -0.0013224156864453107,
+     "se": 0.0008888926077305913,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": -0.00047633892245357856,
+     "se": 0.0007853839006366177,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": -0.0013224156864453107,
+     "se": 0.0008888926077305913,
+     "same_as_live": false
+    },
+    "cpu_s": 2.522027999999999
+   }
+  },
+  {
+   "source": 0,
+   "seat": 3,
+   "k": 2,
+   "legal": 6,
+   "draws": 162,
+   "accepted": 128,
+   "exclusion_rate": 0.2098765432098766,
+   "picks": {
+    "live": 106,
+    "F128c": 106,
+    "R128": 124,
+    "RC128": 108
+   },
+   "arm_cpu_s": 3.4449780000000025,
+   "validation": {
+    "accepted": 256,
+    "draws": 309,
+    "F128c": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "R128": {
+     "mean": -0.00033206043008249253,
+     "se": 0.00020826472848304867,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": -0.0001429062322131358,
+     "se": 0.00036856472219263967,
+     "same_as_live": false
+    },
+    "cpu_s": 1.637325999999998
+   }
+  },
+  {
+   "source": 1,
+   "seat": 3,
+   "k": 1,
+   "legal": 5,
+   "draws": 153,
+   "accepted": 128,
+   "exclusion_rate": 0.1633986928104575,
+   "picks": {
+    "live": 121,
+    "F128c": 121,
+    "R128": 121,
+    "RC128": 121
+   },
+   "arm_cpu_s": 2.666750999999998
+  },
+  {
+   "source": 3,
+   "seat": 1,
+   "k": 1,
+   "legal": 5,
+   "draws": 152,
+   "accepted": 128,
+   "exclusion_rate": 0.1578947368421053,
+   "picks": {
+    "live": 81,
+    "F128c": 93,
+    "R128": 106,
+    "RC128": 106
+   },
+   "arm_cpu_s": 4.200242000000003,
+   "validation": {
+    "accepted": 256,
+    "draws": 291,
+    "F128c": {
+     "mean": 0.0004145732309552841,
+     "se": 0.00041457323095528425,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": 0.0017911364921019413,
+     "se": 0.0029283352328823772,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": 0.0017911364921019413,
+     "se": 0.0029283352328823772,
+     "same_as_live": false
+    },
+    "cpu_s": 2.3029480000000007
+   }
+  },
+  {
+   "source": 3,
+   "seat": 2,
+   "k": 2,
+   "legal": 7,
+   "draws": 271,
+   "accepted": 128,
+   "exclusion_rate": 0.5276752767527675,
+   "picks": {
+    "live": 80,
+    "F128c": 98,
+    "R128": 85,
+    "RC128": 85
+   },
+   "arm_cpu_s": 10.683513999999995,
+   "validation": {
+    "accepted": 256,
+    "draws": 550,
+    "F128c": {
+     "mean": -3.6967830965295434e-05,
+     "se": 0.0009588236422005512,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": -0.0015208266631816514,
+     "se": 0.0010264603963441017,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": -0.0015208266631816514,
+     "se": 0.0010264603963441017,
+     "same_as_live": false
+    },
+    "cpu_s": 3.4927179999999964
+   }
+  },
+  {
+   "source": 3,
+   "seat": 3,
+   "k": 3,
+   "legal": 9,
+   "draws": 447,
+   "accepted": 128,
+   "exclusion_rate": 0.7136465324384788,
+   "picks": {
+    "live": 95,
+    "F128c": 95,
+    "R128": 79,
+    "RC128": 79
+   },
+   "arm_cpu_s": 9.687265999999994,
+   "validation": {
+    "accepted": 256,
+    "draws": 884,
+    "F128c": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "R128": {
+     "mean": -0.0006171322966110893,
+     "se": 0.0003558458320844349,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": -0.0006171322966110893,
+     "se": 0.0003558458320844349,
+     "same_as_live": false
+    },
+    "cpu_s": 0.3099190000000078
+   }
+  },
+  {
+   "source": 5,
+   "seat": 3,
+   "k": 1,
+   "legal": 6,
+   "draws": 161,
+   "accepted": 128,
+   "exclusion_rate": 0.20496894409937894,
+   "picks": {
+    "live": 98,
+    "F128c": 83,
+    "R128": 106,
+    "RC128": 106
+   },
+   "arm_cpu_s": 11.130576000000005,
+   "validation": {
+    "accepted": 256,
+    "draws": 322,
+    "F128c": {
+     "mean": -0.00035439340717857704,
+     "se": 0.0004924380631391122,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": 0.0032598738762317225,
+     "se": 0.0035483938568803,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": 0.0032598738762317225,
+     "se": 0.0035483938568803,
+     "same_as_live": false
+    },
+    "cpu_s": 2.0556530000000066
+   }
+  },
+  {
+   "source": 5,
+   "seat": 0,
+   "k": 2,
+   "legal": 8,
+   "draws": 176,
+   "accepted": 128,
+   "exclusion_rate": 0.2727272727272727,
+   "picks": {
+    "live": 92,
+    "F128c": 92,
+    "R128": 96,
+    "RC128": 81
+   },
+   "arm_cpu_s": 4.6090050000000105,
+   "validation": {
+    "accepted": 256,
+    "draws": 416,
+    "F128c": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "R128": {
+     "mean": -0.00011301691847620532,
+     "se": 0.0003594391454901488,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": -0.0007997840366442688,
+     "se": 0.00043038065478132054,
+     "same_as_live": false
+    },
+    "cpu_s": 0.7403320000000093
+   }
+  },
+  {
+   "source": 5,
+   "seat": 1,
+   "k": 3,
+   "legal": 9,
+   "draws": 766,
+   "accepted": 128,
+   "exclusion_rate": 0.8328981723237598,
+   "picks": {
+    "live": 82,
+    "F128c": 94,
+    "R128": 97,
+    "RC128": 80
+   },
+   "arm_cpu_s": 5.240302999999997,
+   "validation": {
+    "accepted": 256,
+    "draws": 1561,
+    "F128c": {
+     "mean": 0.00035804939398076385,
+     "se": 0.00030807509682761043,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": 0.00010834852582775056,
+     "se": 0.0002426507240361509,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": 0.00043681876559276134,
+     "se": 0.00029867073263209877,
+     "same_as_live": false
+    },
+    "cpu_s": 0.5194830000000081
+   }
+  },
+  {
+   "source": 6,
+   "seat": 0,
+   "k": 1,
+   "legal": 6,
+   "draws": 164,
+   "accepted": 128,
+   "exclusion_rate": 0.2195121951219512,
+   "picks": {
+    "live": 123,
+    "F128c": 123,
+    "R128": 82,
+    "RC128": 82
+   },
+   "arm_cpu_s": 6.904969000000008,
+   "validation": {
+    "accepted": 256,
+    "draws": 300,
+    "F128c": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "R128": {
+     "mean": -0.005521965431398712,
+     "se": 0.003317320790157887,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": -0.005521965431398712,
+     "se": 0.003317320790157887,
+     "same_as_live": false
+    },
+    "cpu_s": 1.328833000000003
+   }
+  },
+  {
+   "source": 7,
+   "seat": 1,
+   "k": 1,
+   "legal": 7,
+   "draws": 155,
+   "accepted": 128,
+   "exclusion_rate": 0.17419354838709677,
+   "picks": {
+    "live": 84,
+    "F128c": 106,
+    "R128": 84,
+    "RC128": 118
+   },
+   "arm_cpu_s": 6.53498399999998,
+   "validation": {
+    "accepted": 256,
+    "draws": 311,
+    "F128c": {
+     "mean": 8.976770914159715e-06,
+     "se": 0.0029539172755995782,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "RC128": {
+     "mean": -0.0006002711743349209,
+     "se": 0.0029732253556848556,
+     "same_as_live": false
+    },
+    "cpu_s": 1.84423799999999
+   }
+  },
+  {
+   "source": 7,
+   "seat": 2,
+   "k": 2,
+   "legal": 8,
+   "draws": 234,
+   "accepted": 128,
+   "exclusion_rate": 0.45299145299145294,
+   "picks": {
+    "live": 98,
+    "F128c": 98,
+    "R128": 98,
+    "RC128": 98
+   },
+   "arm_cpu_s": 6.478156000000013
+  },
+  {
+   "source": 7,
+   "seat": 3,
+   "k": 3,
+   "legal": 8,
+   "draws": 304,
+   "accepted": 128,
+   "exclusion_rate": 0.5789473684210527,
+   "picks": {
+    "live": 119,
+    "F128c": 108,
+    "R128": 110,
+    "RC128": 108
+   },
+   "arm_cpu_s": 6.430394000000007,
+   "validation": {
+    "accepted": 256,
+    "draws": 572,
+    "F128c": {
+     "mean": -0.00010388372902525589,
+     "se": 0.00038902376379919637,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": 0.0022640017632511444,
+     "se": 0.0012075792592703243,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": -0.00010388372902525589,
+     "se": 0.00038902376379919637,
+     "same_as_live": false
+    },
+    "cpu_s": 2.21770699999999
+   }
+  },
+  {
+   "source": 8,
+   "seat": 2,
+   "k": 1,
+   "legal": 7,
+   "draws": 202,
+   "accepted": 128,
+   "exclusion_rate": 0.36633663366336633,
+   "picks": {
+    "live": 95,
+    "F128c": 95,
+    "R128": 95,
+    "RC128": 94
+   },
+   "arm_cpu_s": 3.326418000000018,
+   "validation": {
+    "accepted": 256,
+    "draws": 359,
+    "F128c": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "R128": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "RC128": {
+     "mean": 0.0004383323612273671,
+     "se": 0.00041516045811593796,
+     "same_as_live": false
+    },
+    "cpu_s": 0.5545009999999877
+   }
+  },
+  {
+   "source": 8,
+   "seat": 3,
+   "k": 2,
+   "legal": 3,
+   "draws": 137,
+   "accepted": 128,
+   "exclusion_rate": 0.06569343065693434,
+   "picks": {
+    "live": 110,
+    "F128c": 110,
+    "R128": 110,
+    "RC128": 110
+   },
+   "arm_cpu_s": 1.9300409999999886
+  },
+  {
+   "source": 9,
+   "seat": 3,
+   "k": 1,
+   "legal": 6,
+   "draws": 148,
+   "accepted": 128,
+   "exclusion_rate": 0.1351351351351351,
+   "picks": {
+    "live": 111,
+    "F128c": 111,
+    "R128": 111,
+    "RC128": 105
+   },
+   "arm_cpu_s": 3.839269999999999,
+   "validation": {
+    "accepted": 256,
+    "draws": 311,
+    "F128c": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "R128": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "RC128": {
+     "mean": 0.00031030042737256736,
+     "se": 0.0004276867622724247,
+     "same_as_live": false
+    },
+    "cpu_s": 1.446204999999992
+   }
+  },
+  {
+   "source": 10,
+   "seat": 0,
+   "k": 1,
+   "legal": 8,
+   "draws": 223,
+   "accepted": 128,
+   "exclusion_rate": 0.4260089686098655,
+   "picks": {
+    "live": 81,
+    "F128c": 81,
+    "R128": 81,
+    "RC128": 81
+   },
+   "arm_cpu_s": 10.395933000000014
+  },
+  {
+   "source": 10,
+   "seat": 1,
+   "k": 2,
+   "legal": 8,
+   "draws": 167,
+   "accepted": 128,
+   "exclusion_rate": 0.23353293413173648,
+   "picks": {
+    "live": 97,
+    "F128c": 122,
+    "R128": 109,
+    "RC128": 122
+   },
+   "arm_cpu_s": 4.151116000000002,
+   "validation": {
+    "accepted": 256,
+    "draws": 373,
+    "F128c": {
+     "mean": 0.007128435667254962,
+     "se": 0.0033782833919470314,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": 0.008624898568086792,
+     "se": 0.0034359458219719256,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": 0.007128435667254962,
+     "se": 0.0033782833919470314,
+     "same_as_live": false
+    },
+    "cpu_s": 2.093510000000009
+   }
+  },
+  {
+   "source": 10,
+   "seat": 2,
+   "k": 3,
+   "legal": 7,
+   "draws": 201,
+   "accepted": 128,
+   "exclusion_rate": 0.36318407960199006,
+   "picks": {
+    "live": 123,
+    "F128c": 123,
+    "R128": 123,
+    "RC128": 123
+   },
+   "arm_cpu_s": 3.043842000000012
+  },
+  {
+   "source": 12,
+   "seat": 2,
+   "k": 1,
+   "legal": 5,
+   "draws": 128,
+   "accepted": 128,
+   "exclusion_rate": 0.0,
+   "picks": {
+    "live": 118,
+    "F128c": 118,
+    "R128": 118,
+    "RC128": 118
+   },
+   "arm_cpu_s": 2.0848799999999983
+  },
+  {
+   "source": 13,
+   "seat": 3,
+   "k": 1,
+   "legal": 8,
+   "draws": 177,
+   "accepted": 128,
+   "exclusion_rate": 0.2768361581920904,
+   "picks": {
+    "live": 98,
+    "F128c": 98,
+    "R128": 107,
+    "RC128": 92
+   },
+   "arm_cpu_s": 14.405013999999994,
+   "validation": {
+    "accepted": 256,
+    "draws": 322,
+    "F128c": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "R128": {
+     "mean": -0.013406596088316292,
+     "se": 0.0032198413037291887,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": -0.0010081878281198442,
+     "se": 0.0006336039831201974,
+     "same_as_live": false
+    },
+    "cpu_s": 2.166183999999987
+   }
+  },
+  {
+   "source": 13,
+   "seat": 0,
+   "k": 2,
+   "legal": 8,
+   "draws": 150,
+   "accepted": 128,
+   "exclusion_rate": 0.1466666666666666,
+   "picks": {
+    "live": 133,
+    "F128c": 133,
+    "R128": 131,
+    "RC128": 149
+   },
+   "arm_cpu_s": 4.789107000000001,
+   "validation": {
+    "accepted": 256,
+    "draws": 293,
+    "F128c": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "R128": {
+     "mean": -0.0003827206019195728,
+     "se": 0.0002986019171325869,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": -0.0004508280544541776,
+     "se": 0.00030593674151388424,
+     "same_as_live": false
+    },
+    "cpu_s": 1.987483999999995
+   }
+  },
+  {
+   "source": 14,
+   "seat": 0,
+   "k": 1,
+   "legal": 5,
+   "draws": 134,
+   "accepted": 128,
+   "exclusion_rate": 0.04477611940298509,
+   "picks": {
+    "live": 121,
+    "F128c": 111,
+    "R128": 121,
+    "RC128": 121
+   },
+   "arm_cpu_s": 2.946411000000012,
+   "validation": {
+    "accepted": 256,
+    "draws": 270,
+    "F128c": {
+     "mean": 0.00029489836742868647,
+     "se": 0.00041942580741620173,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "RC128": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "cpu_s": 1.5056590000000085
+   }
+  },
+  {
+   "source": 16,
+   "seat": 2,
+   "k": 1,
+   "legal": 7,
+   "draws": 135,
+   "accepted": 128,
+   "exclusion_rate": 0.051851851851851816,
+   "picks": {
+    "live": 121,
+    "F128c": 121,
+    "R128": 82,
+    "RC128": 82
+   },
+   "arm_cpu_s": 3.76094999999998,
+   "validation": {
+    "accepted": 256,
+    "draws": 289,
+    "F128c": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "R128": {
+     "mean": -0.006553299579536542,
+     "se": 0.0033390569394337963,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": -0.006553299579536542,
+     "se": 0.0033390569394337963,
+     "same_as_live": false
+    },
+    "cpu_s": 0.7067550000000438
+   }
+  },
+  {
+   "source": 17,
+   "seat": 3,
+   "k": 1,
+   "legal": 6,
+   "draws": 147,
+   "accepted": 128,
+   "exclusion_rate": 0.12925170068027214,
+   "picks": {
+    "live": 110,
+    "F128c": 110,
+    "R128": 105,
+    "RC128": 110
+   },
+   "arm_cpu_s": 5.805854000000011,
+   "validation": {
+    "accepted": 256,
+    "draws": 273,
+    "F128c": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "R128": {
+     "mean": -0.0008257142981165089,
+     "se": 0.0005865815295579771,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "cpu_s": 1.5608290000000125
+   }
+  },
+  {
+   "source": 18,
+   "seat": 0,
+   "k": 1,
+   "legal": 5,
+   "draws": 157,
+   "accepted": 128,
+   "exclusion_rate": 0.1847133757961783,
+   "picks": {
+    "live": 109,
+    "F128c": 118,
+    "R128": 118,
+    "RC128": 118
+   },
+   "arm_cpu_s": 10.341568999999993,
+   "validation": {
+    "accepted": 256,
+    "draws": 314,
+    "F128c": {
+     "mean": -0.00015589310351060703,
+     "se": 0.0011261981853799108,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": -0.00015589310351060703,
+     "se": 0.0011261981853799108,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": -0.00015589310351060703,
+     "se": 0.0011261981853799108,
+     "same_as_live": false
+    },
+    "cpu_s": 3.603490000000022
+   }
+  },
+  {
+   "source": 19,
+   "seat": 1,
+   "k": 1,
+   "legal": 7,
+   "draws": 143,
+   "accepted": 128,
+   "exclusion_rate": 0.1048951048951049,
+   "picks": {
+    "live": 119,
+    "F128c": 120,
+    "R128": 107,
+    "RC128": 107
+   },
+   "arm_cpu_s": 4.888058000000001,
+   "validation": {
+    "accepted": 256,
+    "draws": 279,
+    "F128c": {
+     "mean": -0.0008102308202069253,
+     "se": 0.0005201461967577331,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": 2.9032729798927903e-05,
+     "se": 0.00025036434088957654,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": 2.9032729798927903e-05,
+     "se": 0.00025036434088957654,
+     "same_as_live": false
+    },
+    "cpu_s": 1.579324999999983
+   }
+  },
+  {
+   "source": 20,
+   "seat": 2,
+   "k": 1,
+   "legal": 7,
+   "draws": 214,
+   "accepted": 128,
+   "exclusion_rate": 0.4018691588785047,
+   "picks": {
+    "live": 92,
+    "F128c": 83,
+    "R128": 95,
+    "RC128": 80
+   },
+   "arm_cpu_s": 5.654634999999985,
+   "validation": {
+    "accepted": 256,
+    "draws": 438,
+    "F128c": {
+     "mean": 7.188134622992948e-05,
+     "se": 0.0003351097400268957,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": -0.00014052762708161026,
+     "se": 0.0006487202688762424,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": -0.00011455011554062366,
+     "se": 0.0005497670884677917,
+     "same_as_live": false
+    },
+    "cpu_s": 1.9944590000000062
+   }
+  },
+  {
+   "source": 20,
+   "seat": 3,
+   "k": 2,
+   "legal": 5,
+   "draws": 135,
+   "accepted": 128,
+   "exclusion_rate": 0.051851851851851816,
+   "picks": {
+    "live": 122,
+    "F128c": 109,
+    "R128": 108,
+    "RC128": 109
+   },
+   "arm_cpu_s": 3.4686649999999872,
+   "validation": {
+    "accepted": 256,
+    "draws": 263,
+    "F128c": {
+     "mean": -0.0002709526161197573,
+     "se": 0.00021423022462548394,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": -7.478876796085387e-05,
+     "se": 8.677211146765148e-05,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": -0.0002709526161197573,
+     "se": 0.00021423022462548394,
+     "same_as_live": false
+    },
+    "cpu_s": 1.6213280000000054
+   }
+  },
+  {
+   "source": 21,
+   "seat": 3,
+   "k": 1,
+   "legal": 7,
+   "draws": 147,
+   "accepted": 128,
+   "exclusion_rate": 0.12925170068027214,
+   "picks": {
+    "live": 81,
+    "F128c": 79,
+    "R128": 79,
+    "RC128": 81
+   },
+   "arm_cpu_s": 6.307950000000005,
+   "validation": {
+    "accepted": 256,
+    "draws": 296,
+    "F128c": {
+     "mean": 0.00017374188610119745,
+     "se": 0.00013035986282196365,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": 0.00017374188610119745,
+     "se": 0.00013035986282196365,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "cpu_s": 1.0932010000000218
+   }
+  },
+  {
+   "source": 21,
+   "seat": 0,
+   "k": 2,
+   "legal": 6,
+   "draws": 159,
+   "accepted": 128,
+   "exclusion_rate": 0.19496855345911945,
+   "picks": {
+    "live": 106,
+    "F128c": 96,
+    "R128": 107,
+    "RC128": 106
+   },
+   "arm_cpu_s": 3.1148900000000026,
+   "validation": {
+    "accepted": 256,
+    "draws": 328,
+    "F128c": {
+     "mean": 0.00709825709782308,
+     "se": 0.0050568673790452445,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": 0.002532753445848357,
+     "se": 0.0022095212260957835,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "cpu_s": 1.8060269999999718
+   }
+  },
+  {
+   "source": 22,
+   "seat": 0,
+   "k": 1,
+   "legal": 8,
+   "draws": 171,
+   "accepted": 128,
+   "exclusion_rate": 0.2514619883040936,
+   "picks": {
+    "live": 85,
+    "F128c": 84,
+    "R128": 85,
+    "RC128": 81
+   },
+   "arm_cpu_s": 9.286241999999959,
+   "validation": {
+    "accepted": 256,
+    "draws": 319,
+    "F128c": {
+     "mean": 0.00025309366174042225,
+     "se": 0.0005038229064971435,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "RC128": {
+     "mean": 0.0002719139156397432,
+     "se": 0.0002509936161335975,
+     "same_as_live": false
+    },
+    "cpu_s": 1.496642999999949
+   }
+  },
+  {
+   "source": 22,
+   "seat": 1,
+   "k": 2,
+   "legal": 5,
+   "draws": 182,
+   "accepted": 128,
+   "exclusion_rate": 0.29670329670329665,
+   "picks": {
+    "live": 82,
+    "F128c": 110,
+    "R128": 119,
+    "RC128": 119
+   },
+   "arm_cpu_s": 4.865187999999989,
+   "validation": {
+    "accepted": 256,
+    "draws": 369,
+    "F128c": {
+     "mean": 0.00328976871969644,
+     "se": 0.0036133658110159964,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": 0.002851183046004735,
+     "se": 0.003581316253471872,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": 0.002851183046004735,
+     "se": 0.003581316253471872,
+     "same_as_live": false
+    },
+    "cpu_s": 2.252707999999984
+   }
+  },
+  {
+   "source": 22,
+   "seat": 2,
+   "k": 3,
+   "legal": 9,
+   "draws": 780,
+   "accepted": 128,
+   "exclusion_rate": 0.8358974358974359,
+   "picks": {
+    "live": 83,
+    "F128c": 98,
+    "R128": 93,
+    "RC128": 93
+   },
+   "arm_cpu_s": 8.976474999999994,
+   "validation": {
+    "accepted": 256,
+    "draws": 1483,
+    "F128c": {
+     "mean": -0.00041855965537251905,
+     "se": 0.0003148610050096748,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": -0.00034734524524537846,
+     "se": 0.0002417231889960835,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": -0.00034734524524537846,
+     "se": 0.0002417231889960835,
+     "same_as_live": false
+    },
+    "cpu_s": 0.4494299999999498
+   }
+  },
+  {
+   "source": 24,
+   "seat": 2,
+   "k": 1,
+   "legal": 8,
+   "draws": 155,
+   "accepted": 128,
+   "exclusion_rate": 0.17419354838709677,
+   "picks": {
+    "live": 85,
+    "F128c": 85,
+    "R128": 80,
+    "RC128": 85
+   },
+   "arm_cpu_s": 9.928899999999999,
+   "validation": {
+    "accepted": 256,
+    "draws": 307,
+    "F128c": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "R128": {
+     "mean": 0.0006574674334842712,
+     "se": 0.0007600574811005337,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "cpu_s": 3.09769
+   }
+  },
+  {
+   "source": 24,
+   "seat": 3,
+   "k": 2,
+   "legal": 7,
+   "draws": 267,
+   "accepted": 128,
+   "exclusion_rate": 0.5205992509363295,
+   "picks": {
+    "live": 94,
+    "F128c": 94,
+    "R128": 83,
+    "RC128": 94
+   },
+   "arm_cpu_s": 7.953762999999981,
+   "validation": {
+    "accepted": 256,
+    "draws": 536,
+    "F128c": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "R128": {
+     "mean": 0.00015009754133643582,
+     "se": 0.00022912937174935207,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "cpu_s": 1.4862699999999904
+   }
+  },
+  {
+   "source": 24,
+   "seat": 0,
+   "k": 3,
+   "legal": 8,
+   "draws": 495,
+   "accepted": 128,
+   "exclusion_rate": 0.7414141414141414,
+   "picks": {
+    "live": 79,
+    "F128c": 97,
+    "R128": 79,
+    "RC128": 84
+   },
+   "arm_cpu_s": 6.975379999999973,
+   "validation": {
+    "accepted": 256,
+    "draws": 1041,
+    "F128c": {
+     "mean": 2.9308073862921447e-05,
+     "se": 0.00010113544801191904,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "RC128": {
+     "mean": 2.9283612093422562e-05,
+     "se": 8.834451230292737e-05,
+     "same_as_live": false
+    },
+    "cpu_s": 0.43568200000004254
+   }
+  },
+  {
+   "source": 25,
+   "seat": 3,
+   "k": 1,
+   "legal": 8,
+   "draws": 199,
+   "accepted": 128,
+   "exclusion_rate": 0.35678391959798994,
+   "picks": {
+    "live": 84,
+    "F128c": 81,
+    "R128": 81,
+    "RC128": 98
+   },
+   "arm_cpu_s": 12.466396000000032,
+   "validation": {
+    "accepted": 256,
+    "draws": 410,
+    "F128c": {
+     "mean": -0.0011057287701987661,
+     "se": 0.0006983555031844909,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": -0.0011057287701987661,
+     "se": 0.0006983555031844909,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": 0.00041401461930945516,
+     "se": 0.0008166781159957182,
+     "same_as_live": false
+    },
+    "cpu_s": 2.430548999999985
+   }
+  },
+  {
+   "source": 25,
+   "seat": 0,
+   "k": 2,
+   "legal": 8,
+   "draws": 366,
+   "accepted": 128,
+   "exclusion_rate": 0.6502732240437159,
+   "picks": {
+    "live": 94,
+    "F128c": 85,
+    "R128": 94,
+    "RC128": 85
+   },
+   "arm_cpu_s": 12.658531000000039,
+   "validation": {
+    "accepted": 256,
+    "draws": 804,
+    "F128c": {
+     "mean": 0.00015173874999163672,
+     "se": 0.00043491357864692735,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "RC128": {
+     "mean": 0.00015173874999163672,
+     "se": 0.00043491357864692735,
+     "same_as_live": false
+    },
+    "cpu_s": 1.3996720000000096
+   }
+  },
+  {
+   "source": 25,
+   "seat": 1,
+   "k": 3,
+   "legal": 5,
+   "draws": 139,
+   "accepted": 128,
+   "exclusion_rate": 0.07913669064748197,
+   "picks": {
+    "live": 118,
+    "F128c": 118,
+    "R128": 118,
+    "RC128": 118
+   },
+   "arm_cpu_s": 0.8740179999999782
+  },
+  {
+   "source": 26,
+   "seat": 0,
+   "k": 1,
+   "legal": 6,
+   "draws": 189,
+   "accepted": 128,
+   "exclusion_rate": 0.3227513227513228,
+   "picks": {
+    "live": 97,
+    "F128c": 98,
+    "R128": 97,
+    "RC128": 98
+   },
+   "arm_cpu_s": 7.1254370000000335,
+   "validation": {
+    "accepted": 256,
+    "draws": 381,
+    "F128c": {
+     "mean": 0.0011021757527487352,
+     "se": 0.0007253686067001238,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "RC128": {
+     "mean": 0.0011021757527487352,
+     "se": 0.0007253686067001238,
+     "same_as_live": false
+    },
+    "cpu_s": 1.0158950000000004
+   }
+  },
+  {
+   "source": 26,
+   "seat": 1,
+   "k": 2,
+   "legal": 8,
+   "draws": 229,
+   "accepted": 128,
+   "exclusion_rate": 0.44104803493449785,
+   "picks": {
+    "live": 95,
+    "F128c": 83,
+    "R128": 81,
+    "RC128": 83
+   },
+   "arm_cpu_s": 5.579745000000003,
+   "validation": {
+    "accepted": 256,
+    "draws": 452,
+    "F128c": {
+     "mean": 0.0001239725243067369,
+     "se": 0.00011297986422379148,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": 0.00035543874400900677,
+     "se": 0.000216097867024624,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": 0.0001239725243067369,
+     "se": 0.00011297986422379148,
+     "same_as_live": false
+    },
+    "cpu_s": 0.5128720000000158
+   }
+  },
+  {
+   "source": 26,
+   "seat": 2,
+   "k": 3,
+   "legal": 8,
+   "draws": 228,
+   "accepted": 128,
+   "exclusion_rate": 0.4385964912280702,
+   "picks": {
+    "live": 84,
+    "F128c": 79,
+    "R128": 122,
+    "RC128": 124
+   },
+   "arm_cpu_s": 6.389381000000014,
+   "validation": {
+    "accepted": 256,
+    "draws": 514,
+    "F128c": {
+     "mean": -0.0003655169130070135,
+     "se": 0.000537989554911958,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": -0.003323456759972032,
+     "se": 0.0036744760858177963,
+     "same_as_live": false
+    },
+    "RC128": {
+     "mean": -0.0036102628146181814,
+     "se": 0.003683061762880133,
+     "same_as_live": false
+    },
+    "cpu_s": 1.9556129999999712
+   }
+  },
+  {
+   "source": 28,
+   "seat": 2,
+   "k": 1,
+   "legal": 6,
+   "draws": 144,
+   "accepted": 128,
+   "exclusion_rate": 0.11111111111111116,
+   "picks": {
+    "live": 124,
+    "F128c": 107,
+    "R128": 124,
+    "RC128": 119
+   },
+   "arm_cpu_s": 6.7521410000000515,
+   "validation": {
+    "accepted": 256,
+    "draws": 296,
+    "F128c": {
+     "mean": 0.000166006684594322,
+     "se": 0.0008355502613093557,
+     "same_as_live": false
+    },
+    "R128": {
+     "mean": 0.0,
+     "se": 0.0,
+     "same_as_live": true
+    },
+    "RC128": {
+     "mean": -0.0007889857733971439,
+     "se": 0.0009493929078298194,
+     "same_as_live": false
+    },
+    "cpu_s": 2.7094680000000153
+   }
+  }
+ ]
+}
