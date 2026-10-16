@@ -56,6 +56,9 @@
     },
     {
       "$ref": "#/$defs/concede"
+    },
+    {
+      "$ref": "#/$defs/seatBot"
     }
   ],
   "$defs": {
@@ -135,7 +138,8 @@
               "rename",
               "release_seat",
               "concede",
-              "results"
+              "results",
+              "seat_bot"
             ]
           },
           "$comment": "Optional commands this server accepts; absent on servers without them."
@@ -713,6 +717,38 @@
         }
       },
       "$comment": "Any human seat (feature concede): finish a deal whose result is already 0-0. Ignored (answered with a match_update) when not available."
+    },
+    "seatBot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "seat_bot"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "seat",
+            "bot"
+          ],
+          "properties": {
+            "seat": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3
+            },
+            "bot": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "$comment": "During a match (feature seat_bot): the host lets a bot play for a player who is not connected (bot true); that player or the host takes the seat back (bot false). A refusal is answered with a lobby_snapshot."
     }
   }
 }

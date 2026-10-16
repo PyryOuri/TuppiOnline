@@ -727,7 +727,8 @@ class LiveMatchRunner:
 
         while self.state.phase is EnginePhase.SHOWING:
             actor = self.current_actor
-            if actor in self.ai_seats:
+            # A bid its player locked before a bot took the seat over stands.
+            if actor in self.ai_seats and actor not in self._locked_bids:
                 action, evaluation = self._choose_ai_action(actor)
                 self._apply_ai_action(actor, action=action, contract_evaluation=evaluation)
                 continue
@@ -1143,6 +1144,20 @@ class LiveMatchRunner:
             )
             return decision.action, decision.record
         return agent.choose_action(observation), None
+
+    # ------------------------------------------------------- bot stand-ins
+
+    def set_bot(self, seat: int, bot: bool) -> None:
+        """From now on a bot plays this seat (or stops). Recorded moves stay
+        as they are; a new bot starts from its seat's initial random state."""
+
+        if bot and seat not in self.ai_seats:
+            self._ai_agents.update(_for_ruleset(
+                _construct_ai_agents(frozenset({seat}), profile_key=self.ai_profile_key), self.ruleset_id))
+            self.ai_seats = frozenset(self.ai_seats | {seat})
+        elif not bot and seat in self.ai_seats:
+            self.ai_seats = frozenset(self.ai_seats - {seat})
+            self._ai_agents.pop(seat, None)
 
     # ------------------------------------------------------------ concession
 

@@ -150,6 +150,7 @@ class Room:
         seats: list[dict[str, object]] = []
         for seat in range(4):
             if seat in self.ai_seats:
+                covered = self.session_for_seat(seat)
                 profile_key = (
                     self.ai_profile_key
                     if self.runner is None
@@ -162,6 +163,8 @@ class Room:
                         "kind": "ai",
                         "ready": True,
                         "seat": seat,
+                        # A bot standing in for a player who is away.
+                        **({"covering": covered.display_name} if covered is not None else {}),
                     }
                 )
                 continue
@@ -403,6 +406,39 @@ class RoomManager:
         self.persist(room)
         return room, session.token
 
+    def set_seat_bot(self, *, code: str, token: str, seat: object, bot: bool, connected) -> Room:
+        """During a match, a bot plays for a player who is away (the host
+        asks, only while that player is not connected); the player or the
+        host takes the seat back. The player keeps their seat and session.
+        """
+
+        room = self.get(code)
+        self._session(room, token)
+        runner = room.runner
+        if runner is None or runner.terminal:
+            raise RoomError("match_not_active")
+        player = room.session_for_seat(seat) if type(seat) is int and 1 <= seat <= 3 else None
+        if player is None or type(bot) is not bool:
+            raise RoomError("seat_not_coverable")
+        if bot:
+            if token != room.host_token:
+                raise RoomError("host_required")
+            if seat in room.ai_seats:
+                return room
+            if connected(player.token):
+                raise RoomError("player_connected")
+            runner.set_bot(seat, True)
+            room.ai_seats.add(seat)
+        else:
+            if token not in (room.host_token, player.token):
+                raise RoomError("host_required")
+            if seat not in room.ai_seats:
+                return room
+            runner.set_bot(seat, False)
+            room.ai_seats.discard(seat)
+        self.persist(room)
+        return room
+
     def set_ai_action_delay(
         self,
         *,
@@ -525,6 +561,8 @@ class RoomManager:
             "winner_team": result["winner_team"],
         }][-MAX_PREVIOUS_MATCHES:]
         room.match_index += 1
+        # Seats a bot covered return to their players for the next match.
+        room.ai_seats = {seat for seat in room.ai_seats if room.session_for_seat(seat) is None}
         room.runner = None
         room.paused = False
         room.post_match_analysis = None
