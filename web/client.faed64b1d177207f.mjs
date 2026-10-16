@@ -302,6 +302,33 @@ function matchSummary(view) {
       ...(deals.some(deal => deal.conceded) ? [`Luovutettuja jakoja: ${deals.filter(deal => deal.conceded).length}.`] : [])]};
 }
 
+// A finished deal's analysis (session.mjs analyseDeal) as the player reads it.
+// Gaps are in the bot's match-value units (−1…+1); the search samples deals,
+// so differences below 0.01 are within its noise and count as good.
+const analysisGrades = {good: 'Hyvä', inaccuracy: 'Epätarkka', mistake: 'Virhe', unknown: 'Ei arviota'};
+function analysisAction(id) {
+  if (id >= 158) return `vaihtokortti ${cardLabel(id - 158)}`;
+  if (id === 156) return 'ei soolia';
+  if (id === 157) return 'sooli';
+  if (id >= 52) return `${id >= 104 ? 'RAMI' : 'NOLO'} ${cardLabel(id % 52)}`;
+  return cardLabel(id);
+}
+function analysisPresentation(result) {
+  const items = result.decisions.map(decision => {
+    const where = decision.phase === 0 ? 'Tarjous' : decision.phase === 3 ? 'Soolitarjous' :
+      [4, 5].includes(decision.phase) ? 'Soolivaihto' : `Tikki ${Math.floor(decision.played / decision.trickSize) + 1}`;
+    const grade = decision.loss === null ? 'unknown' : decision.loss < 0.01 ? 'good' : decision.loss < 0.04 ? 'inaccuracy' : 'mistake';
+    const text = decision.chosen === decision.best ? `${where}: ${analysisAction(decision.chosen)}, sama kuin botin valinta.` :
+      `${where}: ${analysisAction(decision.chosen)}; botti valitsisi ${analysisAction(decision.best)}` +
+      (decision.loss === null ? '.' : ` (ero ${decision.loss.toFixed(3).replace('.', ',')}).`);
+    return {grade, label: analysisGrades[grade], text};
+  });
+  const count = grade => items.filter(item => item.grade === grade).length;
+  const summary = items.length ? `${items.length} ${items.length === 1 ? 'ratkaisu' : 'ratkaisua'}: ${count('good')} hyvää, ` +
+    `${count('inaccuracy')} epätarkkaa, ${count('mistake')} virhettä.` : 'Tässä jaossa ei ollut valittavaa: jokainen siirto oli ainoa sallittu.';
+  return {items, summary};
+}
+
 // Source: offline.mjs
 // The packager pins this value without changing runtime/model save identity.
 const packagedRuntimeIdentity = "95497f1ebdf0979b8463f3822cf3db85ad8495ed85ae1fe3e5b3b09962871b5d";
@@ -474,6 +501,23 @@ function networkDecided(view) {
   if (view.phase !== 1 || (!view.score0 && !view.score1)) return false;
   const tricks = [view.tricks0, view.tricks1], ahead = view.score0 > 0 ? 0 : 1;
   return view.contract === 1 ? tricks[1 - ahead] >= 7 : tricks[ahead] >= 7;
+}
+// A finished online deal for local analysis. Once it is over every card has
+// been played, so each seat's hand is the cards it played; bids and sooli
+// decisions are public. A deal played as sooli is not supported (the sitting-out
+// partner's hand is never shown), nor is anything that does not add up.
+function networkDealForAnalysis(deal) {
+  if (!deal || !Array.isArray(deal.tricks) || !Array.isArray(deal.show_actions) || !Array.isArray(deal.score_before)) return null;
+  if (deal.sooli && deal.sooli.soolaaja !== null) return null;
+  const plays = deal.tricks.flatMap(trick => trick.plays), hands = [[], [], [], []];
+  try {
+    for (const play of plays) hands[play.seat].push(networkCard(play.card));
+    if (plays.length !== 52 || hands.some(hand => hand.length !== 13)) return null;
+    const actions = [...deal.show_actions.map(show => networkActionID({type: 'show', ...show})),
+      ...(deal.sooli?.decisions ?? []).map(decision => decision.play_sooli ? 157 : 156),
+      ...plays.map(play => networkCard(play.card))];
+    return {cards: hands.flat(), dealer: deal.dealer, score: [...deal.score_before], actions, expectedTricks: [...deal.team_tricks]};
+  } catch { return null; }
 }
 function networkView(payload, completed = [], summary = null, conceded = new Map()) {
   const observation = payload.observation, own = observation.observing_seat;
@@ -1181,12 +1225,16 @@ function renderHistory(completed) {
       const row = document.createElement('div'); row.className = 'history-row';
       const label = document.createElement('span'), button = document.createElement('button');
       button.textContent = 'Toista jako'; button.onclick = () => openReplay(row.deal);
-      row.append(label, button); historyRows.set(deal.index, row);
+      const analyse = document.createElement('button'); analyse.textContent = 'Analysoi';
+      analyse.onclick = () => openAnalysis(row.deal);
+      row.append(label, button, analyse); historyRows.set(deal.index, row);
     }
     const row = historyRows.get(deal.index); row.deal = deal;
     row.children[0].textContent = `Jako ${deal.index + 1} · ${deal.result.soolaaja >= 0 ? 'SOOLI' : deal.result.contract ? 'RAMI' : 'NOLO'} · ${deal.result.winnerTeam === 0 ? 'meille' : 'vastustajille'} ${deal.result.points} p` +
       (deal.conceded ? ` · luovutettu ${deal.conceded.afterTricks} tikin jälkeen` : '');
     row.children[1].setAttribute('aria-label', `Toista jako ${deal.index + 1}`);
+    row.children[2].setAttribute('aria-label', `Analysoi jako ${deal.index + 1}`);
+    row.children[2].hidden = !analysisRequest(deal);
     return row;
   });
   const visible = new Set(completed.map(deal => deal.index));
@@ -1290,6 +1338,7 @@ function render() {
   $('play-card').disabled = !canSelect() || selectedCard === null || !legalCards(view, bidContract).includes(selectedCard);
   $('sooli-controls').hidden = view.phase !== 3 || view.actor !== 0 || revealing;
   $('next-controls').hidden = Boolean(networkClient) || view.phase !== 2 || Boolean(view.terminal);
+  $('analyse-deal').hidden = !analysisRequest(view.completed?.at(-1));
   // A decided deal (result 0-0 whatever is played) can be conceded: online by
   // any player at any time, offline on the player's turn (the bots are idle).
   $('concede-controls').hidden = !view.concedeAvailable || revealing || (!networkClient && !canSelect());
@@ -1401,7 +1450,7 @@ function enableTurnAudio() {
   try { turnAudio ??= new (globalThis.AudioContext ?? globalThis.webkitAudioContext)(); turnAudio.resume?.(); } catch { turnAudio = null; }
 }
 
-function boot(save = null, {replace = false, engine = new URL('./engine.28ab7a0a2563fd12.mjs', import.meta.url), identity = save?.identity ?? packagedRuntimeIdentity} = {}) {
+function boot(save = null, {replace = false, engine = new URL('./engine.d64785159d9cec4e.mjs', import.meta.url), identity = save?.identity ?? packagedRuntimeIdentity} = {}) {
   if (!writeAccess) { status('Peli on avoinna toisessa välilehdessä tai selain ei tue turvallista paikallistallennusta.', true); return; }
   if (save) lastSave = structuredClone(save);
   activeIdentity = identity;
@@ -1702,6 +1751,75 @@ function showReplay() {
 $('replay-prev').onclick = () => { replayIndex--; showReplay(); };
 $('replay-next').onclick = () => { replayIndex++; showReplay(); };
 $('close-replay').onclick = () => $('replay').close();
+// Analysis of a finished deal on this device with the best bot (full search,
+// 1024 worlds), in a second instance of the engine worker that plays no game:
+// offline from the saved deal, online rebuilt from the public deal record.
+let analysisWorker = null, analysisId = 0, analysisShown = null;
+const analysisCache = new Map(), analysisPending = new Set(), analysisHandlers = new Map();
+function analysisRequest(deal) {
+  if (!deal) return null;
+  if (networkClient) {
+    const rebuilt = networkDealForAnalysis(networkClient.completed.get(deal.index));
+    if (!rebuilt || !networkClient.session) return null;
+    const conceded = networkClient.conceded.get(deal.index);
+    return {key: `${networkClient.session.match_ref}:${deal.index}:${networkClient.session.seat}`, deal: rebuilt,
+      seat: networkClient.session.seat, expectedTricks: rebuilt.expectedTricks, stopAfterPlayed: conceded ? conceded.after_tricks * 4 : 52};
+  }
+  const saved = lastSave?.completed?.[deal.index];
+  if (!Array.isArray(saved?.cards) || !Array.isArray(saved.actions)) return null;
+  return {key: `local:${saved.dealer}:${saved.cards.join(',')}`, seat: 0,
+    deal: {cards: saved.cards, dealer: saved.dealer, score: saved.score, actions: saved.actions},
+    stopAfterPlayed: saved.conceded ? saved.conceded.afterTricks * 4 : 52};
+}
+function showAnalysis(result) {
+  const shown = analysisPresentation(result);
+  $('analysis-status').textContent = ''; $('analysis-progress').hidden = true;
+  $('analysis-summary').textContent = shown.summary;
+  $('analysis-list').replaceChildren(...shown.items.map(item => {
+    const entry = document.createElement('li'), grade = document.createElement('strong'), text = document.createElement('span');
+    entry.dataset.grade = item.grade; grade.textContent = item.label; text.textContent = item.text; entry.append(grade, text); return entry;
+  }));
+}
+function openAnalysis(deal) {
+  const request = analysisRequest(deal);
+  if (!request) return;
+  $('analysis-title').textContent = `Jaon ${deal.index + 1} analyysi`;
+  analysisShown = request.key; openDialog('analysis');
+  if (analysisCache.has(request.key)) { showAnalysis(analysisCache.get(request.key)); return; }
+  $('analysis-list').replaceChildren(); $('analysis-summary').textContent = '';
+  $('analysis-status').textContent = 'Analysoidaan botin täydellä haulla…';
+  $('analysis-progress').hidden = false; $('analysis-progress').value = 0;
+  if (analysisPending.has(request.key)) return;
+  analysisPending.add(request.key);
+  if (!analysisWorker) {
+    analysisWorker = new Worker(new URL('./engine.d64785159d9cec4e.mjs', import.meta.url), {type: 'module'});
+    analysisWorker.onmessage = ({data}) => analysisHandlers.get(data?.id)?.(data);
+  }
+  const id = ++analysisId;
+  analysisHandlers.set(id, data => {
+    const visible = analysisShown === request.key && $('analysis').open;
+    if (data.type === 'analysis-progress') {
+      if (!visible) return;
+      if (data.total) { $('analysis-progress').max = data.total; $('analysis-progress').value = data.done;
+        $('analysis-status').textContent = `Analysoidaan botin täydellä haulla… ${Math.round(100 * data.done / data.total)} %`; }
+      else if (data.message) $('analysis-status').textContent = data.message;
+      return;
+    }
+    analysisHandlers.delete(id); analysisPending.delete(request.key);
+    if (data.error) { if (visible) { $('analysis-status').textContent = data.error; $('analysis-progress').hidden = true; } }
+    else { analysisCache.set(request.key, data.result); if (visible) showAnalysis(data.result); }
+    releaseAnalysis();
+  });
+  analysisWorker.postMessage({type: 'analyse', id, deal: request.deal, seat: request.seat,
+    stopAfterPlayed: request.stopAfterPlayed, expectedTricks: request.expectedTricks ?? null});
+}
+// The full-search engine is large: free it when nothing is waiting for it.
+function releaseAnalysis() {
+  if (!analysisPending.size && !$('analysis').open) { analysisWorker?.terminate(); analysisWorker = null; analysisHandlers.clear(); }
+}
+$('close-analysis').onclick = () => { $('analysis').close(); analysisShown = null; releaseAnalysis(); };
+$('analysis').addEventListener?.('close', () => { analysisShown = null; releaseAnalysis(); });
+$('analyse-deal').onclick = () => openAnalysis(view?.completed?.at(-1));
 $('previous-trick').onclick = () => {
   if (!view?.history.length) return;
   const size = view.trickSize, count = view.history.length, start = count - (count % size || size) - size;
@@ -1749,7 +1867,7 @@ async function ownMatch(lock) {
 }
 addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
 const offline = new OfflineSetup({paths: [globalThis.location?.pathname ?? '/', new URL(import.meta.url).pathname,
-  new URL('./engine.28ab7a0a2563fd12.mjs', import.meta.url).pathname], onChange: state => {
+  new URL('./engine.d64785159d9cec4e.mjs', import.meta.url).pathname], onChange: state => {
   const downloading = state.state === 'downloading', failed = state.state === 'error';
   const bytes = (state.completedBytes ?? 0) + (state.receivedBytes ?? 0), total = state.totalBytes ?? 1;
   $('offline-progress').max = total; $('offline-progress').value = bytes;

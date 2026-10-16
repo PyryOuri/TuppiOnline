@@ -49,6 +49,23 @@ export function networkDecided(view) {
   const tricks = [view.tricks0, view.tricks1], ahead = view.score0 > 0 ? 0 : 1;
   return view.contract === 1 ? tricks[1 - ahead] >= 7 : tricks[ahead] >= 7;
 }
+// A finished online deal for local analysis. Once it is over every card has
+// been played, so each seat's hand is the cards it played; bids and sooli
+// decisions are public. A deal played as sooli is not supported (the sitting-out
+// partner's hand is never shown), nor is anything that does not add up.
+export function networkDealForAnalysis(deal) {
+  if (!deal || !Array.isArray(deal.tricks) || !Array.isArray(deal.show_actions) || !Array.isArray(deal.score_before)) return null;
+  if (deal.sooli && deal.sooli.soolaaja !== null) return null;
+  const plays = deal.tricks.flatMap(trick => trick.plays), hands = [[], [], [], []];
+  try {
+    for (const play of plays) hands[play.seat].push(networkCard(play.card));
+    if (plays.length !== 52 || hands.some(hand => hand.length !== 13)) return null;
+    const actions = [...deal.show_actions.map(show => networkActionID({type: 'show', ...show})),
+      ...(deal.sooli?.decisions ?? []).map(decision => decision.play_sooli ? 157 : 156),
+      ...plays.map(play => networkCard(play.card))];
+    return {cards: hands.flat(), dealer: deal.dealer, score: [...deal.score_before], actions, expectedTricks: [...deal.team_tricks]};
+  } catch { return null; }
+}
 export function networkView(payload, completed = [], summary = null, conceded = new Map()) {
   const observation = payload.observation, own = observation.observing_seat;
   if (!Number.isInteger(own) || own < 0 || own > 3 || observation.ruleset_id !== 'project_target_v3' ||

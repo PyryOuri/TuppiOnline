@@ -41,3 +41,30 @@ export function matchSummary(view) {
       ...(best ? [`Suurin jakovoittonne: ${best} pistettä.`] : []),
       ...(deals.some(deal => deal.conceded) ? [`Luovutettuja jakoja: ${deals.filter(deal => deal.conceded).length}.`] : [])]};
 }
+
+// A finished deal's analysis (session.mjs analyseDeal) as the player reads it.
+// Gaps are in the bot's match-value units (−1…+1); the search samples deals,
+// so differences below 0.01 are within its noise and count as good.
+export const analysisGrades = {good: 'Hyvä', inaccuracy: 'Epätarkka', mistake: 'Virhe', unknown: 'Ei arviota'};
+function analysisAction(id) {
+  if (id >= 158) return `vaihtokortti ${cardLabel(id - 158)}`;
+  if (id === 156) return 'ei soolia';
+  if (id === 157) return 'sooli';
+  if (id >= 52) return `${id >= 104 ? 'RAMI' : 'NOLO'} ${cardLabel(id % 52)}`;
+  return cardLabel(id);
+}
+export function analysisPresentation(result) {
+  const items = result.decisions.map(decision => {
+    const where = decision.phase === 0 ? 'Tarjous' : decision.phase === 3 ? 'Soolitarjous' :
+      [4, 5].includes(decision.phase) ? 'Soolivaihto' : `Tikki ${Math.floor(decision.played / decision.trickSize) + 1}`;
+    const grade = decision.loss === null ? 'unknown' : decision.loss < 0.01 ? 'good' : decision.loss < 0.04 ? 'inaccuracy' : 'mistake';
+    const text = decision.chosen === decision.best ? `${where}: ${analysisAction(decision.chosen)}, sama kuin botin valinta.` :
+      `${where}: ${analysisAction(decision.chosen)}; botti valitsisi ${analysisAction(decision.best)}` +
+      (decision.loss === null ? '.' : ` (ero ${decision.loss.toFixed(3).replace('.', ',')}).`);
+    return {grade, label: analysisGrades[grade], text};
+  });
+  const count = grade => items.filter(item => item.grade === grade).length;
+  const summary = items.length ? `${items.length} ${items.length === 1 ? 'ratkaisu' : 'ratkaisua'}: ${count('good')} hyvää, ` +
+    `${count('inaccuracy')} epätarkkaa, ${count('mistake')} virhettä.` : 'Tässä jaossa ei ollut valittavaa: jokainen siirto oli ainoa sallittu.';
+  return {items, summary};
+}

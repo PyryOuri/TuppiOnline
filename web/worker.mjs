@@ -1,12 +1,30 @@
 import {Runtime} from './runtime.mjs';
-import {LocalSession, shuffledDeck} from './session.mjs';
+import {LocalSession, analyseDeal, shuffledDeck} from './session.mjs';
 
 let session, generation = 0, delay = 350, running = false, finishReveal;
 let checkpointId = 0, durableCheckpoint = Promise.resolve();
 const checkpoints = new Map();
 const send = (type, payload) => postMessage({type, generation, ...payload});
 
+// A separate instance of this worker analyses finished deals with the best
+// bot (full search, 1024 worlds); it never plays a game.
+let analysisRuntime = null, analysisContext = null, analysisQueue = Promise.resolve();
+async function runAnalysis(data) {
+  const report = payload => postMessage({type: 'analysis-progress', id: data.id, ...payload});
+  try {
+    if (!analysisRuntime) {
+      analysisRuntime = await Runtime.create({worlds: 1024, progress: message => report({message})});
+      analysisContext = analysisRuntime.context();
+    }
+    const result = analyseDeal(analysisRuntime, data.deal, data.seat, {context: analysisContext,
+      stopAfterPlayed: data.stopAfterPlayed ?? 52, expectedTricks: data.expectedTricks ?? null,
+      progress: (done, total) => report({done, total})});
+    postMessage({type: 'analysis', id: data.id, result});
+  } catch (error) { postMessage({type: 'analysis', id: data.id, error: error.message}); }
+}
+
 self.onmessage = async ({data}) => {
+  if (data.type === 'analyse') { analysisQueue = analysisQueue.then(() => runAnalysis(data)); return; }
   if (data.type === 'checkpoint-saved' && data.generation === generation) {
     const pending = checkpoints.get(data.checkpointId);
     if (pending) { checkpoints.delete(data.checkpointId); data.error ? pending.reject(new Error(`Tallennus keskeytyi: ${data.error}`)) : pending.resolve(); }

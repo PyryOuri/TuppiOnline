@@ -241,6 +241,13 @@ dialog > p { line-height: 1.6; }
 #close-replay { float: right; }
 .replay-trick { margin: 24px 0 14px; }
 #replay-info { margin-bottom: 16px; font-size: 14px; }
+.analysis-list { margin: 12px 0; padding-left: 20px; display: grid; gap: 6px; font-size: 15px; }
+.analysis-list strong { margin-right: 6px; }
+.analysis-list [data-grade="inaccuracy"] strong { color: var(--amber-text); }
+.analysis-list [data-grade="mistake"] strong { color: var(--rami); }
+.analysis-summary { font-weight: 600; }
+.analysis-note { color: var(--muted); font-size: 13px; }
+#analysis-progress { width: 100%; }
 @media (max-width: 900px) {
   .table { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "north north" "their ours" "west east" "center center" "south south"; grid-template-rows: auto; gap: 12px; padding: 12px; }
   .seat { padding: 10px; } .seat-name, .seat-subtitle { font-size: 12px; }

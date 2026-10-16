@@ -167,6 +167,39 @@ export class LocalSession {
   }
 }
 
+// Analysis of a finished deal: replay it and, at each of one seat's decisions
+// with more than one legal option, run the bot's search from that seat's view
+// (what it could see then; others' locked bids stay hidden) and compare the
+// move made with the bot's choice. Use a runtime that plays no game: its random
+// state is reset from `context` so the same deal always gets the same answer.
+// Plays made automatically after a concession (`stopAfterPlayed`) are not judged.
+export function analyseDeal(runtime, deal, seat, {context = null, stopAfterPlayed = 52, expectedTricks = null, progress = () => {}} = {}) {
+  if (!Array.isArray(deal?.cards) || deal.cards.length !== 52 || !Array.isArray(deal.actions) || !Number.isInteger(seat))
+    throw new Error('Jaon tiedot ovat puutteelliset.');
+  runtime.init(deal.cards, deal.dealer, deal.score);
+  if (context) runtime.restoreContext(context);
+  const decisions = [], mine = deal.actions.length;
+  deal.actions.forEach((action, index) => {
+    const state = runtime.state();
+    if (state.actor === seat && state.phase !== 2 && state.playedCount < stopAfterPlayed) {
+      const legal = runtime.legalActions(seat);
+      if (legal.length > 1 && legal.includes(action)) {
+        const {action: best, values} = runtime.choose(seat);
+        const known = values[action] !== undefined && values[best] !== undefined;
+        decisions.push({index, phase: state.phase, played: state.playedCount, trickSize: state.trickSize, options: legal.length,
+          chosen: action, best, loss: action === best ? 0 : known ? Math.max(0, values[best] - values[action]) : null,
+          value: known ? values[action] : null, bestValue: known ? values[best] : null});
+      }
+      progress(index + 1, mine);
+    }
+    runtime.apply(action);
+  });
+  const end = runtime.state();
+  if (end.phase !== 2 || (expectedTricks && (end.tricks0 !== expectedTricks[0] || end.tricks1 !== expectedTricks[1])))
+    throw new Error('Jakoa ei voitu toistaa analyysia varten.');
+  return {seat, worlds: runtime.worlds, decisions};
+}
+
 export function shuffledDeck() {
   const cards = Array.from({length: 52}, (_, i) => i), buffer = new Uint32Array(1);
   for (let i = 51; i > 0; i--) {
