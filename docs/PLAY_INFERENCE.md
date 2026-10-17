@@ -132,6 +132,18 @@ Two lanes cost no more CPU than one, so `evaluate.py` uses 2 (its processes
 already fill the machine), and live play uses all cores for latency.
 Deduplication saves about 27% of a belief search's rollout CPU.
 
+**Update (later on 2026-10-17): deduplication is off.**
+- In 12-process evaluations it made each worker's memory grow by about
+  90 MB a minute. A T=1 tuning run reached about 60 GB in total and ran the
+  Mac out of memory.
+- The growth disappears with deduplication off, at about 0.6 GB per worker,
+  flat, and also with the library from before this change. The cause is not
+  found.
+- It saved only about 9% of CPU and no wall time, so it is disabled
+  (`dedup_worlds = 0` in `tuppi_env.c`). Parallel scoring stays.
+- Results are unchanged either way: the search values are exact with or
+  without it.
+
 **W=128 screen rerun** (same command): **+0.00494 [+0.00415, +0.00573]**,
 against +0.00505 before, so the strength is the same. It took 5,242 s against
 5,476 s, so a full machine gains little: a saturated 12-worker run has no
@@ -139,3 +151,11 @@ spare cores, and that run used all lanes. The per-deal values differ between
 the two runs because each worker's seeded random state carries over from
 deal to deal and the deals are spread over workers in arrival order.
 `runs/belief/screen-pib4-w128-fast.json`.
+
+## Tuning (2026-10-17)
+
+- **8 candidates per world against 4** (`best:pib=8` against `best:pib=4`,
+  W=128, 1,024 base deals, seed belief-tune-pib8-v1): **+0.00113 [+0.00048,
+  +0.00178]**. More candidates help. The scoring cost doubles.
+- **T=1 against T=2:** stopped by the memory growth above; to be rerun.
+

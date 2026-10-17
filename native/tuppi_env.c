@@ -828,23 +828,24 @@ int tc_search_worlds(TcEnv *e, const TcObs *o, int w, uint64_t *rng, TcDeal *out
   return 0;
 }
 
+static const int dedup_worlds = 0;
 static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *actions, int k, int w,
                        int dd_left, uint64_t *rng, double *values, double *per_world) {
   if (w * k > e->n) return -2;
   TcDeal world, *picked = NULL;
   // With play inference, resampling repeats worlds. In trick play the rollouts
-  // are deterministic in their world (greedy moves, exact solver tail, no
-  // sooli left to resolve), so each distinct world is played out once and its
-  // values count as many times as it was drawn: the same values, less work.
-  // At a sooli offer the rollouts resolve soolis at random, so every copy is
-  // played out as before.
+  // are deterministic in their world, so playing each distinct world once and
+  // counting it as often as it was drawn gives the same values. It is off
+  // (dedup_worlds = 0): in 12-process evaluations it made memory grow by about
+  // 90 MB a minute per process (2026-10-17, cause not found), and it saved only
+  // about 9% of CPU, with no wall time.
   int *src = NULL, *slot = NULL, *copies = NULL, u = w;
   const int belief = belief_applies(e, o);
   if (belief) {
     picked = malloc(sizeof(TcDeal) * (size_t)w);
     src = malloc(sizeof(int) * (size_t)w);
     if (belief_worlds(e, o, w, rng, picked, src) != 0) { free(picked); free(src); return -1; }
-    if (o->phase == TC_PH_PLAY) {
+    if (dedup_worlds && o->phase == TC_PH_PLAY) {
       slot = malloc(sizeof(int) * (size_t)w); copies = calloc((size_t)w, sizeof(int));
       u = 0;
       for (int j = 0; j < w; j++) {

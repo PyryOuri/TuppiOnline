@@ -664,7 +664,8 @@ def set_belief_lanes(lanes: int) -> None:
     """Threads that score play-inference candidates (process-wide; default all cores).
     The worlds are the same at any count; two use no more CPU than one, more
     lower latency but contend for the matrix units (docs/PLAY_INFERENCE.md)."""
-    lib.tc_set_belief_lanes(int(lanes))
+    if hasattr(lib, "tc_set_belief_lanes"):  # an older library scores on one thread
+        lib.tc_set_belief_lanes(int(lanes))
 
 
 def belief_profile(reset: bool = False) -> dict:

@@ -13,6 +13,7 @@ same rotations and assignments), extended to non-zero starting scores.
 from __future__ import annotations
 
 import argparse
+import os
 import json
 import math
 import random
@@ -47,7 +48,7 @@ def _init(candidate: str, opponent: str, equity_path: str, ruleset: str = "v1") 
 
     native.set_rollout_chunk(128)  # several processes run: least total work, same moves
     if hasattr(native, "set_belief_lanes"):
-        native.set_belief_lanes(2)  # likewise: play-inference scoring at no extra CPU, same worlds
+        native.set_belief_lanes(int(os.environ.get("TUPPI_BELIEF_LANES", 2)))  # likewise: no extra CPU, same worlds
     from .equity import Equity
     from .incumbent import incumbent_agents
 
