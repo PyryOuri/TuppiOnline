@@ -55,3 +55,33 @@ describes exactly. Against humans the model is approximate.
 
 Run it from this worktree with `PYTHONPATH` set to it; the venv's editable
 install otherwise imports the main TuppiAI checkout.
+
+## W=1024 confirmation and robustness (2026-10-17)
+
+**Memory.** A first 12-worker W=1024 run thrashed and was stopped. The
+belief scored all 4,096 candidates at once, about 4 GB per worker. Since
+`3aaa0d3` it scores them in batches of 256, the same draws and weights, at
+about 0.9 GB per worker. The runs below used 10 workers.
+
+- **W=1024 confirmation** (`best:w=1024:pib=4:pibt=2:pibe=0.5` against
+  `best:w=1024`, 512 base deals, seed belief-pib4-w1024-v1): **+0.00695
+  [+0.00586, +0.00804]**.
+  - Deal wins 56.0%; own declarations made 75.9%, against the live bot's
+    65.9%.
+  - 18,097 s on 10 workers.
+  - **Passes.**
+- **Robustness against non-VRPO opponents** (the incumbent heuristic, W=128,
+  1,024 base deals, seed belief-pib4-incumbent-v1):
+
+  | Agent | Equity per deal against the incumbent |
+  |---|---:|
+  | With play inference | +0.02199 |
+  | Live bot | +0.01935 |
+  | **Paired difference** | **+0.00264 [+0.00183, +0.00345]** |
+
+  The gain is smaller when the model does not describe the opponents, but it
+  stays positive.
+
+**Status:** this is a confirmed strength gain against bots, and robust
+against non-VRPO opponents. Not yet in any product. Cost is about 2.7×
+per decision, and the phone (WASM) timing is untested.
