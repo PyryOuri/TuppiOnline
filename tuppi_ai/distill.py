@@ -45,7 +45,8 @@ def main() -> None:
     p.add_argument("--soft", type=float, default=0.0,
                    help="if > 0, train toward softmax(search values / soft) instead of the searched action")
     args = p.parse_args()
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else
+                          "mps" if torch.backends.mps.is_available() else "cpu")
     net = qmodel.load(args.init, "cpu")
     net.train().to(device)
     dim = feature_dim(net.encoder)
@@ -63,7 +64,7 @@ def main() -> None:
         from .bc import load as load_bc
         bc = load_bc(args.bc_data)
         print(f"mixing {len(bc[1])} behaviour-cloning rows at share {args.bc_share}", flush=True)
-    opt = torch.optim.AdamW(net.parameters(), lr=args.lr, weight_decay=1e-5, fused=device.type == "mps")
+    opt = torch.optim.AdamW(net.parameters(), lr=args.lr, weight_decay=1e-5, fused=device.type in ("mps", "cuda"))
     steps = int(args.epochs * len(train) / (args.batch * (1 - (args.bc_share if bc else 0))))
     sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda s: 0.5 * (1 + math.cos(math.pi * min(s / max(steps, 1), 1.0))))
 
