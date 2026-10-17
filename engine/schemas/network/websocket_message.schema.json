@@ -59,6 +59,9 @@
     },
     {
       "$ref": "#/$defs/seatBot"
+    },
+    {
+      "$ref": "#/$defs/seatUpdate"
     }
   ],
   "$defs": {
@@ -139,7 +142,9 @@
               "release_seat",
               "concede",
               "results",
-              "seat_bot"
+              "seat_bot",
+              "seat_choice",
+              "seat_swap"
             ]
           },
           "$comment": "Optional commands this server accepts; absent on servers without them."
@@ -663,14 +668,17 @@
         "payload": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "omit_match_result"
-          ],
+          "required": [],
           "properties": {
             "omit_match_result": {
               "type": "boolean"
+            },
+            "seat_updates": {
+              "type": "boolean",
+              "$comment": "The app takes a new seat from seat_update (send only to servers listing seat_swap)."
             }
-          }
+          },
+          "minProperties": 1
         }
       },
       "$comment": "Sent only to servers listing compact_results. omit_match_result drops match_result from this connection's match_update and reconnect_result."
@@ -749,6 +757,34 @@
         }
       },
       "$comment": "During a match (feature seat_bot): the host lets a bot play for a player who is not connected (bot true); that player or the host takes the seat back (bot false). A refusal is answered with a lobby_snapshot."
+    },
+    "seatUpdate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "seat_update"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "seat"
+          ],
+          "properties": {
+            "seat": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3
+            }
+          }
+        }
+      },
+      "$comment": "Server to a player the host moved before a match (feature seat_swap): their new seat."
     }
   }
 }

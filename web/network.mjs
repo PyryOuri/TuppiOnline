@@ -13,6 +13,8 @@ const networkErrors = {room_not_found:'Huonetta ei löydy. Tarkista huonekoodi.'
   storage_low:'Palvelimen tallennustila on vähissä, joten uusia huoneita ei nyt voi luoda. Käynnissä olevat pelit jatkuvat.',
   match_not_active:'Ottelu ei ole käynnissä.', match_not_complete:'Uuden ottelun voi aloittaa, kun ottelu on päättynyt.',
   invalid_display_name:'Kirjoita nimimerkki (1–40 merkkiä).',
+  seat_taken:'Paikka ehdittiin jo varata. Valitse toinen paikka.',
+  player_cannot_move:'Pelaajan sovellus ei tue paikan vaihtoa. Pyydä häntä sulkemaan ja avaamaan Tuppi uudelleen.',
   seat_not_releasable:'Tätä paikkaa ei voi vapauttaa.'};
 export function networkBase(value) {
   const url = new URL(value);
@@ -174,10 +176,20 @@ export class NetworkSession {
     await this.begin({...result, base: networkBase(base), host: true, pending: null, cursor: -1,
       schema: 'tuppi.browser.network.v1', active: true});
   }
-  async join(base, code, displayName) {
+  // Before joining (feature seat_choice): who sits where; null if the server
+  // cannot say. Seat 2 is the host's partner; 1 and 3 are partners.
+  async seatPreview(base, code) {
+    if (!/^[A-Z0-9]{6}$/.test(code)) return null;
+    const compatibility = await this.request('/v1/compatibility', null, base);
+    if (!compatibility.features?.includes('seat_choice')) return null;
+    const result = await this.request(`/v1/rooms/${code}/seats`, {}, base);
+    return Array.isArray(result.seats) && result.joinable ? result.seats : null;
+  }
+  async join(base, code, displayName, seat = null) {
     if (!/^[A-Z0-9]{6}$/.test(code)) throw new Error('Huonekoodi on kuusi kirjainta tai numeroa.');
     await this.check(base);
-    const result = await this.request(`/v1/rooms/${code}/join`, {display_name: displayName}, base);
+    const result = await this.request(`/v1/rooms/${code}/join`,
+      {display_name: displayName, ...(Number.isInteger(seat) ? {seat} : {})}, base);
     await this.begin({...result, base: networkBase(base), host: false, pending: null, cursor: -1,
       schema: 'tuppi.browser.network.v1', active: true});
   }
@@ -242,14 +254,28 @@ export class NetworkSession {
   async message(message) {
     const payload = message.payload;
     if (message.message_type === 'hello_ack') {
+      // A seat the host moved while this app was away (feature seat_swap): the
+      // server holds the authoritative seat of this credential.
+      if (payload.protocol_version === networkProtocol && payload.room_code === this.session.room_code &&
+          payload.seat !== this.session.seat && Array.isArray(payload.features) && payload.features.includes('seat_swap')) {
+        this.session.seat = payload.seat; await this.persist(this.session);
+      }
       if (payload.protocol_version !== networkProtocol || payload.seat !== this.session.seat || payload.room_code !== this.session.room_code)
         throw new Error('Verkkopelin paikka tai versio muuttui.');
       this.retryCount = 0; this.timers.clearTimeout(this.deadline); this.beat();
       const resumed = this.interrupted; this.restarting = this.interrupted = false;
       if (resumed) this.onReconnect();
       this.features = new Set(Array.isArray(payload.features) ? payload.features : []);
-      // The browser never reads the full terminal match result; skip it.
-      if (this.features.has('compact_results')) this.send('client_options', {omit_match_result: true});
+      // The browser never reads the full terminal match result, and takes a new
+      // seat if the host moves it; say so only to servers that list these.
+      const options = {...(this.features.has('compact_results') ? {omit_match_result: true} : {}),
+        ...(this.features.has('seat_swap') ? {seat_updates: true} : {})};
+      if (Object.keys(options).length) this.send('client_options', options);
+    } else if (message.message_type === 'seat_update') {
+      // The host moved this player before the match (feature seat_swap).
+      if (!Number.isInteger(payload.seat) || payload.seat < 1 || payload.seat > 3) throw new Error('Palvelin lähetti virheellisen paikan.');
+      this.session.seat = payload.seat; await this.persist(this.session);
+      this.onStatus('Huoneen luoja vaihtoi paikkaasi.', false);
     } else if (message.message_type === 'compatibility_result') throw new Error('Päivitä Tuppi ennen verkkopeliä.');
     else if (message.message_type === 'protocol_error') throw new Error(networkErrors[payload.code] || 'Verkkopelin yhteyttä ei voitu jatkaa. Paikkasi on tallennettu.');
     else if (message.message_type === 'lobby_snapshot') {
@@ -393,6 +419,11 @@ export class NetworkSession {
       if (revision === this.lobbyRevision) { this.session.lobby = result.lobby; await this.persist(this.session); }
       return true;
     } finally { this.configuring = false; if (epoch === this.epoch && !this.stopped) this.onLobby(this.session.lobby); }
+  }
+  // Host: swap two of seats 1-3 before the match (feature seat_swap).
+  async swapSeats(a, b) {
+    if (!this.session?.host || !this.features.has('seat_swap')) return false;
+    return this.lobbyCommand('swap', {seats: [a, b]});
   }
   // Your own nickname, before the match starts.
   async rename(displayName) {

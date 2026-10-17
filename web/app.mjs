@@ -7,7 +7,7 @@ import {seatNames, suitNames, suitSVG, cardRank, cardLabel, cardAction, legalCar
 import {HandView} from './hand.mjs';
 import {seatPresentation, matchSummary, offlineResultReport, analysisPresentation, dealHands} from './presentation.mjs';
 import {networkEnabled} from './capabilities.mjs';
-import {LobbyView, lobbyPresentation, invitationURL, roomCodeFromInput, standInActions, seatDisplayName} from './lobby.mjs';
+import {LobbyView, lobbyPresentation, invitationURL, roomCodeFromInput, standInActions, seatDisplayName, seatChoices} from './lobby.mjs';
 import {loadPreferences, savePreferences} from './preferences.mjs';
 
 const $ = id => document.getElementById(id);
@@ -963,6 +963,7 @@ const lobbyView = new LobbyView([$('network-our-team'), $('network-their-team')]
     if (name === null || name === undefined || name.trim() === seat.display_name) return;
     return networkClient?.rename(name).catch(networkFailure);
   },
+  onMove: seats => networkClient?.swapSeats(...seats).catch(networkFailure),
   onRelease: seat => {
     if (globalThis.confirm && !globalThis.confirm(`Vapautetaanko paikka ${seat.display_name ?? ''}? Pelaaja voi liittyä uudelleen kutsulinkillä.`)) return;
     return networkClient?.releaseSeat(seat.seat).catch(networkFailure);
@@ -1063,7 +1064,7 @@ function showNetworkLobby(lobby) {
   $('network-room').textContent = lobby.match_number ? `Huone ${lobby.room_code} · ottelu ${lobby.match_number}` : `Huone ${lobby.room_code}`;
   const available = Boolean(networkClient?.connected && !networkClient.authRequired);
   const configuring = Boolean(networkClient?.configuring);
-  lobbyView.render(model, {host: networkClient?.session.host, connected: available, configuring, features: networkClient?.features});
+  lobbyView.render(model, {host: networkClient?.session.host, connected: available, configuring, features: networkClient?.features, lobby});
   if (lobbyRoom === lobby.room_code && lobbyConfiguration && lobbyConfiguration !== model.configuration && !playing) {
     $('network-changed').textContent = 'Paikkajako muuttui. Vahvistakaa valmius uudelleen.';
   }
@@ -1089,6 +1090,17 @@ async function showPasscodeIfRequired() {
   await passcodeCheck;
   if (!$('network-entry').hidden) renderRoomEntry();
 }
+// The free seats to choose from before joining; choosing one joins at once.
+let chosenSeat;
+function showSeatChoice(choices) {
+  $('network-seat-options').replaceChildren(...choices.map(choice => {
+    const button = document.createElement('button'); button.type = 'button'; button.textContent = choice.text;
+    button.onclick = () => { chosenSeat = choice.seat; return startNetwork('join'); };
+    return button;
+  }));
+  $('network-seat-choice').hidden = false;
+  $('network-status').textContent = 'Valitse, kenen kanssa pelaat.';
+}
 async function startNetwork(command) {
   if (!networkEnabled || entryPending || navigationPending) return;
   if (!writeAccess || !networkAddress) { $('network-status').textContent = 'Verkkopeli ei ole vielä valmis. Yritä hetken kuluttua.'; return; }
@@ -1096,7 +1108,19 @@ async function startNetwork(command) {
   if (command === 'join') {
     try { $('network-code').value = roomCodeFromInput($('network-code').value, location.href); }
     catch (error) { $('network-status').textContent = error.message; $('network-code').focus?.(); return; }
+    // Feature seat_choice: with more than one free seat, the player picks one first.
+    if (chosenSeat === undefined) {
+      // Repeated submits wait here too: one preview, then at most one join.
+      entryPending = true; renderRoomEntry();
+      let seats = null;
+      try { seats = await new NetworkSession().seatPreview(networkAddress, $('network-code').value).catch(() => null); }
+      finally { entryPending = false; }
+      const choices = seats ? seatChoices(seats) : [];
+      if (choices.length > 1) { renderRoomEntry(); showSeatChoice(choices); return; }
+      chosenSeat = choices.length === 1 ? choices[0].seat : null;
+    }
   }
+  const joinSeat = chosenSeat ?? null; chosenSeat = undefined; $('network-seat-choice').hidden = true;
   entryPending = true; awaitingNetworkGame = true; navigationToken++; renderRoomEntry(); renderHome();
   await saveQueue.catch(() => {});
   if (saveFailed) {
@@ -1149,7 +1173,7 @@ async function startNetwork(command) {
       if (command === 'create') {
         await networkClient.create(networkAddress, nickname, ($('network-passcode').value ?? '').trim());
         $('network-passcode').value = '';
-      } else await networkClient.join(networkAddress, $('network-code').value, nickname);
+      } else await networkClient.join(networkAddress, $('network-code').value, nickname, joinSeat);
     }
   } catch (error) {
     networkClient.close(); networkClient = null;
@@ -1222,6 +1246,7 @@ $('network-resume').onclick = () => startNetwork('resume');
 $('network-switch').onclick = async () => {
   if (entryPending) return;
   invitation = false; roomIntent = roomIntent === 'create' ? 'join' : 'create';
+  chosenSeat = undefined; $('network-seat-choice').hidden = true;
   $('network-status').textContent = ''; renderRoomEntry();
   if (roomIntent === 'create') await showPasscodeIfRequired();
 };

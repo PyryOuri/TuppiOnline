@@ -65,16 +65,39 @@ export function standInActions(lobby, {host, ownSeat, features = new Set(), acti
     return [];
   });
 }
+// Choosing a seat before joining (feature seat_choice): one option per free
+// seat, named by the team it joins. Seat 2 is the host's partner; seats 1 and
+// 3 are partners of each other.
+export function seatChoices(seats) {
+  const at = seat => seats.find(item => item.seat === seat);
+  const name = item => item?.kind === 'human' ? item.display_name : item?.kind === 'ai' ? 'botti' : null;
+  return seats.filter(item => item.kind === 'open' && item.seat > 0).map(item => {
+    const partner = at((item.seat + 2) % 4);
+    const text = item.seat === 2 ? `Samaan joukkueeseen: ${at(0)?.display_name ?? 'huoneen luoja'}` :
+      name(partner) ? `Vastustajaksi (pari: ${name(partner)})` : 'Vastustajaksi';
+    return {seat: item.seat, text};
+  });
+}
+// The host's move in the lobby (feature seat_swap): a seat 1 or 3 into the
+// partner seat 2, or the partner out to it.
+export function moveAction(seat, {host, playing, features = new Set(), lobby}) {
+  if (!host || playing || !features.has('seat_swap') || ![1, 3].includes(seat.seat)) return null;
+  const partner = lobby?.seats?.find(item => item.seat === 2);
+  if (seat.kind === 'open' && (!partner || partner.kind === 'open')) return null;
+  return {seats: [seat.seat, 2], text: seat.kind === 'open' ? 'Siirrä parisi tähän' : 'Siirrä pariksi'};
+}
+
 // A seat's name at the table: a stand-in bot says whom it plays for.
 export function seatDisplayName(seat) {
   return seat?.covering ? `Botti (${seat.covering})` : seat?.display_name;
 }
 
 export class LobbyView {
-  constructor(teams, onToggle, {onRename = () => {}, onRelease = () => {}} = {}) {
-    this.teams = teams; this.onToggle = onToggle; this.onRename = onRename; this.onRelease = onRelease; this.nodes = new Map();
+  constructor(teams, onToggle, {onRename = () => {}, onRelease = () => {}, onMove = () => {}} = {}) {
+    this.teams = teams; this.onToggle = onToggle; this.onRename = onRename; this.onRelease = onRelease; this.onMove = onMove;
+    this.nodes = new Map();
   }
-  render(model, {host, connected, configuring = false, features = new Set()}) {
+  render(model, {host, connected, configuring = false, features = new Set(), lobby = null}) {
     model.teams.forEach((seats, index) => {
       const nodes = seats.map(seat => {
         if (!this.nodes.has(seat.seat)) {
@@ -89,8 +112,10 @@ export class LobbyView {
             if (node.action === 'release') return this.onRelease(node.seat);
             if (node.action === 'toggle') return this.onToggle(seat.seat);
           };
-          item.append(position, name, state, button);
-          this.nodes.set(seat.seat, {item, position, name, state, button});
+          const move = document.createElement('button'); move.type = 'button';
+          move.onclick = () => { const node = this.nodes.get(seat.seat); if (node.move_action) return this.onMove(node.move_action.seats); };
+          item.append(position, name, state, move, button);
+          this.nodes.set(seat.seat, {item, position, name, state, button, move});
         }
         const node = this.nodes.get(seat.seat), label = seatNames[seat.position];
         node.position.textContent = label;
@@ -103,6 +128,10 @@ export class LobbyView {
         node.button.textContent = node.action === 'rename' ? 'Vaihda nimi' : node.action === 'release' ? 'Vapauta paikka' :
           seat.kind === 'ai' ? 'Avaa ystävälle' : 'Lisää botti';
         node.button.setAttribute('aria-label', `${node.button.textContent}: ${label}`);
+        node.move_action = moveAction(seat, {host, playing: model.playing, features, lobby});
+        node.move.hidden = !node.move_action; node.move.disabled = !connected || configuring;
+        node.move.textContent = node.move_action?.text ?? '';
+        if (node.move_action) node.move.setAttribute('aria-label', `${node.move_action.text}: ${label}`);
         return node.item;
       });
       const list = this.teams[index];

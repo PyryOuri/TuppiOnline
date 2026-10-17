@@ -115,7 +115,7 @@
       <form id="network-form" novalidate><p id="network-entry-copy">Kirjoita nimimerkkisi ja huoneen koodi.</p><label>Nimimerkki<input id="network-name" maxlength="40" autocomplete="nickname" value="Pelaaja" enterkeyhint="go"></label>
       <label id="network-code-row">Huonekoodi tai kutsulinkki<input id="network-code" maxlength="2048" autocapitalize="characters" spellcheck="false" autocomplete="off" placeholder="ABC123" enterkeyhint="go"></label>
       <label id="network-passcode-row" hidden>Huoneen luontikoodi<input id="network-passcode" type="password" maxlength="128" autocomplete="off" spellcheck="false" enterkeyhint="go"></label>
-      <button id="network-submit" class="primary" type="submit" disabled>Liity huoneeseen</button></form>
+      <button id="network-submit" class="primary" type="submit" disabled>Liity huoneeseen</button><fieldset id="network-seat-choice" class="seat-choice" hidden><legend>Valitse paikkasi</legend><div id="network-seat-options" class="controls"></div></fieldset></form>
       <button id="network-switch" type="button" class="text-button">Luo oma huone</button></div>
     <div id="network-lobby" hidden><div class="lobby-heading"><h3 id="network-room"></h3><span id="network-summary" class="muted"></span></div>
       <p id="network-seat-guide">Haluatko ystävän pariksesi? Lisää botit ensin vasemmalle ja oikealle, ja lähetä kutsu vasta sitten.</p>

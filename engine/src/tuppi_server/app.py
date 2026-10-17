@@ -26,7 +26,7 @@ Send = Callable[[dict[str, Any]], Awaitable[None]]
 #: Optional commands this server accepts; clients show their controls only
 #: when the server lists them.
 FEATURES = ("pause", "rematch", "leaderboard", "compact_results", "rename", "release_seat", "concede", "results",
-            "seat_bot")
+            "seat_bot", "seat_choice", "seat_swap")
 #: Close code sent to a player whose seat the host released.
 SEAT_RELEASED_CLOSE_CODE = 4002
 #: A player whose connection does not take an update within this time is
@@ -48,6 +48,8 @@ class Connection:
     last_event_index: int = -1
     #: client_options: the browser does not use the full terminal match result.
     omit_match_result: bool = False
+    #: client_options: the app takes a new seat from a seat_update (feature seat_swap).
+    seat_updates: bool = False
 
 
 class TuppiASGIApp:
@@ -59,6 +61,8 @@ class TuppiASGIApp:
         self._ai_tasks: dict[str, asyncio.Task[None]] = {}
         #: Seats released by the host, whose sockets close after the response.
         self._released: list[tuple[str, str]] = []
+        #: Players the host moved (token -> new seat), told after the response.
+        self._moved: list[tuple[str, dict[str, int]]] = []
 
     async def __call__(self, scope: dict[str, Any], receive: Receive, send: Send) -> None:
         scope_type = scope.get("type")
@@ -112,6 +116,13 @@ class TuppiASGIApp:
             await self._json_response(send, 400, {"error": str(exc) or "invalid_request"})
             return
         await self._json_response(send, 200, response)
+        while self._moved:
+            code, moved = self._moved.pop()
+            for token, seat in moved.items():
+                connection = self._connections.get(code, {}).get(token)
+                if connection is not None:
+                    connection.seat = seat
+                    await self._deliver(code, connection, self._send_message(connection.send, "seat_update", {"seat": seat}))
         while self._released:
             code, token = self._released.pop()
             connection = self._connections.get(code, {}).pop(token, None)
@@ -120,7 +131,7 @@ class TuppiASGIApp:
                     await asyncio.wait_for(connection.send({"type": "websocket.close", "code": SEAT_RELEASED_CLOSE_CODE}), 1)
                 except Exception:
                     pass
-        if path.endswith(("/settings", "/configure", "/join", "/ready", "/name", "/release")):
+        if path.endswith(("/settings", "/configure", "/join", "/ready", "/name", "/release", "/swap")):
             parts = [part for part in path.split("/") if part]
             if len(parts) == 4:
                 await self._broadcast_lobby(parts[2].upper())
@@ -186,10 +197,12 @@ class TuppiASGIApp:
             code = parts[2].upper()
             command = parts[3]
             if command == "join":
-                self._require_fields(payload, required={"display_name"})
+                if set(payload) not in ({"display_name"}, {"display_name", "seat"}):
+                    raise ProtocolError("payload fields are invalid")
                 room, session = self.rooms.join_room(
                     code=code,
                     display_name=payload.get("display_name"),  # type: ignore[arg-type]
+                    seat=payload.get("seat"),
                 )
                 return {
                     "room_code": room.code,
@@ -222,6 +235,17 @@ class TuppiASGIApp:
                     host_token=self._string(payload, "session_token"),
                     ai_seats=self._ai_seats(payload.get("ai_seats", [])),
                 )
+                return {"lobby": room.snapshot()}
+            if command == "seats":
+                self._require_fields(payload, required=set())
+                return self.rooms.seat_preview(code)
+            if command == "swap":
+                self._require_fields(payload, required={"session_token", "seats"})
+                online = self._connections.get(code, {})
+                room, moved = self.rooms.swap_seats(
+                    code=code, host_token=self._string(payload, "session_token"), seats=payload.get("seats"),
+                    movable=lambda token: token in online and online[token].seat_updates)
+                self._moved.append((room.code, moved))
                 return {"lobby": room.snapshot()}
             if command == "name":
                 self._require_fields(payload, required={"session_token", "display_name"})
@@ -431,10 +455,11 @@ class TuppiASGIApp:
                 await self._send_match_update(connection)
             return
         if message_type == "client_options":
-            self._require_fields(payload, required={"omit_match_result"})
-            if type(payload["omit_match_result"]) is not bool:
-                raise ProtocolError("omit_match_result must be a boolean")
-            connection.omit_match_result = payload["omit_match_result"]
+            if not payload or not set(payload) <= {"omit_match_result", "seat_updates"} or any(
+                    type(value) is not bool for value in payload.values()):
+                raise ProtocolError("payload fields are invalid")
+            connection.omit_match_result = payload.get("omit_match_result", connection.omit_match_result)
+            connection.seat_updates = payload.get("seat_updates", connection.seat_updates)
             return
         if message_type == "reconnect":
             self._require_fields(payload, required={"last_applied_event_index"})

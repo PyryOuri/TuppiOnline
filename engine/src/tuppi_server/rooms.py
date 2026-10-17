@@ -324,7 +324,9 @@ class RoomManager:
         self.persist(room)
         return room, session
 
-    def join_room(self, *, code: str, display_name: str) -> tuple[Room, Session]:
+    def join_room(self, *, code: str, display_name: str, seat: object = None) -> tuple[Room, Session]:
+        """Join the chosen free seat (1-3), or the lowest free one."""
+
         room = self.get(code)
         if room.runner is not None:
             raise RoomError("settings_locked")
@@ -336,8 +338,10 @@ class RoomManager:
         ]
         if not open_seats:
             raise RoomError("room_full")
+        if seat is not None and (type(seat) is not int or seat not in open_seats):
+            raise RoomError("seat_taken")
         token = self._new_token()
-        session = Session(token=token, seat=open_seats[0], display_name=name)
+        session = Session(token=token, seat=open_seats[0] if seat is None else seat, display_name=name)
         room.sessions[token] = session
         for item in room.sessions.values():
             item.ready = False
@@ -367,6 +371,46 @@ class RoomManager:
         room.lifecycle = "configured"
         self.persist(room)
         return room
+
+    def seat_preview(self, code: str) -> dict[str, object]:
+        """Before joining: who sits where (names and kinds only), to choose a seat."""
+
+        room = self.get(code)
+        seats = [{"display_name": seat["display_name"] if seat["kind"] == "human" else None,
+                  "kind": seat["kind"], "seat": seat["seat"]} for seat in room.snapshot()["seats"]]
+        return {"joinable": room.runner is None, "room_code": room.code, "seats": seats}
+
+    def swap_seats(self, *, code: str, host_token: str, seats: object, movable) -> tuple[Room, dict[str, int]]:
+        """The host swaps two of seats 1-3 before a match: players, bots or free
+        seats. A player can be moved only if `movable(token)` (their app takes
+        the new seat). Readiness is cleared. Returns the moved players' new seats.
+        """
+
+        room = self.get(code)
+        if room.host_token != host_token:
+            raise RoomError("host_required")
+        if room.runner is not None:
+            raise RoomError("settings_locked")
+        if (type(seats) is not list or len(seats) != 2 or any(type(s) is not int or not 1 <= s <= 3 for s in seats)
+                or seats[0] == seats[1]):
+            raise RoomError("invalid_seats")
+        a, b = seats
+        players = {s: room.session_for_seat(s) for s in (a, b)}
+        if any(p is not None and not movable(p.token) for p in players.values()):
+            raise RoomError("player_cannot_move")
+        moved = {}
+        for here, there in ((a, b), (b, a)):
+            if players[here] is not None:
+                players[here].seat = there
+                moved[players[here].token] = there
+        bots = {s for s in (a, b) if s in room.ai_seats}
+        room.ai_seats -= bots
+        room.ai_seats |= {b if s == a else a for s in bots}
+        for item in room.sessions.values():
+            item.ready = False
+        room.lifecycle = "configured" if room.ai_seats else "waiting"
+        self.persist(room)
+        return room, moved
 
     def rename(self, *, code: str, token: str, display_name: str) -> Room:
         """A player changes their own nickname before the match starts.
