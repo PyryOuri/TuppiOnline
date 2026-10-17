@@ -238,9 +238,14 @@ def evaluate(candidate: str, deals: int, seed: str = "tuppi-ai-eval-v1", scores:
              opponent: str = INCUMBENT, workers: int = 12,
              equity_path: str = str(ROOT / "models" / "equity_incumbent.json"), ruleset: str = "v1") -> dict:
     t0 = time.time()
-    with ProcessPoolExecutor(workers, initializer=_init,
-                             initargs=(candidate, opponent, equity_path, ruleset)) as pool:
-        rows = list(pool.map(measure, range(deals), [seed] * deals, [scores] * deals, chunksize=8))
+    # Workers' memory grows during long searching runs on macOS (2026-10-17, W=1024
+    # with play inference: about 70 MB a minute each, freed only at exit), so each
+    # worker is replaced after `recycle` deals when set (TUPPI_EVAL_RECYCLE).
+    recycle = int(os.environ.get("TUPPI_EVAL_RECYCLE", 0))
+    with ProcessPoolExecutor(workers, initializer=_init, initargs=(candidate, opponent, equity_path, ruleset),
+                             max_tasks_per_child=recycle or None) as pool:
+        rows = list(pool.map(measure, range(deals), [seed] * deals, [scores] * deals,
+                             chunksize=1 if recycle else 8))
     summary = summarise(rows)
     summary.update({"candidate": candidate, "opponent": opponent, "seed": seed, "scores": scores,
                     "ruleset": RULESETS[ruleset],

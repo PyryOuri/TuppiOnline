@@ -109,7 +109,10 @@ def main():
     deadline = time.time() + args.hours * 3600
     todo = (i for i in range(args.shards) if not (args.out / f"shard_{i:05d}.npz").exists())
     log = (args.out / "progress.jsonl").open("a")
-    with ProcessPoolExecutor(args.workers, initializer=_init, initargs=(args.worlds,)) as pool:
+    # One shard per worker process: a fresh process per shard keeps memory flat
+    # (searching workers' memory grows over long runs).
+    with ProcessPoolExecutor(args.workers, initializer=_init, initargs=(args.worlds,),
+                             max_tasks_per_child=1) as pool:
         running = {pool.submit(shard, next(todo), args.games, str(args.out)) for _ in range(args.workers)}
         while running:
             done = next(as_completed(running))
