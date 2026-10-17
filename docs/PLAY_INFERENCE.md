@@ -157,5 +157,9 @@ deal to deal and the deals are spread over workers in arrival order.
 - **8 candidates per world against 4** (`best:pib=8` against `best:pib=4`,
   W=128, 1,024 base deals, seed belief-tune-pib8-v1): **+0.00113 [+0.00048,
   +0.00178]**. More candidates help. The scoring cost doubles.
-- **T=1 against T=2:** stopped by the memory growth above; to be rerun.
+- **T=1 against T=2** (`best:pib=4:pibt=1` against `best:pib=4:pibt=2`, W=128,
+  1,024 base deals, seed belief-tune-t1-v1): **-0.00081 [-0.00152, -0.00010]**.
+  Sharper weighting is worse, so T=2 stays. Memory stayed flat at about
+  6.5–6.9 GB for 12 workers (7,062 s).
+- **Next:** confirm `pib=8` at W=1024 before any product use.
 
