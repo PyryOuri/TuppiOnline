@@ -83,5 +83,59 @@ about 0.9 GB per worker. The runs below used 10 workers.
   stays positive.
 
 **Status:** this is a confirmed strength gain against bots, and robust
-against non-VRPO opponents. Not yet in any product. Cost is about 2.7×
-per decision, and the phone (WASM) timing is untested.
+against non-VRPO opponents. Not yet in any product. The phone (WASM) timing
+is untested.
+
+## Cost (2026-10-17)
+
+**Profile** (`tools/belief_profile.py`, one process, W=128, 3 deals): of
+54 s, the belief's network pass took 36 s, single-threaded. Rollouts took 17 s,
+and drawing and resampling well under 1 s. Per search, scoring the 512
+candidates (about 14 history rows each) cost more CPU than rolling out the
+128 worlds.
+
+**Two exact changes:**
+
+1. **Parallel scoring.** Candidates are drawn in order, then scored in fixed
+   blocks of 32 on several threads (`tc_set_belief_lanes`, default all
+   cores).
+2. **Each distinct world played out once.** In trick play the rollouts are
+   deterministic in their world (greedy moves, exact solver tail, no sooli
+   left), so a world drawn n times is rolled out once and counted n times. A
+   median of about 66 of the 128 resampled worlds is distinct. At a sooli
+   offer, every copy is still played out.
+
+**Exactness:** on 30 positions the worlds, values and per-world values are
+bit-identical to `8a918a6`, and so are the game results of the profiled
+deals. The worlds are the same at any thread count.
+`test_repeated_worlds_are_played_out_once_with_the_same_values` covers the
+deduplication.
+
+**Wall time per deal for one game process** (8 games):
+
+| Level | Live bot | Before | Now |
+|---|---:|---:|---:|
+| W=128 (3 deals) | 17.9 s | 53.9 s (3.0×) | 27.5 s (1.5×) |
+| W=1024 (1 deal) | 19.3 s | 102.2 s (5.3×) | 33.4 s (1.7×) |
+
+**CPU** rises when all cores score, because they contend for the matrix
+units. At W=1024, 10 positions:
+
+| Lanes | Wall | CPU |
+|---:|---:|---:|
+| 1 | 6.6 s | 7.6 s |
+| 2 | 3.5 s | 6.9 s |
+| 8 | 1.8 s | 10.8 s |
+| all | 1.2 s | 15.3 s |
+
+Two lanes cost no more CPU than one, so `evaluate.py` uses 2 (its processes
+already fill the machine), and live play uses all cores for latency.
+Deduplication saves about 27% of a belief search's rollout CPU.
+
+**W=128 screen rerun** (same command): **+0.00494 [+0.00415, +0.00573]**,
+against +0.00505 before, so the strength is the same. It took 5,242 s against
+5,476 s, so a full machine gains little: a saturated 12-worker run has no
+spare cores, and that run used all lanes. The per-deal values differ between
+the two runs because each worker's seeded random state carries over from
+deal to deal and the deals are spread over workers in arrival order.
+`runs/belief/screen-pib4-w128-fast.json`.

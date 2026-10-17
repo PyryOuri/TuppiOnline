@@ -655,6 +655,26 @@ def set_belief(env: "Env", model: "Mlp | None", mult: int = 4, temperature: floa
                           int(all_seats))
 
 
+if hasattr(lib, "tc_belief_profile"):  # an older library has no counters
+    lib.tc_belief_profile.argtypes = [C.c_void_p, C.c_void_p, C.c_int]
+    lib.tc_belief_profile.restype = None
+
+
+def set_belief_lanes(lanes: int) -> None:
+    """Threads that score play-inference candidates (process-wide; default all cores).
+    The worlds are the same at any count; two use no more CPU than one, more
+    lower latency but contend for the matrix units (docs/PLAY_INFERENCE.md)."""
+    lib.tc_set_belief_lanes(int(lanes))
+
+
+def belief_profile(reset: bool = False) -> dict:
+    """Seconds spent in play inference and in rollouts (measurement only)."""
+    sec = (C.c_double * 5)(); cnt = (C.c_long * 2)()
+    lib.tc_belief_profile(sec, cnt, int(reset))
+    keys = ("draw", "replay_and_network", "resample", "rollouts_belief", "rollouts_uniform")
+    return {**dict(zip(keys, list(sec))), "belief_searches": cnt[0], "uniform_searches": cnt[1]}
+
+
 lib.tc_search_worlds.argtypes = [C.c_void_p, _P(TcObs), C.c_int, _P(C.c_uint64), C.c_void_p]
 lib.tc_search_worlds.restype = C.c_int
 

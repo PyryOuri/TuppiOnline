@@ -154,6 +154,9 @@ def main():
     dev = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     net = qmodel.load(args.model, dev)
     assert net.encoder == 2
+    # As the live bot samples (best.py: showing_fix with the team rollout): worlds
+    # honour the showing-fallback restrictions, so every shown card was legal.
+    native.set_showing_fix(True)
     games = [json.loads(line) for line in Path(args.games).read_text().splitlines() if line]
     if args.limit:
         games = games[:args.limit]

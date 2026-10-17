@@ -118,3 +118,24 @@ def test_controllers_are_independent(policy):
         assert any(bytes(x) != bytes(y) for x, y in zip(uniform, native.search_worlds(env_a, obs, 32, C.c_uint64(9))))
     finally:
         native.set_belief(env_a, None)
+
+
+def test_repeated_worlds_are_played_out_once_with_the_same_values(policy):
+    """Trick-play searches roll out each distinct resampled world once."""
+    env = native.Env(64 * 13, 1)
+    native.set_showing_fix(True)
+    native.set_belief(env, policy, mult=4)
+    try:
+        for deal, _ in played_positions(policy, 6, 41):
+            obs = native.observe(deal, deal.cur)
+            acts = native.legal_obs(obs)
+            worlds = [bytes(w) for w in native.search_worlds(env, obs, 64, C.c_uint64(2))]
+            assert len(set(worlds)) < len(worlds), "resampling repeats worlds"
+            per_world = native.search_world_values(env, policy, obs, acts, 64, 6, C.c_uint64(2))
+            for i, j in ((i, j) for i in range(64) for j in range(i) if worlds[i] == worlds[j]):
+                assert np.array_equal(per_world[i], per_world[j])
+            values = native.search_values(env, policy, obs, acts, 64, 6, C.c_uint64(2))
+            assert np.allclose(values, per_world.mean(0), rtol=0, atol=1e-12)
+    finally:
+        native.set_belief(env, None)
+        native.set_showing_fix(False)
