@@ -6,7 +6,10 @@
 set -eu
 cd "$(dirname "$0")/.."
 if command -v dnf >/dev/null; then
-  sudo dnf install -y gcc make python3 python3-devel openblas-devel git
+  # Avoid asking for sudo when a previous setup already installed everything.
+  if ! rpm -q gcc make python3 python3-devel openblas-devel git >/dev/null 2>&1; then
+    sudo dnf install -y gcc make python3 python3-devel openblas-devel git
+  fi
 fi
 git fetch origin engine/rules/project-target-v3-locked-bids
 [ -d ../tuppi-engine ] || git worktree add ../tuppi-engine FETCH_HEAD
