@@ -161,5 +161,11 @@ deal to deal and the deals are spread over workers in arrival order.
   1,024 base deals, seed belief-tune-t1-v1): **-0.00081 [-0.00152, -0.00010]**.
   Sharper weighting is worse, so T=2 stays. Memory stayed flat at about
   6.5–6.9 GB for 12 workers (7,062 s).
+- **Memory, continued:** at W=1024 the worker memory still grew without
+  deduplication, and with the older library too, at up to 70 MB a minute per
+  worker. The cause is each worker spreading its searches over all cores
+  while 10–12 workers compete. With one thread per worker it is flat at
+  about 0.3 GB, so `evaluate.py` now runs workers single-threaded
+  (`TUPPI_AI_SERIAL=0` restores the old mode). The moves are the same.
 - **Next:** confirm `pib=8` at W=1024 before any product use.
 

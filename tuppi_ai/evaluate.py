@@ -47,6 +47,11 @@ def _init(candidate: str, opponent: str, equity_path: str, ruleset: str = "v1") 
     from . import native
 
     native.set_rollout_chunk(128)  # several processes run: least total work, same moves
+    # One thread per worker unless TUPPI_AI_SERIAL=0: with every worker spreading its
+    # searches over all cores, worker memory grew about 70 MB a minute each in W=1024
+    # runs (2026-10-17); single-threaded it stays flat. The moves are the same.
+    if os.environ.get("TUPPI_AI_SERIAL") != "0":
+        native.set_parallel(False)
     if hasattr(native, "set_belief_lanes"):
         native.set_belief_lanes(int(os.environ.get("TUPPI_BELIEF_LANES", 2)))  # likewise: no extra CPU, same worlds
     from .equity import Equity
@@ -238,14 +243,9 @@ def evaluate(candidate: str, deals: int, seed: str = "tuppi-ai-eval-v1", scores:
              opponent: str = INCUMBENT, workers: int = 12,
              equity_path: str = str(ROOT / "models" / "equity_incumbent.json"), ruleset: str = "v1") -> dict:
     t0 = time.time()
-    # Workers' memory grows during long searching runs on macOS (2026-10-17, W=1024
-    # with play inference: about 70 MB a minute each, freed only at exit), so each
-    # worker is replaced after `recycle` deals when set (TUPPI_EVAL_RECYCLE).
-    recycle = int(os.environ.get("TUPPI_EVAL_RECYCLE", 0))
-    with ProcessPoolExecutor(workers, initializer=_init, initargs=(candidate, opponent, equity_path, ruleset),
-                             max_tasks_per_child=recycle or None) as pool:
-        rows = list(pool.map(measure, range(deals), [seed] * deals, [scores] * deals,
-                             chunksize=1 if recycle else 8))
+    with ProcessPoolExecutor(workers, initializer=_init,
+                             initargs=(candidate, opponent, equity_path, ruleset)) as pool:
+        rows = list(pool.map(measure, range(deals), [seed] * deals, [scores] * deals, chunksize=8))
     summary = summarise(rows)
     summary.update({"candidate": candidate, "opponent": opponent, "seed": seed, "scores": scores,
                     "ruleset": RULESETS[ruleset],
