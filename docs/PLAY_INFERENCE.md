@@ -169,3 +169,19 @@ deal to deal and the deals are spread over workers in arrival order.
   (`TUPPI_AI_SERIAL=0` restores the old mode). The moves are the same.
 - **Next:** confirm `pib=8` at W=1024 before any product use.
 
+
+## XI-PIB on the desktop (2026-10-18): fail
+
+- **The run:** one round of expert iteration from the search with play
+  inference into VRPO3, run on the Fedora desktop (issue #2, branch
+  `results/xi-pib`, commit `1916035`).
+- **Data:** 477,021 decisions. The teacher's action differed from the lite
+  bot's on 21.2% of them.
+- **Fit:** after distillation, held-out agreement was 0.699 with the teacher
+  and 0.826 with the blueprint.
+- **Result without search, against VRPO3, 4,096 base deals each:**
+  - at 0-0: **-0.00116 [-0.00152, -0.00081]**;
+  - at uniform match scores: **-0.00413 [-0.00521, -0.00305]**.
+- **Conclusion:** the distilled network is weaker, so the lite bot stays
+  VRPO3. Imitating a minority of search moves without the search's
+  information does not transfer, as with the September round 2.
