@@ -1,0 +1,28 @@
+{
+ "shards": 384,
+ "rows": 477021,
+ "teacher_differs_from_lite": 0.21152737510507924,
+ "distill": "final held-out agreement: search 0.6986 blueprint 0.8258",
+ "eval_zero": {
+  "equity_per_deal": -0.0011643532955167928,
+  "ci95": [
+   -0.001519734338944582,
+   -0.0008089722520890036
+  ],
+  "base_deals": 4096,
+  "won": 0.48992919921875,
+  "rami": 0.796630859375,
+  "seconds": 793.6
+ },
+ "eval_uniform": {
+  "equity_per_deal": -0.004128499430685229,
+  "ci95": [
+   -0.0052099351355465815,
+   -0.003047063725823876
+  ],
+  "base_deals": 4096,
+  "won": 0.48626708984375,
+  "rami": 0.856597900390625,
+  "seconds": 766.0
+ }
+}
