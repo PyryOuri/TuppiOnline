@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 import json
 import math
 import random
@@ -245,7 +246,11 @@ def evaluate(candidate: str, deals: int, seed: str = "tuppi-ai-eval-v1", scores:
     t0 = time.time()
     with ProcessPoolExecutor(workers, initializer=_init,
                              initargs=(candidate, opponent, equity_path, ruleset)) as pool:
-        rows = list(pool.map(measure, range(deals), [seed] * deals, [scores] * deals, chunksize=8))
+        rows = []
+        for row in pool.map(measure, range(deals), [seed] * deals, [scores] * deals, chunksize=8):
+            rows.append(row)
+            if len(rows) % 64 == 0:  # progress for long runs (stderr; the summary goes to stdout)
+                print(f"evaluate: {len(rows)}/{deals} deals, {time.time() - t0:.0f} s", file=sys.stderr, flush=True)
     summary = summarise(rows)
     summary.update({"candidate": candidate, "opponent": opponent, "seed": seed, "scores": scores,
                     "ruleset": RULESETS[ruleset],

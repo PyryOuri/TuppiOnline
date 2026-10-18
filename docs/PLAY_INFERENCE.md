@@ -167,7 +167,14 @@ deal to deal and the deals are spread over workers in arrival order.
   while 10–12 workers compete. With one thread per worker it is flat at
   about 0.3 GB, so `evaluate.py` now runs workers single-threaded
   (`TUPPI_AI_SERIAL=0` restores the old mode). The moves are the same.
-- **Next:** confirm `pib=8` at W=1024 before any product use.
+- **W=1024 confirmation of 8 candidates against 4**
+  (`best:w=1024:pib=8:pibt=2:pibe=0.5` against `best:w=1024:pib=4:...`,
+  1,024 base deals, seed belief-pib8-w1024-v1, 12 single-threaded workers):
+  **+0.00066 [+0.00011, +0.00122]**.
+  - Deal wins: 50.3%.
+  - Time: 86,468 s. Memory was flat at 3.6–5.3 GB in total.
+  - **Passes.** More candidates help, although the gain is about 60% of the
+    W=128 gain. The scoring cost doubles.
 
 
 ## XI-PIB on the desktop (2026-10-18): fail
