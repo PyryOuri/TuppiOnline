@@ -634,7 +634,9 @@ class LiveMatchRunner:
             if type(item) is not dict or set(item) != {"acknowledgement", "action", "client_action_id", "seat"}:
                 raise ValueError("persisted locked bid fields are invalid")
             seat, client_action_id, ack = item["seat"], item["client_action_id"], item["acknowledgement"]
-            if type(seat) is not int or seat not in self._human_seats() or seat in self._locked_bids:
+            # A bot may have taken the seat after its player locked the bid
+            # (seat_bot, leave_seat): the bid still stands when bids resolve.
+            if type(seat) is not int or seat not in range(4) or seat in self._locked_bids:
                 raise ValueError("persisted locked bid seat is invalid")
             if (not isinstance(client_action_id, str) or not client_action_id or client_action_id.startswith("ai:")
                     or client_action_id in self._records
