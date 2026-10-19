@@ -55,14 +55,38 @@ checkout and in the `results/xi-clean` branch.
      about strength.
 3. **Run the job:**
    ```
-   WORKERS=7 HOURS_B=24 HOURS_E=24 nohup sh tools/xi_clean_job.sh > runs/xi_clean.out 2>&1 &
+   WORKERS=7 HOURS_B=24 HOURS_E=24 nohup sh tools/xi_clean_job.sh >> runs/xi_clean.out 2>&1 &
    ```
-   - The job is resumable: if it stops, run the same command again and
-     finished stages are skipped.
+   - The job is resumable. If it stops for any reason, including a shutdown
+     or a power cut, run the same command again. See "Pausing and restarting"
+     below.
    - Memory is about 0.4 GB per worker. Keep `WORKERS` at 7 or below so the
      machine stays usable.
    - Progress: `tail runs/xi_clean/job.log`, and per stage
      `runs/xi_clean/progress_{A,B,E}.jsonl`.
+
+## Pausing and restarting
+
+The owner may pause the job or shut the machine down at any time.
+
+- **Pause without shutting down:**
+  - `pkill -STOP -f xi_clean` stops all job processes in place;
+    `pkill -CONT -f xi_clean` resumes them. Nothing is lost.
+  - Suspending the machine (sleep) also resumes where it was.
+- **Stop or shut down:** `pkill -f xi_clean`, or simply shut down.
+- **After a stop or a restart:** run the same command from step 3 again. The
+  job does not start by itself after a reboot.
+- **What is kept:**
+  - every finished stage, every finished consistency chunk (16 deals) and
+    every finished label shard (8 deals);
+  - only the chunks and shards in progress rerun;
+  - an interrupted fit or evaluation reruns from its start (minutes to about
+    an hour; same seeds).
+- **The label budgets `HOURS_B` and `HOURS_E` are cumulative across
+  restarts.** They count the worker time of finished shards, so time switched
+  off or asleep is not charged.
+- Keep `WORKERS` the same when restarting. The budget divides worker time by
+  it.
 
 ## The chained stages
 

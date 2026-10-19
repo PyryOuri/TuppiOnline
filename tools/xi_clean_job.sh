@@ -5,9 +5,10 @@
 # summary; that is a valid result.
 #   A consistency -> gate A -> B labels -> C fit -> gate C_d -> D evaluation
 #   -> gate D -> E more labels, refit, fresh evaluation -> gate E -> stop.
-# Resumable: rerun the same command after any interruption; finished stages
-# are skipped. Task and analysis: docs/XI_CLEAN_TASK.md.
-#   WORKERS=7 HOURS_B=24 HOURS_E=24 nohup sh tools/xi_clean_job.sh > runs/xi_clean.out 2>&1 &
+# Resumable: after a stop, shutdown or crash, rerun the same command. Finished
+# stages, chunks and shards are kept; only work in flight reruns, and the label
+# hours are cumulative across restarts. Task and analysis: docs/XI_CLEAN_TASK.md.
+#   WORKERS=7 HOURS_B=24 HOURS_E=24 nohup sh tools/xi_clean_job.sh >> runs/xi_clean.out 2>&1 &
 #   SMOKE=1 WORKERS=2 sh tools/xi_clean_job.sh    # pipeline check, minutes, no strength meaning
 set -eu
 cd "$(dirname "$0")/.."
@@ -42,8 +43,9 @@ evaluate() {  # $1 = stage (d/e), $2 = seed
     [ -f $OUT/eval_$1_$scores.json ] && continue
     say "evaluate $1 $scores"
     $PY -B -m tuppi_ai.evaluate --checkpoint $OUT/student_$1.pt --opponent models/vrpo3_final.pt --ruleset v3 \
-      --deals $DEALS --scores $scores --seed "$2" --workers "$WORKERS" --out $OUT/eval_$1_$scores.json \
+      --deals $DEALS --scores $scores --seed "$2" --workers "$WORKERS" --out $OUT/eval_$1_$scores.part \
       > $OUT/eval_$1_$scores.log 2>&1
+    mv $OUT/eval_$1_$scores.part $OUT/eval_$1_$scores.json  # complete files only
   done
 }
 

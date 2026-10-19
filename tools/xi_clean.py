@@ -76,6 +76,18 @@ def _seed(*parts) -> int:
     return int.from_bytes(hashlib.sha256("|".join(map(str, parts)).encode()).digest()[:8], "little")
 
 
+def _jsonl(path: Path) -> list[dict]:
+    """Rows of a progress ledger; a last line cut off by a shutdown is ignored."""
+    rows = []
+    if path.exists():
+        for line in path.open():
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError:
+                pass
+    return rows
+
+
 def _dump(path: Path, obj) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(obj, indent=1))
@@ -175,7 +187,7 @@ def task_a(chunk: int, per_chunk: int, w_lo: int, w_hi: int, out: str) -> dict:
     path = Path(out) / f"a_{chunk:05d}.npz"
     if path.exists():
         return {"chunk": chunk, "skipped": True}
-    t0 = time.time()
+    t0 = time.monotonic()
     rec: dict[str, list] = {}
 
     def put(key, value):
@@ -204,10 +216,10 @@ def task_a(chunk: int, per_chunk: int, w_lo: int, w_hi: int, out: str) -> dict:
                 put(f"cpu_{w}{run}", time.process_time() - c0)
                 for key in ("alt", "gap", "z", "v"):
                     put(f"{key}_{w}{run}", st[key])
-    tmp = path.with_suffix(".tmp.npz")
+    tmp = path.with_name("part_" + path.name)  # never matches a_*.npz / b_*.npz
     np.savez(tmp, **{k: np.array(v) for k, v in rec.items()})
     os.replace(tmp, path)
-    return {"chunk": chunk, "rows": len(rec.get("deal", [])), "seconds": round(time.time() - t0, 1)}
+    return {"chunk": chunk, "rows": len(rec.get("deal", [])), "seconds": round(time.monotonic() - t0, 1)}
 
 
 def _load(paths) -> dict:
@@ -276,7 +288,7 @@ def task_b(shard: int, deals: int, w_lo: int, w_hi: int, t_star: float, margin, 
     path = Path(out) / f"b_{shard:05d}.npz"
     if path.exists():
         return {"shard": shard, "skipped": True}
-    t0, c0 = time.time(), time.process_time()
+    t0, c0 = time.monotonic(), time.process_time()
     dim = native.feature_dim(2)
     feat = np.zeros((1, dim), np.uint8)
     rec: dict[str, list] = {}
@@ -325,10 +337,10 @@ def task_b(shard: int, deals: int, w_lo: int, w_hi: int, t_star: float, margin, 
                 for k, v in row.items():
                     rec.setdefault(k, []).append(v)
                 counts["rows"] += 1
-    tmp = path.with_suffix(".tmp.npz")
+    tmp = path.with_name("part_" + path.name)  # never matches a_*.npz / b_*.npz
     np.savez(tmp, deals=np.array([deals]), **{k: np.array(v) for k, v in rec.items()})
     os.replace(tmp, path)
-    return {"shard": shard, **counts, "seconds": round(time.time() - t0, 1),
+    return {"shard": shard, **counts, "seconds": round(time.monotonic() - t0, 1),
             "cpu_s": round(time.process_time() - c0, 1)}
 
 
@@ -502,7 +514,7 @@ def summary(out: Path) -> dict:
     for stage in ("B", "E"):
         prog = out / f"progress_{stage}.jsonl"
         if prog.exists():
-            rows = [json.loads(l) for l in prog.open() if '"rows"' in l]
+            rows = [r for r in _jsonl(prog) if "rows" in r]
             s[stage] = {k: sum(r[k] for r in rows) for k in ("rows", "qualifying", "screened", "labels", "errors")}
             s[stage]["shards"] = len(rows)
     for stage in ("d", "e"):
@@ -554,6 +566,9 @@ def main() -> None:
     w_lo, w_hi = (16, 32) if args.smoke else (128, 1024)
     os.environ.setdefault("TUPPI_AI_SERIAL", "1")
 
+    if args.cmd in ("consistency", "labels"):  # the job runs one stage at a time
+        for stale in out.glob("part_*.npz"):  # left by an interrupted task; that task reruns
+            stale.unlink()
     if args.cmd == "consistency":
         deals, per = (8, 4) if args.smoke else (A_DEALS, 16)
         log = (out / "progress_A.jsonl").open("a")
@@ -569,14 +584,20 @@ def main() -> None:
     elif args.cmd == "labels":
         a = json.loads((out / "A.json").read_text())
         t_star, margin = a["z_threshold"], a["screen_margin"]
-        deadline = time.time() + args.hours * 3600
+        # The budget is cumulative over restarts: worker time of finished shards (from the
+        # progress ledger, appended as each shard completes) divided by the worker count.
+        prog = out / f"progress_{args.stage}.jsonl"
+        used = sum(r.get("seconds", 0.0) for r in _jsonl(prog) if "rows" in r)
+        budget = args.hours * 3600 * args.workers
+        print(json.dumps({"stage": args.stage, "budget_hours": args.hours, "used_hours": used / 3600 / args.workers}),
+              flush=True)
         limit = (4 if args.stage == "B" else 6) if args.smoke else 10 ** 6
         per = 1 if args.smoke else DEALS_PER_SHARD
         todo = (i for i in range(limit) if not (out / f"b_{i:05d}.npz").exists())
         log = (out / f"progress_{args.stage}.jsonl").open("a")
         with _pool(args.workers, w_lo, w_hi) as pool:
             running = set()
-            for _ in range(args.workers):
+            for _ in range(args.workers if used < budget else 0):
                 i = next(todo, None)
                 if i is not None:
                     running.add(pool.submit(task_b, i, per, w_lo, w_hi, t_star, margin, str(out)))
@@ -586,7 +607,8 @@ def main() -> None:
                 row = done.result() | {"time": time.strftime("%Y-%m-%d %H:%M:%S")}
                 log.write(json.dumps(row) + "\n"); log.flush()
                 print(json.dumps(row), flush=True)
-                if time.time() < deadline:
+                used += row.get("seconds", 0.0)
+                if used < budget:
                     i = next(todo, None)
                     if i is not None:
                         running.add(pool.submit(task_b, i, per, w_lo, w_hi, t_star, margin, str(out)))
