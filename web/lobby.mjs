@@ -1,4 +1,4 @@
-import {networkSeat} from './network.mjs';
+import {hostSeat, networkSeat} from './network.mjs';
 import {seatNames} from './table.mjs';
 
 // Pasted links supply only a room code. Requests still use this app's configured
@@ -15,7 +15,9 @@ export function roomCodeFromInput(value, base) {
   return code.toUpperCase();
 }
 
-export function lobbyPresentation(lobby, ownSeat = 0) {
+// A spectator's (feature watch) names for table positions from the viewpoint.
+export const watcherSeatNames = ['Alhaalla', 'Vasemmalla', 'Ylhäällä', 'Oikealla'];
+export function lobbyPresentation(lobby, ownSeat = 0, {watching = false} = {}) {
   const seats = lobby.seats.map(seat => ({...seat, position: networkSeat(seat.seat, ownSeat)}));
   const teams = [0, 1].map(team => seats.filter(seat => seat.position % 2 === team)
     .sort((a, b) => a.position - b.position));
@@ -24,7 +26,8 @@ export function lobbyPresentation(lobby, ownSeat = 0) {
   const waiting = humans.filter(seat => !seat.ready);
   const playing = ['playing', 'completed'].includes(lobby.lifecycle);
   const label = seat => seat.position === 0 ? 'sinä' : seat.display_name || seatNames[seat.position];
-  const readyText = playing ? 'Ottelu on alkanut. Paikat on lukittu.' : open ?
+  const readyText = watching ? (playing ? 'Katsot ottelua. Kaikkien kortit näkyvät.' :
+    'Katsot huonetta. Ottelu alkaa, kun pelaajat ovat valmiita.') : playing ? 'Ottelu on alkanut. Paikat on lukittu.' : open ?
     `${open} ${open === 1 ? 'vapaa paikka' : 'vapaata paikkaa'}. Kutsu ystävä tai lisää botti ennen valmiuden vahvistamista.` :
     waiting.length ? `Valmiutta odotetaan: ${waiting.map(label).join(', ')}.` : 'Kaikki ovat valmiina. Ottelu alkaa…';
   return {teams, humans: humans.length, bots: seats.filter(seat => seat.kind === 'ai').length,
@@ -53,40 +56,48 @@ export function seatAction(seat, {host, playing, features = new Set()}) {
 
 // During a match (feature seat_bot): the host may let a bot play for a player
 // who is not connected, and give a covered seat back; a covered player may
-// take their own seat back. Never the host's seat.
+// take their own seat back. Never a bot for the host's seat, and not back
+// while a newcomer waits for the next deal (feature leave_seat).
 export function standInActions(lobby, {host, ownSeat, features = new Set(), active}) {
   if (!active || !features.has('seat_bot') || !lobby?.seats) return [];
   return lobby.seats.flatMap(seat => {
-    if (seat.seat === 0) return [];
-    if (seat.kind === 'human' && seat.connected === false && host)
+    if (seat.kind === 'human' && seat.connected === false && host && seat.seat !== hostSeat(lobby))
       return [{seat: seat.seat, bot: true, text: `Botti pelaa: ${seat.display_name}`}];
-    if (seat.kind === 'ai' && seat.covering && (host || seat.seat === ownSeat))
+    if (seat.kind === 'ai' && seat.covering && !seat.joining && (host || seat.seat === ownSeat))
       return [{seat: seat.seat, bot: false, text: seat.seat === ownSeat ? 'Ota paikkasi takaisin' : `Palauta paikka: ${seat.covering}`}];
     return [];
   });
 }
 // Choosing a seat before joining (feature seat_choice): one option per free
-// seat, named by the team it joins. Seat 2 is the host's partner; seats 1 and
-// 3 are partners of each other.
-export function seatChoices(seats) {
+// seat, named by the team it joins. The host's partner sits opposite the host
+// (seat 2 unless another player hosts); the other two are partners.
+export function seatChoices(seats, host = 0) {
   const at = seat => seats.find(item => item.seat === seat);
   const name = item => item?.kind === 'human' ? item.display_name : item?.kind === 'ai' ? 'botti' : null;
-  return seats.filter(item => item.kind === 'open' && item.seat > 0).map(item => {
+  return seats.filter(item => item.kind === 'open' && item.seat !== host).map(item => {
     const partner = at((item.seat + 2) % 4);
-    const text = item.seat === 2 ? `Samaan joukkueeseen: ${at(0)?.display_name ?? 'huoneen luoja'}` :
+    const text = item.seat === (host + 2) % 4 ? `Samaan joukkueeseen: ${at(host)?.display_name ?? 'huoneen luoja'}` :
       name(partner) ? `Vastustajaksi (pari: ${name(partner)})` : 'Vastustajaksi';
     return {seat: item.seat, text};
   });
 }
-// The host's move in the lobby (feature seat_swap): a seat 1 or 3 into the
-// partner seat 2, or the partner out to it.
+// The host's move in the lobby (feature seat_swap): an opponent seat into the
+// partner seat opposite the host, or the partner out to it.
 export function moveAction(seat, {host, playing, features = new Set(), lobby}) {
-  if (!host || playing || !features.has('seat_swap') || ![1, 3].includes(seat.seat)) return null;
-  const partner = lobby?.seats?.find(item => item.seat === 2);
+  const own = hostSeat(lobby), partnerSeat = (own + 2) % 4;
+  if (!host || playing || !features.has('seat_swap') || (seat.seat - own + 4) % 2 !== 1) return null;
+  const partner = lobby?.seats?.find(item => item.seat === partnerSeat);
   if (seat.kind === 'open' && (!partner || partner.kind === 'open')) return null;
-  return {seats: [seat.seat, 2], text: seat.kind === 'open' ? 'Siirrä parisi tähän' : 'Siirrä pariksi'};
+  return {seats: [seat.seat, partnerSeat], text: seat.kind === 'open' ? 'Siirrä parisi tähän' : 'Siirrä pariksi'};
 }
 
+// Seats a spectator could take (feature watch): a free seat before the match,
+// or one a player left during it (the newcomer plays from the next deal).
+export function takeableSeats(lobby) {
+  const playing = ['playing', 'completed'].includes(lobby?.lifecycle);
+  if (lobby?.lifecycle === 'completed') return [];
+  return (lobby?.seats ?? []).filter(seat => playing ? seat.vacant : seat.kind === 'open').map(seat => seat.seat);
+}
 // A seat's name at the table: a stand-in bot says whom it plays for.
 export function seatDisplayName(seat) {
   return seat?.covering ? `Botti (${seat.covering})` : seat?.display_name;
@@ -97,7 +108,7 @@ export class LobbyView {
     this.teams = teams; this.onToggle = onToggle; this.onRename = onRename; this.onRelease = onRelease; this.onMove = onMove;
     this.nodes = new Map();
   }
-  render(model, {host, connected, configuring = false, features = new Set(), lobby = null}) {
+  render(model, {host, connected, configuring = false, features = new Set(), lobby = null, watching = false}) {
     model.teams.forEach((seats, index) => {
       const nodes = seats.map(seat => {
         if (!this.nodes.has(seat.seat)) {
@@ -117,18 +128,18 @@ export class LobbyView {
           item.append(position, name, state, move, button);
           this.nodes.set(seat.seat, {item, position, name, state, button, move});
         }
-        const node = this.nodes.get(seat.seat), label = seatNames[seat.position];
+        const node = this.nodes.get(seat.seat), label = (watching ? watcherSeatNames : seatNames)[seat.position];
         node.position.textContent = label;
         node.name.textContent = seat.display_name || (seat.kind === 'ai' ? 'Botti' : 'Vapaa paikka');
         node.state.textContent = seat.kind === 'ai' ? 'Botti' : seat.kind === 'open' ? 'Odottaa pelaajaa' : seat.ready ? 'Pelaaja · valmis' : 'Pelaaja · ei vielä valmis';
         node.item.dataset.kind = seat.kind;
-        node.action = seatAction(seat, {host, playing: model.playing, features}); node.seat = seat;
+        node.action = watching ? null : seatAction(seat, {host, playing: model.playing, features}); node.seat = seat;
         node.button.hidden = !node.action;
         node.button.disabled = !connected || configuring;
         node.button.textContent = node.action === 'rename' ? 'Vaihda nimi' : node.action === 'release' ? 'Vapauta paikka' :
           seat.kind === 'ai' ? 'Avaa ystävälle' : 'Lisää botti';
         node.button.setAttribute('aria-label', `${node.button.textContent}: ${label}`);
-        node.move_action = moveAction(seat, {host, playing: model.playing, features, lobby});
+        node.move_action = watching ? null : moveAction(seat, {host, playing: model.playing, features, lobby});
         node.move.hidden = !node.move_action; node.move.disabled = !connected || configuring;
         node.move.textContent = node.move_action?.text ?? '';
         if (node.move_action) node.move.setAttribute('aria-label', `${node.move_action.text}: ${label}`);

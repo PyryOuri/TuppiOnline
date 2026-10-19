@@ -63,6 +63,8 @@ from .training_analysis import generate_training_analysis
 PROTOCOL_VERSION = "tuppi.network.v1"
 ACK_SCHEMA_VERSION = "tuppi.network.action_acknowledgement.v1"
 BIDDING_SCHEMA_VERSION = "tuppi.network.bidding.v1"
+#: What a spectator sees besides the public table: every seat's cards.
+TABLE_VIEW_SCHEMA_VERSION = "tuppi.network.table_view.v1"
 MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v4"
 HOSTED_MATCH_RECORD_SCHEMA_VERSION = "tuppi.server.match_record.v5"
 #: v4/v5 plus the bids locked but not yet revealed (and this deal's discarded-
@@ -262,6 +264,11 @@ class LiveMatchRunner:
         self._next_ai_action_id = 0
         self._locked_bids: dict[int, _LockedBid] = {}
         self._discarded_bid_acks: dict[str, dict[str, object]] = {}
+        #: Bot seats a new player takes over when the next deal starts (the
+        #: room's handover_seats), and those handed over since the room last
+        #: looked (RoomManager.settle_handovers).
+        self.handover_seats: frozenset[int] = frozenset()
+        self.handed_over: frozenset[int] = frozenset()
         self._ensure_deal_started()
         if auto_run_ai:
             self._run_ai_until_human_or_terminal()
@@ -380,6 +387,8 @@ class LiveMatchRunner:
         runner._next_ai_action_id = 0
         runner._locked_bids = {}
         runner._discarded_bid_acks = {}
+        # The room restores its handover seats after the replay.
+        runner.handover_seats = runner.handed_over = frozenset()
         runner._ensure_deal_started()
 
         for raw_record in actions_data:
@@ -519,6 +528,21 @@ class LiveMatchRunner:
 
     def observation(self, seat: int) -> dict[str, object]:
         return project_observation(self.state, seat=seat)
+
+    def spectate(self, *, last_applied_event_index: int) -> dict[str, object]:
+        """What a spectator sees (feature watch): the public table from seat
+        0, as in ``reconnect`` but with no hand or actions of its own, and
+        every seat's cards in ``table``. Locked bids stay unrevealed; only
+        who has locked is shown."""
+
+        result = self.reconnect(seat=0, last_applied_event_index=last_applied_event_index)
+        result["observation"] = {**result["observation"], "own_hand": [], "legal_actions": []}
+        result["table"] = {"hands": [self.observation(seat)["own_hand"] for seat in range(4)],
+                           "schema_version": TABLE_VIEW_SCHEMA_VERSION}
+        if "bidding" in result:
+            result["bidding"] = {**result["bidding"], "options": [], "own_bid": None,
+                                 "locked_seats": sorted(set(self._locked_bids) | set(self.ai_seats))}
+        return result
 
     def training_analysis(self, seat: int) -> dict[str, object]:
         """Return live suit-split and card-location training odds for ``seat``.
@@ -1278,6 +1302,10 @@ class LiveMatchRunner:
             deal = generate_live_deal(dealer=self.state.dealer)
             self._deals.append(deal)
         self.state = begin_explicit_deal(self.state, deal)
+        for seat in self.handover_seats:
+            self.set_bot(seat, False)
+        self.handed_over |= self.handover_seats
+        self.handover_seats = frozenset()
 
     def _validate_submission_fields(
         self,

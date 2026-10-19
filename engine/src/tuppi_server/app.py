@@ -9,10 +9,13 @@ from __future__ import annotations
 
 import asyncio
 import argparse
+from collections import deque
 from dataclasses import dataclass
 import json
 import os
 import socket
+import time
+import unicodedata
 from typing import Any, Awaitable, Callable, Sequence
 from urllib.parse import parse_qs
 
@@ -26,12 +29,25 @@ Send = Callable[[dict[str, Any]], Awaitable[None]]
 #: Optional commands this server accepts; clients show their controls only
 #: when the server lists them.
 FEATURES = ("pause", "rematch", "leaderboard", "compact_results", "rename", "release_seat", "concede", "results",
-            "seat_bot", "seat_choice", "seat_swap")
+            "seat_bot", "seat_choice", "seat_swap", "leave_seat", "chat", "watch",
+            "match_records")
 #: Close code sent to a player whose seat the host released.
 SEAT_RELEASED_CLOSE_CODE = 4002
+#: Close code sent to a player's other tabs when they left the room.
+SEAT_LEFT_CLOSE_CODE = 4003
+#: Close code sent to spectators when the last player left and the room closed.
+ROOM_CLOSED_CLOSE_CODE = 4004
 #: A player whose connection does not take an update within this time is
 #: dropped (and reconnects), so one stalled phone cannot hold up the room.
 SEND_TIMEOUT_SECONDS = 10.0
+#: Room chat (feature chat) is kept in memory only: never saved, logged or
+#: counted by content. A message is at most this many characters; a room
+#: keeps its latest CHAT_HISTORY messages for people who (re)connect.
+CHAT_MAX_CHARACTERS = 200
+CHAT_HISTORY = 50
+#: One person sends at most CHAT_BURST messages per CHAT_WINDOW_SECONDS.
+CHAT_BURST = 5
+CHAT_WINDOW_SECONDS = 10.0
 Receive = Callable[[], Awaitable[dict[str, Any]]]
 
 
@@ -50,6 +66,8 @@ class Connection:
     omit_match_result: bool = False
     #: client_options: the app takes a new seat from a seat_update (feature seat_swap).
     seat_updates: bool = False
+    #: A spectator (feature watch): no seat; sees every hand and may chat.
+    watching: bool = False
 
 
 class TuppiASGIApp:
@@ -59,10 +77,16 @@ class TuppiASGIApp:
         self.rooms = rooms or RoomManager()
         self._connections: dict[str, dict[str, Connection]] = {}
         self._ai_tasks: dict[str, asyncio.Task[None]] = {}
-        #: Seats released by the host, whose sockets close after the response.
-        self._released: list[tuple[str, str]] = []
+        #: Seats released by the host or left by their player, whose sockets
+        #: close after the response (room code, token, close code).
+        self._released: list[tuple[str, str, int]] = []
         #: Players the host moved (token -> new seat), told after the response.
         self._moved: list[tuple[str, dict[str, int]]] = []
+        #: Each room's latest chat messages, the next message id, and when
+        #: each person last sent (rate limit). Memory only.
+        self._chat: dict[str, deque[dict[str, object]]] = {}
+        self._chat_ids: dict[str, int] = {}
+        self._chat_sent: dict[tuple[str, str], deque[float]] = {}
 
     async def __call__(self, scope: dict[str, Any], receive: Receive, send: Send) -> None:
         scope_type = scope.get("type")
@@ -124,16 +148,16 @@ class TuppiASGIApp:
                     connection.seat = seat
                     await self._deliver(code, connection, self._send_message(connection.send, "seat_update", {"seat": seat}))
         while self._released:
-            code, token = self._released.pop()
+            code, token, close_code = self._released.pop()
             connection = self._connections.get(code, {}).pop(token, None)
             if connection is not None:
                 try:
-                    await asyncio.wait_for(connection.send({"type": "websocket.close", "code": SEAT_RELEASED_CLOSE_CODE}), 1)
+                    await asyncio.wait_for(connection.send({"type": "websocket.close", "code": close_code}), 1)
                 except Exception:
                     pass
-        if path.endswith(("/settings", "/configure", "/join", "/ready", "/name", "/release", "/swap")):
+        if path.endswith(("/settings", "/configure", "/join", "/ready", "/name", "/release", "/swap", "/leave", "/watch")):
             parts = [part for part in path.split("/") if part]
-            if len(parts) == 4:
+            if len(parts) == 4 and parts[2].upper() in self.rooms._rooms:
                 await self._broadcast_lobby(parts[2].upper())
                 room = self.rooms.get(parts[2].upper())
                 if room.runner is not None:
@@ -256,8 +280,32 @@ class TuppiASGIApp:
                 self._require_fields(payload, required={"session_token", "seat"})
                 room, released = self.rooms.release_seat(code=code, host_token=self._string(payload, "session_token"),
                                                          seat=payload.get("seat"))
-                self._released.append((room.code, released))
+                self._released.append((room.code, released, SEAT_RELEASED_CLOSE_CODE))
                 return {"lobby": room.snapshot()}
+            if command == "watch":
+                self._require_fields(payload, required={"display_name"})
+                online = self._connections.get(code, {})
+                room, token = self.rooms.watch_room(code=code, display_name=payload.get("display_name"),  # type: ignore[arg-type]
+                                                    connected=lambda other: other in online)
+                return {"lobby": self._lobby(room), "room_code": room.code, "seat": 0, "session_token": token, "watching": True}
+            if command == "leave":
+                self._require_fields(payload, required={"session_token"})
+                token = self._string(payload, "session_token")
+                if token in self.rooms.get(code).spectators:
+                    room = self.rooms.stop_watching(code=code, token=token)
+                    self._released.append((room.code, token, SEAT_LEFT_CLOSE_CODE))
+                    return {"closed": False}
+                online = self._connections.get(code, {})
+                room, closed = self.rooms.leave_seat(code=code, token=token, connected=lambda other: other in online)
+                self._released.append((room.code, token, SEAT_LEFT_CLOSE_CODE))
+                if closed:
+                    # Nobody is left: stop the bots, tell the spectators and forget the room.
+                    task = self._ai_tasks.pop(room.code, None)
+                    if task is not None:
+                        task.cancel()
+                    self._released.extend((room.code, other, ROOM_CLOSED_CLOSE_CODE) for other in room.spectators)
+                    self.forget_chat(room.code)
+                return {"closed": closed}
             if command == "settings":
                 self._require_fields(
                     payload,
@@ -345,12 +393,19 @@ class TuppiASGIApp:
             raise ProtocolError("protocol_mismatch")
         room_code = self._string(payload, "room_code").upper()
         token = self._string(payload, "session_token")
-        room, session = self.rooms.session(code=room_code, token=token)
+        watching = token in self.rooms.get(room_code).spectators
+        if watching:
+            room, _ = self.rooms.spectator(code=room_code, token=token)
+            seat = 0
+        else:
+            room, session = self.rooms.session(code=room_code, token=token)
+            seat = session.seat
         connection = Connection(
             room_code=room.code,
             token=token,
-            seat=session.seat,
+            seat=seat,
             send=send,
+            watching=watching,
         )
         previous = self._connections.setdefault(room.code, {}).get(token)
         self._connections[room.code][token] = connection
@@ -367,11 +422,15 @@ class TuppiASGIApp:
                 "features": list(FEATURES),
                 "protocol_version": PROTOCOL_VERSION,
                 "room_code": room.code,
-                "seat": session.seat,
+                "seat": seat,
+                **({"watching": True} if watching else {}),
             },
         )
-        # Everyone sees who is connected (the newcomer gets the lobby too).
+        # Everyone sees who is connected (the newcomer gets the lobby too),
+        # and the newcomer the room's recent chat.
         await self._broadcast_lobby(room.code)
+        if self._chat.get(room.code):
+            await self._send_message(send, "chat_history", {"messages": list(self._chat[room.code])})
         if room.runner is not None:
             await self._send_match_update(connection)
             if (room.runner.current_actor in room.runner.ai_seats
@@ -388,6 +447,9 @@ class TuppiASGIApp:
             raise RoomError("session_replaced")
         message_type = request.get("message_type")
         payload = self._payload(request)
+        if connection.watching:
+            await self._handle_spectator(connection, message_type, payload)
+            return
         room, session = self.rooms.session(
             code=connection.room_code,
             token=connection.token,
@@ -453,6 +515,10 @@ class TuppiASGIApp:
                 self._schedule_ai_continuation(room.code)
             else:
                 await self._send_match_update(connection)
+            return
+        if message_type == "chat_send":
+            self._require_fields(payload, required={"text"})
+            await self._chat_send(connection, room, session.display_name, session.seat, payload["text"])
             return
         if message_type == "client_options":
             if not payload or not set(payload) <= {"omit_match_result", "seat_updates"} or any(
@@ -559,6 +625,78 @@ class TuppiASGIApp:
             return
         raise ProtocolError("unknown_message_type")
 
+    async def _handle_spectator(self, connection: Connection, message_type: object, payload: dict[str, object]) -> None:
+        """A spectator may keep the connection alive, chat and resynchronise;
+        nothing that changes the match or the seats."""
+
+        room, name = self.rooms.spectator(code=connection.room_code, token=connection.token)
+        if message_type == "ping":
+            self._require_fields(payload, required=set())
+            await self._send_message(connection.send, "pong", {})
+        elif message_type == "chat_send":
+            self._require_fields(payload, required={"text"})
+            await self._chat_send(connection, room, name, None, payload["text"])
+        elif message_type == "client_options":
+            if not payload or not set(payload) <= {"omit_match_result", "seat_updates"} or any(
+                    type(value) is not bool for value in payload.values()):
+                raise ProtocolError("payload fields are invalid")
+            connection.omit_match_result = payload.get("omit_match_result", connection.omit_match_result)
+        elif message_type == "reconnect":
+            self._require_fields(payload, required={"last_applied_event_index"})
+            result = self._require_runner(room).spectate(
+                last_applied_event_index=payload.get("last_applied_event_index", -1))  # type: ignore[arg-type]
+            connection.last_event_index = room.runner.event_cursor
+            if connection.omit_match_result:
+                result.pop("match_result", None)
+            await self._send_message(connection.send, "reconnect_result", result)
+        else:
+            raise ProtocolError("spectator_cannot_act")
+
+    async def _chat_send(self, connection: Connection, room, display_name: str, seat: int | None, raw: object) -> None:
+        """Pass one chat message to everyone in the room (feature chat). A
+        refusal goes only to the sender, as chat_refused."""
+
+        text = self._chat_text(raw)
+        if text is None:
+            await self._send_message(connection.send, "chat_refused", {"code": "invalid_chat"})
+            return
+        now = time.monotonic()
+        recent = self._chat_sent.setdefault((room.code, connection.token), deque())
+        while recent and now - recent[0] >= CHAT_WINDOW_SECONDS:
+            recent.popleft()
+        if len(recent) >= CHAT_BURST:
+            await self._send_message(connection.send, "chat_refused", {"code": "chat_rate_limited"})
+            return
+        recent.append(now)
+        message_id = self._chat_ids.get(room.code, 0)
+        self._chat_ids[room.code] = message_id + 1
+        message = {"display_name": display_name, "id": message_id, "seat": seat,
+                   "sent_at": int(time.time()), "text": text}
+        self._chat.setdefault(room.code, deque(maxlen=CHAT_HISTORY)).append(message)
+        for other in tuple(self._connections.get(room.code, {}).values()):
+            await self._deliver(room.code, other, self._send_message(other.send, "chat_message", message))
+
+    @staticmethod
+    def _chat_text(raw: object) -> str | None:
+        """One line of 1-CHAT_MAX_CHARACTERS characters: line breaks and tabs
+        become spaces; other control and format characters are dropped,
+        except the joiner inside emoji."""
+
+        if not isinstance(raw, str):
+            return None
+        text = "".join(" " if char in "\n\r\t" else char for char in raw
+                       if char in "\n\r\t\u200d" or unicodedata.category(char) not in {"Cc", "Cf", "Cs", "Co", "Cn"})
+        text = " ".join(text.split())
+        return text if 1 <= len(text) <= CHAT_MAX_CHARACTERS else None
+
+    def forget_chat(self, room_code: str) -> None:
+        """A closed or archived room's chat is dropped."""
+
+        self._chat.pop(room_code, None)
+        self._chat_ids.pop(room_code, None)
+        for key in [key for key in self._chat_sent if key[0] == room_code]:
+            del self._chat_sent[key]
+
     async def _reject_submission(self, connection: Connection, payload: dict[str, object],
                                  runner, code: str) -> None:
         await self._send_message(
@@ -588,6 +726,10 @@ class TuppiASGIApp:
             session = room.session_for_seat(seat["seat"])
             if session is not None:
                 seat["connected"] = session.token in online
+        # Who is watching now (feature watch).
+        watchers = [name for token, name in room.spectators.items() if token in online]
+        if watchers:
+            snapshot["watchers"] = watchers
         return snapshot
 
     async def _broadcast_lobby(self, room_code: str) -> None:
@@ -598,6 +740,9 @@ class TuppiASGIApp:
                                 self._send_message(connection.send, "lobby_snapshot", snapshot))
 
     async def _broadcast_match(self, room_code: str) -> None:
+        # A new deal may have handed bot seats to the players who joined them.
+        if self.rooms.settle_handovers(self.rooms.get(room_code)):
+            await self._broadcast_lobby(room_code)
         for connection in tuple(self._connections.get(room_code, {}).values()):
             await self._deliver(room_code, connection, self._send_match_update(connection))
 
@@ -649,18 +794,22 @@ class TuppiASGIApp:
             self.rooms.record_finished_match(room)
 
     async def _send_match_update(self, connection: Connection) -> None:
-        room, session = self.rooms.session(
-            code=connection.room_code,
-            token=connection.token,
-        )
-        runner = self._require_runner(room)
-        # One authenticated reconnect supplies every part of this update: the
-        # seat's observation and, at termination, its match result. Nothing
-        # awaits in between, so no cross-seat state can be shared here.
-        reconnect = runner.reconnect(
-            seat=session.seat,
-            last_applied_event_index=connection.last_event_index,
-        )
+        if connection.watching:
+            room, _ = self.rooms.spectator(code=connection.room_code, token=connection.token)
+            reconnect = self._require_runner(room).spectate(last_applied_event_index=connection.last_event_index)
+        else:
+            room, session = self.rooms.session(
+                code=connection.room_code,
+                token=connection.token,
+            )
+            # One authenticated reconnect supplies every part of this update: the
+            # seat's observation and, at termination, its match result. Nothing
+            # awaits in between, so no cross-seat state can be shared here.
+            reconnect = self._require_runner(room).reconnect(
+                seat=session.seat,
+                last_applied_event_index=connection.last_event_index,
+            )
+        runner = room.runner
         payload = {
             "completed_deals": reconnect["completed_deals"],
             "event_batch": reconnect["event_delta"],
@@ -673,6 +822,9 @@ class TuppiASGIApp:
             payload["bidding"] = reconnect["bidding"]
         if "conceded_deals" in reconnect:
             payload["conceded_deals"] = reconnect["conceded_deals"]
+        if "table" in reconnect:
+            # A spectator's view of every seat's cards (feature watch).
+            payload["table"] = reconnect["table"]
         if runner.terminal and not connection.omit_match_result:
             payload["match_result"] = reconnect.get("match_result")
         connection.last_event_index = runner.event_cursor

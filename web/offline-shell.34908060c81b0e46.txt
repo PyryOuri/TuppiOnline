@@ -8,19 +8,27 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icon-180.png">
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./styles.56391faa1729bc2d.css">
   <title>Tuppi</title>
 </head>
 <body>
-  <header class="masthead"><button id="home-toggle" class="brand" aria-label="Tuppi · etusivu"><span class="brand-mark" aria-hidden="true">♣</span><span>Tuppi <span class="muted" id="mode-label"></span></span></button><nav class="controls" aria-label="Pelin valikko"><button id="help-toggle" aria-haspopup="dialog">Ohjeet</button><button id="network-toggle" aria-haspopup="dialog" hidden disabled>Huone</button><button id="settings-toggle" aria-controls="settings" aria-expanded="false" aria-haspopup="dialog">Asetukset</button></nav></header>
+  <header class="masthead"><button id="home-toggle" class="brand" aria-label="Tuppi · etusivu"><span class="brand-mark" aria-hidden="true">♣</span><span>Tuppi <span class="muted" id="mode-label"></span></span></button><nav class="controls" aria-label="Pelin valikko"><button id="help-toggle" aria-haspopup="dialog">Ohjeet</button><button id="network-toggle" aria-haspopup="dialog" hidden disabled>Huone</button><button id="chat-toggle" aria-haspopup="dialog" hidden>Viestit</button><button id="settings-toggle" aria-controls="settings" aria-expanded="false" aria-haspopup="dialog">Asetukset</button></nav></header>
   <main>
     <section id="home" class="home" aria-labelledby="home-title">
       <div class="home-intro"><p class="eyebrow">TUPPI</p><h1 id="home-title">Pelataanko?</h1><p>Ystävien kanssa tai botteja vastaan.</p></div>
       <p id="home-status" class="entry-status" role="status">Avataan peliä…</p>
-      <div class="home-options"><section id="home-friends" class="home-option" aria-labelledby="home-friends-title"><h2 id="home-friends-title">Ystävien kanssa</h2><p>Liity ystävän huoneeseen tai kutsu oma porukka.</p><button id="home-online" class="primary" disabled>Pelaa verkossa</button></section>
+      <div class="home-options"><section id="home-friends" class="home-option" aria-labelledby="home-friends-title"><h2 id="home-friends-title">Ystävien kanssa</h2><p>Liity ystävän huoneeseen tai kutsu oma porukka.</p><button id="home-online" class="primary" disabled>Pelaa verkossa</button><button id="home-online-other" class="text-button" hidden>Liity toiseen huoneeseen tai luo uusi</button></section>
       <section class="home-option" aria-labelledby="home-local-title"><h2 id="home-local-title">Botteja vastaan</h2><p id="home-local-copy">Pelaa omaan tahtiin. Ottelu tallentuu tälle laitteelle.</p><button id="home-local" disabled>Pelaa botteja vastaan</button></section></div>
       <div id="home-recovery" class="controls" hidden><button id="home-retry">Yritä uudelleen</button><a id="home-repair" href="./recover.html">Päivitä pelitiedostot</a></div>
     </section>
+    <div id="chat-toast" class="chat-toast" role="status" hidden><button id="chat-toast-open" type="button">Uusi viesti</button></div>
+    <dialog id="chat" aria-labelledby="chat-title" hidden>
+      <div class="dialog-heading"><div><p class="eyebrow">HUONE</p><h2 id="chat-title">Viestit</h2></div><button id="close-chat">Sulje</button></div>
+      <p id="chat-empty" class="muted">Ei vielä viestejä. Viesti näkyy kaikille huoneessa oleville.</p>
+      <ol id="chat-list" class="chat-list" aria-label="Huoneen viestit"></ol>
+      <form id="chat-form" class="chat-form" novalidate><input id="chat-input" maxlength="200" autocomplete="off" enterkeyhint="send" aria-label="Viesti kaikille" placeholder="Kirjoita viesti kaikille"><button id="chat-send" class="primary" type="submit">Lähetä</button></form>
+      <p id="chat-status" class="selection-info" role="status"></p>
+    </dialog>
     <dialog id="settings" aria-labelledby="settings-title" hidden>
       <div class="dialog-heading"><div><p class="eyebrow">OMA LAITE</p><h2 id="settings-title">Asetukset</h2></div><button id="close-settings">Sulje</button></div>
       <p id="settings-status" class="error" role="status"></p>
@@ -30,8 +38,13 @@
         <p>Bottiasetuksen vaihto aloittaa uuden paikallisen ottelun. Verkkopelin asetukset määrää huoneen palvelin.</p>
         <button id="new-game">Uusi ottelu</button>
       </section>
+      <section class="settings-group" aria-labelledby="settings-cards"><h3 id="settings-cards">Kortit</h3>
+        <p id="suit-order-copy">Maiden järjestys kädessä vasemmalta oikealle. Ylin maa on käden vasemmassa reunassa. Muuta järjestystä nuolilla.</p>
+        <ol id="suit-order" class="suit-order" aria-describedby="suit-order-copy"></ol>
+        <button id="suit-order-reset">Palauta ♥ ♦ ♣ ♠</button>
+      </section>
       <details class="settings-group offline-guide"><summary>Pelaa ilman verkkoyhteyttä</summary><p id="offline-status" role="status">Lataa pelitiedostot tälle laitteelle, kun haluat pelata ilman verkkoa.</p><button id="offline-prepare">Lataa peli tälle laitteelle</button><div id="offline-download" hidden><progress id="offline-progress" max="1" value="0" aria-label="Pelitiedostojen lataus"></progress><button id="offline-retry" hidden>Jatka latausta</button></div><p>Kun peli on valmis offline-käyttöön, voit katkaista verkkoyhteyden. iPhonella avaa Safarin jakovalikko ja valitse Lisää Koti-valikkoon. Avaa peli kuvakkeesta ja tarkista offline-valmius myös siellä.</p></details>
-      <section class="settings-group" aria-labelledby="settings-research"><h3 id="settings-research">Tutkimus</h3><label class="toggle"><input id="share-results" type="checkbox"> Lähetä offline-otteluiden tulokset nimettömästi</label><p>Palvelimelle tallentuu vain päivä, bottitaso, voittaja, loppupisteet sekä jakojen ja luovutusten määrä: ei nimiä, kortteja eikä käsiä. Tuloksilla tutkitaan botin tasoa ihmisiä vastaan.</p></section>
+      <section class="settings-group" aria-labelledby="settings-research"><h3 id="settings-research">Tutkimus</h3><label class="toggle"><input id="share-results" type="checkbox"> Lähetä offline-ottelut nimettömästi botin kehittämiseen</label><p>Palvelimelle tallentuvat päivä, bottitaso ja tulos sekä jokaisen jaon kortit ja kaikki siirrot: ei nimiä eikä muita tunnisteita. Myös verkko-otteluiden kortit ja siirrot tallentuvat nimettöminä. Tiedoilla kehitetään bottia ja tutkitaan sen tasoa ihmisiä vastaan.</p></section>
       <section class="settings-group" aria-labelledby="settings-audio"><h3 id="settings-audio">Äänet</h3><label class="toggle"><input id="turn-sound" type="checkbox"> Äänimerkki, kun on vuorosi</label><p>Lyhyt merkki auttaa huomaamaan oman vuoron paikallisessa pelissä ja verkkopelissä.</p></section>
       <details class="settings-group"><summary id="settings-saves">Tallennukset ja varmuuskopiot</summary><p>Paikallinen ottelu säilyy tässä selaimessa. Lataa varmuuskopio, kun haluat siirtää sen toiselle laitteelle.</p>
         <div class="controls"><button id="export">Lataa tallennus</button><label class="file-label">Avaa tallennus<input id="import" type="file" accept="application/json,.json"></label></div>
@@ -43,7 +56,7 @@
       <div id="network-connection" class="connection-strip" hidden><span id="connection-label" role="status"></span><button id="network-retry" hidden>Yhdistä uudelleen</button><button id="network-reauth" hidden>Vahvista kirjautuminen</button></div>
       <div class="score-rail">
         <div class="phase-heading"><span class="eyebrow">TUPPI</span><h1 id="phase-title">Tarjoukset (lukitut)</h1><span id="deal-label" class="muted">Jako 1</span></div>
-        <div class="scoreboard" aria-label="Ottelun pisteet"><div class="score-team"><span class="eyebrow">SINÄ + PARI</span><strong id="our-score">0</strong></div><span class="score-separator" aria-hidden="true">–</span><div class="score-team"><span class="eyebrow">VASTUSTAJAT</span><strong id="their-score">0</strong></div></div>
+        <div class="scoreboard" aria-label="Ottelun pisteet"><div class="score-team"><span id="our-score-label" class="eyebrow">SINÄ + PARI</span><strong id="our-score">0</strong></div><span class="score-separator" aria-hidden="true">–</span><div class="score-team"><span id="their-score-label" class="eyebrow">VASTUSTAJAT</span><strong id="their-score">0</strong></div></div>
         <span id="contract" class="contract">TARJOUS</span>
       </div>
       <div id="table" class="table">
@@ -115,18 +128,20 @@
       <form id="network-form" novalidate><p id="network-entry-copy">Kirjoita nimimerkkisi ja huoneen koodi.</p><label>Nimimerkki<input id="network-name" maxlength="40" autocomplete="nickname" value="Pelaaja" enterkeyhint="go"></label>
       <label id="network-code-row">Huonekoodi tai kutsulinkki<input id="network-code" maxlength="2048" autocapitalize="characters" spellcheck="false" autocomplete="off" placeholder="ABC123" enterkeyhint="go"></label>
       <label id="network-passcode-row" hidden>Huoneen luontikoodi<input id="network-passcode" type="password" maxlength="128" autocomplete="off" spellcheck="false" enterkeyhint="go"></label>
-      <button id="network-submit" class="primary" type="submit" disabled>Liity huoneeseen</button><fieldset id="network-seat-choice" class="seat-choice" hidden><legend>Valitse paikkasi</legend><div id="network-seat-options" class="controls"></div></fieldset></form>
+      <button id="network-submit" class="primary" type="submit" disabled>Liity huoneeseen</button><button id="network-watch" type="button" hidden>Katso peliä</button><fieldset id="network-seat-choice" class="seat-choice" hidden><legend>Valitse paikkasi</legend><div id="network-seat-options" class="controls"></div></fieldset></form>
       <button id="network-switch" type="button" class="text-button">Luo oma huone</button></div>
     <div id="network-lobby" hidden><div class="lobby-heading"><h3 id="network-room"></h3><span id="network-summary" class="muted"></span></div>
       <p id="network-seat-guide">Haluatko ystävän pariksesi? Lisää botit ensin vasemmalle ja oikealle, ja lähetä kutsu vasta sitten.</p>
       <div id="network-seats" class="network-team-grid"><section aria-labelledby="network-our-label"><h3 id="network-our-label">Sinä ja parisi</h3><ul id="network-our-team"></ul></section><section aria-labelledby="network-their-label"><h3 id="network-their-label">Vastustajat</h3><ul id="network-their-team"></ul></section></div>
+      <p id="network-watchers" class="muted" hidden></p>
+      <label id="network-viewpoint-row" hidden>Näkökulma<select id="network-viewpoint"></select></label>
       <p id="network-previous" class="muted" hidden></p><p id="network-changed" role="status"></p><p id="network-readiness" role="status"></p>
-      <div class="controls lobby-actions"><button id="network-ready" class="primary">Olen valmis</button><button id="network-copy">Kopioi kutsulinkki</button><button id="network-fill">Täytä tyhjät paikat boteilla</button><button id="network-open">Avaa bottipaikat ystäville</button></div>
+      <div class="controls lobby-actions"><button id="network-ready" class="primary">Olen valmis</button><button id="network-copy">Kopioi kutsulinkki</button><button id="network-chat" hidden>Viestit</button><button id="network-take-seat" hidden>Liity peliin</button><button id="network-fill">Täytä tyhjät paikat boteilla</button><button id="network-open">Avaa bottipaikat ystäville</button></div>
       <label id="network-invite-fallback" hidden>Kutsulinkki<input id="network-invite" type="text" readonly autocomplete="off"></label>
       <p class="lobby-note">Kaikki pelaajat vahvistavat valmiutensa ennen aloitusta. Yhteyden katketessa paikkasi säilyy; avaa Tuppi uudelleen samalla selaimella.</p>
       <details id="network-leaderboard" class="leaderboard" hidden><summary id="network-leaderboard-title">Tulostaulu</summary><ol id="network-leaderboard-list"></ol><p class="muted">Voitot ja tappiot nimimerkin mukaan tämän palvelimen verkko-otteluista. Nimimerkkejä ei varmenneta.</p></details></div>
-    <button id="network-local" class="text-button" hidden>Pelaa botteja vastaan</button>
+    <div class="controls network-exits"><button id="network-leave" class="text-button" hidden>Poistu huoneesta</button><button id="network-local" class="text-button" hidden>Pelaa botteja vastaan</button></div>
   </dialog>
-  <script type="module" src="./bootstrap.mjs"></script>
+  <script type="module" src="./bootstrap.82696f6687c3109e.mjs"></script>
 </body>
 </html>

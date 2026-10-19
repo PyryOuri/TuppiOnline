@@ -81,6 +81,8 @@ class Usage:
         fields = dict(gauges)
         for name in ("created", "started", "finished", "moves", "opens", "saves", "results"):
             fields[name] = self.counts.get(name, 0)
+        if self.counts.get("records"):
+            fields["records"] = self.counts["records"]  # offline match records received (research.py)
         if self.counts.get("saves"):
             fields["save_ms_max"] = round(self.save_ms_max)
             fields["record_kb_max"] = round(self.record_bytes_max / 1024)

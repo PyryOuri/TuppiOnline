@@ -25,10 +25,13 @@ export function cardAction(card, phase, contract = 0) {
 export function legalCards(view, contract) {
   return view.hand.filter(card => view.legal.includes(cardAction(card, view.phase, contract)));
 }
-export function sortedHand(view) {
+// Suits in the player's chosen order (Settings; ♥ ♦ ♣ ♠ by default), ranks
+// rising, with the ace lowest in sooli.
+export function sortedHand(view, suitOrder = [0, 1, 2, 3]) {
   const aceLow = view.soolaaja >= 0 || [4, 5, 6].includes(view.phase);
   const rank = card => aceLow && card % 13 === 12 ? -1 : card % 13;
-  return view.hand.toSorted((a, b) => Math.floor(a / 13) - Math.floor(b / 13) || rank(a) - rank(b));
+  const place = card => suitOrder.indexOf(Math.floor(card / 13));
+  return view.hand.toSorted((a, b) => place(a) - place(b) || rank(a) - rank(b));
 }
 export function bidRevealFrame(bids, elapsed) {
   const last = revealTiming.step * Math.max(0, bids.length - 1);
@@ -66,9 +69,9 @@ export class TableKeyboardSelection {
     if (!legalCards(view, contract).includes(card)) return {type: 'unavailable', card};
     this.reset(); return {type: 'card', card};
   }
-  adjacent(selected, direction, view, contract) {
+  adjacent(selected, direction, view, contract, suitOrder) {
     if (!view?.waitingHuman || view.revealing || selected === null) return null;
-    const hand = sortedHand(view), start = hand.indexOf(selected), allowed = legalCards(view, contract);
+    const hand = sortedHand(view, suitOrder), start = hand.indexOf(selected), allowed = legalCards(view, contract);
     if (start < 0) return null;
     for (let distance = 1; distance < hand.length; distance++) {
       const card = hand[(start + direction * distance + hand.length) % hand.length];

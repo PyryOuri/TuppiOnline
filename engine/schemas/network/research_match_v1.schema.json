@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tuppi/schemas/network/research_match_v1.schema.json",
+  "title": "Tuppi anonymous match record (one JSON line in the owner's download)",
+  "$comment": "Round 15 (2026-10-19). Every deal's four hands and every action in order, with who made it. No names, room codes, tokens or addresses; of the time only the day. Online records come from the server; offline ones from browsers, checked by replay.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bot",
+    "day",
+    "deals",
+    "final_score",
+    "finished",
+    "id",
+    "ruleset_id",
+    "schema_version",
+    "source",
+    "winner_team"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "tuppi.research.match.v1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^(online|offline)-[A-Za-z0-9-]{16,64}$"
+    },
+    "source": {
+      "enum": [
+        "online",
+        "offline"
+      ]
+    },
+    "day": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "ruleset_id": {
+      "const": "project_target_v3"
+    },
+    "bot": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16,
+      "$comment": "online: the hosted bot level (lite/full); offline: w128 or w1024."
+    },
+    "bot_version": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{1,128}$",
+      "$comment": "online: profile and model digest; offline: the browser runtime identity."
+    },
+    "finished": {
+      "type": "boolean",
+      "$comment": "false: the room closed or expired during the match."
+    },
+    "final_score": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "$comment": "Team 0 (seats 0 and 2) first. Offline the person sits at seat 0."
+    },
+    "winner_team": {
+      "enum": [
+        0,
+        1,
+        null
+      ]
+    },
+    "deals": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "actions",
+          "complete",
+          "dealer",
+          "hands",
+          "score_before"
+        ],
+        "properties": {
+          "dealer": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "hands": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": {
+              "type": "array",
+              "minItems": 13,
+              "maxItems": 13,
+              "items": {
+                "type": "string",
+                "pattern": "^(?:[2-9]|10|J|Q|K|A)[HDCS]$"
+              }
+            },
+            "$comment": "The dealt hands, by seat."
+          },
+          "score_before": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "conceded_after_tricks": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 12
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "prefixItems": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 3
+                },
+                {
+                  "enum": [
+                    "human",
+                    "bot",
+                    "forced"
+                  ],
+                  "$comment": "forced: played automatically after a concession."
+                },
+                {
+                  "oneOf": [
+                    {
+                      "$ref": "https://example.invalid/tuppi/schemas/engine/agent_script.schema.json#/$defs/action"
+                    },
+                    {
+                      "$ref": "https://example.invalid/tuppi/schemas/engine/player_observation.schema.json#/$defs/sooliDecisionAction"
+                    },
+                    {
+                      "$ref": "https://example.invalid/tuppi/schemas/engine/player_observation.schema.json#/$defs/sooliExchangeAction"
+                    }
+                  ]
+                }
+              ]
+            },
+            "$comment": "In the order applied: [seat, who, engine action]."
+          }
+        }
+      }
+    }
+  }
+}

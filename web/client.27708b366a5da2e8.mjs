@@ -4,12 +4,17 @@ const networkEnabled = true;
 
 // Source: preferences.mjs
 const preferenceKey = 'tuppi.ui.preferences.v1';
-const defaults = {nickname: 'Pelaaja', expandedHand: false, turnSound: false, shareResults: true};
+const defaults = {nickname: 'Pelaaja', expandedHand: false, turnSound: false, shareResults: true, suitOrder: [0, 1, 2, 3]};
+// The suits in the hand from left to right (0 ♥, 1 ♦, 2 ♣, 3 ♠), as in the Mac app.
+function validSuitOrder(order) {
+  return Array.isArray(order) && order.length === 4 && [0, 1, 2, 3].every(suit => order.includes(suit));
+}
 function cleanPreferences(value) {
   return {nickname: typeof value?.nickname === 'string' && value.nickname.trim() ? value.nickname.trim().slice(0, 40) : defaults.nickname,
     expandedHand: value?.expandedHand === true, turnSound: value?.turnSound === true,
     // Anonymous offline match results for research (opt-out).
-    shareResults: value?.shareResults !== false};
+    shareResults: value?.shareResults !== false,
+    suitOrder: validSuitOrder(value?.suitOrder) ? [...value.suitOrder] : [...defaults.suitOrder]};
 }
 // Optional UI preferences cannot prevent a match from opening. They never
 // contain room credentials, actions, cards or an offline save.
@@ -155,10 +160,13 @@ function cardAction(card, phase, contract = 0) {
 function legalCards(view, contract) {
   return view.hand.filter(card => view.legal.includes(cardAction(card, view.phase, contract)));
 }
-function sortedHand(view) {
+// Suits in the player's chosen order (Settings; ♥ ♦ ♣ ♠ by default), ranks
+// rising, with the ace lowest in sooli.
+function sortedHand(view, suitOrder = [0, 1, 2, 3]) {
   const aceLow = view.soolaaja >= 0 || [4, 5, 6].includes(view.phase);
   const rank = card => aceLow && card % 13 === 12 ? -1 : card % 13;
-  return view.hand.toSorted((a, b) => Math.floor(a / 13) - Math.floor(b / 13) || rank(a) - rank(b));
+  const place = card => suitOrder.indexOf(Math.floor(card / 13));
+  return view.hand.toSorted((a, b) => place(a) - place(b) || rank(a) - rank(b));
 }
 function bidRevealFrame(bids, elapsed) {
   const last = revealTiming.step * Math.max(0, bids.length - 1);
@@ -196,9 +204,9 @@ class TableKeyboardSelection {
     if (!legalCards(view, contract).includes(card)) return {type: 'unavailable', card};
     this.reset(); return {type: 'card', card};
   }
-  adjacent(selected, direction, view, contract) {
+  adjacent(selected, direction, view, contract, suitOrder) {
     if (!view?.waitingHuman || view.revealing || selected === null) return null;
-    const hand = sortedHand(view), start = hand.indexOf(selected), allowed = legalCards(view, contract);
+    const hand = sortedHand(view, suitOrder), start = hand.indexOf(selected), allowed = legalCards(view, contract);
     if (start < 0) return null;
     for (let distance = 1; distance < hand.length; distance++) {
       const card = hand[(start + direction * distance + hand.length) % hand.length];
@@ -280,12 +288,27 @@ function seatPresentation(view, seat, nickname = seatNames[seat]) {
 // score from the player's team's view, deal and concession counts. Its id is
 // a hash of the first deal's shuffled deck, so a match is reported once.
 async function offlineResultReport(save) {
+  const deals = save?.completed ?? [], last = deals.at(-1)?.result, id = await offlineMatchId(save);
+  if (!id) return null;
+  return {id, worlds: save.worlds, winner_team: last.score0 >= 52 ? 0 : 1, final_score: [last.score0, last.score1],
+    deals: deals.length, conceded: deals.filter(deal => deal.conceded).length};
+}
+async function offlineMatchId(save) {
   const deals = save?.completed ?? [], last = deals.at(-1)?.result;
   if (!last?.terminal || ![128, 1024].includes(save.worlds) || !deals[0]?.cards) return null;
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([deals[0].cards, deals[0].dealer])));
-  const id = [...new Uint8Array(digest)].slice(0, 16).map(byte => byte.toString(16).padStart(2, '0')).join('');
-  return {id, worlds: save.worlds, winner_team: last.score0 >= 52 ? 0 : 1, final_score: [last.score0, last.score1],
-    deals: deals.length, conceded: deals.filter(deal => deal.conceded).length};
+  return [...new Uint8Array(digest)].slice(0, 16).map(byte => byte.toString(16).padStart(2, '0')).join('');
+}
+// A finished offline match with every card, for developing the bots (the
+// server checks it by replaying it): each deal's dealt cards, dealer, score
+// before it and actions in order, and the bot's runtime. Same id as the
+// result above; no names or anything else about the player.
+async function offlineMatchRecord(save) {
+  const id = await offlineMatchId(save);
+  if (!id || typeof save.identity !== 'string') return null;
+  return {id, worlds: save.worlds, runtime: save.identity, deals: save.completed.map(deal => ({cards: [...deal.cards],
+    dealer: deal.dealer, score: [...deal.score], actions: [...deal.actions],
+    ...(deal.conceded ? {conceded: {afterTricks: deal.conceded.afterTricks}} : {})}))};
 }
 
 // End-of-match summary from the public completed-deal results only.
@@ -330,13 +353,14 @@ function analysisPresentation(result) {
 }
 
 // Every player's dealt hand in a finished deal (deck positions seat*13…), from
-// the viewer's seat round the table, by suit from the ace down, with high-card
-// points (A 4, K 3, Q 2, J 1). Offline it is the saved deal; online, the cards
-// each seat played (every card is played by the end of a non-sooli deal).
-function dealHands(deal, ownSeat = 0) {
+// the viewer's seat round the table, by suit (in the player's suit order) from
+// the ace down, with high-card points (A 4, K 3, Q 2, J 1). Offline it is the
+// saved deal; online, the cards each seat played (every card is played by the
+// end of a non-sooli deal).
+function dealHands(deal, ownSeat = 0, suitOrder = [0, 1, 2, 3]) {
   return [0, 1, 2, 3].map(position => {
     const seat = (ownSeat + position) % 4, cards = deal.cards.slice(seat * 13, seat * 13 + 13);
-    const bySuit = [0, 1, 2, 3].map(suit => ({suit: suits[suit],
+    const bySuit = suitOrder.map(suit => ({suit: suits[suit],
       ranks: cards.filter(card => Math.floor(card / 13) === suit).sort((a, b) => b - a).map(cardRank)}));
     return {position, label: seatNames[position], suits: bySuit,
       highCardPoints: cards.reduce((sum, card) => sum + Math.max(0, card % 13 - 8), 0),
@@ -483,7 +507,10 @@ const networkErrors = {room_not_found:'Huonetta ei löydy. Tarkista huonekoodi.'
   invalid_display_name:'Kirjoita nimimerkki (1–40 merkkiä).',
   seat_taken:'Paikka ehdittiin jo varata. Valitse toinen paikka.',
   player_cannot_move:'Pelaajan sovellus ei tue paikan vaihtoa. Pyydä häntä sulkemaan ja avaamaan Tuppi uudelleen.',
-  seat_not_releasable:'Tätä paikkaa ei voi vapauttaa.'};
+  seat_not_releasable:'Tätä paikkaa ei voi vapauttaa.',
+  seat_not_coverable:'Pääset peliin seuraavan jaon alussa.',
+  watchers_full:'Huonetta katsoo jo kahdeksan ihmistä. Yritä myöhemmin uudelleen.',
+  spectator_cannot_act:'Katsojana et voi tehdä siirtoja.'};
 function networkBase(value) {
   const url = new URL(value);
   const local = ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
@@ -536,6 +563,17 @@ function networkDealForAnalysis(deal) {
     return {cards: hands.flat(), dealer: deal.dealer, score: [...deal.score_before], actions, expectedTricks: [...deal.team_tricks]};
   } catch { return null; }
 }
+// A spectator's update (feature watch) as the table seen from `viewpoint`:
+// that seat's cards as the hand, no actions of its own, and every seat's
+// cards by table position (0 = the viewpoint, then clockwise) in `tableHands`.
+function spectatorPayload(payload, viewpoint = 0) {
+  const hands = payload.table?.hands;
+  if (!Array.isArray(hands) || hands.length !== 4) throw new Error('Palvelin lähetti puutteellisen katsojanäkymän.');
+  return {...payload, bidding: payload.bidding && {...payload.bidding, options: [], own_bid: null},
+    observation: {...payload.observation, observing_seat: viewpoint, own_hand: hands[viewpoint], legal_actions: [],
+      team: viewpoint % 2, partner_seat: (viewpoint + 2) % 4},
+    tableHands: [0, 1, 2, 3].map(position => hands[(viewpoint + position) % 4].map(networkCard))};
+}
 function networkView(payload, completed = [], summary = null, conceded = new Map()) {
   const observation = payload.observation, own = observation.observing_seat;
   if (!Number.isInteger(own) || own < 0 || own > 3 || observation.ruleset_id !== 'project_target_v3' ||
@@ -569,14 +607,31 @@ function networkView(payload, completed = [], summary = null, conceded = new Map
       contract: bid.declared_contract === 'RAMI' ? 1 : 0})), history, completed: deals,
     trickSize: soolaaja >= 0 && observation.sooli.exchanged ? 3 : 4,
     terminal: observation.match_terminal, startingHandSummary: summary,
+    ...(payload.tableHands ? {watching: true, tableHands: payload.tableHands} : {}),
     prompt: legal.length ? null : phase === 0 ? 'Tarjous lukittu. Odotetaan muita pelaajia…' :
       observation.current_actor === null ? 'Ottelu päättyi.' : 'Odotetaan siirtoa…'};
 }
 
+const chatHistory = 50;
+function chatItem(item) {
+  // seat null: a spectator (feature watch).
+  return Number.isInteger(item?.id) && (Number.isInteger(item.seat) || item.seat === null) && typeof item.display_name === 'string' &&
+    typeof item.text === 'string' && Number.isInteger(item.sent_at);
+}
+// The host's seat: 0 unless the host left and another player hosts
+// (feature leave_seat; older servers do not say).
+function hostSeat(lobby) {
+  return Number.isInteger(lobby?.host_seat) ? lobby.host_seat : 0;
+}
+
 class NetworkSession {
   constructor({persist, onView = () => {}, onLobby = () => {}, onStatus = () => {}, onConnection = () => {},
-    onReconnect = () => {}, fetcher = (...args) => globalThis.fetch(...args), Socket = globalThis.WebSocket, timers = globalThis} = {}) {
-    Object.assign(this, {persist, onView, onLobby, onStatus, onConnection, onReconnect, fetcher, Socket, timers});
+    onReconnect = () => {}, onChat = () => {}, fetcher = (...args) => globalThis.fetch(...args), Socket = globalThis.WebSocket,
+    timers = globalThis} = {}) {
+    Object.assign(this, {persist, onView, onLobby, onStatus, onConnection, onReconnect, onChat, fetcher, Socket, timers});
+    // Room chat (feature chat): the latest messages, oldest first. Memory only;
+    // the server sends them again when this seat reconnects.
+    this.chat = [];
     this.session = null; this.socket = null; this.connected = false; this.stopped = true;
     this.queue = Promise.resolve(); this.retryCount = 0; this.epoch = 0; this.completed = new Map();
     this.authRequired = false; this.configuring = false; this.lobbyRevision = 0;
@@ -644,14 +699,36 @@ class NetworkSession {
     await this.begin({...result, base: networkBase(base), host: true, pending: null, cursor: -1,
       schema: 'tuppi.browser.network.v1', active: true});
   }
-  // Before joining (feature seat_choice): who sits where; null if the server
-  // cannot say. Seat 2 is the host's partner; 1 and 3 are partners.
+  // Before joining (feature seat_choice): who sits where and the host's seat;
+  // null if the server cannot say. The host's partner sits opposite them.
+  // During a match (feature leave_seat) the seats players left are open.
   async seatPreview(base, code) {
     if (!/^[A-Z0-9]{6}$/.test(code)) return null;
     const compatibility = await this.request('/v1/compatibility', null, base);
     if (!compatibility.features?.includes('seat_choice')) return null;
     const result = await this.request(`/v1/rooms/${code}/seats`, {}, base);
-    return Array.isArray(result.seats) && result.joinable ? result.seats : null;
+    return Array.isArray(result.seats) && result.joinable ? {seats: result.seats, hostSeat: hostSeat(result)} : null;
+  }
+  // Watch a room (feature watch): every hand and the chat, no seat. The
+  // table is shown from seat 0 until another viewpoint is chosen.
+  async watch(base, code, displayName) {
+    if (!/^[A-Z0-9]{6}$/.test(code)) throw new Error('Huonekoodi on kuusi kirjainta tai numeroa.');
+    await this.check(base);
+    const result = await this.request(`/v1/rooms/${code}/watch`, {display_name: displayName}, base);
+    await this.begin({...result, base: networkBase(base), host: false, pending: null, cursor: -1,
+      schema: 'tuppi.browser.network.v1', active: true, watching: true, viewpoint: 0, display_name: displayName});
+  }
+  // A spectator's credential is kept in server memory only: after a server
+  // restart (or when a full room forgot it) the app asks to watch again.
+  async rewatch() {
+    const result = await this.request(`/v1/rooms/${this.session.room_code}/watch`, {display_name: this.session.display_name || 'Katsoja'});
+    this.session.session_token = result.session_token; this.session.lobby = result.lobby;
+    await this.persist(this.session);
+  }
+  setViewpoint(seat) {
+    if (!this.session?.watching || !Number.isInteger(seat) || seat < 0 || seat > 3) return;
+    this.session.viewpoint = seat; this.persist(this.session).catch(() => {});
+    this.onLobby(this.session.lobby); this.emitView();
   }
   async join(base, code, displayName, seat = null) {
     if (!/^[A-Z0-9]{6}$/.test(code)) throw new Error('Huonekoodi on kuusi kirjainta tai numeroa.');
@@ -668,6 +745,7 @@ class NetworkSession {
       throw new Error('Verkkopelin tallennus ei ole yhteensopiva.');
     networkBase(session.base);
     this.close(); this.session = structuredClone(session); this.completed.clear(); this.conceded.clear(); this.latest = null;
+    this.chat = []; this.onChat(this.chat, null);
     await this.persist(this.session); this.stopped = false;
     this.onLobby(this.session.lobby); this.connect();
   }
@@ -693,11 +771,15 @@ class NetworkSession {
       this.pendingSent = false; this.emitView();
       this.timers.clearTimeout(this.deadline); this.timers.clearTimeout(this.heartbeat);
       if (event.code === 4001) { this.stopped = true; this.connection('superseded'); this.onStatus('Tämä paikka avattiin toisessa välilehdessä.', true); return; }
-      if (event.code === 4002) {
-        // The host freed this seat; its credential no longer works.
+      if ([4002, 4003, 4004].includes(event.code)) {
+        // The host freed this seat (4002), this player left the room in
+        // another tab (4003), or the last player left and the room closed
+        // (4004, spectators); the credential no longer works.
         this.stopped = true; this.session.active = false; this.session.released = true;
         this.persist(this.session).catch(() => {});
-        this.connection('released'); this.onStatus('Huoneen luoja vapautti paikkasi. Voit liittyä huoneeseen uudelleen kutsulinkillä.', true); return;
+        this.connection({4002: 'released', 4003: 'left', 4004: 'closed'}[event.code]);
+        this.onStatus({4002: 'Huoneen luoja vapautti paikkasi. Voit liittyä huoneeseen uudelleen kutsulinkillä.',
+          4003: 'Poistuit huoneesta toisessa välilehdessä.', 4004: 'Huone suljettiin, koska viimeinen pelaaja poistui.'}[event.code], true); return;
       }
       this.interrupted = true;
       if ([1001, 1012].includes(event.code)) this.restarting = true;
@@ -728,7 +810,8 @@ class NetworkSession {
           payload.seat !== this.session.seat && Array.isArray(payload.features) && payload.features.includes('seat_swap')) {
         this.session.seat = payload.seat; await this.persist(this.session);
       }
-      if (payload.protocol_version !== networkProtocol || payload.seat !== this.session.seat || payload.room_code !== this.session.room_code)
+      if (payload.protocol_version !== networkProtocol || payload.seat !== this.session.seat || payload.room_code !== this.session.room_code ||
+          Boolean(payload.watching) !== Boolean(this.session.watching))
         throw new Error('Verkkopelin paikka tai versio muuttui.');
       this.retryCount = 0; this.timers.clearTimeout(this.deadline); this.beat();
       const resumed = this.interrupted; this.restarting = this.interrupted = false;
@@ -739,13 +822,26 @@ class NetworkSession {
       const options = {...(this.features.has('compact_results') ? {omit_match_result: true} : {}),
         ...(this.features.has('seat_swap') ? {seat_updates: true} : {})};
       if (Object.keys(options).length) this.send('client_options', options);
-    } else if (message.message_type === 'seat_update') {
+    } else if (message.message_type === 'seat_update' && !this.session.watching) {
       // The host moved this player before the match (feature seat_swap).
-      if (!Number.isInteger(payload.seat) || payload.seat < 1 || payload.seat > 3) throw new Error('Palvelin lähetti virheellisen paikan.');
+      if (!Number.isInteger(payload.seat) || payload.seat < 0 || payload.seat > 3) throw new Error('Palvelin lähetti virheellisen paikan.');
       this.session.seat = payload.seat; await this.persist(this.session);
       this.onStatus('Huoneen luoja vaihtoi paikkaasi.', false);
+    } else if (message.message_type === 'chat_history') {
+      if (!Array.isArray(payload.messages)) return;
+      this.chat = payload.messages.filter(chatItem).slice(-chatHistory); this.onChat(this.chat, null);
+    } else if (message.message_type === 'chat_message') {
+      if (!chatItem(payload) || this.chat.some(item => item.id === payload.id)) return;
+      this.chat = [...this.chat, payload].slice(-chatHistory); this.onChat(this.chat, payload);
+    } else if (message.message_type === 'chat_refused') {
+      this.onChat(this.chat, null, payload.code === 'chat_rate_limited' ? 'Odota hetki ennen seuraavaa viestiä.' : 'Viestissä voi olla 1–200 merkkiä.');
     } else if (message.message_type === 'compatibility_result') throw new Error('Päivitä Tuppi ennen verkkopeliä.');
-    else if (message.message_type === 'protocol_error') throw new Error(networkErrors[payload.code] || 'Verkkopelin yhteyttä ei voitu jatkaa. Paikkasi on tallennettu.');
+    else if (message.message_type === 'protocol_error' && payload.code === 'invalid_session' && this.session.watching && !this.rewatching) {
+      // The server no longer knows this spectator: watch again, once.
+      this.rewatching = true;
+      try { await this.rewatch(); } finally { this.rewatching = false; }
+      this.socket?.close();
+    } else if (message.message_type === 'protocol_error') throw new Error(networkErrors[payload.code] || 'Verkkopelin yhteyttä ei voitu jatkaa. Paikkasi on tallennettu.');
     else if (message.message_type === 'lobby_snapshot') {
       this.lobbyRevision++;
       if (this.latest && !['playing','completed'].includes(payload.lifecycle)) {
@@ -754,11 +850,14 @@ class NetworkSession {
         this.latest = null; this.completed.clear(); this.conceded.clear(); this.placed = null;
         Object.assign(this.session, {cursor: -1, match_ref: null, pending: null, summaryDeal: null, summary: null});
       }
+      // The next player hosts when the host leaves (feature leave_seat).
+      if (Number.isInteger(payload.host_seat)) this.session.host = !this.session.watching && payload.host_seat === this.session.seat;
       this.session.lobby = payload; await this.persist(this.session); this.onLobby(payload);
       this.emitView();
       if (!['playing','completed'].includes(payload.lifecycle)) { this.connected = true; this.connection('connected'); this.onStatus('', false); }
     } else if (['match_update','reconnect_result'].includes(message.message_type)) {
-      if (payload.observation.observing_seat !== this.session.seat) throw new Error('Palvelin lähetti väärän paikan havainnon.');
+      if (payload.observation.observing_seat !== this.session.seat || Boolean(payload.table) !== Boolean(this.session.watching))
+        throw new Error('Palvelin lähetti väärän paikan havainnon.');
       for (const deal of payload.completed_deals ?? []) this.completed.set(deal.deal_number, deal);
       for (const item of payload.conceded_deals ?? []) this.conceded.set(item.deal_number, item);
       this.latest = payload;
@@ -767,7 +866,7 @@ class NetworkSession {
       this.session.match_ref = payload.match_ref ?? payload.observation.match_ref;
       if (this.session.pending && this.session.cursor > this.session.pending.expected_event_index)
         this.placed = this.session.pending.client_action_id;
-      if (payload.observation.phase === 'SHOWING' && this.session.summaryDeal !== payload.observation.deal_ref) {
+      if (!this.session.watching && payload.observation.phase === 'SHOWING' && this.session.summaryDeal !== payload.observation.deal_ref) {
         const hand = payload.observation.own_hand.map(networkCard);
         this.session.summaryDeal = payload.observation.deal_ref;
         this.session.summary = {suitLengths: [0,1,2,3].map(suit => hand.filter(c => Math.floor(c/13) === suit).length),
@@ -793,18 +892,23 @@ class NetworkSession {
   }
   emitView() {
     if (!this.latest) return;
+    if (this.session.watching) { this.onView(this.spectatorView()); return; }
     const view = networkView(this.latest, [...this.completed.values()].sort((a,b) => a.deal_number-b.deal_number),
       this.session.summaryDeal === this.latest.observation.deal_ref ? this.session.summary : null, this.conceded);
     const paused = Boolean(this.session.lobby?.paused) && !view.terminal;
     // A bot is playing this seat while its player was away (feature seat_bot).
-    const covered = this.session.lobby?.seats?.find(s => s.seat === this.session.seat)?.kind === 'ai' && !view.terminal;
+    const own = this.session.lobby?.seats?.find(s => s.seat === this.session.seat);
+    const covered = own?.kind === 'ai' && !view.terminal;
     view.covered = covered;
+    // Joined a seat its player left (feature leave_seat): the bot finishes this deal.
+    view.joining = covered && Boolean(own.joining);
     if (!this.connected || this.stopped || this.session.pending || paused || covered) view.waitingHuman = false;
     view.paused = paused;
     view.concedeAvailable = this.features.has('concede') && this.connected && !this.stopped && !this.session.pending &&
       !paused && !covered && networkDecided(view);
     if (!this.connected) view.prompt = 'Yhdistetään verkkopeliin…';
     else if (paused) view.prompt = this.session.host ? 'Peli on tauolla. Jatka, kun kaikki ovat valmiita.' : 'Peli on tauolla. Huoneen luoja jatkaa peliä.';
+    else if (view.joining) view.prompt = 'Liityit kesken ottelun. Botti pelaa tämän jaon loppuun, ja sinä pelaat seuraavasta jaosta alkaen.';
     else if (covered) view.prompt = 'Botti pelaa paikallasi. Voit ottaa paikkasi takaisin.';
     else if (this.session.pending && view.phase !== 2 &&
         (!this.placedPending() || this.latest.observation.current_actor === this.session.seat)) view.prompt = 'Käsitellään siirtoasi…';
@@ -814,6 +918,23 @@ class NetworkSession {
         participant ? `${participant.display_name}: odotetaan siirtoa…` : 'Odotetaan siirtoa…';
     }
     this.onView(view);
+  }
+  // A spectator's table (feature watch): every hand, nothing to do.
+  spectatorView() {
+    const viewpoint = this.session.viewpoint ?? 0;
+    const view = networkView(spectatorPayload(this.latest, viewpoint),
+      [...this.completed.values()].sort((a,b) => a.deal_number-b.deal_number), null, this.conceded);
+    const seats = this.session.lobby?.seats ?? [], name = seat => {
+      const item = seats.find(s => s.seat === seat);
+      return item?.covering ? `Botti (${item.covering})` : item?.display_name || 'Botti';
+    };
+    const observation = this.latest.observation, team = viewpoint % 2;
+    Object.assign(view, {waitingHuman: false, covered: false, concedeAvailable: false, paused: Boolean(this.session.lobby?.paused) && !view.terminal});
+    view.prompt = !this.connected ? 'Yhdistetään verkkopeliin…' : view.terminal ?
+      `Ottelu päättyi: ${(view.score0 >= view.score1 ? [team, team + 2] : [1 - team, 3 - team]).map(name).join(' ja ')} voittivat.` :
+      view.paused ? 'Peli on tauolla.' : view.phase === 0 ? 'Katsot peliä. Pelaajat lukitsevat tarjouksiaan.' :
+      observation.current_actor === null ? 'Katsot peliä.' : `Katsot peliä. Vuorossa: ${name(observation.current_actor)}.`;
+    return view;
   }
   async submit(id) {
     if (!this.connected || this.session.pending || !this.latest) return;
@@ -852,10 +973,17 @@ class NetworkSession {
     if (bot ? !this.session.host : !this.session.host && seat !== this.session.seat) return false;
     return this.send('seat_bot', {seat, bot: Boolean(bot)});
   }
+  // A message to everyone in the room (feature chat). One line, at most 200
+  // characters; the server answers with the message (or chat_refused).
+  sendChat(text) {
+    const line = String(text ?? '').replace(/\s+/g, ' ').trim();
+    if (!line || !this.features.has('chat') || !this.connected || this.stopped) return false;
+    return this.send('chat_send', {text: line.slice(0, 200)});
+  }
   pause() { return this.hostCommand('pause'); }
   resume() { return this.hostCommand('resume'); }
   rematch() { return this.hostCommand('rematch'); }
-  ready() { if (this.connected && !this.stopped && !this.configuring && !this.authRequired) this.send('ready', {session_token: this.session.session_token}); }
+  ready() { if (this.connected && !this.stopped && !this.configuring && !this.authRequired && !this.session.watching) this.send('ready', {session_token: this.session.session_token}); }
   async fillEmptySeats() {
     const aiSeats = this.session.lobby.seats.filter(s => ['open','ai'].includes(s.kind)).map(s => s.seat);
     await this.configureBots(aiSeats);
@@ -888,7 +1016,28 @@ class NetworkSession {
       return true;
     } finally { this.configuring = false; if (epoch === this.epoch && !this.stopped) this.onLobby(this.session.lobby); }
   }
-  // Host: swap two of seats 1-3 before the match (feature seat_swap).
+  // Leave the room for good (feature leave_seat). In the lobby the seat is
+  // freed; during a match a bot plays it until someone joins it. The next
+  // player hosts if the host leaves; the last player closes the room. With
+  // an older server, or a room or seat that is already gone, the room is
+  // only forgotten on this device. Returns {closed} from the server, or null.
+  // `forget`: only forget the room here, e.g. when the server cannot be reached.
+  async leave({forget = false} = {}) {
+    if (!this.session) return null;
+    let result = null;
+    // A saved room this app is not connected to: ask the server what it offers.
+    const features = this.features.size || forget ? this.features :
+      new Set((await this.request('/v1/compatibility', null).catch(() => null))?.features ?? []);
+    if (!forget && features.has('leave_seat') && !this.session.released) {
+      try {
+        result = await this.request(`/v1/rooms/${this.session.room_code}/leave`, {session_token: this.session.session_token});
+      } catch (error) { if (!['room_not_found', 'invalid_session'].includes(error.code)) throw error; }
+    }
+    this.close(); this.session.active = false; this.session.released = true;
+    await this.persist(this.session);
+    return result;
+  }
+  // Host: swap two of the other seats before the match (feature seat_swap).
   async swapSeats(a, b) {
     if (!this.session?.host || !this.features.has('seat_swap')) return false;
     return this.lobbyCommand('swap', {seats: [a, b]});
@@ -907,7 +1056,7 @@ class NetworkSession {
   }
   async toggleBot(seat) {
     const current = this.session.lobby.seats.find(s => s.seat === seat);
-    if (!current || seat === 0 || !['open','ai'].includes(current.kind)) throw new Error('Paikka on jo pelaajan käytössä.');
+    if (!current || seat === hostSeat(this.session.lobby) || !['open','ai'].includes(current.kind)) throw new Error('Paikka on jo pelaajan käytössä.');
     const aiSeats = new Set(this.session.lobby.seats.filter(s => s.kind === 'ai').map(s => s.seat));
     if (aiSeats.has(seat)) aiSeats.delete(seat); else aiSeats.add(seat);
     await this.configureBots([...aiSeats].sort());
@@ -955,7 +1104,9 @@ function roomCodeFromInput(value, base) {
   return code.toUpperCase();
 }
 
-function lobbyPresentation(lobby, ownSeat = 0) {
+// A spectator's (feature watch) names for table positions from the viewpoint.
+const watcherSeatNames = ['Alhaalla', 'Vasemmalla', 'Ylhäällä', 'Oikealla'];
+function lobbyPresentation(lobby, ownSeat = 0, {watching = false} = {}) {
   const seats = lobby.seats.map(seat => ({...seat, position: networkSeat(seat.seat, ownSeat)}));
   const teams = [0, 1].map(team => seats.filter(seat => seat.position % 2 === team)
     .sort((a, b) => a.position - b.position));
@@ -964,7 +1115,8 @@ function lobbyPresentation(lobby, ownSeat = 0) {
   const waiting = humans.filter(seat => !seat.ready);
   const playing = ['playing', 'completed'].includes(lobby.lifecycle);
   const label = seat => seat.position === 0 ? 'sinä' : seat.display_name || seatNames[seat.position];
-  const readyText = playing ? 'Ottelu on alkanut. Paikat on lukittu.' : open ?
+  const readyText = watching ? (playing ? 'Katsot ottelua. Kaikkien kortit näkyvät.' :
+    'Katsot huonetta. Ottelu alkaa, kun pelaajat ovat valmiita.') : playing ? 'Ottelu on alkanut. Paikat on lukittu.' : open ?
     `${open} ${open === 1 ? 'vapaa paikka' : 'vapaata paikkaa'}. Kutsu ystävä tai lisää botti ennen valmiuden vahvistamista.` :
     waiting.length ? `Valmiutta odotetaan: ${waiting.map(label).join(', ')}.` : 'Kaikki ovat valmiina. Ottelu alkaa…';
   return {teams, humans: humans.length, bots: seats.filter(seat => seat.kind === 'ai').length,
@@ -993,40 +1145,48 @@ function seatAction(seat, {host, playing, features = new Set()}) {
 
 // During a match (feature seat_bot): the host may let a bot play for a player
 // who is not connected, and give a covered seat back; a covered player may
-// take their own seat back. Never the host's seat.
+// take their own seat back. Never a bot for the host's seat, and not back
+// while a newcomer waits for the next deal (feature leave_seat).
 function standInActions(lobby, {host, ownSeat, features = new Set(), active}) {
   if (!active || !features.has('seat_bot') || !lobby?.seats) return [];
   return lobby.seats.flatMap(seat => {
-    if (seat.seat === 0) return [];
-    if (seat.kind === 'human' && seat.connected === false && host)
+    if (seat.kind === 'human' && seat.connected === false && host && seat.seat !== hostSeat(lobby))
       return [{seat: seat.seat, bot: true, text: `Botti pelaa: ${seat.display_name}`}];
-    if (seat.kind === 'ai' && seat.covering && (host || seat.seat === ownSeat))
+    if (seat.kind === 'ai' && seat.covering && !seat.joining && (host || seat.seat === ownSeat))
       return [{seat: seat.seat, bot: false, text: seat.seat === ownSeat ? 'Ota paikkasi takaisin' : `Palauta paikka: ${seat.covering}`}];
     return [];
   });
 }
 // Choosing a seat before joining (feature seat_choice): one option per free
-// seat, named by the team it joins. Seat 2 is the host's partner; seats 1 and
-// 3 are partners of each other.
-function seatChoices(seats) {
+// seat, named by the team it joins. The host's partner sits opposite the host
+// (seat 2 unless another player hosts); the other two are partners.
+function seatChoices(seats, host = 0) {
   const at = seat => seats.find(item => item.seat === seat);
   const name = item => item?.kind === 'human' ? item.display_name : item?.kind === 'ai' ? 'botti' : null;
-  return seats.filter(item => item.kind === 'open' && item.seat > 0).map(item => {
+  return seats.filter(item => item.kind === 'open' && item.seat !== host).map(item => {
     const partner = at((item.seat + 2) % 4);
-    const text = item.seat === 2 ? `Samaan joukkueeseen: ${at(0)?.display_name ?? 'huoneen luoja'}` :
+    const text = item.seat === (host + 2) % 4 ? `Samaan joukkueeseen: ${at(host)?.display_name ?? 'huoneen luoja'}` :
       name(partner) ? `Vastustajaksi (pari: ${name(partner)})` : 'Vastustajaksi';
     return {seat: item.seat, text};
   });
 }
-// The host's move in the lobby (feature seat_swap): a seat 1 or 3 into the
-// partner seat 2, or the partner out to it.
+// The host's move in the lobby (feature seat_swap): an opponent seat into the
+// partner seat opposite the host, or the partner out to it.
 function moveAction(seat, {host, playing, features = new Set(), lobby}) {
-  if (!host || playing || !features.has('seat_swap') || ![1, 3].includes(seat.seat)) return null;
-  const partner = lobby?.seats?.find(item => item.seat === 2);
+  const own = hostSeat(lobby), partnerSeat = (own + 2) % 4;
+  if (!host || playing || !features.has('seat_swap') || (seat.seat - own + 4) % 2 !== 1) return null;
+  const partner = lobby?.seats?.find(item => item.seat === partnerSeat);
   if (seat.kind === 'open' && (!partner || partner.kind === 'open')) return null;
-  return {seats: [seat.seat, 2], text: seat.kind === 'open' ? 'Siirrä parisi tähän' : 'Siirrä pariksi'};
+  return {seats: [seat.seat, partnerSeat], text: seat.kind === 'open' ? 'Siirrä parisi tähän' : 'Siirrä pariksi'};
 }
 
+// Seats a spectator could take (feature watch): a free seat before the match,
+// or one a player left during it (the newcomer plays from the next deal).
+function takeableSeats(lobby) {
+  const playing = ['playing', 'completed'].includes(lobby?.lifecycle);
+  if (lobby?.lifecycle === 'completed') return [];
+  return (lobby?.seats ?? []).filter(seat => playing ? seat.vacant : seat.kind === 'open').map(seat => seat.seat);
+}
 // A seat's name at the table: a stand-in bot says whom it plays for.
 function seatDisplayName(seat) {
   return seat?.covering ? `Botti (${seat.covering})` : seat?.display_name;
@@ -1037,7 +1197,7 @@ class LobbyView {
     this.teams = teams; this.onToggle = onToggle; this.onRename = onRename; this.onRelease = onRelease; this.onMove = onMove;
     this.nodes = new Map();
   }
-  render(model, {host, connected, configuring = false, features = new Set(), lobby = null}) {
+  render(model, {host, connected, configuring = false, features = new Set(), lobby = null, watching = false}) {
     model.teams.forEach((seats, index) => {
       const nodes = seats.map(seat => {
         if (!this.nodes.has(seat.seat)) {
@@ -1057,18 +1217,18 @@ class LobbyView {
           item.append(position, name, state, move, button);
           this.nodes.set(seat.seat, {item, position, name, state, button, move});
         }
-        const node = this.nodes.get(seat.seat), label = seatNames[seat.position];
+        const node = this.nodes.get(seat.seat), label = (watching ? watcherSeatNames : seatNames)[seat.position];
         node.position.textContent = label;
         node.name.textContent = seat.display_name || (seat.kind === 'ai' ? 'Botti' : 'Vapaa paikka');
         node.state.textContent = seat.kind === 'ai' ? 'Botti' : seat.kind === 'open' ? 'Odottaa pelaajaa' : seat.ready ? 'Pelaaja · valmis' : 'Pelaaja · ei vielä valmis';
         node.item.dataset.kind = seat.kind;
-        node.action = seatAction(seat, {host, playing: model.playing, features}); node.seat = seat;
+        node.action = watching ? null : seatAction(seat, {host, playing: model.playing, features}); node.seat = seat;
         node.button.hidden = !node.action;
         node.button.disabled = !connected || configuring;
         node.button.textContent = node.action === 'rename' ? 'Vaihda nimi' : node.action === 'release' ? 'Vapauta paikka' :
           seat.kind === 'ai' ? 'Avaa ystävälle' : 'Lisää botti';
         node.button.setAttribute('aria-label', `${node.button.textContent}: ${label}`);
-        node.move_action = moveAction(seat, {host, playing: model.playing, features, lobby});
+        node.move_action = watching ? null : moveAction(seat, {host, playing: model.playing, features, lobby});
         node.move.hidden = !node.move_action; node.move.disabled = !connected || configuring;
         node.move.textContent = node.move_action?.text ?? '';
         if (node.move_action) node.move.setAttribute('aria-label', `${node.move_action.text}: ${label}`);
@@ -1100,6 +1260,9 @@ let networkClient = null, savedNetwork = null, networkAddress = null, offlineSta
 let screen = 'home', entryReady = false, networkResolved = false, navigationPending = false, navigationToken = 0;
 let roomIntent = 'join', invitation = false, entryPending = false, passcodeRequired = null, passcodeCheck = null;
 let awaitingNetworkGame = false;
+// Room chat (feature chat): messages from the network session, unread count
+// while the chat is closed, and the dialog to return to when it closes.
+let chatMessages = [], chatUnread = 0, chatReturn = null, chatToastTimer = null;
 const networkEntry = (() => { try { return new URL(globalThis.location.href).searchParams; } catch { return new URLSearchParams(); } })();
 const startsOnline = networkEnabled && (networkEntry.get('play') === 'online' || networkEntry.has('room'));
 async function readNetworkConfiguration() {
@@ -1155,15 +1318,20 @@ function renderHome() {
   const session = networkClient?.session ?? savedNetwork;
   $('home-friends').hidden = !networkEnabled;
   $('home-online').disabled = !entryReady || !writeAccess || navigationPending || entryPending;
-  $('home-online').textContent = session?.active && session.base === networkAddress ? `Jatka huoneessa ${session.room_code}` : 'Pelaa verkossa';
+  const resumable = Boolean(session?.active && !session.released && session.base === networkAddress);
+  $('home-online').textContent = resumable ? `Jatka huoneessa ${session.room_code}` : 'Pelaa verkossa';
+  $('home-online-other').hidden = !networkEnabled || !resumable;
+  $('home-online-other').disabled = $('home-online').disabled;
   $('home-local').disabled = !entryReady || !writeAccess || !localReadable || changingLocal || navigationPending || entryPending;
   $('home-local').textContent = lastSave || (worker && !networkClient) ? 'Jatka omaa peliä' : 'Pelaa botteja vastaan';
   $('home-local-copy').textContent = lastSave ? 'Tallennettu ottelusi jatkuu siitä, mihin jäit.' : 'Pelaa omaan tahtiin. Ottelu tallentuu tälle laitteelle.';
   $('network-toggle').hidden = !networkEnabled || !networkClient?.session;
+  renderChatButtons();
 }
 function showGame() {
   screen = 'game'; $('home').hidden = true; $('game').hidden = $('game-footer').hidden = false;
-  $('mode-label').textContent = networkClient?.session ? `· Verkkopeli ${networkClient.session.room_code}` : '· Paikallinen peli';
+  $('mode-label').textContent = !networkClient?.session ? '· Paikallinen peli' :
+    `· ${networkClient.session.watching ? 'Katsot huonetta' : 'Verkkopeli'} ${networkClient.session.room_code}`;
 }
 function showHome() {
   navigationToken++; awaitingNetworkGame = false;
@@ -1185,8 +1353,10 @@ function renderRoomEntry() {
   $('network-passcode-row').hidden = !creating || passcodeRequired === false;
   $('network-submit').textContent = entryPending ? 'Yhdistetään…' : creating ? 'Luo huone' : 'Liity huoneeseen';
   $('network-submit').disabled = !entryReady || !writeAccess || !networkAddress || entryPending;
+  // Watching (feature watch) is offered next to joining; a server without it refuses.
+  $('network-watch').hidden = creating || !networkAddress; $('network-watch').disabled = $('network-submit').disabled;
   $('network-reload').hidden = !networkResolved || Boolean(networkAddress);
-  for (const id of ['network-name', 'network-code', 'network-passcode', 'network-switch', 'network-resume']) $(id).disabled = entryPending;
+  for (const id of ['network-name', 'network-code', 'network-passcode', 'network-switch', 'network-resume', 'network-leave']) $(id).disabled = entryPending;
   $('network-switch').hidden = invitation;
   $('network-switch').textContent = creating ? 'Liity sittenkin ystävän huoneeseen' : 'Luo oma huone';
   const sameServer = savedNetwork?.base === networkAddress;
@@ -1197,7 +1367,7 @@ function openRoomEntry({invite = false} = {}) {
   navigationToken++; roomIntent = 'join'; invitation = invite;
   $('network-entry').hidden = false; $('network-lobby').hidden = true;
   $('network-status').textContent = !networkResolved ? 'Yhdistetään verkkopeliin…' : !networkAddress ? 'Verkkopeli ei ole käytettävissä. Voit pelata botteja vastaan.' : '';
-  $('network-local').hidden = false;
+  $('network-local').hidden = false; $('network-leave').hidden = true;
   renderRoomEntry(); openDialog('network-dialog');
 }
 async function enterLocalPlay() {
@@ -1308,7 +1478,7 @@ const handView = new HandView($('hand'), card => cardFace(card, true), (element,
   element.setAttribute('aria-label', `${suitNames[Math.floor(card / 13)]} ${cardRank(card)}${legal ? '' : ', ei sallittu tällä vuorolla'}`);
 });
 function seatInfo(seat) {
-  const nickname = seatDisplayName(networkClient?.session?.lobby?.seats.find(s => networkSeat(s.seat, networkClient.session.seat) === seat));
+  const nickname = seatDisplayName(networkClient?.session?.lobby?.seats.find(s => networkSeat(s.seat, viewSeat()) === seat));
   return seatPresentation(view, seat, nickname || seatNames[seat]);
 }
 function renderDetails() {
@@ -1320,7 +1490,7 @@ function renderDetails() {
   }
   const summary = view.startingHandSummary;
   $('hand-detail-copy').textContent = summary ?
-    `Alkukäsi: ${summary.suitLengths.map((count, suit) => `${suitNames[suit]} ${count}`).join(', ')}. HCP ${summary.highCardPoints}. HCP laskee kuvakorttipisteet: ässä 4, kuningas 3, rouva 2 ja jätkä 1.` :
+    `Alkukäsi: ${preferences.suitOrder.map(suit => `${suitNames[suit]} ${summary.suitLengths[suit]}`).join(', ')}. HCP ${summary.highCardPoints}. HCP laskee kuvakorttipisteet: ässä 4, kuningas 3, rouva 2 ja jätkä 1.` :
     'Alkukäden yhteenveto ei ole saatavilla tässä pelissä.';
 }
 
@@ -1381,15 +1551,20 @@ function render() {
     $(id).classList.toggle('sooli', view.soolaaja >= 0);
   }
   $('table').classList.toggle('revealing', revealing);
-  renderStair('our-tricks', 'SINÄ + PARI', view.tricks0);
-  renderStair('their-tricks', 'VASTUSTAJAT', view.tricks1);
+  // A spectator sees the teams by name; a player sees their own team first.
+  const teamLabels = view.watching ? [teamName([0, 2]), teamName([1, 3])].map(name => name.toUpperCase()) : ['SINÄ + PARI', 'VASTUSTAJAT'];
+  $('our-score-label').textContent = teamLabels[0]; $('their-score-label').textContent = teamLabels[1];
+  renderStair('our-tricks', teamLabels[0], view.tricks0);
+  renderStair('their-tricks', teamLabels[1], view.tricks1);
   for (let seat = 0; seat < 4; seat++) {
     const panel = $(`seat-${seat}`);
     const name = panel.querySelector('.seat-name');
     const info = seatInfo(seat);
     if (name) { name.textContent = info.name; name.setAttribute('aria-label', `${info.name}: ${info.detail}${info.active ? ' · Vuorossa' : ''}. Näytä tiedot`); }
     panel.classList.toggle('active', info.active);
-    panel.querySelector('.seat-cards').textContent = [info.count, info.position].filter(Boolean).join(' · ');
+    // A spectator sees the other seats' cards; players see how many.
+    panel.querySelector('.seat-cards').textContent = view.watching && seat ? [handText(view.tableHands[seat]), info.position].filter(Boolean).join(' · ') :
+      [info.count, info.position].filter(Boolean).join(' · ');
     panel.querySelector('.seat-shown').textContent = info.shown;
     panel.querySelector('.seat-role').textContent = info.role;
   }
@@ -1460,17 +1635,17 @@ function render() {
   const summary = view.startingHandSummary;
   $('starting-hand').hidden = !summary;
   if (summary) {
-    const lengths = summary.suitLengths.map((count, suit) => {
+    const lengths = preferences.suitOrder.map(suit => { const count = summary.suitLengths[suit];
       const item = document.createElement('span'); item.className = `suit-length suit-${suit}`;
       item.innerHTML = `<span class="summary-suit" aria-hidden="true">${suitSVG(suit)}</span>`;
       const number = document.createElement('span'); number.textContent = count; item.append(number); return item;
     });
     const points = document.createElement('span'); points.className = 'hand-points'; points.textContent = `HCP ${summary.highCardPoints}`;
     $('starting-hand').replaceChildren(...lengths, points);
-    $('starting-hand').setAttribute('aria-label', `Alkukäsi: ${summary.suitLengths.map((count, suit) => `${suitNames[suit]} ${count}`).join(', ')}, HCP ${summary.highCardPoints}`);
+    $('starting-hand').setAttribute('aria-label', `Alkukäsi: ${preferences.suitOrder.map(suit => `${suitNames[suit]} ${summary.suitLengths[suit]}`).join(', ')}, HCP ${summary.highCardPoints}`);
   }
   const allowedCards = legalCards(view, bidContract);
-  handView.render(sortedHand(view), {allowed: allowedCards});
+  handView.render(sortedHand(view, preferences.suitOrder), {allowed: allowedCards});
   layoutHand();
   let selectionInfo = selectedCard === null ? view.phase === 0 ? 'Valitse kädestä näytettävä kortti.' : 'Valitse laillinen kortti kädestä.' : `Valittu kortti: ${cardLabel(selectedCard)}`;
   if (view.phase === 0 && selectedCard !== null) {
@@ -1484,7 +1659,7 @@ function render() {
     `Pikanäppäimet: ${view.phase === 0 ? 'N NOLO · R RAMI · ' : ''}H/D/C/S maa · arvo · ←/→ valinta · Enter vahvistaa` : '';
   $('keyboard-prompt').classList.toggle('armed', Boolean(keyboard.prompt || keyboardFeedback));
   renderHistory(view.completed);
-  const result = matchSummary(view);
+  const result = view.watching ? null : matchSummary(view);
   if (result && !networkClient && lastSave) queueOfflineResult(lastSave);
   // The request waits for the room's lock, which the server holds until it has credited this match.
   if (result && networkClient && !matchEndCounted) { matchEndCounted = true; refreshLeaderboard(true); }
@@ -1499,24 +1674,31 @@ function render() {
   }
   announceTurn();
 }
-// Anonymous offline results (Settings › Tutkimus, on unless turned off): queued
-// on this device and sent to this site's server when it accepts them.
-const resultsKey = 'tuppi.results.v1';
-function resultsQueue() {
-  try { const value = JSON.parse(globalThis.localStorage?.getItem(resultsKey) ?? 'null');
-    return {pending: Array.isArray(value?.pending) ? value.pending.slice(-20) : [], sent: Array.isArray(value?.sent) ? value.sent.slice(-100) : []}; }
+// Anonymous offline results and match records (Settings › Tutkimus, on unless
+// turned off): queued on this device and sent to this site's server when it
+// accepts them. A record holds every card and move (about 3 KB a deal), so
+// fewer wait at a time.
+const resultsKey = 'tuppi.results.v1', recordsKey = 'tuppi.matchrecords.v1';
+const outboxes = [{key: resultsKey, path: '/v1/results', keep: 20}, {key: recordsKey, path: '/v1/research/matches', keep: 5}];
+function resultsQueue(key = resultsKey) {
+  const keep = outboxes.find(box => box.key === key).keep;
+  try { const value = JSON.parse(globalThis.localStorage?.getItem(key) ?? 'null');
+    return {pending: Array.isArray(value?.pending) ? value.pending.slice(-keep) : [], sent: Array.isArray(value?.sent) ? value.sent.slice(-100) : []}; }
   catch { return {pending: [], sent: []}; }
 }
-function storeResults(queue) { try { globalThis.localStorage?.setItem(resultsKey, JSON.stringify(queue)); } catch {} }
+function storeResults(queue, key = resultsKey) { try { globalThis.localStorage?.setItem(key, JSON.stringify(queue)); } catch {} }
 let reportedResult = null, resultsSending = false;
 async function queueOfflineResult(save) {
   if (!preferences.shareResults) return;
   const report = await offlineResultReport(save).catch(() => null);
   if (!report || report.id === reportedResult) return;
   reportedResult = report.id;
-  const queue = resultsQueue();
-  if (!queue.sent.includes(report.id) && !queue.pending.some(item => item.id === report.id)) {
-    queue.pending.push(report); storeResults(queue);
+  const record = await offlineMatchRecord(save).catch(() => null);
+  for (const [key, item] of [[resultsKey, report], [recordsKey, record]]) {
+    const queue = resultsQueue(key);
+    if (item && !queue.sent.includes(item.id) && !queue.pending.some(waiting => waiting.id === item.id)) {
+      queue.pending.push(item); storeResults(queue, key);
+    }
   }
   sendOfflineResults();
 }
@@ -1524,17 +1706,19 @@ async function sendOfflineResults() {
   if (resultsSending || !networkAddress || !preferences.shareResults) return;
   resultsSending = true;
   try {
-    for (const report of resultsQueue().pending) {
-      let status;
-      try {
-        status = (await fetch(new URL('/v1/results', networkAddress), {method: 'POST', cache: 'no-store', credentials: 'same-origin',
-          headers: {'Content-Type': 'application/json'}, body: JSON.stringify(report)})).status;
-      } catch { break; }  // offline: try again later
-      if (status === 429 || status >= 500) break;
-      const queue = resultsQueue();  // sent (200) or refused (4xx, e.g. an older server): never retried
-      queue.pending = queue.pending.filter(item => item.id !== report.id);
-      if (status === 200) queue.sent.push(report.id);
-      storeResults(queue);
+    for (const {key, path} of outboxes) {
+      for (const report of resultsQueue(key).pending) {
+        let status;
+        try {
+          status = (await fetch(new URL(path, networkAddress), {method: 'POST', cache: 'no-store', credentials: 'same-origin',
+            headers: {'Content-Type': 'application/json'}, body: JSON.stringify(report)})).status;
+        } catch { return; }  // offline: try again later
+        if (status === 429 || status >= 500) break;
+        const queue = resultsQueue(key);  // sent (200) or refused (4xx, e.g. an older server): never retried
+        queue.pending = queue.pending.filter(item => item.id !== report.id);
+        if (status === 200) queue.sent.push(report.id);
+        storeResults(queue, key);
+      }
     }
   } finally { resultsSending = false; }
 }
@@ -1651,7 +1835,7 @@ document.addEventListener('keydown', event => {
     event.preventDefault(); submitSelected(); return;
   }
   if (['ArrowLeft', 'ArrowRight'].includes(event.key)) {
-    const card = keyboard.adjacent(selectedCard, event.key === 'ArrowLeft' ? -1 : 1, view, bidContract);
+    const card = keyboard.adjacent(selectedCard, event.key === 'ArrowLeft' ? -1 : 1, view, bidContract, preferences.suitOrder);
     if (card === null) return;
     selectedCard = card; keyboardFeedback = `Näppäimistö: valittu ${cardLabel(card)}. Enter vahvistaa.`;
   } else {
@@ -1890,7 +2074,7 @@ function openAnalysis(deal) {
   if (!request) return;
   $('analysis-title').textContent = `Jaon ${deal.index + 1} analyysi`;
   // Everyone's dealt hand, on request; available before the analysis finishes.
-  $('analysis-hands').replaceChildren(...dealHands(request.deal, request.seat).map(hand => {
+  $('analysis-hands').replaceChildren(...dealHands(request.deal, request.seat, preferences.suitOrder).map(hand => {
     const row = document.createElement('div'), name = document.createElement('strong'), cards = document.createElement('span');
     row.className = 'analysis-hand'; name.textContent = `${hand.label} · ${hand.highCardPoints} HCP`; cards.textContent = hand.text;
     row.append(name, cards); return row;
@@ -2048,7 +2232,7 @@ function renderConnection() {
     restarting: 'Palvelin päivittyy · peli jatkuu hetken kuluttua…',
     authentication: 'Kirjautuminen tarvitsee vahvistuksen · huoneesi säilyy',
     failed: 'Yhteys tarvitsee huomiota', superseded: 'Paikkasi on avoinna toisessa välilehdessä',
-    released: 'Huoneen luoja vapautti paikkasi'};
+    released: 'Huoneen luoja vapautti paikkasi', left: 'Poistuit huoneesta', closed: 'Huone suljettiin'};
   const phase = connectionState.phase;
   $('network-connection').hidden = !networkEnabled || phase === 'local';
   $('connection-label').textContent = labels[phase] || 'Yhdistetään…';
@@ -2120,7 +2304,7 @@ function previousMatchesText(lobby, seat) {
 }
 function showNetworkLobby(lobby) {
   if (!lobby) return;
-  const model = lobbyPresentation(lobby, networkClient?.session.seat ?? 0), playing = model.playing;
+  const spectator = watching(), model = lobbyPresentation(lobby, viewSeat(), {watching: spectator}), playing = model.playing;
   if (!playing && view && networkClient) {
     // A rematch reopened the room: leave the finished table for the lobby.
     cancelReveal(); networkRevealDeal = null; view = null; selectedCard = null; keyboard.reset(); awaitingNetworkGame = true; render();
@@ -2130,12 +2314,30 @@ function showNetworkLobby(lobby) {
   const previous = previousMatchesText(lobby, networkClient?.session.seat ?? 0);
   $('network-previous').hidden = !previous; $('network-previous').textContent = previous ? `Aiemmat ottelut tässä huoneessa: ${previous}` : '';
   $('network-entry').hidden = true; $('network-lobby').hidden = false; $('network-local').hidden = false;
+  $('network-leave').hidden = !networkClient?.session; $('network-leave').disabled = entryPending;
   $('network-title').textContent = 'Pelihuone';
   $('network-dialog').dataset.stage = 'lobby';
   $('network-room').textContent = lobby.match_number ? `Huone ${lobby.room_code} · ottelu ${lobby.match_number}` : `Huone ${lobby.room_code}`;
   const available = Boolean(networkClient?.connected && !networkClient.authRequired);
   const configuring = Boolean(networkClient?.configuring);
-  lobbyView.render(model, {host: networkClient?.session.host, connected: available, configuring, features: networkClient?.features, lobby});
+  lobbyView.render(model, {host: networkClient?.session.host, connected: available, configuring, features: networkClient?.features, lobby,
+    watching: spectator});
+  $('network-our-label').textContent = spectator ? teamName([0, 2]) : 'Sinä ja parisi';
+  $('network-their-label').textContent = spectator ? teamName([1, 3]) : 'Vastustajat';
+  // Who is watching (feature watch); a spectator chooses the viewpoint and may take a free seat.
+  $('network-watchers').hidden = !lobby.watchers?.length;
+  $('network-watchers').textContent = lobby.watchers?.length ? `Katsomassa: ${lobby.watchers.join(', ')}` : '';
+  $('network-viewpoint-row').hidden = !spectator;
+  if (spectator) {
+    $('network-viewpoint').replaceChildren(...[0, 1, 2, 3].map(seat => {
+      const option = document.createElement('option'); option.value = String(seat);
+      option.textContent = seatDisplayName(lobby.seats.find(item => item.seat === seat)) || 'Vapaa paikka'; return option;
+    }));
+    $('network-viewpoint').value = String(viewSeat());
+  }
+  $('network-take-seat').hidden = !spectator || !takeableSeats(lobby).length;
+  $('network-take-seat').disabled = !available;
+  $('network-leave').textContent = spectator ? 'Lopeta katsominen' : 'Poistu huoneesta';
   if (lobbyRoom === lobby.room_code && lobbyConfiguration && lobbyConfiguration !== model.configuration && !playing) {
     $('network-changed').textContent = 'Paikkajako muuttui. Vahvistakaa valmius uudelleen.';
   }
@@ -2145,12 +2347,12 @@ function showNetworkLobby(lobby) {
   $('network-readiness').textContent = configuring ? 'Päivitetään huonetta…' : model.readyText;
   $('network-fill').hidden = $('network-open').hidden = !networkClient?.session.host || playing;
   $('network-fill').disabled = $('network-open').disabled = !available || configuring;
-  $('network-ready').hidden = playing;
+  $('network-ready').hidden = playing || spectator;
   $('network-ready').disabled = !available || configuring || model.open > 0 || model.ownReady;
   $('network-ready').textContent = model.ownReady ? 'Olet valmis' : 'Olen valmis';
-  $('network-seat-guide').hidden = !networkClient?.session.host || playing || model.humans > 1;
+  $('network-seat-guide').hidden = !networkClient?.session.host || playing || model.humans > 1 || spectator;
   $('network-invite').value = invitationURL(location.href, lobby.room_code);
-  if (playing && screen === 'game') $('mode-label').textContent = `· Verkkopeli ${lobby.room_code}`;
+  if (playing && screen === 'game') $('mode-label').textContent = spectator ? `· Katsot huonetta ${lobby.room_code}` : `· Verkkopeli ${lobby.room_code}`;
 }
 // The room-creation passcode field appears only when this host asks for it.
 async function showPasscodeIfRequired() {
@@ -2176,20 +2378,29 @@ async function startNetwork(command) {
   if (!networkEnabled || entryPending || navigationPending) return;
   if (!writeAccess || !networkAddress) { $('network-status').textContent = 'Verkkopeli ei ole vielä valmis. Yritä hetken kuluttua.'; return; }
   if (command === 'resume' && (!savedNetwork || savedNetwork.base !== networkAddress)) return;
-  if (command === 'join') {
+  if (command === 'join' || command === 'watch') {
     try { $('network-code').value = roomCodeFromInput($('network-code').value, location.href); }
     catch (error) { $('network-status').textContent = error.message; $('network-code').focus?.(); return; }
     // Feature seat_choice: with more than one free seat, the player picks one first.
-    if (chosenSeat === undefined) {
+    if (command === 'join' && chosenSeat === undefined) {
       // Repeated submits wait here too: one preview, then at most one join.
       entryPending = true; renderRoomEntry();
-      let seats = null;
-      try { seats = await new NetworkSession().seatPreview(networkAddress, $('network-code').value).catch(() => null); }
+      let preview = null;
+      try { preview = await new NetworkSession().seatPreview(networkAddress, $('network-code').value).catch(() => null); }
       finally { entryPending = false; }
-      const choices = seats ? seatChoices(seats) : [];
+      const choices = preview ? seatChoices(preview.seats, preview.hostSeat) : [];
       if (choices.length > 1) { renderRoomEntry(); showSeatChoice(choices); return; }
       chosenSeat = choices.length === 1 ? choices[0].seat : null;
     }
+  }
+  // Another room this app still holds a seat in: leave it first (or resume it).
+  const held = networkClient?.session ?? savedNetwork;
+  if (command !== 'resume' && held && !held.released) {
+    if (['join', 'watch'].includes(command) && held.room_code === $('network-code').value && held.base === networkAddress) {
+      chosenSeat = undefined; $('network-seat-choice').hidden = true;
+      return startNetwork('resume');
+    }
+    if (!await leaveRoom({switching: true})) return;
   }
   const joinSeat = chosenSeat ?? null; chosenSeat = undefined; $('network-seat-choice').hidden = true;
   entryPending = true; awaitingNetworkGame = true; navigationToken++; renderRoomEntry(); renderHome();
@@ -2216,6 +2427,7 @@ async function startNetwork(command) {
     // the background; it is used after Tuppi is closed and opened again.
     onReconnect: () => { offline.checkForUpdate(); },
     onLobby: showNetworkLobby,
+    onChat: receiveChat,
     onStatus: (message, error) => {
       $('network-status').textContent = message; status(message, error);
       busy = !networkClient.connected || Boolean(networkClient.session?.pending);
@@ -2231,7 +2443,7 @@ async function startNetwork(command) {
       if (reveal) networkRevealDeal = next.dealNumber;
       next.revealing = Boolean(reveal || (revealFrame && old?.dealNumber === next.dealNumber));
       view = next; busy = !networkClient.connected || Boolean(networkClient.session.pending);
-      if (awaitingNetworkGame) { awaitingNetworkGame = false; showGame(); $('network-dialog').close(); }
+      if (awaitingNetworkGame) { awaitingNetworkGame = false; chatReturn = null; showGame(); $('network-dialog').close(); }
       if (!next.waitingHuman || old?.phase !== next.phase || old?.dealNumber !== next.dealNumber) { selectedCard = null; keyboard.reset(); }
       if (reveal) startReveal(); else render();
     }});
@@ -2244,12 +2456,14 @@ async function startNetwork(command) {
       if (command === 'create') {
         await networkClient.create(networkAddress, nickname, ($('network-passcode').value ?? '').trim());
         $('network-passcode').value = '';
-      } else await networkClient.join(networkAddress, $('network-code').value, nickname, joinSeat);
+      } else if (command === 'watch') await networkClient.watch(networkAddress, $('network-code').value, nickname);
+      else await networkClient.join(networkAddress, $('network-code').value, nickname, joinSeat);
     }
   } catch (error) {
     networkClient.close(); networkClient = null;
     if (connectionState.phase !== 'authentication') connectionState = {phase: 'failed'};
     renderConnection(); $('network-resume').hidden = !savedNetwork || savedNetwork.base !== networkAddress;
+    $('network-leave').hidden = !savedNetwork || savedNetwork.released;
     $('network-status').textContent = error.message; $('network-entry').hidden = false; $('network-lobby').hidden = true;
     if (['room_passcode_required', 'invalid_room_passcode'].includes(error.code)) {
       passcodeRequired = true; roomIntent = 'create';
@@ -2258,6 +2472,119 @@ async function startNetwork(command) {
   } finally {
     entryPending = false; renderRoomEntry(); renderHome();
   }
+}
+// Leave the room for good: in the lobby the seat is freed; during a match a
+// bot plays it until someone joins it, and the next player hosts if the host
+// leaves. With an older server, or one that cannot be reached, the room is
+// only forgotten here. `switching`: before joining or creating another room.
+// Returns whether the room was left.
+async function leaveRoom({switching = false, ask = true} = {}) {
+  const session = networkClient?.session ?? savedNetwork;
+  if (!session || session.released) return true;
+  const client = networkClient?.session ? networkClient : Object.assign(new NetworkSession({persist: storeNetwork}),
+    {session: structuredClone(session)});
+  const lobby = session.lobby, seats = lobby?.seats ?? [];
+  const people = seats.filter(seat => seat.kind === 'human' || seat.covering).length;
+  const playing = lobby?.lifecycle === 'playing';
+  const known = client.features.size ? client.features.has('leave_seat') : true;
+  const consequence = !known ? ' Paikkasi jää huoneeseen, kunnes huoneen luoja vapauttaa sen.' :
+    people <= 1 ? ' Olet huoneen ainoa pelaaja, joten huone suljetaan.' :
+    (playing ? ' Botti pelaa paikkasi, ja huonekoodin saanut voi liittyä siihen seuraavasta jaosta alkaen.' : ' Paikkasi vapautuu muille.') +
+    (session.host ? ' Toinen pelaaja tulee huoneen luojaksi.' : '');
+  const question = session.watching ? (switching ? `Lopetetaanko huoneen ${session.room_code} katsominen?` : null) :
+    `${switching ? `Olet vielä huoneessa ${session.room_code}. Poistutaanko siitä?` : `Poistutaanko huoneesta ${session.room_code}?`}${consequence}`;
+  if (ask && question && globalThis.confirm && !globalThis.confirm(question)) return false;
+  entryPending = true; renderRoomEntry();
+  try {
+    try { await client.leave(); }
+    catch (error) {
+      if (globalThis.confirm && !globalThis.confirm(`Poistuminen ei onnistunut: ${error.message} Unohdetaanko huone ${session.room_code} tältä laitteelta?`)) return false;
+      await client.leave({forget: true});
+    }
+  } finally { entryPending = false; }
+  if (networkClient === client) {
+    networkClient = null; busy = false;
+    cancelReveal(); networkRevealDeal = null; view = null; selectedCard = null; keyboard.reset();
+    lobbyConfiguration = null; lobbyRoom = null;
+  }
+  savedNetwork = null; connectionState = {phase: 'local'}; renderConnection();
+  if (!switching) {
+    showHome(); openRoomEntry();
+    $('network-status').textContent = session.watching ? `Lopetit huoneen ${session.room_code} katsomisen.` :
+      `Poistuit huoneesta ${session.room_code}. Liity toiseen huoneeseen tai luo uusi.`;
+  }
+  renderRoomEntry(); renderHome();
+  return true;
+}
+// Watching (feature watch): the table is seen from a chosen seat.
+function watching() { return Boolean(networkClient?.session?.watching); }
+function viewSeat() { return watching() ? networkClient.session.viewpoint ?? 0 : networkClient?.session?.seat ?? 0; }
+// Two players' names, e.g. for a team seen by a spectator.
+function teamName(positions) {
+  const seats = networkClient?.session?.lobby?.seats ?? [];
+  return positions.map(position => seatDisplayName(seats.find(s => networkSeat(s.seat, viewSeat()) === position)) || 'Botti').join(' + ');
+}
+// Another seat's cards as text by suit, in the player's suit order (spectators).
+function handText(cards) {
+  return preferences.suitOrder.map(suit => {
+    const ranks = cards.filter(card => Math.floor(card / 13) === suit).sort((a, b) => b - a).map(cardRank);
+    return ranks.length ? `${suits[suit]} ${ranks.join(' ')}` : '';
+  }).filter(Boolean).join('  ') || '–';
+}
+// Room chat (feature chat): one list for everyone in the room, in the lobby
+// and during play. Messages are shown as text only and kept in memory.
+function chatAvailable() {
+  return Boolean(networkEnabled && networkClient?.session && networkClient.features.has('chat'));
+}
+function renderChatButtons() {
+  const label = chatUnread ? `Viestit (${chatUnread})` : 'Viestit';
+  for (const id of ['chat-toggle', 'network-chat']) {
+    $(id).hidden = !chatAvailable(); $(id).textContent = label;
+    $(id).setAttribute('aria-label', chatUnread ? `Viestit, ${chatUnread} lukematonta` : 'Viestit');
+  }
+  if (!chatAvailable()) {
+    $('chat-toast').hidden = true;
+    if ($('chat').open) { chatReturn = null; $('chat').close(); }
+  }
+}
+// Your own message: from your seat, or as a spectator (no seat) under your name.
+function ownChat(message) {
+  const session = networkClient?.session;
+  return session?.watching ? message.seat === null && message.display_name === session.display_name : message.seat === session?.seat;
+}
+function renderChat() {
+  $('chat-list').replaceChildren(...chatMessages.map(message => {
+    const item = document.createElement('li'), name = document.createElement('strong'),
+      time = document.createElement('time'), text = document.createElement('span');
+    item.className = 'chat-item'; item.dataset.own = String(ownChat(message));
+    name.textContent = ownChat(message) ? `${message.display_name} (sinä)` : message.seat === null ? `${message.display_name} (katsoja)` : message.display_name;
+    const sent = new Date(message.sent_at * 1000);
+    time.textContent = sent.toLocaleTimeString('fi-FI', {hour: '2-digit', minute: '2-digit'});
+    time.setAttribute('datetime', sent.toISOString());
+    text.textContent = message.text; item.append(name, time, text); return item;
+  }));
+  $('chat-empty').hidden = chatMessages.length > 0;
+  const list = $('chat-list'); list.scrollTop = list.scrollHeight;
+  $('chat-send').disabled = !networkClient?.connected;
+}
+function receiveChat(messages, latest, refused) {
+  chatMessages = messages;
+  if (refused) $('chat-status').textContent = refused;
+  if (latest && !ownChat(latest) && !$('chat').open) {
+    chatUnread++;
+    // A short notice, so a message is seen without opening the chat.
+    $('chat-toast-open').textContent = `${latest.display_name}: ${latest.text}`;
+    $('chat-toast').hidden = false;
+    clearTimeout(chatToastTimer); chatToastTimer = setTimeout(() => { $('chat-toast').hidden = true; }, 6000);
+  }
+  if (!messages.length) chatUnread = 0;
+  renderChat(); renderChatButtons();
+}
+function openChat() {
+  if (!chatAvailable()) return;
+  chatReturn = document.querySelector('dialog[open]') === $('network-dialog') ? 'network-dialog' : null;
+  chatUnread = 0; $('chat-toast').hidden = true; $('chat-status').textContent = '';
+  renderChat(); renderChatButtons(); openDialog('chat'); $('chat-input').focus?.();
 }
 async function returnToLocal() {
   const session = networkClient?.session ?? savedNetwork;
@@ -2288,7 +2615,33 @@ $('home-online').onclick = async () => {
     if (savedNetwork?.active && savedNetwork.base === networkAddress) await startNetwork('resume');
   }
 };
+$('home-online-other').onclick = () => {
+  if (!entryReady || !networkEnabled || entryPending || navigationPending) return;
+  openRoomEntry();
+};
+$('network-leave').onclick = () => leaveRoom().catch(networkFailure);
+$('network-watch').onclick = () => startNetwork('watch');
+$('network-viewpoint').onchange = () => networkClient?.setViewpoint(Number($('network-viewpoint').value));
+// A spectator takes a free seat: stop watching, then join (choosing the seat if several are free).
+$('network-take-seat').onclick = async () => {
+  const code = networkClient?.session?.room_code;
+  if (!code || !watching() || !await leaveRoom({switching: true, ask: false}).catch(error => { networkFailure(error); return false; })) return;
+  showHome(); openRoomEntry(); $('network-code').value = code; await startNetwork('join');
+};
 $('home-retry').onclick = () => location.reload();
+$('chat-toggle').onclick = openChat;
+$('network-chat').onclick = openChat;
+$('chat-toast-open').onclick = openChat;
+$('close-chat').onclick = () => $('chat').close();
+$('chat').onclose = () => {
+  const back = chatReturn; chatReturn = null;
+  if (back && networkClient?.session && !document.querySelector('dialog[open]')) openDialog(back);
+};
+$('chat-form').onsubmit = event => {
+  event.preventDefault();
+  if (networkClient?.sendChat($('chat-input').value)) { $('chat-input').value = ''; $('chat-status').textContent = ''; }
+  else if ($('chat-input').value.trim()) $('chat-status').textContent = 'Viestiä ei voitu lähettää. Odota, että yhteys palautuu.';
+};
 $('network-reload').onclick = async () => {
   networkResolved = false; $('network-reload').hidden = true; $('network-status').textContent = 'Yhdistetään verkkopeliin…';
   networkAddress = await readNetworkConfiguration(); networkResolved = true; renderHome(); renderRoomEntry();
@@ -2302,8 +2655,42 @@ $('share-results').checked = preferences.shareResults;
 $('share-results').onchange = () => {
   preferences = savePreferences({...preferences, shareResults: Boolean($('share-results').checked)});
   if (preferences.shareResults) sendOfflineResults();
-  else storeResults({pending: [], sent: resultsQueue().sent});
+  else for (const {key} of outboxes) storeResults({pending: [], sent: resultsQueue(key).sent}, key);
 };
+// The suits in the hand from left to right (Settings › Kortit), saved on this
+// device; online and offline alike. Ranks always rise left to right.
+function renderSuitOrder() {
+  const order = preferences.suitOrder;
+  $('suit-order').replaceChildren(...order.map((suit, index) => {
+    const item = document.createElement('li'); item.className = `suit-order-item suit-${suit}`;
+    const symbol = document.createElement('span'); symbol.className = 'summary-suit'; symbol.setAttribute('aria-hidden', 'true'); symbol.innerHTML = suitSVG(suit);
+    const name = document.createElement('span'); name.className = 'suit-order-name';
+    name.textContent = suitNames[suit][0].toUpperCase() + suitNames[suit].slice(1);
+    const move = (by, text, where) => {
+      const button = document.createElement('button'); button.type = 'button'; button.textContent = text;
+      button.disabled = index + by < 0 || index + by > 3;
+      button.setAttribute('aria-label', `Siirrä ${suitNames[suit]} ${where}`);
+      button.onclick = () => moveSuit(index, by); return button;
+    };
+    item.append(symbol, name, move(-1, '↑', 'vasemmalle'), move(1, '↓', 'oikealle')); return item;
+  }));
+  $('suit-order-reset').disabled = order.join() === '0,1,2,3';
+}
+function setSuitOrder(order) {
+  preferences = savePreferences({...preferences, suitOrder: order});
+  renderSuitOrder(); keyboard.reset();
+  if (view) render();
+}
+function moveSuit(index, by) {
+  const order = [...preferences.suitOrder];
+  [order[index], order[index + by]] = [order[index + by], order[index]];
+  setSuitOrder(order);
+  // Keep the keyboard on the moved suit's same arrow while it can move further.
+  const row = $('suit-order').children[index + by], button = row?.children[by < 0 ? 2 : 3];
+  (button?.disabled ? row?.children[by < 0 ? 3 : 2] : button)?.focus?.();
+}
+$('suit-order-reset').onclick = () => setSuitOrder([0, 1, 2, 3]);
+renderSuitOrder();
 $('turn-sound').onchange = () => {
   preferences = savePreferences({...preferences, turnSound: Boolean($('turn-sound').checked)});
   if (preferences.turnSound) enableTurnAudio();
@@ -2311,7 +2698,8 @@ $('turn-sound').onchange = () => {
 addEventListener('pointerdown', () => { if (preferences.turnSound && !turnAudio) enableTurnAudio(); }, {once: true});
 $('network-name').onchange = () => { preferences = savePreferences({...preferences, nickname: $('network-name').value}); };
 $('close-network').onclick = () => $('network-dialog').close();
-$('network-dialog').onclose = () => { if (screen === 'home') awaitingNetworkGame = false; };
+// Opening the chat from the room dialog keeps waiting for the match to start.
+$('network-dialog').onclose = () => { if (screen === 'home' && chatReturn !== 'network-dialog') awaitingNetworkGame = false; };
 $('network-form').onsubmit = event => { event.preventDefault(); return startNetwork(roomIntent); };
 $('network-resume').onclick = () => startNetwork('resume');
 $('network-switch').onclick = async () => {

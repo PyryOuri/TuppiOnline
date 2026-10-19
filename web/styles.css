@@ -191,6 +191,21 @@ button.card:hover:enabled { background: var(--card-paper); border-color: #87959f
 .summary-suit { width: 12px; height: 12px; }
 .summary-suit svg { width: 100%; height: 100%; display: block; }
 .suit-0 .summary-suit, .suit-1 .summary-suit { color: #ff3b30; }
+.chat-list { list-style: none; margin: 0 0 12px; padding: 0; max-height: min(50dvh, 420px); overflow-y: auto; }
+.chat-item { padding: 6px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.chat-item strong { margin-right: 6px; }
+.chat-item time { color: var(--muted, #5f6b63); font-size: 12px; margin-right: 6px; }
+.chat-item[data-own="true"] strong { color: var(--nolo); }
+.chat-form { display: flex; gap: 8px; }
+.chat-form input { flex: 1; min-width: 0; font: inherit; font-size: 16px; padding: 10px 12px; border: 1px solid var(--line, #d0d8d2); border-radius: 8px; }
+.chat-toast { position: fixed; z-index: 20; top: 64px; left: 50%; transform: translateX(-50%); max-width: min(560px, calc(100vw - 32px)); }
+.chat-toast button { width: 100%; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-shadow: 0 4px 16px #0003; }
+.suit-order { list-style: none; margin: 0 0 12px; padding: 0; border: 1px solid var(--line); border-radius: 9px; }
+.suit-order-item { display: flex; align-items: center; gap: 10px; padding: 4px 8px 4px 12px; }
+.suit-order-item + .suit-order-item { border-top: 1px solid var(--line); }
+.suit-order-item .summary-suit { width: 20px; height: 20px; flex: none; }
+.suit-order-name { flex: 1; }
+.suit-order-item button { min-width: 44px; min-height: 44px; }
 .hand-points { border-left: 1px solid #00000026; padding-left: 10px; }
 .hand-scroll { overflow-x: auto; padding: 10px 4px 8px; margin: 0 -4px; }
 .hand { position: relative; height: 100px; }
@@ -304,7 +319,8 @@ dialog > p { line-height: 1.6; }
 #network-seats { padding-left: 1.2rem; line-height: 1.8; }
 #network-seats button { margin-left: 10px; }
 #network-dialog .controls { flex-wrap: wrap; }
-#network-local { margin-top: 12px; }
+#network-dialog .network-exits { margin-top: 12px; gap: 4px 12px; }
+#home-online-other { margin-top: 4px; }
 .connection-strip { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 12px; font-size: 12px; color: var(--nolo); background: #f6f9f6; border-bottom: 1px solid #0001; }
 .connection-strip[data-phase="reconnecting"], .connection-strip[data-phase="authentication"], .connection-strip[data-phase="failed"] { color: var(--amber-text); }
 .connection-strip button { margin-left: auto; }

@@ -26,6 +26,10 @@ LEGACY_ROOM_RECORD_SCHEMA_VERSION = "tuppi.server.room_record.v1"
 #: match_index, paused and previous_matches. Other rooms keep writing v2/v3,
 #: so an earlier server can still read them.
 MULTI_MATCH_ROOM_RECORD_SCHEMA_VERSION = "tuppi.server.room_record.v4"
+#: A room whose host left (another player hosts) or a seat a player left
+#: during a match: v4 plus open_seats and handover_seats, and any seat may
+#: host or be a bot. Other rooms keep writing v2-v4.
+OPEN_SEATS_ROOM_RECORD_SCHEMA_VERSION = "tuppi.server.room_record.v5"
 POST_MATCH_ANALYSIS_RECORD_SCHEMA_VERSION = (
     "tuppi.server.post_match_analysis_record.v1"
 )
@@ -57,6 +61,7 @@ class FileRoomStore:
             ROOM_RECORD_SCHEMA_VERSION,
             RULESET_ROOM_RECORD_SCHEMA_VERSION,
             MULTI_MATCH_ROOM_RECORD_SCHEMA_VERSION,
+            OPEN_SEATS_ROOM_RECORD_SCHEMA_VERSION,
         ):
             raise PersistenceError("unsupported room record schema_version")
         try:
@@ -78,6 +83,24 @@ class FileRoomStore:
             os.fsync(descriptor)
         finally:
             os.close(descriptor)
+
+    def archive_room(self, room_code: str) -> None:
+        """Move a room's record to the archive (``expired/``) and drop its
+        analysis caches, which would otherwise have no room on reload."""
+
+        if _ROOM_CODE.fullmatch(room_code) is None:
+            raise PersistenceError("room_code is invalid")
+        source = self.root / f"room-{room_code}.json"
+        if source.is_symlink():
+            raise PersistenceError("invalid private room file")
+        try:
+            if source.exists():
+                archive = self.root / "expired"
+                archive.mkdir(mode=0o700, exist_ok=True)
+                source.rename(archive / f"room-{room_code}-{time.time_ns()}.json")
+        except OSError as exc:
+            raise PersistenceError(f"cannot archive room {room_code}") from exc
+        self.discard_match_analyses(room_code)
 
     def remove_stale_temporaries(self) -> int:
         """Delete half-written records left by a crash. Startup only (one writer)."""

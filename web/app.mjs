@@ -2,12 +2,13 @@ import {store, envelope, unwrap, storageHealth, readLocalRecord} from './storage
 import {loadNetwork, storeNetwork} from './storage.mjs';
 import {NetworkSession, networkBase, networkSeat, networkDealForAnalysis} from './network.mjs';
 import {OfflineSetup, packagedRuntimeIdentity} from './offline.mjs';
-import {seatNames, suitNames, suitSVG, cardRank, cardLabel, cardAction, legalCards, sortedHand,
+import {seatNames, suits, suitNames, suitSVG, cardRank, cardLabel, cardAction, legalCards, sortedHand,
   TableKeyboardSelection, bidRevealFrame, revealTiming} from './table.mjs';
 import {HandView} from './hand.mjs';
-import {seatPresentation, matchSummary, offlineResultReport, analysisPresentation, dealHands} from './presentation.mjs';
+import {seatPresentation, matchSummary, offlineResultReport, offlineMatchRecord, analysisPresentation, dealHands} from './presentation.mjs';
 import {networkEnabled} from './capabilities.mjs';
-import {LobbyView, lobbyPresentation, invitationURL, roomCodeFromInput, standInActions, seatDisplayName, seatChoices} from './lobby.mjs';
+import {LobbyView, lobbyPresentation, invitationURL, roomCodeFromInput, standInActions, seatDisplayName, seatChoices,
+  takeableSeats, watcherSeatNames} from './lobby.mjs';
 import {loadPreferences, savePreferences} from './preferences.mjs';
 
 const $ = id => document.getElementById(id);
@@ -29,6 +30,9 @@ let networkClient = null, savedNetwork = null, networkAddress = null, offlineSta
 let screen = 'home', entryReady = false, networkResolved = false, navigationPending = false, navigationToken = 0;
 let roomIntent = 'join', invitation = false, entryPending = false, passcodeRequired = null, passcodeCheck = null;
 let awaitingNetworkGame = false;
+// Room chat (feature chat): messages from the network session, unread count
+// while the chat is closed, and the dialog to return to when it closes.
+let chatMessages = [], chatUnread = 0, chatReturn = null, chatToastTimer = null;
 const networkEntry = (() => { try { return new URL(globalThis.location.href).searchParams; } catch { return new URLSearchParams(); } })();
 const startsOnline = networkEnabled && (networkEntry.get('play') === 'online' || networkEntry.has('room'));
 async function readNetworkConfiguration() {
@@ -84,15 +88,20 @@ function renderHome() {
   const session = networkClient?.session ?? savedNetwork;
   $('home-friends').hidden = !networkEnabled;
   $('home-online').disabled = !entryReady || !writeAccess || navigationPending || entryPending;
-  $('home-online').textContent = session?.active && session.base === networkAddress ? `Jatka huoneessa ${session.room_code}` : 'Pelaa verkossa';
+  const resumable = Boolean(session?.active && !session.released && session.base === networkAddress);
+  $('home-online').textContent = resumable ? `Jatka huoneessa ${session.room_code}` : 'Pelaa verkossa';
+  $('home-online-other').hidden = !networkEnabled || !resumable;
+  $('home-online-other').disabled = $('home-online').disabled;
   $('home-local').disabled = !entryReady || !writeAccess || !localReadable || changingLocal || navigationPending || entryPending;
   $('home-local').textContent = lastSave || (worker && !networkClient) ? 'Jatka omaa peliä' : 'Pelaa botteja vastaan';
   $('home-local-copy').textContent = lastSave ? 'Tallennettu ottelusi jatkuu siitä, mihin jäit.' : 'Pelaa omaan tahtiin. Ottelu tallentuu tälle laitteelle.';
   $('network-toggle').hidden = !networkEnabled || !networkClient?.session;
+  renderChatButtons();
 }
 function showGame() {
   screen = 'game'; $('home').hidden = true; $('game').hidden = $('game-footer').hidden = false;
-  $('mode-label').textContent = networkClient?.session ? `· Verkkopeli ${networkClient.session.room_code}` : '· Paikallinen peli';
+  $('mode-label').textContent = !networkClient?.session ? '· Paikallinen peli' :
+    `· ${networkClient.session.watching ? 'Katsot huonetta' : 'Verkkopeli'} ${networkClient.session.room_code}`;
 }
 function showHome() {
   navigationToken++; awaitingNetworkGame = false;
@@ -114,8 +123,10 @@ function renderRoomEntry() {
   $('network-passcode-row').hidden = !creating || passcodeRequired === false;
   $('network-submit').textContent = entryPending ? 'Yhdistetään…' : creating ? 'Luo huone' : 'Liity huoneeseen';
   $('network-submit').disabled = !entryReady || !writeAccess || !networkAddress || entryPending;
+  // Watching (feature watch) is offered next to joining; a server without it refuses.
+  $('network-watch').hidden = creating || !networkAddress; $('network-watch').disabled = $('network-submit').disabled;
   $('network-reload').hidden = !networkResolved || Boolean(networkAddress);
-  for (const id of ['network-name', 'network-code', 'network-passcode', 'network-switch', 'network-resume']) $(id).disabled = entryPending;
+  for (const id of ['network-name', 'network-code', 'network-passcode', 'network-switch', 'network-resume', 'network-leave']) $(id).disabled = entryPending;
   $('network-switch').hidden = invitation;
   $('network-switch').textContent = creating ? 'Liity sittenkin ystävän huoneeseen' : 'Luo oma huone';
   const sameServer = savedNetwork?.base === networkAddress;
@@ -126,7 +137,7 @@ function openRoomEntry({invite = false} = {}) {
   navigationToken++; roomIntent = 'join'; invitation = invite;
   $('network-entry').hidden = false; $('network-lobby').hidden = true;
   $('network-status').textContent = !networkResolved ? 'Yhdistetään verkkopeliin…' : !networkAddress ? 'Verkkopeli ei ole käytettävissä. Voit pelata botteja vastaan.' : '';
-  $('network-local').hidden = false;
+  $('network-local').hidden = false; $('network-leave').hidden = true;
   renderRoomEntry(); openDialog('network-dialog');
 }
 async function enterLocalPlay() {
@@ -237,7 +248,7 @@ const handView = new HandView($('hand'), card => cardFace(card, true), (element,
   element.setAttribute('aria-label', `${suitNames[Math.floor(card / 13)]} ${cardRank(card)}${legal ? '' : ', ei sallittu tällä vuorolla'}`);
 });
 function seatInfo(seat) {
-  const nickname = seatDisplayName(networkClient?.session?.lobby?.seats.find(s => networkSeat(s.seat, networkClient.session.seat) === seat));
+  const nickname = seatDisplayName(networkClient?.session?.lobby?.seats.find(s => networkSeat(s.seat, viewSeat()) === seat));
   return seatPresentation(view, seat, nickname || seatNames[seat]);
 }
 function renderDetails() {
@@ -249,7 +260,7 @@ function renderDetails() {
   }
   const summary = view.startingHandSummary;
   $('hand-detail-copy').textContent = summary ?
-    `Alkukäsi: ${summary.suitLengths.map((count, suit) => `${suitNames[suit]} ${count}`).join(', ')}. HCP ${summary.highCardPoints}. HCP laskee kuvakorttipisteet: ässä 4, kuningas 3, rouva 2 ja jätkä 1.` :
+    `Alkukäsi: ${preferences.suitOrder.map(suit => `${suitNames[suit]} ${summary.suitLengths[suit]}`).join(', ')}. HCP ${summary.highCardPoints}. HCP laskee kuvakorttipisteet: ässä 4, kuningas 3, rouva 2 ja jätkä 1.` :
     'Alkukäden yhteenveto ei ole saatavilla tässä pelissä.';
 }
 
@@ -310,15 +321,20 @@ function render() {
     $(id).classList.toggle('sooli', view.soolaaja >= 0);
   }
   $('table').classList.toggle('revealing', revealing);
-  renderStair('our-tricks', 'SINÄ + PARI', view.tricks0);
-  renderStair('their-tricks', 'VASTUSTAJAT', view.tricks1);
+  // A spectator sees the teams by name; a player sees their own team first.
+  const teamLabels = view.watching ? [teamName([0, 2]), teamName([1, 3])].map(name => name.toUpperCase()) : ['SINÄ + PARI', 'VASTUSTAJAT'];
+  $('our-score-label').textContent = teamLabels[0]; $('their-score-label').textContent = teamLabels[1];
+  renderStair('our-tricks', teamLabels[0], view.tricks0);
+  renderStair('their-tricks', teamLabels[1], view.tricks1);
   for (let seat = 0; seat < 4; seat++) {
     const panel = $(`seat-${seat}`);
     const name = panel.querySelector('.seat-name');
     const info = seatInfo(seat);
     if (name) { name.textContent = info.name; name.setAttribute('aria-label', `${info.name}: ${info.detail}${info.active ? ' · Vuorossa' : ''}. Näytä tiedot`); }
     panel.classList.toggle('active', info.active);
-    panel.querySelector('.seat-cards').textContent = [info.count, info.position].filter(Boolean).join(' · ');
+    // A spectator sees the other seats' cards; players see how many.
+    panel.querySelector('.seat-cards').textContent = view.watching && seat ? [handText(view.tableHands[seat]), info.position].filter(Boolean).join(' · ') :
+      [info.count, info.position].filter(Boolean).join(' · ');
     panel.querySelector('.seat-shown').textContent = info.shown;
     panel.querySelector('.seat-role').textContent = info.role;
   }
@@ -389,17 +405,17 @@ function render() {
   const summary = view.startingHandSummary;
   $('starting-hand').hidden = !summary;
   if (summary) {
-    const lengths = summary.suitLengths.map((count, suit) => {
+    const lengths = preferences.suitOrder.map(suit => { const count = summary.suitLengths[suit];
       const item = document.createElement('span'); item.className = `suit-length suit-${suit}`;
       item.innerHTML = `<span class="summary-suit" aria-hidden="true">${suitSVG(suit)}</span>`;
       const number = document.createElement('span'); number.textContent = count; item.append(number); return item;
     });
     const points = document.createElement('span'); points.className = 'hand-points'; points.textContent = `HCP ${summary.highCardPoints}`;
     $('starting-hand').replaceChildren(...lengths, points);
-    $('starting-hand').setAttribute('aria-label', `Alkukäsi: ${summary.suitLengths.map((count, suit) => `${suitNames[suit]} ${count}`).join(', ')}, HCP ${summary.highCardPoints}`);
+    $('starting-hand').setAttribute('aria-label', `Alkukäsi: ${preferences.suitOrder.map(suit => `${suitNames[suit]} ${summary.suitLengths[suit]}`).join(', ')}, HCP ${summary.highCardPoints}`);
   }
   const allowedCards = legalCards(view, bidContract);
-  handView.render(sortedHand(view), {allowed: allowedCards});
+  handView.render(sortedHand(view, preferences.suitOrder), {allowed: allowedCards});
   layoutHand();
   let selectionInfo = selectedCard === null ? view.phase === 0 ? 'Valitse kädestä näytettävä kortti.' : 'Valitse laillinen kortti kädestä.' : `Valittu kortti: ${cardLabel(selectedCard)}`;
   if (view.phase === 0 && selectedCard !== null) {
@@ -413,7 +429,7 @@ function render() {
     `Pikanäppäimet: ${view.phase === 0 ? 'N NOLO · R RAMI · ' : ''}H/D/C/S maa · arvo · ←/→ valinta · Enter vahvistaa` : '';
   $('keyboard-prompt').classList.toggle('armed', Boolean(keyboard.prompt || keyboardFeedback));
   renderHistory(view.completed);
-  const result = matchSummary(view);
+  const result = view.watching ? null : matchSummary(view);
   if (result && !networkClient && lastSave) queueOfflineResult(lastSave);
   // The request waits for the room's lock, which the server holds until it has credited this match.
   if (result && networkClient && !matchEndCounted) { matchEndCounted = true; refreshLeaderboard(true); }
@@ -428,24 +444,31 @@ function render() {
   }
   announceTurn();
 }
-// Anonymous offline results (Settings › Tutkimus, on unless turned off): queued
-// on this device and sent to this site's server when it accepts them.
-const resultsKey = 'tuppi.results.v1';
-function resultsQueue() {
-  try { const value = JSON.parse(globalThis.localStorage?.getItem(resultsKey) ?? 'null');
-    return {pending: Array.isArray(value?.pending) ? value.pending.slice(-20) : [], sent: Array.isArray(value?.sent) ? value.sent.slice(-100) : []}; }
+// Anonymous offline results and match records (Settings › Tutkimus, on unless
+// turned off): queued on this device and sent to this site's server when it
+// accepts them. A record holds every card and move (about 3 KB a deal), so
+// fewer wait at a time.
+const resultsKey = 'tuppi.results.v1', recordsKey = 'tuppi.matchrecords.v1';
+const outboxes = [{key: resultsKey, path: '/v1/results', keep: 20}, {key: recordsKey, path: '/v1/research/matches', keep: 5}];
+function resultsQueue(key = resultsKey) {
+  const keep = outboxes.find(box => box.key === key).keep;
+  try { const value = JSON.parse(globalThis.localStorage?.getItem(key) ?? 'null');
+    return {pending: Array.isArray(value?.pending) ? value.pending.slice(-keep) : [], sent: Array.isArray(value?.sent) ? value.sent.slice(-100) : []}; }
   catch { return {pending: [], sent: []}; }
 }
-function storeResults(queue) { try { globalThis.localStorage?.setItem(resultsKey, JSON.stringify(queue)); } catch {} }
+function storeResults(queue, key = resultsKey) { try { globalThis.localStorage?.setItem(key, JSON.stringify(queue)); } catch {} }
 let reportedResult = null, resultsSending = false;
 async function queueOfflineResult(save) {
   if (!preferences.shareResults) return;
   const report = await offlineResultReport(save).catch(() => null);
   if (!report || report.id === reportedResult) return;
   reportedResult = report.id;
-  const queue = resultsQueue();
-  if (!queue.sent.includes(report.id) && !queue.pending.some(item => item.id === report.id)) {
-    queue.pending.push(report); storeResults(queue);
+  const record = await offlineMatchRecord(save).catch(() => null);
+  for (const [key, item] of [[resultsKey, report], [recordsKey, record]]) {
+    const queue = resultsQueue(key);
+    if (item && !queue.sent.includes(item.id) && !queue.pending.some(waiting => waiting.id === item.id)) {
+      queue.pending.push(item); storeResults(queue, key);
+    }
   }
   sendOfflineResults();
 }
@@ -453,17 +476,19 @@ async function sendOfflineResults() {
   if (resultsSending || !networkAddress || !preferences.shareResults) return;
   resultsSending = true;
   try {
-    for (const report of resultsQueue().pending) {
-      let status;
-      try {
-        status = (await fetch(new URL('/v1/results', networkAddress), {method: 'POST', cache: 'no-store', credentials: 'same-origin',
-          headers: {'Content-Type': 'application/json'}, body: JSON.stringify(report)})).status;
-      } catch { break; }  // offline: try again later
-      if (status === 429 || status >= 500) break;
-      const queue = resultsQueue();  // sent (200) or refused (4xx, e.g. an older server): never retried
-      queue.pending = queue.pending.filter(item => item.id !== report.id);
-      if (status === 200) queue.sent.push(report.id);
-      storeResults(queue);
+    for (const {key, path} of outboxes) {
+      for (const report of resultsQueue(key).pending) {
+        let status;
+        try {
+          status = (await fetch(new URL(path, networkAddress), {method: 'POST', cache: 'no-store', credentials: 'same-origin',
+            headers: {'Content-Type': 'application/json'}, body: JSON.stringify(report)})).status;
+        } catch { return; }  // offline: try again later
+        if (status === 429 || status >= 500) break;
+        const queue = resultsQueue(key);  // sent (200) or refused (4xx, e.g. an older server): never retried
+        queue.pending = queue.pending.filter(item => item.id !== report.id);
+        if (status === 200) queue.sent.push(report.id);
+        storeResults(queue, key);
+      }
     }
   } finally { resultsSending = false; }
 }
@@ -580,7 +605,7 @@ document.addEventListener('keydown', event => {
     event.preventDefault(); submitSelected(); return;
   }
   if (['ArrowLeft', 'ArrowRight'].includes(event.key)) {
-    const card = keyboard.adjacent(selectedCard, event.key === 'ArrowLeft' ? -1 : 1, view, bidContract);
+    const card = keyboard.adjacent(selectedCard, event.key === 'ArrowLeft' ? -1 : 1, view, bidContract, preferences.suitOrder);
     if (card === null) return;
     selectedCard = card; keyboardFeedback = `Näppäimistö: valittu ${cardLabel(card)}. Enter vahvistaa.`;
   } else {
@@ -819,7 +844,7 @@ function openAnalysis(deal) {
   if (!request) return;
   $('analysis-title').textContent = `Jaon ${deal.index + 1} analyysi`;
   // Everyone's dealt hand, on request; available before the analysis finishes.
-  $('analysis-hands').replaceChildren(...dealHands(request.deal, request.seat).map(hand => {
+  $('analysis-hands').replaceChildren(...dealHands(request.deal, request.seat, preferences.suitOrder).map(hand => {
     const row = document.createElement('div'), name = document.createElement('strong'), cards = document.createElement('span');
     row.className = 'analysis-hand'; name.textContent = `${hand.label} · ${hand.highCardPoints} HCP`; cards.textContent = hand.text;
     row.append(name, cards); return row;
@@ -977,7 +1002,7 @@ function renderConnection() {
     restarting: 'Palvelin päivittyy · peli jatkuu hetken kuluttua…',
     authentication: 'Kirjautuminen tarvitsee vahvistuksen · huoneesi säilyy',
     failed: 'Yhteys tarvitsee huomiota', superseded: 'Paikkasi on avoinna toisessa välilehdessä',
-    released: 'Huoneen luoja vapautti paikkasi'};
+    released: 'Huoneen luoja vapautti paikkasi', left: 'Poistuit huoneesta', closed: 'Huone suljettiin'};
   const phase = connectionState.phase;
   $('network-connection').hidden = !networkEnabled || phase === 'local';
   $('connection-label').textContent = labels[phase] || 'Yhdistetään…';
@@ -1049,7 +1074,7 @@ function previousMatchesText(lobby, seat) {
 }
 function showNetworkLobby(lobby) {
   if (!lobby) return;
-  const model = lobbyPresentation(lobby, networkClient?.session.seat ?? 0), playing = model.playing;
+  const spectator = watching(), model = lobbyPresentation(lobby, viewSeat(), {watching: spectator}), playing = model.playing;
   if (!playing && view && networkClient) {
     // A rematch reopened the room: leave the finished table for the lobby.
     cancelReveal(); networkRevealDeal = null; view = null; selectedCard = null; keyboard.reset(); awaitingNetworkGame = true; render();
@@ -1059,12 +1084,30 @@ function showNetworkLobby(lobby) {
   const previous = previousMatchesText(lobby, networkClient?.session.seat ?? 0);
   $('network-previous').hidden = !previous; $('network-previous').textContent = previous ? `Aiemmat ottelut tässä huoneessa: ${previous}` : '';
   $('network-entry').hidden = true; $('network-lobby').hidden = false; $('network-local').hidden = false;
+  $('network-leave').hidden = !networkClient?.session; $('network-leave').disabled = entryPending;
   $('network-title').textContent = 'Pelihuone';
   $('network-dialog').dataset.stage = 'lobby';
   $('network-room').textContent = lobby.match_number ? `Huone ${lobby.room_code} · ottelu ${lobby.match_number}` : `Huone ${lobby.room_code}`;
   const available = Boolean(networkClient?.connected && !networkClient.authRequired);
   const configuring = Boolean(networkClient?.configuring);
-  lobbyView.render(model, {host: networkClient?.session.host, connected: available, configuring, features: networkClient?.features, lobby});
+  lobbyView.render(model, {host: networkClient?.session.host, connected: available, configuring, features: networkClient?.features, lobby,
+    watching: spectator});
+  $('network-our-label').textContent = spectator ? teamName([0, 2]) : 'Sinä ja parisi';
+  $('network-their-label').textContent = spectator ? teamName([1, 3]) : 'Vastustajat';
+  // Who is watching (feature watch); a spectator chooses the viewpoint and may take a free seat.
+  $('network-watchers').hidden = !lobby.watchers?.length;
+  $('network-watchers').textContent = lobby.watchers?.length ? `Katsomassa: ${lobby.watchers.join(', ')}` : '';
+  $('network-viewpoint-row').hidden = !spectator;
+  if (spectator) {
+    $('network-viewpoint').replaceChildren(...[0, 1, 2, 3].map(seat => {
+      const option = document.createElement('option'); option.value = String(seat);
+      option.textContent = seatDisplayName(lobby.seats.find(item => item.seat === seat)) || 'Vapaa paikka'; return option;
+    }));
+    $('network-viewpoint').value = String(viewSeat());
+  }
+  $('network-take-seat').hidden = !spectator || !takeableSeats(lobby).length;
+  $('network-take-seat').disabled = !available;
+  $('network-leave').textContent = spectator ? 'Lopeta katsominen' : 'Poistu huoneesta';
   if (lobbyRoom === lobby.room_code && lobbyConfiguration && lobbyConfiguration !== model.configuration && !playing) {
     $('network-changed').textContent = 'Paikkajako muuttui. Vahvistakaa valmius uudelleen.';
   }
@@ -1074,12 +1117,12 @@ function showNetworkLobby(lobby) {
   $('network-readiness').textContent = configuring ? 'Päivitetään huonetta…' : model.readyText;
   $('network-fill').hidden = $('network-open').hidden = !networkClient?.session.host || playing;
   $('network-fill').disabled = $('network-open').disabled = !available || configuring;
-  $('network-ready').hidden = playing;
+  $('network-ready').hidden = playing || spectator;
   $('network-ready').disabled = !available || configuring || model.open > 0 || model.ownReady;
   $('network-ready').textContent = model.ownReady ? 'Olet valmis' : 'Olen valmis';
-  $('network-seat-guide').hidden = !networkClient?.session.host || playing || model.humans > 1;
+  $('network-seat-guide').hidden = !networkClient?.session.host || playing || model.humans > 1 || spectator;
   $('network-invite').value = invitationURL(location.href, lobby.room_code);
-  if (playing && screen === 'game') $('mode-label').textContent = `· Verkkopeli ${lobby.room_code}`;
+  if (playing && screen === 'game') $('mode-label').textContent = spectator ? `· Katsot huonetta ${lobby.room_code}` : `· Verkkopeli ${lobby.room_code}`;
 }
 // The room-creation passcode field appears only when this host asks for it.
 async function showPasscodeIfRequired() {
@@ -1105,20 +1148,29 @@ async function startNetwork(command) {
   if (!networkEnabled || entryPending || navigationPending) return;
   if (!writeAccess || !networkAddress) { $('network-status').textContent = 'Verkkopeli ei ole vielä valmis. Yritä hetken kuluttua.'; return; }
   if (command === 'resume' && (!savedNetwork || savedNetwork.base !== networkAddress)) return;
-  if (command === 'join') {
+  if (command === 'join' || command === 'watch') {
     try { $('network-code').value = roomCodeFromInput($('network-code').value, location.href); }
     catch (error) { $('network-status').textContent = error.message; $('network-code').focus?.(); return; }
     // Feature seat_choice: with more than one free seat, the player picks one first.
-    if (chosenSeat === undefined) {
+    if (command === 'join' && chosenSeat === undefined) {
       // Repeated submits wait here too: one preview, then at most one join.
       entryPending = true; renderRoomEntry();
-      let seats = null;
-      try { seats = await new NetworkSession().seatPreview(networkAddress, $('network-code').value).catch(() => null); }
+      let preview = null;
+      try { preview = await new NetworkSession().seatPreview(networkAddress, $('network-code').value).catch(() => null); }
       finally { entryPending = false; }
-      const choices = seats ? seatChoices(seats) : [];
+      const choices = preview ? seatChoices(preview.seats, preview.hostSeat) : [];
       if (choices.length > 1) { renderRoomEntry(); showSeatChoice(choices); return; }
       chosenSeat = choices.length === 1 ? choices[0].seat : null;
     }
+  }
+  // Another room this app still holds a seat in: leave it first (or resume it).
+  const held = networkClient?.session ?? savedNetwork;
+  if (command !== 'resume' && held && !held.released) {
+    if (['join', 'watch'].includes(command) && held.room_code === $('network-code').value && held.base === networkAddress) {
+      chosenSeat = undefined; $('network-seat-choice').hidden = true;
+      return startNetwork('resume');
+    }
+    if (!await leaveRoom({switching: true})) return;
   }
   const joinSeat = chosenSeat ?? null; chosenSeat = undefined; $('network-seat-choice').hidden = true;
   entryPending = true; awaitingNetworkGame = true; navigationToken++; renderRoomEntry(); renderHome();
@@ -1145,6 +1197,7 @@ async function startNetwork(command) {
     // the background; it is used after Tuppi is closed and opened again.
     onReconnect: () => { offline.checkForUpdate(); },
     onLobby: showNetworkLobby,
+    onChat: receiveChat,
     onStatus: (message, error) => {
       $('network-status').textContent = message; status(message, error);
       busy = !networkClient.connected || Boolean(networkClient.session?.pending);
@@ -1160,7 +1213,7 @@ async function startNetwork(command) {
       if (reveal) networkRevealDeal = next.dealNumber;
       next.revealing = Boolean(reveal || (revealFrame && old?.dealNumber === next.dealNumber));
       view = next; busy = !networkClient.connected || Boolean(networkClient.session.pending);
-      if (awaitingNetworkGame) { awaitingNetworkGame = false; showGame(); $('network-dialog').close(); }
+      if (awaitingNetworkGame) { awaitingNetworkGame = false; chatReturn = null; showGame(); $('network-dialog').close(); }
       if (!next.waitingHuman || old?.phase !== next.phase || old?.dealNumber !== next.dealNumber) { selectedCard = null; keyboard.reset(); }
       if (reveal) startReveal(); else render();
     }});
@@ -1173,12 +1226,14 @@ async function startNetwork(command) {
       if (command === 'create') {
         await networkClient.create(networkAddress, nickname, ($('network-passcode').value ?? '').trim());
         $('network-passcode').value = '';
-      } else await networkClient.join(networkAddress, $('network-code').value, nickname, joinSeat);
+      } else if (command === 'watch') await networkClient.watch(networkAddress, $('network-code').value, nickname);
+      else await networkClient.join(networkAddress, $('network-code').value, nickname, joinSeat);
     }
   } catch (error) {
     networkClient.close(); networkClient = null;
     if (connectionState.phase !== 'authentication') connectionState = {phase: 'failed'};
     renderConnection(); $('network-resume').hidden = !savedNetwork || savedNetwork.base !== networkAddress;
+    $('network-leave').hidden = !savedNetwork || savedNetwork.released;
     $('network-status').textContent = error.message; $('network-entry').hidden = false; $('network-lobby').hidden = true;
     if (['room_passcode_required', 'invalid_room_passcode'].includes(error.code)) {
       passcodeRequired = true; roomIntent = 'create';
@@ -1187,6 +1242,119 @@ async function startNetwork(command) {
   } finally {
     entryPending = false; renderRoomEntry(); renderHome();
   }
+}
+// Leave the room for good: in the lobby the seat is freed; during a match a
+// bot plays it until someone joins it, and the next player hosts if the host
+// leaves. With an older server, or one that cannot be reached, the room is
+// only forgotten here. `switching`: before joining or creating another room.
+// Returns whether the room was left.
+async function leaveRoom({switching = false, ask = true} = {}) {
+  const session = networkClient?.session ?? savedNetwork;
+  if (!session || session.released) return true;
+  const client = networkClient?.session ? networkClient : Object.assign(new NetworkSession({persist: storeNetwork}),
+    {session: structuredClone(session)});
+  const lobby = session.lobby, seats = lobby?.seats ?? [];
+  const people = seats.filter(seat => seat.kind === 'human' || seat.covering).length;
+  const playing = lobby?.lifecycle === 'playing';
+  const known = client.features.size ? client.features.has('leave_seat') : true;
+  const consequence = !known ? ' Paikkasi jää huoneeseen, kunnes huoneen luoja vapauttaa sen.' :
+    people <= 1 ? ' Olet huoneen ainoa pelaaja, joten huone suljetaan.' :
+    (playing ? ' Botti pelaa paikkasi, ja huonekoodin saanut voi liittyä siihen seuraavasta jaosta alkaen.' : ' Paikkasi vapautuu muille.') +
+    (session.host ? ' Toinen pelaaja tulee huoneen luojaksi.' : '');
+  const question = session.watching ? (switching ? `Lopetetaanko huoneen ${session.room_code} katsominen?` : null) :
+    `${switching ? `Olet vielä huoneessa ${session.room_code}. Poistutaanko siitä?` : `Poistutaanko huoneesta ${session.room_code}?`}${consequence}`;
+  if (ask && question && globalThis.confirm && !globalThis.confirm(question)) return false;
+  entryPending = true; renderRoomEntry();
+  try {
+    try { await client.leave(); }
+    catch (error) {
+      if (globalThis.confirm && !globalThis.confirm(`Poistuminen ei onnistunut: ${error.message} Unohdetaanko huone ${session.room_code} tältä laitteelta?`)) return false;
+      await client.leave({forget: true});
+    }
+  } finally { entryPending = false; }
+  if (networkClient === client) {
+    networkClient = null; busy = false;
+    cancelReveal(); networkRevealDeal = null; view = null; selectedCard = null; keyboard.reset();
+    lobbyConfiguration = null; lobbyRoom = null;
+  }
+  savedNetwork = null; connectionState = {phase: 'local'}; renderConnection();
+  if (!switching) {
+    showHome(); openRoomEntry();
+    $('network-status').textContent = session.watching ? `Lopetit huoneen ${session.room_code} katsomisen.` :
+      `Poistuit huoneesta ${session.room_code}. Liity toiseen huoneeseen tai luo uusi.`;
+  }
+  renderRoomEntry(); renderHome();
+  return true;
+}
+// Watching (feature watch): the table is seen from a chosen seat.
+function watching() { return Boolean(networkClient?.session?.watching); }
+function viewSeat() { return watching() ? networkClient.session.viewpoint ?? 0 : networkClient?.session?.seat ?? 0; }
+// Two players' names, e.g. for a team seen by a spectator.
+function teamName(positions) {
+  const seats = networkClient?.session?.lobby?.seats ?? [];
+  return positions.map(position => seatDisplayName(seats.find(s => networkSeat(s.seat, viewSeat()) === position)) || 'Botti').join(' + ');
+}
+// Another seat's cards as text by suit, in the player's suit order (spectators).
+function handText(cards) {
+  return preferences.suitOrder.map(suit => {
+    const ranks = cards.filter(card => Math.floor(card / 13) === suit).sort((a, b) => b - a).map(cardRank);
+    return ranks.length ? `${suits[suit]} ${ranks.join(' ')}` : '';
+  }).filter(Boolean).join('  ') || '–';
+}
+// Room chat (feature chat): one list for everyone in the room, in the lobby
+// and during play. Messages are shown as text only and kept in memory.
+function chatAvailable() {
+  return Boolean(networkEnabled && networkClient?.session && networkClient.features.has('chat'));
+}
+function renderChatButtons() {
+  const label = chatUnread ? `Viestit (${chatUnread})` : 'Viestit';
+  for (const id of ['chat-toggle', 'network-chat']) {
+    $(id).hidden = !chatAvailable(); $(id).textContent = label;
+    $(id).setAttribute('aria-label', chatUnread ? `Viestit, ${chatUnread} lukematonta` : 'Viestit');
+  }
+  if (!chatAvailable()) {
+    $('chat-toast').hidden = true;
+    if ($('chat').open) { chatReturn = null; $('chat').close(); }
+  }
+}
+// Your own message: from your seat, or as a spectator (no seat) under your name.
+function ownChat(message) {
+  const session = networkClient?.session;
+  return session?.watching ? message.seat === null && message.display_name === session.display_name : message.seat === session?.seat;
+}
+function renderChat() {
+  $('chat-list').replaceChildren(...chatMessages.map(message => {
+    const item = document.createElement('li'), name = document.createElement('strong'),
+      time = document.createElement('time'), text = document.createElement('span');
+    item.className = 'chat-item'; item.dataset.own = String(ownChat(message));
+    name.textContent = ownChat(message) ? `${message.display_name} (sinä)` : message.seat === null ? `${message.display_name} (katsoja)` : message.display_name;
+    const sent = new Date(message.sent_at * 1000);
+    time.textContent = sent.toLocaleTimeString('fi-FI', {hour: '2-digit', minute: '2-digit'});
+    time.setAttribute('datetime', sent.toISOString());
+    text.textContent = message.text; item.append(name, time, text); return item;
+  }));
+  $('chat-empty').hidden = chatMessages.length > 0;
+  const list = $('chat-list'); list.scrollTop = list.scrollHeight;
+  $('chat-send').disabled = !networkClient?.connected;
+}
+function receiveChat(messages, latest, refused) {
+  chatMessages = messages;
+  if (refused) $('chat-status').textContent = refused;
+  if (latest && !ownChat(latest) && !$('chat').open) {
+    chatUnread++;
+    // A short notice, so a message is seen without opening the chat.
+    $('chat-toast-open').textContent = `${latest.display_name}: ${latest.text}`;
+    $('chat-toast').hidden = false;
+    clearTimeout(chatToastTimer); chatToastTimer = setTimeout(() => { $('chat-toast').hidden = true; }, 6000);
+  }
+  if (!messages.length) chatUnread = 0;
+  renderChat(); renderChatButtons();
+}
+function openChat() {
+  if (!chatAvailable()) return;
+  chatReturn = document.querySelector('dialog[open]') === $('network-dialog') ? 'network-dialog' : null;
+  chatUnread = 0; $('chat-toast').hidden = true; $('chat-status').textContent = '';
+  renderChat(); renderChatButtons(); openDialog('chat'); $('chat-input').focus?.();
 }
 async function returnToLocal() {
   const session = networkClient?.session ?? savedNetwork;
@@ -1217,7 +1385,33 @@ $('home-online').onclick = async () => {
     if (savedNetwork?.active && savedNetwork.base === networkAddress) await startNetwork('resume');
   }
 };
+$('home-online-other').onclick = () => {
+  if (!entryReady || !networkEnabled || entryPending || navigationPending) return;
+  openRoomEntry();
+};
+$('network-leave').onclick = () => leaveRoom().catch(networkFailure);
+$('network-watch').onclick = () => startNetwork('watch');
+$('network-viewpoint').onchange = () => networkClient?.setViewpoint(Number($('network-viewpoint').value));
+// A spectator takes a free seat: stop watching, then join (choosing the seat if several are free).
+$('network-take-seat').onclick = async () => {
+  const code = networkClient?.session?.room_code;
+  if (!code || !watching() || !await leaveRoom({switching: true, ask: false}).catch(error => { networkFailure(error); return false; })) return;
+  showHome(); openRoomEntry(); $('network-code').value = code; await startNetwork('join');
+};
 $('home-retry').onclick = () => location.reload();
+$('chat-toggle').onclick = openChat;
+$('network-chat').onclick = openChat;
+$('chat-toast-open').onclick = openChat;
+$('close-chat').onclick = () => $('chat').close();
+$('chat').onclose = () => {
+  const back = chatReturn; chatReturn = null;
+  if (back && networkClient?.session && !document.querySelector('dialog[open]')) openDialog(back);
+};
+$('chat-form').onsubmit = event => {
+  event.preventDefault();
+  if (networkClient?.sendChat($('chat-input').value)) { $('chat-input').value = ''; $('chat-status').textContent = ''; }
+  else if ($('chat-input').value.trim()) $('chat-status').textContent = 'Viestiä ei voitu lähettää. Odota, että yhteys palautuu.';
+};
 $('network-reload').onclick = async () => {
   networkResolved = false; $('network-reload').hidden = true; $('network-status').textContent = 'Yhdistetään verkkopeliin…';
   networkAddress = await readNetworkConfiguration(); networkResolved = true; renderHome(); renderRoomEntry();
@@ -1231,8 +1425,42 @@ $('share-results').checked = preferences.shareResults;
 $('share-results').onchange = () => {
   preferences = savePreferences({...preferences, shareResults: Boolean($('share-results').checked)});
   if (preferences.shareResults) sendOfflineResults();
-  else storeResults({pending: [], sent: resultsQueue().sent});
+  else for (const {key} of outboxes) storeResults({pending: [], sent: resultsQueue(key).sent}, key);
 };
+// The suits in the hand from left to right (Settings › Kortit), saved on this
+// device; online and offline alike. Ranks always rise left to right.
+function renderSuitOrder() {
+  const order = preferences.suitOrder;
+  $('suit-order').replaceChildren(...order.map((suit, index) => {
+    const item = document.createElement('li'); item.className = `suit-order-item suit-${suit}`;
+    const symbol = document.createElement('span'); symbol.className = 'summary-suit'; symbol.setAttribute('aria-hidden', 'true'); symbol.innerHTML = suitSVG(suit);
+    const name = document.createElement('span'); name.className = 'suit-order-name';
+    name.textContent = suitNames[suit][0].toUpperCase() + suitNames[suit].slice(1);
+    const move = (by, text, where) => {
+      const button = document.createElement('button'); button.type = 'button'; button.textContent = text;
+      button.disabled = index + by < 0 || index + by > 3;
+      button.setAttribute('aria-label', `Siirrä ${suitNames[suit]} ${where}`);
+      button.onclick = () => moveSuit(index, by); return button;
+    };
+    item.append(symbol, name, move(-1, '↑', 'vasemmalle'), move(1, '↓', 'oikealle')); return item;
+  }));
+  $('suit-order-reset').disabled = order.join() === '0,1,2,3';
+}
+function setSuitOrder(order) {
+  preferences = savePreferences({...preferences, suitOrder: order});
+  renderSuitOrder(); keyboard.reset();
+  if (view) render();
+}
+function moveSuit(index, by) {
+  const order = [...preferences.suitOrder];
+  [order[index], order[index + by]] = [order[index + by], order[index]];
+  setSuitOrder(order);
+  // Keep the keyboard on the moved suit's same arrow while it can move further.
+  const row = $('suit-order').children[index + by], button = row?.children[by < 0 ? 2 : 3];
+  (button?.disabled ? row?.children[by < 0 ? 3 : 2] : button)?.focus?.();
+}
+$('suit-order-reset').onclick = () => setSuitOrder([0, 1, 2, 3]);
+renderSuitOrder();
 $('turn-sound').onchange = () => {
   preferences = savePreferences({...preferences, turnSound: Boolean($('turn-sound').checked)});
   if (preferences.turnSound) enableTurnAudio();
@@ -1240,7 +1468,8 @@ $('turn-sound').onchange = () => {
 addEventListener('pointerdown', () => { if (preferences.turnSound && !turnAudio) enableTurnAudio(); }, {once: true});
 $('network-name').onchange = () => { preferences = savePreferences({...preferences, nickname: $('network-name').value}); };
 $('close-network').onclick = () => $('network-dialog').close();
-$('network-dialog').onclose = () => { if (screen === 'home') awaitingNetworkGame = false; };
+// Opening the chat from the room dialog keeps waiting for the match to start.
+$('network-dialog').onclose = () => { if (screen === 'home' && chatReturn !== 'network-dialog') awaitingNetworkGame = false; };
 $('network-form').onsubmit = event => { event.preventDefault(); return startNetwork(roomIntent); };
 $('network-resume').onclick = () => startNetwork('resume');
 $('network-switch').onclick = async () => {

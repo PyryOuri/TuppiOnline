@@ -21,11 +21,16 @@ from urllib.parse import urlsplit
 from .persistence import PersistenceError
 from .usage import USAGE_INTERVAL_SECONDS, Usage, resident_megabytes
 
-ROOM_ROUTE = re.compile(r"^/v1/rooms/([A-Z0-9]{6})/(join|configure|settings|ready|leaderboard|name|release|seats|swap)$", re.I)
+ROOM_ROUTE = re.compile(r"^/v1/rooms/([A-Z0-9]{6})/(join|configure|settings|ready|leaderboard|name|release|seats|swap|leave|watch)$", re.I)
 #: Wrong room-creation passcodes accepted per minute before refusing all tries.
 MAX_PASSCODE_FAILURES_PER_MINUTE = 20
 #: Offline match reports accepted per minute (all browsers together).
 MAX_RESULTS_PER_MINUTE = 30
+#: Offline match records (with every card) accepted per minute, all browsers
+#: together; each is checked by replaying it, one at a time.
+MAX_RECORDS_PER_MINUTE = 10
+#: Wrong research download keys accepted per minute before refusing all tries.
+MAX_RESEARCH_KEY_FAILURES_PER_MINUTE = 10
 #: How often idle rooms are archived and old archives pruned.
 MAINTENANCE_INTERVAL_SECONDS = 3600
 #: An unfinished room nobody is connected to stops counting towards the
@@ -154,8 +159,16 @@ class HostedBoundary:
         self.room_passcode = room_passcode
         self.passcode_failures = []
         self.result_posts = []
+        self.record_posts = []
+        self.research_key_failures = []
+        self.record_check = asyncio.Lock()
+        #: The owner's download key for the match records (research.py); no
+        #: key, no download.
+        self.research_key = os.environ.get("TUPPI_RESEARCH_KEY") or None
         self.origins = frozenset(origins)
         self.bot_identity = bot_identity or {"profile": "test"}
+        if bot_identity and bot_identity.get("models_sha256"):
+            game.rooms.bot_version = f"{bot_identity['profile']}:{bot_identity['models_sha256'][:12]}"
         self.max_rooms, self.max_connections = max_rooms, max_connections
         self.max_bot_rooms = max_bot_rooms
         self.max_retained_rooms = max_retained_rooms
@@ -290,6 +303,64 @@ class HostedBoundary:
         self.usage.counts["results"] += 1
         await self.game._json_response(send, 200, {"recorded": recorded})
 
+    async def _offline_record(self, receive, send) -> None:
+        """A browser sends a finished offline match with every card (research.py)."""
+
+        from .research import MAX_OFFLINE_BODY_BYTES, RecordRejected, offline_record
+        from .results import today
+        now = time.time()
+        self.record_posts = [t for t in self.record_posts if now - t < 60]
+        if len(self.record_posts) >= MAX_RECORDS_PER_MINUTE:
+            await self.game._json_response(send, 429, {"error": "too_many_attempts"})
+            return
+        self.record_posts.append(now)
+        body = b""
+        try:
+            while True:
+                message = await asyncio.wait_for(receive(), timeout=10)
+                body += message.get("body", b"")
+                if len(body) > MAX_OFFLINE_BODY_BYTES:
+                    raise RecordRejected("request_too_large")
+                if not message.get("more_body", False):
+                    break
+            payload = json.loads(body or b"null")
+            async with self.record_check:  # one replay at a time, off the event loop
+                record = await asyncio.to_thread(offline_record, payload, day=today())
+            recorded = self.game.rooms.records.save(record)
+        except (RecordRejected, ValueError, asyncio.TimeoutError) as exc:
+            code = str(exc) if isinstance(exc, RecordRejected) else "invalid_record"
+            await self.game._json_response(send, 413 if code == "request_too_large" else 400, {"error": code})
+            return
+        except PersistenceError:
+            await self.game._json_response(send, 503, {"error": "storage_unavailable"})
+            return
+        self.usage.counts["records"] += 1
+        await self.game._json_response(send, 200, {"recorded": recorded})
+
+    async def _research_download(self, scope, send) -> None:
+        """The owner downloads every match record as one gzip file of JSON
+        lines: GET /v1/research/matches?key=<TUPPI_RESEARCH_KEY>. Without the
+        key configured this endpoint does not exist."""
+
+        from urllib.parse import parse_qs
+        now = time.time()
+        self.research_key_failures = [t for t in self.research_key_failures if now - t < 60]
+        offered = (parse_qs((scope.get("query_string") or b"").decode("ascii", errors="replace")).get("key") or [""])[0]
+        if self.research_key is None or len(self.research_key_failures) >= MAX_RESEARCH_KEY_FAILURES_PER_MINUTE or not (
+                offered and hmac.compare_digest(offered.encode(), self.research_key.encode())):
+            if self.research_key is not None:
+                self.research_key_failures.append(now)
+            await self.game._json_response(send, 404, {"error": "unknown_endpoint"})
+            return
+        records = self.game.rooms.records
+        day = time.strftime("%Y-%m-%d", time.gmtime())
+        await send({"type": "http.response.start", "status": 200, "headers": [
+            (b"content-type", b"application/gzip"), (b"cache-control", b"no-store"),
+            (b"content-disposition", f'attachment; filename="tuppi-matches-{day}.jsonl.gz"'.encode())]})
+        for chunk in records.download():
+            await send({"type": "http.response.body", "body": chunk, "more_body": True})
+        await send({"type": "http.response.body", "body": b"", "more_body": False})
+
     def storage_state(self) -> str:
         """failed: a save failed, so changes stop until a restart recovers the
         last durable state. low: free space below the floor for new rooms."""
@@ -383,18 +454,17 @@ class HostedBoundary:
             self._archive(code)
 
     def _archive(self, code):
+        room = self.game.rooms._rooms[code]
+        if room.runner is not None and not room.runner.terminal:
+            self.game.rooms.record_match(room)  # an unfinished match: the deals played so far
         store = self.game.rooms._store
         if store is not None:
-            source = store.root / f"room-{code}.json"
-            if source.is_symlink():
-                raise RuntimeError("invalid private room file")
-            archive = store.root / "expired"
-            archive.mkdir(mode=0o700, exist_ok=True)
-            source.rename(archive / f"room-{code}-{time.time_ns()}.json")
+            store.archive_room(code)
         del self.game.rooms._rooms[code]
         self.activity.pop(code, None)
         self.room_locks.pop(code, None)
         self.game._connections.pop(code, None)
+        self.game.forget_chat(code)
 
     async def __call__(self, scope, receive, send):
         kind = scope["type"]
@@ -492,6 +562,12 @@ class HostedBoundary:
             return
         if path == "/v1/results" and scope.get("method") == "POST":
             await self._offline_result(receive, cors_send)
+            return
+        if path == "/v1/research/matches" and scope.get("method") == "POST":
+            await self._offline_record(receive, cors_send)
+            return
+        if path == "/v1/research/matches" and scope.get("method") == "GET":
+            await self._research_download(scope, send)
             return
         if scope.get("method") == "POST" and self.game.rooms.storage_failed:
             await self.game._json_response(cors_send, 503, {"error": "storage_unavailable"})

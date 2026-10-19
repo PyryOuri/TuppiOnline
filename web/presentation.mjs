@@ -20,12 +20,27 @@ export function seatPresentation(view, seat, nickname = seatNames[seat]) {
 // score from the player's team's view, deal and concession counts. Its id is
 // a hash of the first deal's shuffled deck, so a match is reported once.
 export async function offlineResultReport(save) {
+  const deals = save?.completed ?? [], last = deals.at(-1)?.result, id = await offlineMatchId(save);
+  if (!id) return null;
+  return {id, worlds: save.worlds, winner_team: last.score0 >= 52 ? 0 : 1, final_score: [last.score0, last.score1],
+    deals: deals.length, conceded: deals.filter(deal => deal.conceded).length};
+}
+async function offlineMatchId(save) {
   const deals = save?.completed ?? [], last = deals.at(-1)?.result;
   if (!last?.terminal || ![128, 1024].includes(save.worlds) || !deals[0]?.cards) return null;
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([deals[0].cards, deals[0].dealer])));
-  const id = [...new Uint8Array(digest)].slice(0, 16).map(byte => byte.toString(16).padStart(2, '0')).join('');
-  return {id, worlds: save.worlds, winner_team: last.score0 >= 52 ? 0 : 1, final_score: [last.score0, last.score1],
-    deals: deals.length, conceded: deals.filter(deal => deal.conceded).length};
+  return [...new Uint8Array(digest)].slice(0, 16).map(byte => byte.toString(16).padStart(2, '0')).join('');
+}
+// A finished offline match with every card, for developing the bots (the
+// server checks it by replaying it): each deal's dealt cards, dealer, score
+// before it and actions in order, and the bot's runtime. Same id as the
+// result above; no names or anything else about the player.
+export async function offlineMatchRecord(save) {
+  const id = await offlineMatchId(save);
+  if (!id || typeof save.identity !== 'string') return null;
+  return {id, worlds: save.worlds, runtime: save.identity, deals: save.completed.map(deal => ({cards: [...deal.cards],
+    dealer: deal.dealer, score: [...deal.score], actions: [...deal.actions],
+    ...(deal.conceded ? {conceded: {afterTricks: deal.conceded.afterTricks}} : {})}))};
 }
 
 // End-of-match summary from the public completed-deal results only.
@@ -70,13 +85,14 @@ export function analysisPresentation(result) {
 }
 
 // Every player's dealt hand in a finished deal (deck positions seat*13…), from
-// the viewer's seat round the table, by suit from the ace down, with high-card
-// points (A 4, K 3, Q 2, J 1). Offline it is the saved deal; online, the cards
-// each seat played (every card is played by the end of a non-sooli deal).
-export function dealHands(deal, ownSeat = 0) {
+// the viewer's seat round the table, by suit (in the player's suit order) from
+// the ace down, with high-card points (A 4, K 3, Q 2, J 1). Offline it is the
+// saved deal; online, the cards each seat played (every card is played by the
+// end of a non-sooli deal).
+export function dealHands(deal, ownSeat = 0, suitOrder = [0, 1, 2, 3]) {
   return [0, 1, 2, 3].map(position => {
     const seat = (ownSeat + position) % 4, cards = deal.cards.slice(seat * 13, seat * 13 + 13);
-    const bySuit = [0, 1, 2, 3].map(suit => ({suit: suits[suit],
+    const bySuit = suitOrder.map(suit => ({suit: suits[suit],
       ranks: cards.filter(card => Math.floor(card / 13) === suit).sort((a, b) => b - a).map(cardRank)}));
     return {position, label: seatNames[position], suits: bySuit,
       highCardPoints: cards.reduce((sum, card) => sum + Math.max(0, card % 13 - 8), 0),

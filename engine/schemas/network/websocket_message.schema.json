@@ -62,6 +62,18 @@
     },
     {
       "$ref": "#/$defs/seatUpdate"
+    },
+    {
+      "$ref": "#/$defs/chatSend"
+    },
+    {
+      "$ref": "#/$defs/chatMessage"
+    },
+    {
+      "$ref": "#/$defs/chatHistory"
+    },
+    {
+      "$ref": "#/$defs/chatRefused"
     }
   ],
   "$defs": {
@@ -144,10 +156,18 @@
               "results",
               "seat_bot",
               "seat_choice",
-              "seat_swap"
+              "seat_swap",
+              "leave_seat",
+              "chat",
+              "watch",
+              "match_records"
             ]
           },
           "$comment": "Optional commands this server accepts; absent on servers without them."
+        },
+        "watching": {
+          "const": true,
+          "$comment": "A spectator's connection (feature watch)."
         }
       }
     },
@@ -287,6 +307,9 @@
           "items": {
             "$ref": "#/$defs/concededDeal"
           }
+        },
+        "table": {
+          "$ref": "#/$defs/tableView"
         }
       }
     },
@@ -336,6 +359,9 @@
           "items": {
             "$ref": "#/$defs/concededDeal"
           }
+        },
+        "table": {
+          "$ref": "#/$defs/tableView"
         }
       }
     },
@@ -778,13 +804,184 @@
           "properties": {
             "seat": {
               "type": "integer",
-              "minimum": 1,
+              "minimum": 0,
               "maximum": 3
             }
           }
         }
       },
-      "$comment": "Server to a player the host moved before a match (feature seat_swap): their new seat."
+      "$comment": "Server to a player the host moved before a match (feature seat_swap): their new seat. Seat 0 only when another player hosts (feature leave_seat)."
+    },
+    "chatItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "display_name",
+        "id",
+        "seat",
+        "sent_at",
+        "text"
+      ],
+      "properties": {
+        "display_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "id": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "seat": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 3,
+          "$comment": "null: a spectator (feature watch)."
+        },
+        "sent_at": {
+          "type": "integer",
+          "minimum": 0,
+          "$comment": "Server time, seconds since 1970."
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "chatSend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "chat_send"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "text"
+          ],
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          }
+        }
+      },
+      "$comment": "Client to server (feature chat): a message to everyone in the room. The server keeps one line of at most 200 characters."
+    },
+    "chatMessage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "chat_message"
+        },
+        "payload": {
+          "$ref": "#/$defs/chatItem"
+        }
+      },
+      "$comment": "Server to everyone in the room (feature chat). Chat is kept in server memory only, never saved or logged."
+    },
+    "chatHistory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "chat_history"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "messages"
+          ],
+          "properties": {
+            "messages": {
+              "type": "array",
+              "maxItems": 50,
+              "items": {
+                "$ref": "#/$defs/chatItem"
+              }
+            }
+          }
+        }
+      },
+      "$comment": "Server to a connection after hello_ack (feature chat): the room's latest messages, oldest first. Replaces what the app shows."
+    },
+    "chatRefused": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_type",
+        "payload"
+      ],
+      "properties": {
+        "message_type": {
+          "const": "chat_refused"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "code"
+          ],
+          "properties": {
+            "code": {
+              "enum": [
+                "invalid_chat",
+                "chat_rate_limited"
+              ]
+            }
+          }
+        }
+      },
+      "$comment": "Server to the sender only (feature chat): the message was not sent. Not a protocol error; the connection stays."
+    },
+    "tableView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hands",
+        "schema_version"
+      ],
+      "properties": {
+        "hands": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "array",
+            "maxItems": 14,
+            "items": {
+              "type": "string",
+              "pattern": "^(10|[2-9JQKA])[HDCS]$"
+            }
+          }
+        },
+        "schema_version": {
+          "const": "tuppi.network.table_view.v1"
+        }
+      },
+      "$comment": "Spectators only (feature watch): every seat's cards now, by seat. Their observation is seat 0's public table with no hand or actions."
     }
   }
 }

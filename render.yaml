@@ -19,6 +19,12 @@ services:
         value: /data/rooms
       - key: TUPPI_WEB_DIR
         value: /app/web
+      # The owner's key for downloading the anonymous match records
+      # (/v1/research/matches?key=...); without it there is no download.
+      # sync: false: a secret, never stored in the repo. On an existing
+      # service, add it under Environment.
+      - key: TUPPI_RESEARCH_KEY
+        sync: false
       # Room-creation passcode (8-128 characters). sync: false makes Render ask
       # for it when the Blueprint is created; it is never stored in the repo.
       - key: TUPPI_ROOM_PASSCODE

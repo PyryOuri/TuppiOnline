@@ -49,12 +49,14 @@ from .post_match_diagnostics import generate_post_match_diagnostics
 from .persistence import (
     LEGACY_ROOM_RECORD_SCHEMA_VERSION,
     MULTI_MATCH_ROOM_RECORD_SCHEMA_VERSION,
+    OPEN_SEATS_ROOM_RECORD_SCHEMA_VERSION,
     ROOM_RECORD_SCHEMA_VERSION,
     RULESET_ROOM_RECORD_SCHEMA_VERSION,
     FileRoomStore,
     PersistenceError,
 )
 from .results import ResultRejected, Results, today as results_today
+from .research import DEFAULT_MAX_RECORD_BYTES, MatchRecords, online_record
 from .leaderboard import LEADERBOARD_RESPONSE_SCHEMA_VERSION, Leaderboard
 from .projection import project_event_batch, project_match_result
 from tuppi_engine import match_observation_for
@@ -99,6 +101,8 @@ DEFAULT_AI_ACTION_DELAY_MS = min(
     AI_ACTION_DELAY_OPTIONS_MS,
     key=lambda value: abs(value - round(AI_ACTION_DELAY_SECONDS * 1000)),
 )
+#: People watching one room at most (feature watch).
+MAX_SPECTATORS = 8
 #: Earlier results a room keeps after rematches (summaries only).
 MAX_PREVIOUS_MATCHES = 10
 _PREVIOUS_MATCH_FIELDS = frozenset({"deals", "final_score", "match_ref", "winner_team"})
@@ -133,6 +137,12 @@ class Room:
     #: Host pause: no bot moves, deal starts or human moves until resumed.
     paused: bool = False
     previous_matches: list[dict[str, object]] = field(default_factory=list)
+    #: During a match: seats a player left, a bot plays them and anyone may
+    #: join them (taking over when the next deal starts).
+    open_seats: set[int] = field(default_factory=set)
+    #: People watching (feature watch): credential -> name, in arrival order.
+    #: Memory only: after a restart a spectator's app asks to watch again.
+    spectators: dict[str, str] = field(default_factory=dict)
 
     def match_ref(self) -> str:
         """The current match's identity; a rematch gets a new one."""
@@ -145,6 +155,17 @@ class Room:
 
     def session_for_seat(self, seat: int) -> Session | None:
         return next((item for item in self.sessions.values() if item.seat == seat), None)
+
+    def host_seat(self) -> int:
+        return self.sessions[self.host_token].seat
+
+    def handover_seats(self) -> frozenset[int]:
+        return frozenset() if self.runner is None else self.runner.handover_seats
+
+    def open_seats_record(self) -> bool:
+        """The room needs record v5: a seat left in a match, or another host."""
+
+        return bool(self.open_seats or self.handover_seats() or self.host_seat() != 0 or 0 in self.ai_seats)
 
     def snapshot(self) -> dict[str, object]:
         seats: list[dict[str, object]] = []
@@ -163,8 +184,12 @@ class Room:
                         "kind": "ai",
                         "ready": True,
                         "seat": seat,
-                        # A bot standing in for a player who is away.
+                        # A bot standing in for a player who is away, or
+                        # for one who joins when the next deal starts.
                         **({"covering": covered.display_name} if covered is not None else {}),
+                        **({"joining": True} if seat in self.handover_seats() else {}),
+                        # A seat its player left during the match: free to join.
+                        **({"vacant": True} if seat in self.open_seats else {}),
                     }
                 )
                 continue
@@ -179,6 +204,7 @@ class Room:
             )
         snapshot: dict[str, object] = {
             "ai_action_delay_ms": self.ai_action_delay_ms,
+            "host_seat": self.host_seat(),
             "lifecycle": self.lifecycle,
             "room_code": self.code,
             "seats": seats,
@@ -219,10 +245,13 @@ class Room:
         if self.ruleset_id is not RulesetId.PROJECT_TARGET_V1:
             record["schema_version"] = RULESET_ROOM_RECORD_SCHEMA_VERSION
             record["ruleset_id"] = self.ruleset_id.value
-        if self.multi_match():
+        if self.multi_match() or self.open_seats_record():
             record.update(schema_version=MULTI_MATCH_ROOM_RECORD_SCHEMA_VERSION,
                 ruleset_id=self.ruleset_id.value, match_index=self.match_index,
                 paused=self.paused, previous_matches=deepcopy(self.previous_matches))
+        if self.open_seats_record():
+            record.update(schema_version=OPEN_SEATS_ROOM_RECORD_SCHEMA_VERSION,
+                open_seats=sorted(self.open_seats), handover_seats=sorted(self.handover_seats()))
         return record
 
 
@@ -267,6 +296,11 @@ class RoomManager:
         self.storage_failed = False
         self.leaderboard = Leaderboard(None if self._store is None else self._store.root / "leaderboard.json")
         self.results = Results(None if self._store is None else self._store.root)
+        # Anonymous match records for developing the bots (research.py).
+        self.records = MatchRecords(None if self._store is None else self._store.root,
+                                    int(float(os.environ.get("TUPPI_RESEARCH_MAX_MB") or 0) * 2**20) or DEFAULT_MAX_RECORD_BYTES)
+        #: Which trained bot played (set by the hosted server), for the records.
+        self.bot_version: str | None = None
         if self._store is not None:
             self._store.remove_stale_temporaries()
             self._load_persisted_rooms()
@@ -325,13 +359,18 @@ class RoomManager:
         return room, session
 
     def join_room(self, *, code: str, display_name: str, seat: object = None) -> tuple[Room, Session]:
-        """Join the chosen free seat (1-3), or the lowest free one."""
+        """Join the chosen free seat, or the lowest free one.
+
+        During a match only a seat its player left can be joined: the bot
+        finishes the current deal and the newcomer plays from the next one.
+        """
 
         room = self.get(code)
-        if room.runner is not None:
+        playing = room.runner is not None
+        if playing and (room.runner.terminal or not room.open_seats):
             raise RoomError("settings_locked")
         name = self._validate_name(display_name)
-        open_seats = [
+        open_seats = sorted(room.open_seats) if playing else [
             seat
             for seat in range(4)
             if seat not in room.ai_seats and room.session_for_seat(seat) is None
@@ -343,11 +382,44 @@ class RoomManager:
         token = self._new_token()
         session = Session(token=token, seat=open_seats[0] if seat is None else seat, display_name=name)
         room.sessions[token] = session
-        for item in room.sessions.values():
-            item.ready = False
-        room.lifecycle = "waiting"
+        if playing:
+            room.open_seats.discard(session.seat)
+            room.runner.handover_seats |= {session.seat}
+        else:
+            for item in room.sessions.values():
+                item.ready = False
+            room.lifecycle = "waiting"
         self.persist(room)
         return room, session
+
+    def watch_room(self, *, code: str, display_name: str, connected=lambda token: True) -> tuple[Room, str]:
+        """Watch a room (feature watch), before or during a match: everyone's
+        cards and the chat, no seat. Returns the room and a credential. A
+        full room first forgets spectators who are not connected (their app
+        asks to watch again when it comes back)."""
+
+        room = self.get(code)
+        name = self._validate_name(display_name)
+        if len(room.spectators) >= MAX_SPECTATORS:
+            for token in [token for token in room.spectators if not connected(token)]:
+                del room.spectators[token]
+        if len(room.spectators) >= MAX_SPECTATORS:
+            raise RoomError("watchers_full")
+        token = self._new_token()
+        room.spectators[token] = name
+        return room, token
+
+    def spectator(self, *, code: str, token: str) -> tuple[Room, str]:
+        room = self.get(code)
+        name = room.spectators.get(token)
+        if name is None:
+            raise RoomError("invalid_session")
+        return room, name
+
+    def stop_watching(self, *, code: str, token: str) -> Room:
+        room, _ = self.spectator(code=code, token=token)
+        del room.spectators[token]
+        return room
 
     def set_ai_seats(
         self,
@@ -361,9 +433,9 @@ class RoomManager:
             raise RoomError("host_required")
         if room.runner is not None:
             raise RoomError("settings_locked")
-        self._validate_ai_seats(ai_seats)
+        self._validate_ai_seats(ai_seats, host_seat=room.host_seat())
         for seat in ai_seats:
-            if seat != 0 and room.session_for_seat(seat) is not None:
+            if room.session_for_seat(seat) is not None:
                 raise RoomError("seat_occupied")
         room.ai_seats = set(ai_seats)
         for item in room.sessions.values():
@@ -376,14 +448,19 @@ class RoomManager:
         """Before joining: who sits where (names and kinds only), to choose a seat."""
 
         room = self.get(code)
+        playing = room.runner is not None
+        # During a match the seats players left are the free ones.
         seats = [{"display_name": seat["display_name"] if seat["kind"] == "human" else None,
-                  "kind": seat["kind"], "seat": seat["seat"]} for seat in room.snapshot()["seats"]]
-        return {"joinable": room.runner is None, "room_code": room.code, "seats": seats}
+                  "kind": "open" if seat["seat"] in room.open_seats else seat["kind"], "seat": seat["seat"]}
+                 for seat in room.snapshot()["seats"]]
+        joinable = not playing or (not room.runner.terminal and bool(room.open_seats))
+        return {"host_seat": room.host_seat(), "joinable": joinable, "room_code": room.code, "seats": seats}
 
     def swap_seats(self, *, code: str, host_token: str, seats: object, movable) -> tuple[Room, dict[str, int]]:
-        """The host swaps two of seats 1-3 before a match: players, bots or free
-        seats. A player can be moved only if `movable(token)` (their app takes
-        the new seat). Readiness is cleared. Returns the moved players' new seats.
+        """The host swaps two of the other seats before a match: players, bots
+        or free seats. A player can be moved only if `movable(token)` (their app
+        takes the new seat). Readiness is cleared. Returns the moved players'
+        new seats.
         """
 
         room = self.get(code)
@@ -391,7 +468,8 @@ class RoomManager:
             raise RoomError("host_required")
         if room.runner is not None:
             raise RoomError("settings_locked")
-        if (type(seats) is not list or len(seats) != 2 or any(type(s) is not int or not 1 <= s <= 3 for s in seats)
+        if (type(seats) is not list or len(seats) != 2 or any(
+                type(s) is not int or not 0 <= s <= 3 or s == room.host_seat() for s in seats)
                 or seats[0] == seats[1]):
             raise RoomError("invalid_seats")
         a, b = seats
@@ -461,12 +539,14 @@ class RoomManager:
         runner = room.runner
         if runner is None or runner.terminal:
             raise RoomError("match_not_active")
-        player = room.session_for_seat(seat) if type(seat) is int and 1 <= seat <= 3 else None
+        player = room.session_for_seat(seat) if type(seat) is int and 0 <= seat <= 3 else None
         if player is None or type(bot) is not bool:
             raise RoomError("seat_not_coverable")
         if bot:
             if token != room.host_token:
                 raise RoomError("host_required")
+            if player.token == room.host_token:
+                raise RoomError("seat_not_coverable")
             if seat in room.ai_seats:
                 return room
             if connected(player.token):
@@ -478,10 +558,67 @@ class RoomManager:
                 raise RoomError("host_required")
             if seat not in room.ai_seats:
                 return room
+            if seat in runner.handover_seats:
+                # A newcomer plays from the next deal; the bot finishes this one.
+                raise RoomError("seat_not_coverable")
             runner.set_bot(seat, False)
             room.ai_seats.discard(seat)
         self.persist(room)
         return room
+
+    def leave_seat(self, *, code: str, token: str, connected) -> tuple[Room, bool]:
+        """A player leaves the room for good; their credential stops working.
+
+        Before a match the seat becomes free. During a match a bot plays it
+        from now on and anyone may join it, playing from the next deal. If
+        the host leaves, the next player hosts (a connected one first). The
+        last player to leave closes the room. Returns the room and whether
+        it closed.
+        """
+
+        room = self.get(code)
+        session = self._session(room, token)
+        others = sorted((item for item in room.sessions.values() if item.token != token),
+                        key=lambda item: (not connected(item.token), item.seat in room.ai_seats, item.seat))
+        if not others:
+            if room.runner is not None and not room.runner.terminal:
+                self.record_match(room)  # the deals played so far
+            del self._rooms[room.code]
+            if self._store is not None:
+                try:
+                    self._store.archive_room(room.code)
+                except PersistenceError:
+                    self.storage_failed = True
+            return room, True
+        del room.sessions[token]
+        if room.host_token == token:
+            room.host_token = others[0].token
+        runner = room.runner
+        if runner is None:
+            for item in room.sessions.values():
+                item.ready = False
+            room.lifecycle = "waiting"
+        else:
+            runner.handover_seats -= {session.seat}
+            if not runner.terminal and session.seat not in room.ai_seats:
+                runner.set_bot(session.seat, True)
+                room.ai_seats.add(session.seat)
+            if session.seat in room.ai_seats:
+                room.open_seats.add(session.seat)
+        self.persist(room)
+        return room, False
+
+    def settle_handovers(self, room: Room) -> bool:
+        """Seats the runner handed to their new players at a deal start stop
+        being bot seats in the room too. Returns whether any did."""
+
+        runner = room.runner
+        if runner is None or not runner.handed_over:
+            return False
+        room.ai_seats -= runner.handed_over
+        runner.handed_over = frozenset()
+        self.persist(room)
+        return True
 
     def set_ai_action_delay(
         self,
@@ -572,11 +709,27 @@ class RoomManager:
                     "team_humans": people, "winner_team": result["winner_team"]})
             except (ResultRejected, PersistenceError):
                 pass
+        self.record_match(room)
         try:
             return self.leaderboard.record(match_key=key, seats=seats, winner_team=result["winner_team"])
         except PersistenceError:
             self.storage_failed = True
             raise
+
+    def record_match(self, room: Room) -> None:
+        """Save the match's anonymous record (research.py): when it finishes,
+        or when the room closes or expires unfinished. Best effort; a failure
+        never stops play."""
+
+        if room.runner is None:
+            return
+        try:
+            record = online_record(room.runner, bot=os.environ.get("TUPPI_HOSTED_BOT_LEVEL") or "server",
+                                   day=results_today(), bot_version=self.bot_version)
+            if record is not None:
+                self.records.save(record, replace=True)
+        except (PersistenceError, ValueError, KeyError, IndexError, TypeError):
+            pass
 
     def leaderboard_for_session(self, *, code: str, token: str) -> dict[str, object]:
         """The server's standings, for anyone holding a seat in one of its rooms."""
@@ -605,8 +758,11 @@ class RoomManager:
             "winner_team": result["winner_team"],
         }][-MAX_PREVIOUS_MATCHES:]
         room.match_index += 1
-        # Seats a bot covered return to their players for the next match.
-        room.ai_seats = {seat for seat in room.ai_seats if room.session_for_seat(seat) is None}
+        # Seats a bot covered return to their players for the next match, and
+        # the seats players left are free again.
+        room.ai_seats = {seat for seat in room.ai_seats
+                         if room.session_for_seat(seat) is None and seat not in room.open_seats}
+        room.open_seats.clear()
         room.runner = None
         room.paused = False
         room.post_match_analysis = None
@@ -980,8 +1136,8 @@ class RoomManager:
         return name
 
     @staticmethod
-    def _validate_ai_seats(ai_seats: frozenset[int]) -> None:
-        if any(type(seat) is not int or seat not in range(1, 4) for seat in ai_seats):
+    def _validate_ai_seats(ai_seats: frozenset[int], host_seat: int = 0) -> None:
+        if any(type(seat) is not int or seat not in range(4) or seat == host_seat for seat in ai_seats):
             raise RoomError("invalid_ai_seats")
 
     @staticmethod
@@ -1037,8 +1193,12 @@ class RoomManager:
         expected_v2 = expected_v1 | {"ai_action_delay_ms"}
         schema_version = record.get("schema_version")
         ruleset_id = RulesetId.PROJECT_TARGET_V1
-        if schema_version == MULTI_MATCH_ROOM_RECORD_SCHEMA_VERSION:
+        multi_match = schema_version in (MULTI_MATCH_ROOM_RECORD_SCHEMA_VERSION, OPEN_SEATS_ROOM_RECORD_SCHEMA_VERSION)
+        open_seats_record = schema_version == OPEN_SEATS_ROOM_RECORD_SCHEMA_VERSION
+        if multi_match:
             expected = expected_v2 | {"ruleset_id", "match_index", "paused", "previous_matches"}
+            if open_seats_record:
+                expected |= {"open_seats", "handover_seats"}
             ai_action_delay_ms = record.get("ai_action_delay_ms")
             try:
                 ruleset_id = RulesetId(record.get("ruleset_id"))
@@ -1073,7 +1233,7 @@ class RoomManager:
         if not isinstance(lifecycle, str):
             raise PersistenceError("persisted lifecycle is invalid")
         if type(ai_seats_data) is not list or any(
-            type(seat) is not int or seat not in range(1, 4)
+            type(seat) is not int or seat not in (range(4) if open_seats_record else range(1, 4))
             for seat in ai_seats_data
         ):
             raise PersistenceError("persisted ai_seats are invalid")
@@ -1092,7 +1252,7 @@ class RoomManager:
             ai_action_delay_ms=ai_action_delay_ms,
             ruleset_id=ruleset_id,
         )
-        if schema_version == MULTI_MATCH_ROOM_RECORD_SCHEMA_VERSION:
+        if multi_match:
             match_index, paused, previous = record["match_index"], record["paused"], record["previous_matches"]
             if type(match_index) is not int or match_index < 0 or not isinstance(paused, bool):
                 raise PersistenceError("persisted match_index or paused is invalid")
@@ -1131,8 +1291,19 @@ class RoomManager:
                 ready=ready,
             )
         host_session = room.sessions.get(host_token)
-        if host_session is None or host_session.seat != 0:
+        if host_session is None or (host_session.seat != 0 and not open_seats_record):
             raise PersistenceError("persisted host session is invalid")
+        handover: list[int] = []
+        if open_seats_record:
+            open_seats, handover = record["open_seats"], record["handover_seats"]
+            if any(type(seats) is not list or any(type(s) is not int or s not in room.ai_seats for s in seats)
+                   or len(set(seats)) != len(seats) for seats in (open_seats, handover)):
+                raise PersistenceError("persisted open or handover seats are invalid")
+            if (any(room.session_for_seat(s) is not None for s in open_seats)
+                    or any(room.session_for_seat(s) is None for s in handover)
+                    or (open_seats or handover) and record["runner"] is None):
+                raise PersistenceError("persisted open or handover seats are invalid")
+            room.open_seats = set(open_seats)
         runner_record = record["runner"]
         if runner_record is not None:
             if type(runner_record) is not dict:
@@ -1143,6 +1314,10 @@ class RoomManager:
             if room.runner.ruleset_id is not room.ruleset_id:
                 raise PersistenceError("persisted runner ruleset disagrees with room")
             room.lifecycle = "playing" if not room.runner.terminal else "completed"
+            # The runner's bot seats are the current ones (a deal start may have
+            # handed seats over just before the record was written).
+            room.ai_seats = set(room.runner.ai_seats)
+            room.runner.handover_seats = frozenset(handover)
         if room.paused and (room.runner is None or room.runner.terminal):
             raise PersistenceError("persisted pause has no match in progress")
         return room

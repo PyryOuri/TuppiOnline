@@ -15,7 +15,10 @@ const networkErrors = {room_not_found:'Huonetta ei löydy. Tarkista huonekoodi.'
   invalid_display_name:'Kirjoita nimimerkki (1–40 merkkiä).',
   seat_taken:'Paikka ehdittiin jo varata. Valitse toinen paikka.',
   player_cannot_move:'Pelaajan sovellus ei tue paikan vaihtoa. Pyydä häntä sulkemaan ja avaamaan Tuppi uudelleen.',
-  seat_not_releasable:'Tätä paikkaa ei voi vapauttaa.'};
+  seat_not_releasable:'Tätä paikkaa ei voi vapauttaa.',
+  seat_not_coverable:'Pääset peliin seuraavan jaon alussa.',
+  watchers_full:'Huonetta katsoo jo kahdeksan ihmistä. Yritä myöhemmin uudelleen.',
+  spectator_cannot_act:'Katsojana et voi tehdä siirtoja.'};
 export function networkBase(value) {
   const url = new URL(value);
   const local = ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
@@ -68,6 +71,17 @@ export function networkDealForAnalysis(deal) {
     return {cards: hands.flat(), dealer: deal.dealer, score: [...deal.score_before], actions, expectedTricks: [...deal.team_tricks]};
   } catch { return null; }
 }
+// A spectator's update (feature watch) as the table seen from `viewpoint`:
+// that seat's cards as the hand, no actions of its own, and every seat's
+// cards by table position (0 = the viewpoint, then clockwise) in `tableHands`.
+export function spectatorPayload(payload, viewpoint = 0) {
+  const hands = payload.table?.hands;
+  if (!Array.isArray(hands) || hands.length !== 4) throw new Error('Palvelin lähetti puutteellisen katsojanäkymän.');
+  return {...payload, bidding: payload.bidding && {...payload.bidding, options: [], own_bid: null},
+    observation: {...payload.observation, observing_seat: viewpoint, own_hand: hands[viewpoint], legal_actions: [],
+      team: viewpoint % 2, partner_seat: (viewpoint + 2) % 4},
+    tableHands: [0, 1, 2, 3].map(position => hands[(viewpoint + position) % 4].map(networkCard))};
+}
 export function networkView(payload, completed = [], summary = null, conceded = new Map()) {
   const observation = payload.observation, own = observation.observing_seat;
   if (!Number.isInteger(own) || own < 0 || own > 3 || observation.ruleset_id !== 'project_target_v3' ||
@@ -101,14 +115,31 @@ export function networkView(payload, completed = [], summary = null, conceded = 
       contract: bid.declared_contract === 'RAMI' ? 1 : 0})), history, completed: deals,
     trickSize: soolaaja >= 0 && observation.sooli.exchanged ? 3 : 4,
     terminal: observation.match_terminal, startingHandSummary: summary,
+    ...(payload.tableHands ? {watching: true, tableHands: payload.tableHands} : {}),
     prompt: legal.length ? null : phase === 0 ? 'Tarjous lukittu. Odotetaan muita pelaajia…' :
       observation.current_actor === null ? 'Ottelu päättyi.' : 'Odotetaan siirtoa…'};
 }
 
+const chatHistory = 50;
+function chatItem(item) {
+  // seat null: a spectator (feature watch).
+  return Number.isInteger(item?.id) && (Number.isInteger(item.seat) || item.seat === null) && typeof item.display_name === 'string' &&
+    typeof item.text === 'string' && Number.isInteger(item.sent_at);
+}
+// The host's seat: 0 unless the host left and another player hosts
+// (feature leave_seat; older servers do not say).
+export function hostSeat(lobby) {
+  return Number.isInteger(lobby?.host_seat) ? lobby.host_seat : 0;
+}
+
 export class NetworkSession {
   constructor({persist, onView = () => {}, onLobby = () => {}, onStatus = () => {}, onConnection = () => {},
-    onReconnect = () => {}, fetcher = (...args) => globalThis.fetch(...args), Socket = globalThis.WebSocket, timers = globalThis} = {}) {
-    Object.assign(this, {persist, onView, onLobby, onStatus, onConnection, onReconnect, fetcher, Socket, timers});
+    onReconnect = () => {}, onChat = () => {}, fetcher = (...args) => globalThis.fetch(...args), Socket = globalThis.WebSocket,
+    timers = globalThis} = {}) {
+    Object.assign(this, {persist, onView, onLobby, onStatus, onConnection, onReconnect, onChat, fetcher, Socket, timers});
+    // Room chat (feature chat): the latest messages, oldest first. Memory only;
+    // the server sends them again when this seat reconnects.
+    this.chat = [];
     this.session = null; this.socket = null; this.connected = false; this.stopped = true;
     this.queue = Promise.resolve(); this.retryCount = 0; this.epoch = 0; this.completed = new Map();
     this.authRequired = false; this.configuring = false; this.lobbyRevision = 0;
@@ -176,14 +207,36 @@ export class NetworkSession {
     await this.begin({...result, base: networkBase(base), host: true, pending: null, cursor: -1,
       schema: 'tuppi.browser.network.v1', active: true});
   }
-  // Before joining (feature seat_choice): who sits where; null if the server
-  // cannot say. Seat 2 is the host's partner; 1 and 3 are partners.
+  // Before joining (feature seat_choice): who sits where and the host's seat;
+  // null if the server cannot say. The host's partner sits opposite them.
+  // During a match (feature leave_seat) the seats players left are open.
   async seatPreview(base, code) {
     if (!/^[A-Z0-9]{6}$/.test(code)) return null;
     const compatibility = await this.request('/v1/compatibility', null, base);
     if (!compatibility.features?.includes('seat_choice')) return null;
     const result = await this.request(`/v1/rooms/${code}/seats`, {}, base);
-    return Array.isArray(result.seats) && result.joinable ? result.seats : null;
+    return Array.isArray(result.seats) && result.joinable ? {seats: result.seats, hostSeat: hostSeat(result)} : null;
+  }
+  // Watch a room (feature watch): every hand and the chat, no seat. The
+  // table is shown from seat 0 until another viewpoint is chosen.
+  async watch(base, code, displayName) {
+    if (!/^[A-Z0-9]{6}$/.test(code)) throw new Error('Huonekoodi on kuusi kirjainta tai numeroa.');
+    await this.check(base);
+    const result = await this.request(`/v1/rooms/${code}/watch`, {display_name: displayName}, base);
+    await this.begin({...result, base: networkBase(base), host: false, pending: null, cursor: -1,
+      schema: 'tuppi.browser.network.v1', active: true, watching: true, viewpoint: 0, display_name: displayName});
+  }
+  // A spectator's credential is kept in server memory only: after a server
+  // restart (or when a full room forgot it) the app asks to watch again.
+  async rewatch() {
+    const result = await this.request(`/v1/rooms/${this.session.room_code}/watch`, {display_name: this.session.display_name || 'Katsoja'});
+    this.session.session_token = result.session_token; this.session.lobby = result.lobby;
+    await this.persist(this.session);
+  }
+  setViewpoint(seat) {
+    if (!this.session?.watching || !Number.isInteger(seat) || seat < 0 || seat > 3) return;
+    this.session.viewpoint = seat; this.persist(this.session).catch(() => {});
+    this.onLobby(this.session.lobby); this.emitView();
   }
   async join(base, code, displayName, seat = null) {
     if (!/^[A-Z0-9]{6}$/.test(code)) throw new Error('Huonekoodi on kuusi kirjainta tai numeroa.');
@@ -200,6 +253,7 @@ export class NetworkSession {
       throw new Error('Verkkopelin tallennus ei ole yhteensopiva.');
     networkBase(session.base);
     this.close(); this.session = structuredClone(session); this.completed.clear(); this.conceded.clear(); this.latest = null;
+    this.chat = []; this.onChat(this.chat, null);
     await this.persist(this.session); this.stopped = false;
     this.onLobby(this.session.lobby); this.connect();
   }
@@ -225,11 +279,15 @@ export class NetworkSession {
       this.pendingSent = false; this.emitView();
       this.timers.clearTimeout(this.deadline); this.timers.clearTimeout(this.heartbeat);
       if (event.code === 4001) { this.stopped = true; this.connection('superseded'); this.onStatus('Tämä paikka avattiin toisessa välilehdessä.', true); return; }
-      if (event.code === 4002) {
-        // The host freed this seat; its credential no longer works.
+      if ([4002, 4003, 4004].includes(event.code)) {
+        // The host freed this seat (4002), this player left the room in
+        // another tab (4003), or the last player left and the room closed
+        // (4004, spectators); the credential no longer works.
         this.stopped = true; this.session.active = false; this.session.released = true;
         this.persist(this.session).catch(() => {});
-        this.connection('released'); this.onStatus('Huoneen luoja vapautti paikkasi. Voit liittyä huoneeseen uudelleen kutsulinkillä.', true); return;
+        this.connection({4002: 'released', 4003: 'left', 4004: 'closed'}[event.code]);
+        this.onStatus({4002: 'Huoneen luoja vapautti paikkasi. Voit liittyä huoneeseen uudelleen kutsulinkillä.',
+          4003: 'Poistuit huoneesta toisessa välilehdessä.', 4004: 'Huone suljettiin, koska viimeinen pelaaja poistui.'}[event.code], true); return;
       }
       this.interrupted = true;
       if ([1001, 1012].includes(event.code)) this.restarting = true;
@@ -260,7 +318,8 @@ export class NetworkSession {
           payload.seat !== this.session.seat && Array.isArray(payload.features) && payload.features.includes('seat_swap')) {
         this.session.seat = payload.seat; await this.persist(this.session);
       }
-      if (payload.protocol_version !== networkProtocol || payload.seat !== this.session.seat || payload.room_code !== this.session.room_code)
+      if (payload.protocol_version !== networkProtocol || payload.seat !== this.session.seat || payload.room_code !== this.session.room_code ||
+          Boolean(payload.watching) !== Boolean(this.session.watching))
         throw new Error('Verkkopelin paikka tai versio muuttui.');
       this.retryCount = 0; this.timers.clearTimeout(this.deadline); this.beat();
       const resumed = this.interrupted; this.restarting = this.interrupted = false;
@@ -271,13 +330,26 @@ export class NetworkSession {
       const options = {...(this.features.has('compact_results') ? {omit_match_result: true} : {}),
         ...(this.features.has('seat_swap') ? {seat_updates: true} : {})};
       if (Object.keys(options).length) this.send('client_options', options);
-    } else if (message.message_type === 'seat_update') {
+    } else if (message.message_type === 'seat_update' && !this.session.watching) {
       // The host moved this player before the match (feature seat_swap).
-      if (!Number.isInteger(payload.seat) || payload.seat < 1 || payload.seat > 3) throw new Error('Palvelin lähetti virheellisen paikan.');
+      if (!Number.isInteger(payload.seat) || payload.seat < 0 || payload.seat > 3) throw new Error('Palvelin lähetti virheellisen paikan.');
       this.session.seat = payload.seat; await this.persist(this.session);
       this.onStatus('Huoneen luoja vaihtoi paikkaasi.', false);
+    } else if (message.message_type === 'chat_history') {
+      if (!Array.isArray(payload.messages)) return;
+      this.chat = payload.messages.filter(chatItem).slice(-chatHistory); this.onChat(this.chat, null);
+    } else if (message.message_type === 'chat_message') {
+      if (!chatItem(payload) || this.chat.some(item => item.id === payload.id)) return;
+      this.chat = [...this.chat, payload].slice(-chatHistory); this.onChat(this.chat, payload);
+    } else if (message.message_type === 'chat_refused') {
+      this.onChat(this.chat, null, payload.code === 'chat_rate_limited' ? 'Odota hetki ennen seuraavaa viestiä.' : 'Viestissä voi olla 1–200 merkkiä.');
     } else if (message.message_type === 'compatibility_result') throw new Error('Päivitä Tuppi ennen verkkopeliä.');
-    else if (message.message_type === 'protocol_error') throw new Error(networkErrors[payload.code] || 'Verkkopelin yhteyttä ei voitu jatkaa. Paikkasi on tallennettu.');
+    else if (message.message_type === 'protocol_error' && payload.code === 'invalid_session' && this.session.watching && !this.rewatching) {
+      // The server no longer knows this spectator: watch again, once.
+      this.rewatching = true;
+      try { await this.rewatch(); } finally { this.rewatching = false; }
+      this.socket?.close();
+    } else if (message.message_type === 'protocol_error') throw new Error(networkErrors[payload.code] || 'Verkkopelin yhteyttä ei voitu jatkaa. Paikkasi on tallennettu.');
     else if (message.message_type === 'lobby_snapshot') {
       this.lobbyRevision++;
       if (this.latest && !['playing','completed'].includes(payload.lifecycle)) {
@@ -286,11 +358,14 @@ export class NetworkSession {
         this.latest = null; this.completed.clear(); this.conceded.clear(); this.placed = null;
         Object.assign(this.session, {cursor: -1, match_ref: null, pending: null, summaryDeal: null, summary: null});
       }
+      // The next player hosts when the host leaves (feature leave_seat).
+      if (Number.isInteger(payload.host_seat)) this.session.host = !this.session.watching && payload.host_seat === this.session.seat;
       this.session.lobby = payload; await this.persist(this.session); this.onLobby(payload);
       this.emitView();
       if (!['playing','completed'].includes(payload.lifecycle)) { this.connected = true; this.connection('connected'); this.onStatus('', false); }
     } else if (['match_update','reconnect_result'].includes(message.message_type)) {
-      if (payload.observation.observing_seat !== this.session.seat) throw new Error('Palvelin lähetti väärän paikan havainnon.');
+      if (payload.observation.observing_seat !== this.session.seat || Boolean(payload.table) !== Boolean(this.session.watching))
+        throw new Error('Palvelin lähetti väärän paikan havainnon.');
       for (const deal of payload.completed_deals ?? []) this.completed.set(deal.deal_number, deal);
       for (const item of payload.conceded_deals ?? []) this.conceded.set(item.deal_number, item);
       this.latest = payload;
@@ -299,7 +374,7 @@ export class NetworkSession {
       this.session.match_ref = payload.match_ref ?? payload.observation.match_ref;
       if (this.session.pending && this.session.cursor > this.session.pending.expected_event_index)
         this.placed = this.session.pending.client_action_id;
-      if (payload.observation.phase === 'SHOWING' && this.session.summaryDeal !== payload.observation.deal_ref) {
+      if (!this.session.watching && payload.observation.phase === 'SHOWING' && this.session.summaryDeal !== payload.observation.deal_ref) {
         const hand = payload.observation.own_hand.map(networkCard);
         this.session.summaryDeal = payload.observation.deal_ref;
         this.session.summary = {suitLengths: [0,1,2,3].map(suit => hand.filter(c => Math.floor(c/13) === suit).length),
@@ -325,18 +400,23 @@ export class NetworkSession {
   }
   emitView() {
     if (!this.latest) return;
+    if (this.session.watching) { this.onView(this.spectatorView()); return; }
     const view = networkView(this.latest, [...this.completed.values()].sort((a,b) => a.deal_number-b.deal_number),
       this.session.summaryDeal === this.latest.observation.deal_ref ? this.session.summary : null, this.conceded);
     const paused = Boolean(this.session.lobby?.paused) && !view.terminal;
     // A bot is playing this seat while its player was away (feature seat_bot).
-    const covered = this.session.lobby?.seats?.find(s => s.seat === this.session.seat)?.kind === 'ai' && !view.terminal;
+    const own = this.session.lobby?.seats?.find(s => s.seat === this.session.seat);
+    const covered = own?.kind === 'ai' && !view.terminal;
     view.covered = covered;
+    // Joined a seat its player left (feature leave_seat): the bot finishes this deal.
+    view.joining = covered && Boolean(own.joining);
     if (!this.connected || this.stopped || this.session.pending || paused || covered) view.waitingHuman = false;
     view.paused = paused;
     view.concedeAvailable = this.features.has('concede') && this.connected && !this.stopped && !this.session.pending &&
       !paused && !covered && networkDecided(view);
     if (!this.connected) view.prompt = 'Yhdistetään verkkopeliin…';
     else if (paused) view.prompt = this.session.host ? 'Peli on tauolla. Jatka, kun kaikki ovat valmiita.' : 'Peli on tauolla. Huoneen luoja jatkaa peliä.';
+    else if (view.joining) view.prompt = 'Liityit kesken ottelun. Botti pelaa tämän jaon loppuun, ja sinä pelaat seuraavasta jaosta alkaen.';
     else if (covered) view.prompt = 'Botti pelaa paikallasi. Voit ottaa paikkasi takaisin.';
     else if (this.session.pending && view.phase !== 2 &&
         (!this.placedPending() || this.latest.observation.current_actor === this.session.seat)) view.prompt = 'Käsitellään siirtoasi…';
@@ -346,6 +426,23 @@ export class NetworkSession {
         participant ? `${participant.display_name}: odotetaan siirtoa…` : 'Odotetaan siirtoa…';
     }
     this.onView(view);
+  }
+  // A spectator's table (feature watch): every hand, nothing to do.
+  spectatorView() {
+    const viewpoint = this.session.viewpoint ?? 0;
+    const view = networkView(spectatorPayload(this.latest, viewpoint),
+      [...this.completed.values()].sort((a,b) => a.deal_number-b.deal_number), null, this.conceded);
+    const seats = this.session.lobby?.seats ?? [], name = seat => {
+      const item = seats.find(s => s.seat === seat);
+      return item?.covering ? `Botti (${item.covering})` : item?.display_name || 'Botti';
+    };
+    const observation = this.latest.observation, team = viewpoint % 2;
+    Object.assign(view, {waitingHuman: false, covered: false, concedeAvailable: false, paused: Boolean(this.session.lobby?.paused) && !view.terminal});
+    view.prompt = !this.connected ? 'Yhdistetään verkkopeliin…' : view.terminal ?
+      `Ottelu päättyi: ${(view.score0 >= view.score1 ? [team, team + 2] : [1 - team, 3 - team]).map(name).join(' ja ')} voittivat.` :
+      view.paused ? 'Peli on tauolla.' : view.phase === 0 ? 'Katsot peliä. Pelaajat lukitsevat tarjouksiaan.' :
+      observation.current_actor === null ? 'Katsot peliä.' : `Katsot peliä. Vuorossa: ${name(observation.current_actor)}.`;
+    return view;
   }
   async submit(id) {
     if (!this.connected || this.session.pending || !this.latest) return;
@@ -384,10 +481,17 @@ export class NetworkSession {
     if (bot ? !this.session.host : !this.session.host && seat !== this.session.seat) return false;
     return this.send('seat_bot', {seat, bot: Boolean(bot)});
   }
+  // A message to everyone in the room (feature chat). One line, at most 200
+  // characters; the server answers with the message (or chat_refused).
+  sendChat(text) {
+    const line = String(text ?? '').replace(/\s+/g, ' ').trim();
+    if (!line || !this.features.has('chat') || !this.connected || this.stopped) return false;
+    return this.send('chat_send', {text: line.slice(0, 200)});
+  }
   pause() { return this.hostCommand('pause'); }
   resume() { return this.hostCommand('resume'); }
   rematch() { return this.hostCommand('rematch'); }
-  ready() { if (this.connected && !this.stopped && !this.configuring && !this.authRequired) this.send('ready', {session_token: this.session.session_token}); }
+  ready() { if (this.connected && !this.stopped && !this.configuring && !this.authRequired && !this.session.watching) this.send('ready', {session_token: this.session.session_token}); }
   async fillEmptySeats() {
     const aiSeats = this.session.lobby.seats.filter(s => ['open','ai'].includes(s.kind)).map(s => s.seat);
     await this.configureBots(aiSeats);
@@ -420,7 +524,28 @@ export class NetworkSession {
       return true;
     } finally { this.configuring = false; if (epoch === this.epoch && !this.stopped) this.onLobby(this.session.lobby); }
   }
-  // Host: swap two of seats 1-3 before the match (feature seat_swap).
+  // Leave the room for good (feature leave_seat). In the lobby the seat is
+  // freed; during a match a bot plays it until someone joins it. The next
+  // player hosts if the host leaves; the last player closes the room. With
+  // an older server, or a room or seat that is already gone, the room is
+  // only forgotten on this device. Returns {closed} from the server, or null.
+  // `forget`: only forget the room here, e.g. when the server cannot be reached.
+  async leave({forget = false} = {}) {
+    if (!this.session) return null;
+    let result = null;
+    // A saved room this app is not connected to: ask the server what it offers.
+    const features = this.features.size || forget ? this.features :
+      new Set((await this.request('/v1/compatibility', null).catch(() => null))?.features ?? []);
+    if (!forget && features.has('leave_seat') && !this.session.released) {
+      try {
+        result = await this.request(`/v1/rooms/${this.session.room_code}/leave`, {session_token: this.session.session_token});
+      } catch (error) { if (!['room_not_found', 'invalid_session'].includes(error.code)) throw error; }
+    }
+    this.close(); this.session.active = false; this.session.released = true;
+    await this.persist(this.session);
+    return result;
+  }
+  // Host: swap two of the other seats before the match (feature seat_swap).
   async swapSeats(a, b) {
     if (!this.session?.host || !this.features.has('seat_swap')) return false;
     return this.lobbyCommand('swap', {seats: [a, b]});
@@ -439,7 +564,7 @@ export class NetworkSession {
   }
   async toggleBot(seat) {
     const current = this.session.lobby.seats.find(s => s.seat === seat);
-    if (!current || seat === 0 || !['open','ai'].includes(current.kind)) throw new Error('Paikka on jo pelaajan käytössä.');
+    if (!current || seat === hostSeat(this.session.lobby) || !['open','ai'].includes(current.kind)) throw new Error('Paikka on jo pelaajan käytössä.');
     const aiSeats = new Set(this.session.lobby.seats.filter(s => s.kind === 'ai').map(s => s.seat));
     if (aiSeats.has(seat)) aiSeats.delete(seat); else aiSeats.add(seat);
     await this.configureBots([...aiSeats].sort());
