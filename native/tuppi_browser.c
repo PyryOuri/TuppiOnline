@@ -16,6 +16,12 @@ void tc_env_set_equity(TcEnv *e, const double *equity);
 void tc_env_set_options(TcEnv *e, double random_start, int single_deal);
 void tc_env_set_team_rollout(TcEnv *e, const TcMlp *m);
 void tc_env_set_exact_speed(TcEnv *e, int enabled);
+void tc_env_set_belief(TcEnv *e, const TcMlp *m, int mult, double temperature, double eps, int all_seats);
+void tc_env_set_belief_humans(TcEnv *e, int mask, double temperature, double eps);
+int tc_lite_net_applies(const TcObs *o, int tricks, int rami_tricks);
+int tc_lite_net_h(const TcMlp *m, const double *equity, const TcObs *o, int action,
+                 int layouts, int mult, int human_mask, double temperature, double eps,
+                 uint64_t *gate_rng, uint64_t *belief_rng);
 void tc_env_set_sooli(TcEnv *e, int belief, int return_pi, int play_heur, double lambda);
 int tc_search_values(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *actions,
                      int k, int w, int dd_left, uint64_t *rng, double *out);
@@ -32,6 +38,10 @@ static uint64_t rngs[4];
 static int sooli_modes[4], worlds = 128;
 static double last_values[TC_NUM_ACTIONS_V2];
 static int last_ids[TC_NUM_ACTIONS_V2], last_count;
+/* Additive API: old callers keep the original controller and 3-word context. */
+static int bot_mode, human_mask;
+static uint64_t gate_rngs[4], belief_rngs[4];
+static double match_equity[50];
 
 int tb_api_version(void) { return 1; }
 
@@ -54,6 +64,8 @@ int tb_configure(int n_worlds, const double *equity) {
   if (!models[0] || !models[1] || !equity || n_worlds < 1 || n_worlds > 1024 ||
       (n_worlds > 128 && n_worlds % 128)) return -1;
   worlds = n_worlds;
+  bot_mode = 0; human_mask = 0;
+  memcpy(match_equity, equity, sizeof match_equity);
   tc_set_showing_fix(1);
   for (int s = 0; s < 4; ++s) {
     tc_env_free(envs[s]);
@@ -68,6 +80,20 @@ int tb_configure(int n_worlds, const double *equity) {
     sooli_modes[s] = 0;
   }
   last_count = 0;
+  return 0;
+}
+
+/* 0: unchanged search; 1: Heidi 0.5 (C1H); 2: Heidi 1.0 (PIB4 humans). */
+int tb_configure_bot(int mode, int people) {
+  if (mode < 0 || mode > 2 || people < 0 || people > 15 || !envs[0]) return -1;
+  bot_mode = mode; human_mask = people;
+  for (int s = 0; s < 4; ++s) {
+    tc_env_set_belief(envs[s], mode == 2 ? models[1] : NULL, mode == 2 ? 4 : 0, 2.0, 0.5, 1);
+    tc_env_set_belief_humans(envs[s], mode == 2 ? people & ~(1 << s) : 0, 4.0, 0.8);
+    if (mode == 1) rngs[s] = UINT64_C(0x9E3779B97F4A7C15) * (s + 1);
+    gate_rngs[s] = UINT64_C(0x5AFE0000) + s;
+    belief_rngs[s] = UINT64_C(0xBE11EF00) + s;
+  }
   return 0;
 }
 
@@ -166,11 +192,26 @@ static void set_sooli(int seat, int mode) {
 
 uint32_t tb_context(int seat, int field) {
   if (seat < 0 || seat > 3) return 0;
-  return field == 0 ? (uint32_t)rngs[seat] : field == 1 ? (uint32_t)(rngs[seat] >> 32) : (uint32_t)sooli_modes[seat];
+  switch (field) {
+    case 0: return (uint32_t)rngs[seat];
+    case 1: return (uint32_t)(rngs[seat] >> 32);
+    case 2: return (uint32_t)sooli_modes[seat];
+    case 3: return (uint32_t)gate_rngs[seat];
+    case 4: return (uint32_t)(gate_rngs[seat] >> 32);
+    case 5: return (uint32_t)belief_rngs[seat];
+    case 6: return (uint32_t)(belief_rngs[seat] >> 32);
+    default: return 0;
+  }
 }
 int tb_restore_context(int seat, uint32_t lo, uint32_t hi, int mode) {
   if (seat < 0 || seat > 3 || !envs[seat] || mode < 0 || mode > 2) return -1;
   rngs[seat] = (uint64_t)lo | ((uint64_t)hi << 32); set_sooli(seat, mode); return 0;
+}
+int tb_restore_net_context(int seat, uint32_t glo, uint32_t ghi, uint32_t blo, uint32_t bhi) {
+  if (seat < 0 || seat > 3 || bot_mode != 1) return -1;
+  gate_rngs[seat] = (uint64_t)glo | ((uint64_t)ghi << 32);
+  belief_rngs[seat] = (uint64_t)blo | ((uint64_t)bhi << 32);
+  return 0;
 }
 
 static int argmax(const double *values, int k) {
@@ -229,6 +270,20 @@ int tb_choose(int seat) {
   int ids[TC_NUM_ACTIONS_V2], k = tb_legal(seat, ids);
   if (k == 0) return -2;
   if (k == 1) return ids[0];
+  if (bot_mode == 1) {
+    if (obs.phase >= TC_PH_SOOLI_OFFER) return tc_sooli_policy(&obs, &rngs[seat]);
+    uint8_t features[2048]; float q[TC_NUM_ACTIONS];
+    tc_encode_v(&obs, features, tc_mlp_encoder(models[1]));
+    tc_mlp_forward(models[1], features, 1, q);
+    int best = 0;
+    for (int i = 1; i < k; ++i)
+      if (q[ids[i]] > q[ids[best]] || (q[ids[i]] == q[ids[best]] && ids[i] < ids[best])) best = i;
+    int action = ids[best];
+    if (tc_lite_net_applies(&obs, 9, 0))
+      action = tc_lite_net_h(models[1], match_equity, &obs, action, 16, 4,
+                            human_mask & ~(1 << seat), 4.0, 0.8, &gate_rngs[seat], &belief_rngs[seat]);
+    return action;
+  }
   double values[TC_NUM_ACTIONS_V2]; int best;
   if (obs.phase >= TC_PH_SOOLI_OFFER) {
     if (obs.phase == TC_PH_SOOLI_OFFER) {
