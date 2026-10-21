@@ -22,7 +22,7 @@ export function seatPresentation(view, seat, nickname = seatNames[seat]) {
 export async function offlineResultReport(save) {
   const deals = save?.completed ?? [], last = deals.at(-1)?.result, id = await offlineMatchId(save);
   if (!id) return null;
-  return {id, worlds: save.worlds, winner_team: last.score0 >= 52 ? 0 : 1, final_score: [last.score0, last.score1],
+  return {id, worlds: save.worlds, ...(save.bot ? {bot: save.bot} : {}), winner_team: last.score0 >= 52 ? 0 : 1, final_score: [last.score0, last.score1],
     deals: deals.length, conceded: deals.filter(deal => deal.conceded).length};
 }
 async function offlineMatchId(save) {
@@ -38,7 +38,7 @@ async function offlineMatchId(save) {
 export async function offlineMatchRecord(save) {
   const id = await offlineMatchId(save);
   if (!id || typeof save.identity !== 'string') return null;
-  return {id, worlds: save.worlds, runtime: save.identity, deals: save.completed.map(deal => ({cards: [...deal.cards],
+  return {id, worlds: save.worlds, ...(save.bot ? {bot: save.bot} : {}), runtime: save.identity, deals: save.completed.map(deal => ({cards: [...deal.cards],
     dealer: deal.dealer, score: [...deal.score], actions: [...deal.actions],
     ...(deal.conceded ? {conceded: {afterTricks: deal.conceded.afterTricks}} : {})}))};
 }

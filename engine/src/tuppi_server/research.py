@@ -73,16 +73,15 @@ def _summary(state: MatchState, deals: list[dict[str, object]]) -> dict[str, obj
             "winner_team": (0 if score[0] > score[1] else 1) if finished else None}
 
 
-def online_record(runner, *, bot: str, day: str, bot_version: str | None = None) -> dict[str, object] | None:
-    """The record of a live match so far; None if nothing has been played.
+def deal_entries(runner) -> list[dict[str, object]]:
+    """Every deal of a live match so far, as in its record: dealt hands,
+    score before, and every accepted action with who made it.
 
     Each accepted action is placed in its deal by its first public event:
     a deal's actions come after the previous finished deal's last event.
     """
 
     actions = sorted(runner._accepted_actions, key=lambda item: item.action_index)
-    if not actions:
-        return None
     finished = project_completed_deals(runner.state)
     last_events = [deal["events"][-1]["event_index"] for deal in finished]
     entries: list[dict[str, object]] = []
@@ -102,6 +101,24 @@ def online_record(runner, *, bot: str, day: str, bot_version: str | None = None)
     for item in runner.conceded_deals():
         if item["deal_number"] < len(entries):
             entries[item["deal_number"]]["conceded_after_tricks"] = item["after_tricks"]
+    return entries
+
+
+def finished_deal_records(runner) -> list[dict[str, object]]:
+    """The finished deals' full records, for everyone in the room (feature
+    deal_records): once a deal is over, its hands, all four bids and any sooli
+    exchange are no longer private. The deal in play is never included.
+    Finished deals come first, so deal n is item n."""
+
+    return [entry for entry in deal_entries(runner) if entry["complete"]]
+
+
+def online_record(runner, *, bot: str, day: str, bot_version: str | None = None) -> dict[str, object] | None:
+    """The record of a live match so far; None if nothing has been played."""
+
+    entries = deal_entries(runner)
+    if not entries:
+        return None
     score = [runner.state.score.team0, runner.state.score.team1]
     key = f"{runner.match_ref}:{runner._deals[0].deal_id}"
     return {"bot": bot, **({"bot_version": bot_version} if bot_version else {}), "day": day, "deals": entries,
@@ -142,9 +159,15 @@ def _offline_record(payload: object, *, day: str) -> dict[str, object]:
     plays from the trick then in progress on are marked forced (online the
     server marks exactly the plays after it)."""
 
-    if type(payload) is not dict or set(payload) != {"deals", "id", "runtime", "worlds"}:
+    if type(payload) is not dict or set(payload) != ({"deals", "id", "runtime", "worlds"} |
+                                                  ({"bot"} if "bot" in payload else set())):
+        raise RecordRejected("invalid_record")
+    bot = payload.get("bot")
+    if bot is not None and (not isinstance(bot, str) or bot not in {"heidi05", "heidi10"}):
         raise RecordRejected("invalid_record")
     match_id, worlds, runtime, saved = payload["id"], payload["worlds"], payload["runtime"], payload["deals"]
+    if (bot == "heidi05" and worlds != 128) or (bot == "heidi10" and worlds != 1024):
+        raise RecordRejected("invalid_record")
     if (not isinstance(match_id, str) or not _ID.fullmatch(match_id) or type(worlds) is not int
             or worlds not in OFFLINE_BOTS or not isinstance(runtime, str) or not _VERSION.fullmatch(runtime)
             or type(saved) is not list or not 1 <= len(saved) <= 500):
@@ -193,7 +216,7 @@ def _offline_record(payload: object, *, day: str) -> dict[str, object]:
         entries.append(entry)
     if state.phase is not EnginePhase.MATCH_COMPLETE:
         raise RecordRejected("invalid_record")  # only finished matches are sent
-    return {"bot": OFFLINE_BOTS[worlds], "bot_version": runtime, "day": day, "id": f"offline-{match_id}",
+    return {"bot": bot or OFFLINE_BOTS[worlds], "bot_version": runtime, "day": day, "id": f"offline-{match_id}",
             "ruleset_id": RulesetId.PROJECT_TARGET_V3.value, "schema_version": RECORD_SCHEMA_VERSION,
             "source": "offline", **_summary(state, entries)}
 

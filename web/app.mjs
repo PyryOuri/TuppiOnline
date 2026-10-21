@@ -10,8 +10,17 @@ import {networkEnabled} from './capabilities.mjs';
 import {LobbyView, lobbyPresentation, invitationURL, roomCodeFromInput, standInActions, seatDisplayName, seatChoices,
   takeableSeats, watcherSeatNames} from './lobby.mjs';
 import {loadPreferences, savePreferences} from './preferences.mjs';
+import {liveDealFromObservation, liveDealFromResult, liveDealSteps, liveTimeline, timelinePart} from './live.mjs';
+import {ReplayViewer, viewerMatchFromRecord, viewerMatchFromSave, viewerMatchesFromText, viewerReadFile, viewerReplayFile, viewerCompass, viewerSpeeds} from './replay.mjs';
 
 const $ = id => document.getElementById(id);
+const heidiNames = {heidi05: 'Heidi 0.5', heidi10: 'Heidi 1.0'};
+function botSelection(save = null) {
+  const value = save ? (save.bot ?? String(save.worlds)) : $('worlds').value;
+  return value in heidiNames ? {bot: value, worlds: value === 'heidi10' ? 1024 : 128} :
+    {bot: 'legacy', worlds: save?.worlds ?? Number(value)};
+}
+function botSelectionValue(save) { return save?.bot ?? String(save?.worlds ?? 128); }
 let worker, generation = 0, view, lastSave, selectedCard = null, bidContract = 0, busy = true, writeAccess = false;
 let saveQueue = Promise.resolve(), replayDeal, replayIndex = 0;
 let pendingWrites = 0, saveFailed = false, durableIdentity = null, saveIdentityKnown = false;
@@ -26,6 +35,7 @@ let connectionState = {phase: 'local'}, lobbyConfiguration = null, lobbyRoom = n
 const historyRows = new Map();
 const keyboard = new TableKeyboardSelection();
 let keyboardFeedback = '', revealTimer, revealFrame = null, revealKey = null;
+let liveViewer = null;  // the viewer over a live online game (round 16)
 let networkClient = null, savedNetwork = null, networkAddress = null, offlineStarted = false, networkRevealDeal = null;
 let screen = 'home', entryReady = false, networkResolved = false, navigationPending = false, navigationToken = 0;
 let roomIntent = 'join', invitation = false, entryPending = false, passcodeRequired = null, passcodeCheck = null;
@@ -94,19 +104,27 @@ function renderHome() {
   $('home-online-other').disabled = $('home-online').disabled;
   $('home-local').disabled = !entryReady || !writeAccess || !localReadable || changingLocal || navigationPending || entryPending;
   $('home-local').textContent = lastSave || (worker && !networkClient) ? 'Jatka omaa peliä' : 'Pelaa botteja vastaan';
+  $('home-viewer-own').disabled = !viewerMatchFromSave(lastSave);
   $('home-local-copy').textContent = lastSave ? 'Tallennettu ottelusi jatkuu siitä, mihin jäit.' : 'Pelaa omaan tahtiin. Ottelu tallentuu tälle laitteelle.';
   $('network-toggle').hidden = !networkEnabled || !networkClient?.session;
+  renderViewerToggle();
   renderChatButtons();
 }
 function showGame() {
-  screen = 'game'; $('home').hidden = true; $('game').hidden = $('game-footer').hidden = false;
+  screen = 'game'; $('home').hidden = true; $('viewer').hidden = true; $('game').hidden = $('game-footer').hidden = false;
+  renderViewerToggle();
   $('mode-label').textContent = !networkClient?.session ? '· Paikallinen peli' :
     `· ${networkClient.session.watching ? 'Katsot huonetta' : 'Verkkopeli'} ${networkClient.session.room_code}`;
+  const botName = networkClient?.session ?
+    (networkClient.session.lobby?.bot_profile === 'tuppi_ai_lite_c1h_v1' ? 'Heidi 0.5' : '') :
+    heidiNames[view?.bot ?? lastSave?.bot];
+  if (botName) $('mode-label').textContent += ` · ${botName}`;
 }
 function showHome() {
   navigationToken++; awaitingNetworkGame = false;
   document.querySelector('dialog[open]')?.close();
-  screen = 'home'; $('home').hidden = false; $('game').hidden = $('game-footer').hidden = true;
+  screen = 'home'; $('home').hidden = false; $('viewer').hidden = true; $('game').hidden = $('game-footer').hidden = true;
+  renderViewerToggle();
   $('mode-label').textContent = '';
   if (entryReady) { $('home-status').textContent = ''; $('home-status').classList.toggle('error', false); }
   render();
@@ -120,6 +138,8 @@ function renderRoomEntry() {
   $('network-entry-copy').textContent = creating ? 'Luo huone ja jaa sen kutsulinkki ystävillesi.' : invitation ?
     'Valitse nimimerkki ja liity peliin.' : 'Kirjoita nimimerkkisi ja huoneen koodi. Voit myös liittää kutsulinkin.';
   $('network-code-row').hidden = creating || invitation;
+  $('network-bot-row').hidden = !creating;
+  $('network-bot').disabled = entryPending;
   $('network-passcode-row').hidden = !creating || passcodeRequired === false;
   $('network-submit').textContent = entryPending ? 'Yhdistetään…' : creating ? 'Luo huone' : 'Liity huoneeseen';
   $('network-submit').disabled = !entryReady || !writeAccess || !networkAddress || entryPending;
@@ -249,7 +269,9 @@ const handView = new HandView($('hand'), card => cardFace(card, true), (element,
 });
 function seatInfo(seat) {
   const nickname = seatDisplayName(networkClient?.session?.lobby?.seats.find(s => networkSeat(s.seat, viewSeat()) === seat));
-  return seatPresentation(view, seat, nickname || seatNames[seat]);
+  const name = !networkClient && seat !== 0 && heidiNames[view?.bot] ?
+    heidiNames[view.bot] : seatNames[seat];
+  return seatPresentation(view, seat, nickname || name);
 }
 function renderDetails() {
   if (!view) return;
@@ -269,7 +291,8 @@ function renderHistory(completed) {
     if (!historyRows.has(deal.index)) {
       const row = document.createElement('div'); row.className = 'history-row';
       const label = document.createElement('span'), button = document.createElement('button');
-      button.textContent = 'Toista jako'; button.onclick = () => openReplay(row.deal);
+      // Offline deals open in the viewer (every hand); online ones keep the trick replay.
+      button.textContent = 'Toista jako'; button.onclick = () => networkClient ? openReplay(row.deal) : openOwnViewer(row.deal.index);
       const analyse = document.createElement('button'); analyse.textContent = 'Analysoi';
       analyse.onclick = () => openAnalysis(row.deal);
       row.append(label, button, analyse); historyRows.set(deal.index, row);
@@ -291,6 +314,7 @@ function renderHistory(completed) {
 }
 
 function render() {
+  renderViewerToggle();
   renderLocalChoices(); renderNetworkControls(); renderHome();
   $('export').disabled = !lastSave;
   for (const id of ['worlds', 'pacing', 'new-game', 'import']) $(id).disabled = Boolean(networkClient);
@@ -578,8 +602,9 @@ function boot(save = null, {replace = false, engine = new URL('./worker.mjs', im
     else { status('Pelin laskenta keskeytyi. Voit jatkaa viimeisestä tallennetusta siirrosta.', true); $('retry').hidden = !lastSave; }
     render();
   };
-  const worlds = save?.worlds ?? Number($('worlds').value); $('worlds').value = String(worlds);
-  worker.postMessage({type: 'init', generation, worlds, delay: Number($('pacing').value), save});
+  const {worlds, bot} = botSelection(save); $('worlds').value = bot === 'legacy' ? String(worlds) : bot;
+  $('mode-label').textContent = `· Paikallinen peli${heidiNames[bot] ? ' · ' + heidiNames[bot] : ''}`;
+  worker.postMessage({type: 'init', generation, worlds, bot, delay: Number($('pacing').value), save});
 }
 
 document.querySelectorAll('[data-contract]').forEach(button => { button.onclick = () => selectContract(Number(button.dataset.contract)); });
@@ -597,6 +622,11 @@ $('concede').onclick = () => {
   if (canSelect()) post('concede');
 };
 document.addEventListener('keydown', event => {
+  if (screen === 'viewer') {
+    if (!event.defaultPrevented && !event.metaKey && !event.ctrlKey && !event.altKey && !document.querySelector('dialog[open]') &&
+        !event.target?.closest?.('input, textarea, select')) viewer.handleKey(event);
+    return;
+  }
   if (event.defaultPrevented || event.repeat || event.isComposing || event.metaKey || event.ctrlKey || event.altKey ||
       event.target?.closest('input, textarea, select, [contenteditable="true"], #settings, dialog, .masthead, .history-section') ||
       document.querySelector('dialog[open]') || !canSelect()) return;
@@ -650,7 +680,7 @@ $('settings').onclose = () => {
 };
 $('pacing').onchange = () => post('delay', {delay: Number($('pacing').value)});
 $('new-game').onclick = () => newLocalMatch();
-$('worlds').onchange = async () => { if (!await newLocalMatch() && lastSave) $('worlds').value = String(lastSave.worlds); };
+$('worlds').onchange = async () => { if (!await newLocalMatch() && lastSave) $('worlds').value = botSelectionValue(lastSave); };
 $('retry').onclick = () => { if (writeAccess) resumeLocal(lastSave).catch(localFailure); else location.reload(); };
 $('export').onclick = async () => {
   if (!lastSave) return;
@@ -1122,13 +1152,21 @@ function showNetworkLobby(lobby) {
   $('network-ready').textContent = model.ownReady ? 'Olet valmis' : 'Olen valmis';
   $('network-seat-guide').hidden = !networkClient?.session.host || playing || model.humans > 1 || spectator;
   $('network-invite').value = invitationURL(location.href, lobby.room_code);
-  if (playing && screen === 'game') $('mode-label').textContent = spectator ? `· Katsot huonetta ${lobby.room_code}` : `· Verkkopeli ${lobby.room_code}`;
+  if (playing && screen === 'game') $('mode-label').textContent =
+    (spectator ? `· Katsot huonetta ${lobby.room_code}` : `· Verkkopeli ${lobby.room_code}`) +
+    (lobby.bot_profile === 'tuppi_ai_lite_c1h_v1' ? ' · Heidi 0.5' : '');
 }
 // The room-creation passcode field appears only when this host asks for it.
 async function showPasscodeIfRequired() {
   if (!networkAddress) return;
-  passcodeCheck ??= new NetworkSession().createPasscodeRequired(networkAddress)
-    .then(required => { passcodeRequired = required; })
+  const probe = new NetworkSession();
+  passcodeCheck ??= probe.createPasscodeRequired(networkAddress)
+    .then(required => {
+      passcodeRequired = required;
+      const available = probe.botOptions.some(bot => bot.profile === 'tuppi_ai_lite_c1h_v1');
+      $('network-heidi-option').disabled = $('network-heidi-option').hidden = !available;
+      if (!available) $('network-bot').value = '';
+    })
     .catch(() => { passcodeCheck = null; });
   await passcodeCheck;
   if (!$('network-entry').hidden) renderRoomEntry();
@@ -1205,6 +1243,7 @@ async function startNetwork(command) {
       if (error && networkClient.stopped) $('network-resume').hidden = !savedNetwork;
     },
     onView: next => {
+      if (liveViewer) refreshLiveViewer();
       const old = view;
       if (old?.dealNumber !== next.dealNumber) {
         cancelReveal(); bidContract = legalCards(next, 0).length ? 0 : 1;
@@ -1224,7 +1263,7 @@ async function startNetwork(command) {
       const nickname = $('network-name').value.trim() || 'Pelaaja';
       preferences = savePreferences({...preferences, nickname});
       if (command === 'create') {
-        await networkClient.create(networkAddress, nickname, ($('network-passcode').value ?? '').trim());
+        await networkClient.create(networkAddress, nickname, ($('network-passcode').value ?? '').trim(), $('network-bot').value || null);
         $('network-passcode').value = '';
       } else if (command === 'watch') await networkClient.watch(networkAddress, $('network-code').value, nickname);
       else await networkClient.join(networkAddress, $('network-code').value, nickname, joinSeat);
@@ -1505,3 +1544,181 @@ for (const id of ['network-reauth', 'network-reauth-lobby']) $(id).onclick = asy
   location.reload();
 };
 $('offline-prepare').onclick = async () => { offlineStarted = true; $('offline-prepare').hidden = true; await offline.start(); };
+
+// ------------------------------------------------------------ the viewer
+// Round 16: replays of offline games and of replay or record files, one
+// decision at a time with every hand shown. Timelines come from a separate
+// worker instance (worker.mjs `timeline`), which never plays a game.
+let viewerWorker = null, viewerRequestId = 0, viewerReturn = 'home', viewerMatches = [];
+const viewerRequests = new Map();
+function viewerTimeline(match) {
+  ensureViewerWorker();
+  const id = ++viewerRequestId;
+  return new Promise((resolve, reject) => {
+    viewerRequests.set(id, {resolve, reject});
+    viewerWorker.postMessage({type: 'timeline', id, match});
+  });
+}
+function ensureViewerWorker() {
+  if (!viewerWorker) {
+    viewerWorker = new Worker(new URL('./worker.mjs', import.meta.url), {type: 'module'});
+    viewerWorker.onmessage = ({data}) => {
+      if (data.type.startsWith('botmatch')) { botMatchMessage(data); return; }
+      const pending = viewerRequests.get(data.id);
+      if (!pending) return;
+      if (data.type === 'timeline-progress') { $('viewer-status').textContent = data.message; return; }
+      viewerRequests.delete(data.id);
+      if (data.error) pending.reject(new Error(data.error)); else pending.resolve(data.timeline);
+    };
+  }
+}
+// A bot-only match on this device (worker.mjs `botmatch`): four bots play to
+// 52 and the viewer follows live; the match and its timeline grow as it plays.
+let botMatch = null;
+function startBotMatch() {
+  ensureViewerWorker(); liveViewer = null;
+  const id = ++viewerRequestId;
+  const teams = [$('home-viewer-team0').value, $('home-viewer-team1').value];
+  const names = teams.map(value => $('home-viewer-team0').querySelector(`option[value="${value}"]`).textContent.replace(/ \(hidas\)$/, ''));
+  botMatch = {id, match: {title: `Bottien ottelu: ${names[0]} – ${names[1]}`, source: 'bots',
+    seatNames: viewerCompass.map((name, seat) => `${name} (${names[seat % 2]})`), humans: [], deals: []},
+    data: {steps: [], deals: []}};
+  showViewer();
+  $('viewer-match-row').hidden = true;
+  $('viewer-status').textContent = 'Bottien ottelu alkaa…';
+  viewer.startLive(botMatch.match, botMatch.data);
+  viewerWorker.postMessage({type: 'botmatch-start', id, teams, delay: viewerSpeeds[viewer.speed]});
+}
+function stopBotMatch() {
+  if (botMatch) viewerWorker?.postMessage({type: 'botmatch-stop', id: botMatch.id});
+  botMatch = null;
+}
+function botMatchMessage(data) {
+  if (!botMatch || data.id !== botMatch.id) return;
+  const {match, data: timeline} = botMatch;
+  if (data.type === 'botmatch-progress') { $('viewer-status').textContent = data.message; return; }
+  if (data.type === 'botmatch-error') { $('viewer-status').textContent = `Bottien ottelu keskeytyi: ${data.error}`; return; }
+  if (data.type === 'botmatch-end') {
+    $('viewer-status').textContent = `Ottelu päättyi ${data.score[0]}–${data.score[1]}. Voit katsoa sen uudelleen alusta.`; return;
+  }
+  const {step, info} = data;
+  $('viewer-status').textContent = '';
+  if (step.kind === 'start') match.deals.push({...data.deal, actions: []});
+  else match.deals[step.deal].actions.push(step.action);
+  timeline.steps.push(step); timeline.deals[step.deal] = info;
+  viewer.update();
+}
+function closeViewer() {
+  viewer.pause(); stopBotMatch(); liveViewer = null; $('viewer').hidden = true;
+  if (viewerReturn === 'game') showGame(); else showHome();
+}
+const viewer = new ReplayViewer({el: $, timeline: viewerTimeline, suitOrder: () => preferences.suitOrder, onClose: closeViewer,
+  onSpeed: delay => { if (botMatch) viewerWorker?.postMessage({type: 'botmatch-delay', id: botMatch.id, delay}); }});
+function showViewer() {
+  if (screen !== 'viewer') viewerReturn = screen;
+  document.querySelector('dialog[open]')?.close();
+  screen = 'viewer'; $('home').hidden = $('game').hidden = $('game-footer').hidden = true; $('viewer').hidden = false;
+  renderViewerToggle();
+  $('mode-label').textContent = '· Katsomo';
+}
+async function openViewer(match, options = {}) {
+  stopBotMatch(); liveViewer = null; showViewer();
+  try { await viewer.load(match, options); }
+  catch (error) { $('viewer-status').textContent = `Toistoa ei voitu näyttää: ${error.message}`; }
+}
+function openViewerMatches(matches, options = {}) {
+  viewerMatches = matches;
+  $('viewer-match').replaceChildren(...matches.map((match, index) => {
+    const option = document.createElement('option'); option.value = String(index); option.textContent = match.title; return option;
+  }));
+  $('viewer-match').value = '0';
+  $('viewer-match-row').hidden = matches.length < 2;
+  return openViewer(matches[0], options);
+}
+function openOwnViewer(deal = 0) {
+  const match = viewerMatchFromSave(lastSave);
+  if (match) openViewerMatches([match], {deal});
+}
+$('viewer-match').onchange = () => openViewer(viewerMatches[Number($('viewer-match').value)]);
+$('home-viewer-own').onclick = () => openOwnViewer(0);
+$('home-viewer-bots').onclick = () => startBotMatch();
+
+// Going back in a live online game (round 16): the viewer opens over the game
+// and follows it. Finished deals come in full from the server (feature
+// deal_records) and replay on the engine with every hand; the deal in play is
+// shown as this person sees it: a player only their own hand, a spectator
+// every hand. The game goes on meanwhile; closing returns to it.
+function renderViewerToggle() {
+  $('viewer-toggle').hidden = !(screen === 'game' && networkClient?.latest);
+}
+function liveSeatNames(session) {
+  const seats = session.lobby?.seats ?? [];
+  return viewerCompass.map((compass, seat) => {
+    const item = seats.find(entry => entry.seat === seat);
+    const who = !item ? '' : item.covering ? `botti, ${item.covering}` : item.display_name || (item.kind === 'ai' ? 'botti' : '');
+    return who ? `${compass} (${who})` : compass;
+  });
+}
+function openLiveViewer() {
+  const client = networkClient;
+  if (!client?.latest) return;
+  stopBotMatch();
+  const session = client.session;
+  liveViewer = {client, matchRef: client.latest.match_ref, records: null, recordTimeline: null, fetching: false,
+    match: {title: `${session.watching ? 'Katsot huonetta' : 'Verkko-ottelu'} ${session.room_code}`, source: 'live',
+      seatNames: liveSeatNames(session), humans: [], deals: []}, data: {steps: [], deals: []}};
+  showViewer();
+  $('viewer-match-row').hidden = true;
+  $('viewer-status').textContent = '';
+  viewer.startLive(liveViewer.match, liveViewer.data);
+  viewer.viewpoint = session.watching ? session.viewpoint ?? 0 : session.seat;
+  refreshLiveViewer();
+}
+function refreshLiveViewer() {
+  const live = liveViewer, client = live?.client, latest = client?.latest;
+  if (!latest || client !== networkClient) return;
+  if (latest.match_ref !== live.matchRef) {  // a rematch: a new match from its first deal
+    Object.assign(live, {matchRef: latest.match_ref, records: null, recordTimeline: null});
+  }
+  const completed = [...client.completed.values()].sort((a, b) => a.deal_number - b.deal_number);
+  const known = live.recordTimeline?.deals.length ?? 0;
+  if (known < completed.length && !live.fetching && client.features.has('deal_records')) {
+    live.fetching = true;
+    const matchRef = live.matchRef;
+    client.dealRecords().then(async result => {
+      if (liveViewer !== live || live.matchRef !== matchRef || result?.match_ref !== matchRef || !result.deals.length) return;
+      const match = viewerMatchFromRecord({deals: result.deals});
+      live.recordTimeline = await viewerTimeline(match);
+      live.match.deals = match.deals;
+    }).catch(error => { if (liveViewer === live) $('viewer-status').textContent = `Valmiita jakoja ei saatu: ${error.message}`; })
+      .finally(() => { live.fetching = false; if (liveViewer === live && (live.recordTimeline?.deals.length ?? 0) > known) refreshLiveViewer(); });
+  }
+  const parts = completed.map((deal, d) => d < (live.recordTimeline?.deals.length ?? 0) ? timelinePart(live.recordTimeline, d) :
+    liveDealSteps(liveDealFromResult(deal), d, {concededAfterTricks: client.conceded.get(deal.deal_number)?.after_tricks ?? null}));
+  const observation = latest.observation;
+  if (!completed.some(deal => deal.deal_ref === observation.deal_ref))
+    parts.push(liveDealSteps(liveDealFromObservation(observation, latest.table?.hands ?? null), completed.length));
+  const timeline = liveTimeline(parts);
+  live.data.steps.splice(0, live.data.steps.length, ...timeline.steps);
+  live.data.deals.splice(0, live.data.deals.length, ...timeline.deals);
+  live.match.seatNames = liveSeatNames(client.session);
+  viewer.update();
+}
+$('viewer-toggle').onclick = () => openLiveViewer();
+$('home-viewer-file').onchange = async () => {
+  const input = $('home-viewer-file'), file = input.files?.[0];
+  if (!file) return;
+  $('home-viewer-status').textContent = 'Luetaan tiedostoa…';
+  try {
+    const matches = viewerMatchesFromText(await viewerReadFile(file));
+    $('home-viewer-status').textContent = '';
+    await openViewerMatches(matches);
+  } catch (error) { $('home-viewer-status').textContent = `Tiedostoa ei voitu avata: ${error.message}`; }
+  finally { input.value = ''; }
+};
+$('viewer-export').onclick = () => {
+  if (!viewer.match) return;
+  const url = URL.createObjectURL(new Blob([JSON.stringify(viewerReplayFile([viewer.match]))], {type: 'application/json'}));
+  const link = document.createElement('a'); link.href = url; link.download = 'tuppi-toisto.json'; link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};

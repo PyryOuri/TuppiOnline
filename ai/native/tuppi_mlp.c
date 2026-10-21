@@ -174,7 +174,9 @@ void tc_mlp_forward(const TcMlp *m, const uint8_t *feat, int rows, float *out) {
     }
   }
   layer_norm(h, t, rows, W, m->lnf_g, m->lnf_b);
-  for (size_t i = 0; i < (size_t)rows * W; i++) if (t[i] < 0) t[i] = 0;
+  // Store every result so SIMD needs no per-lane conditional store. The
+  // comparison keeps the reference's signed-zero and unordered-value semantics.
+  for (size_t i = 0; i < (size_t)rows * W; i++) t[i] = t[i] < 0 ? 0 : t[i];
   cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, rows, m->out_dim, W, 1.0f, t, W, m->w_out, W, 0.0f,
               out, m->out_dim);
   for (int r = 0; r < rows; r++)

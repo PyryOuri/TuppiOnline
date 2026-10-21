@@ -65,6 +65,9 @@
     },
     {
       "$ref": "#/$defs/offlineMatchRecordRequest"
+    },
+    {
+      "$ref": "#/$defs/dealRecordsResponse"
     }
   ],
   "$defs": {
@@ -263,6 +266,11 @@
             "$ref": "#/$defs/displayName"
           },
           "$comment": "People watching now (feature watch), in arrival order; absent when nobody watches."
+        },
+        "bot_profile": {
+          "enum": [
+            "tuppi_ai_lite_c1h_v1"
+          ]
         }
       }
     },
@@ -303,7 +311,8 @@
               "leave_seat",
               "chat",
               "watch",
-              "match_records"
+              "match_records",
+              "deal_records"
             ]
           },
           "$comment": "Optional commands this server accepts; absent on servers without them."
@@ -311,6 +320,25 @@
         "create_passcode_required": {
           "type": "boolean",
           "$comment": "Hosted deployments: whether creating a room needs room_passcode. Joining never does."
+        },
+        "bot_options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "profile",
+              "name"
+            ],
+            "properties": {
+              "profile": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            }
+          }
         }
       }
     },
@@ -333,6 +361,12 @@
           "minLength": 1,
           "maxLength": 128,
           "$comment": "Required by hosts that set a room-creation passcode (see compatibilityResult.create_passcode_required); removed before the room is created."
+        },
+        "bot_profile": {
+          "enum": [
+            "tuppi_ai_search_v1",
+            "tuppi_ai_lite_c1h_v1"
+          ]
         }
       }
     },
@@ -629,6 +663,12 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 999
+        },
+        "bot": {
+          "enum": [
+            "heidi05",
+            "heidi10"
+          ]
         }
       },
       "$comment": "POST /v1/results (feature results): an anonymous finished offline match, from the person's team's view (team 0). No names, cards or hands."
@@ -857,9 +897,35 @@
               }
             }
           }
+        },
+        "bot": {
+          "enum": [
+            "heidi05",
+            "heidi10"
+          ]
         }
       },
       "$comment": "POST /v1/research/matches (round 15): a browser's finished offline match with every card, sent under the research setting. Accepted only if it replays legally; answered {recorded}. GET /v1/research/matches?key=<TUPPI_RESEARCH_KEY> downloads every record (research_match_v1) as one gzip file of JSON lines."
+    },
+    "dealRecordsResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "match_ref",
+        "deals"
+      ],
+      "properties": {
+        "match_ref": {
+          "type": "string"
+        },
+        "deals": {
+          "type": "array",
+          "items": {
+            "$ref": "https://example.invalid/tuppi/schemas/network/research_match_v1.schema.json#/properties/deals/items"
+          }
+        }
+      },
+      "$comment": "POST /v1/rooms/{code}/records with {session_token} (feature deal_records, round 16 viewer): the current match's finished deals in full (hands, every action with who made it), to a player or a spectator of the room. The deal in play is never included. Finished deals come first: deals[n] is deal n."
     }
   }
 }

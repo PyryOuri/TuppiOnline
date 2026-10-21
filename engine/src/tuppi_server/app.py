@@ -30,7 +30,7 @@ Send = Callable[[dict[str, Any]], Awaitable[None]]
 #: when the server lists them.
 FEATURES = ("pause", "rematch", "leaderboard", "compact_results", "rename", "release_seat", "concede", "results",
             "seat_bot", "seat_choice", "seat_swap", "leave_seat", "chat", "watch",
-            "match_records")
+            "match_records", "deal_records")
 #: Close code sent to a player whose seat the host released.
 SEAT_RELEASED_CLOSE_CODE = 4002
 #: Close code sent to a player's other tabs when they left the room.
@@ -166,12 +166,14 @@ class TuppiASGIApp:
 
     def _http_command(self, path: str, payload: dict[str, object]) -> dict[str, object]:
         if path == "/v1/rooms":
-            self._require_fields(payload, required={"display_name", "ai_seats"})
+            self._require_fields(payload, required={"display_name", "ai_seats"} |
+                                 ({"bot_profile"} if "bot_profile" in payload else set()))
             display_name = payload.get("display_name")
             ai_seats = self._ai_seats(payload.get("ai_seats", []))
             room, session = self.rooms.create_room(
                 display_name=display_name,  # type: ignore[arg-type]
                 ai_seats=ai_seats,
+                bot_profile=self._string(payload, "bot_profile") if "bot_profile" in payload else None,
             )
             return {
                 "room_code": room.code,
@@ -217,6 +219,10 @@ class TuppiASGIApp:
                 token=self._string(payload, "session_token"),
                 deal_number=deal_number,
             )
+        if len(parts) == 4 and parts[0:2] == ["v1", "rooms"] and parts[3] == "records":
+            # The game viewer (round 16): the finished deals in full.
+            self._require_fields(payload, required={"session_token"})
+            return self.rooms.deal_records_for_session(code=parts[2].upper(), token=self._string(payload, "session_token"))
         if len(parts) == 4 and parts[0:2] == ["v1", "rooms"]:
             code = parts[2].upper()
             command = parts[3]

@@ -3,6 +3,7 @@ export const networkProtocol = 'tuppi.network.v1';
 const networkPhases = {SHOWING: 0, TRICK_PLAY: 1, DEAL_COMPLETE: 2, MATCH_COMPLETE: 2,
   SOOLI_OFFER: 3, SOOLI_GIVE: 4, SOOLI_RETURN: 5, SOOLI_PLAY: 6};
 const networkErrors = {room_not_found:'Huonetta ei löydy. Tarkista huonekoodi.', room_full:'Huone on täynnä.',
+  invalid_bot_profile:'Valittu botti ei ole käytettävissä tässä verkkopelissä.',
   invalid_session:'Tallennettua paikkaa ei löydy. Voit luoda uuden huoneen.',
   settings_locked:'Ottelu on jo alkanut. Paikat on lukittu.', host_required:'Vain huoneen luoja voi vaihtaa bottipaikkoja.',
   server_busy:'Palvelu on täynnä. Jatka huoneeseen myöhemmin.',
@@ -191,6 +192,12 @@ export class NetworkSession {
       return result;
     } finally { this.timers.clearTimeout(timeout); }
   }
+  // The game viewer (round 16, feature deal_records): the current match's
+  // finished deals in full (every hand and bid); null on older servers.
+  async dealRecords() {
+    if (!this.features.has('deal_records') || !this.session) return null;
+    return this.request(`/v1/rooms/${this.session.room_code}/records`, {session_token: this.session.session_token});
+  }
   async check(base) {
     const result = await this.request('/v1/compatibility', null, base);
     if (result.protocol_version !== networkProtocol || result.ruleset_id !== 'project_target_v3')
@@ -198,12 +205,14 @@ export class NetworkSession {
   }
   // Public hosts may require a room-creation passcode; joining never does.
   async createPasscodeRequired(base) {
-    return Boolean((await this.request('/v1/compatibility', null, base)).create_passcode_required);
+    const compatibility = await this.request('/v1/compatibility', null, base);
+    this.botOptions = compatibility.bot_options ?? [];
+    return Boolean(compatibility.create_passcode_required);
   }
-  async create(base, displayName, passcode = '') {
+  async create(base, displayName, passcode = '', botProfile = null) {
     await this.check(base);
     const result = await this.request('/v1/rooms', {display_name: displayName, ai_seats: [],
-      ...(passcode ? {room_passcode: passcode} : {})}, base);
+      ...(passcode ? {room_passcode: passcode} : {}), ...(botProfile ? {bot_profile: botProfile} : {})}, base);
     await this.begin({...result, base: networkBase(base), host: true, pending: null, cursor: -1,
       schema: 'tuppi.browser.network.v1', active: true});
   }

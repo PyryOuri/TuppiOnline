@@ -48,6 +48,15 @@ typedef struct {
   uint16_t *inc_list;
   int16_t *inc_len;
   int exact_speed;       // per-controller compact128 settings; calloc defaults off
+  // Play inference (tc_env_set_belief; NULL = off): this controller's searches
+  // resample their worlds by belief_net's likelihood of the other seats' play.
+  const struct TcMlpS *belief_net;
+  int belief_mult, belief_all;
+  double belief_inv_t, belief_eps;
+  // Seats played by people (tc_env_set_belief_humans; 0 = none, the default):
+  // their past moves are read with their own temperature and eps.
+  int belief_humans;
+  double belief_h_inv_t, belief_h_eps;
 } TcEnv;
 #define INC_MAXA 320
 
@@ -704,19 +713,184 @@ static void play_out(TcEnv *e, const TcMlp *m, int n, int dd_left, uint64_t *rng
   free(utility_done);
 }
 
+// ------------------------------------------------------ play inference
+// research/play-inference-20261016 (strength step 2). When an action model is
+// set, the search draws mult * w worlds as usual and resamples w of them by the
+// model's likelihood of the other seats' past unforced choices, replayed in each
+// world under its own rules: prod_t [(1 - eps) softmax(logits_t / T)[a_t] +
+// eps / k_t]. Only after the bidding (a locked showing reveals nothing while it
+// runs) and not in sooli play. Per controller: off unless tc_env_set_belief.
+int tc_history_rows(const TcDeal *world, int seat_mask, int encoder, int max_rows,
+                    uint8_t *feat, uint8_t *mask, int32_t *action);
+#include <time.h>
+// Profiling (tc_belief_profile): seconds in [drawing candidates, history
+// replay + network (parallel), resampling, rollouts of belief searches, rollouts of uniform searches], and
+// counts [belief searches, uniform searches]. Process-wide, for measurement only.
+static double prof_s[5];
+static long prof_n[2];
+static double now_s(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec + t.tv_nsec * 1e-9; }
+void tc_belief_profile(double *seconds, long *counts, int reset) {
+  for (int i = 0; i < 5; i++) seconds[i] = prof_s[i];
+  for (int i = 0; i < 2; i++) counts[i] = prof_n[i];
+  if (reset) { memset(prof_s, 0, sizeof prof_s); memset(prof_n, 0, sizeof prof_n); }
+}
+// Threads that score candidates (tc_set_belief_lanes). The scores do not
+// depend on it; more lanes finish sooner but contend for the matrix units.
+static int belief_lanes = 1 << 20;
+void tc_set_belief_lanes(int lanes) { belief_lanes = lanes < 1 ? 1 : lanes; }
+void tc_env_set_belief(TcEnv *e, const TcMlp *m, int mult, double temperature, double eps, int all_seats) {
+  e->belief_net = mult > 1 ? m : NULL;
+  e->belief_mult = mult;
+  e->belief_inv_t = temperature > 0 ? 1.0 / temperature : 1.0;
+  e->belief_eps = eps;
+  e->belief_all = all_seats;
+}
+
+// The seats people play (bit s = seat s) and how loosely to read their moves
+// (people's games: temperature 4, eps 0.8 predicted the cards best;
+// audit_deliverables/tuppi_human_games). mask 0 reads every seat as before.
+void tc_env_set_belief_humans(TcEnv *e, int mask, double temperature, double eps) {
+  e->belief_humans = mask & 0xF;
+  e->belief_h_inv_t = temperature > 0 ? 1.0 / temperature : 1.0;
+  e->belief_h_eps = eps;
+}
+
+static int belief_applies(const TcEnv *e, const TcObs *o) {
+  return e->belief_net && o->soolaaja < 0 && (o->phase == TC_PH_PLAY || o->phase == TC_PH_SOOLI_OFFER);
+}
+
+// Fills out[0..w) with worlds resampled by likelihood, and src[j] the
+// candidate each came from (non-decreasing: equal sources are adjacent, the
+// same world); -1 if no world can be drawn. The candidates are drawn in order
+// from rng, then scored in fixed blocks of BLOCK candidates in parallel (each
+// block's rows in one network call), so the result does not depend on the
+// number of cores and memory stays bounded at any world count.
+static int belief_worlds(const TcEnv *e, const TcObs *o, int w, uint64_t *rng, TcDeal *out, int *src) {
+  enum { MAXR = 64, BLOCK = 32 };
+  const TcMlp *net = e->belief_net;
+  const double inv_t = e->belief_inv_t, eps = e->belief_eps;
+  const int M = w * e->belief_mult, enc = tc_mlp_encoder(net), dim = tc_feature_dim_v(enc);
+  const int opp = (1 << ((o->seat + 1) & 3)) | (1 << ((o->seat + 3) & 3));
+  const int seats = e->belief_all ? (0xF & ~(1 << o->seat)) : opp;
+  // People's moves get their own pass and setting; with none at the table
+  // this is the single pass over all seats, as before.
+  const int people = e->belief_humans & seats, npass = people ? 2 : 1;
+  // (Plain variables: the parallel block cannot capture arrays.)
+  const int bot_seats = people ? seats & ~people : seats;
+  const double h_inv_t = e->belief_h_inv_t, h_eps = e->belief_h_eps;
+  TcDeal *cand = malloc(sizeof(TcDeal) * (size_t)M);
+  double *logw = calloc((size_t)M, sizeof(double));
+  double t0 = now_s();
+  for (int i = 0; i < M; i++)
+    if (tc_sample_world_sooli(o, rng, &cand[i], e->sooli_belief, e->sooli_lambda) != 0) {
+      free(cand); free(logw);
+      return -1;
+    }
+  double t1 = now_s(); prof_s[0] += t1 - t0;
+  const int blocks = (M + BLOCK - 1) / BLOCK, lanes = belief_lanes < blocks ? belief_lanes : blocks;
+  TC_PARALLEL_BEGIN((size_t)lanes, lane)
+  for (int b = (int)lane; b < blocks; b += lanes) {
+    const int first = b * BLOCK, last = first + BLOCK < M ? first + BLOCK : M;
+    uint8_t *feat = malloc((size_t)BLOCK * MAXR * dim), *mask = malloc((size_t)BLOCK * MAXR * TC_NUM_ACTIONS);
+    int32_t *act = malloc(sizeof(int32_t) * (size_t)BLOCK * MAXR), *owner = malloc(sizeof(int32_t) * (size_t)BLOCK * MAXR);
+    float *q = malloc(sizeof(float) * (size_t)BLOCK * MAXR * TC_NUM_ACTIONS);
+    for (int pass = 0; pass < npass; pass++) {
+      const int pseats = pass == 0 ? bot_seats : people;
+      const double pinv_t = pass == 0 ? inv_t : h_inv_t, peps = pass == 0 ? eps : h_eps;
+      if (!pseats) continue;
+      int rows = 0;
+      for (int i = first; i < last; i++) {
+        if (logw[i] < -1e299) continue;
+        int r = tc_history_rows(&cand[i], pseats, enc, MAXR, feat + (size_t)rows * dim,
+                                mask + (size_t)rows * TC_NUM_ACTIONS, act + rows);
+        if (r < 0) { logw[i] = -1e300; continue; }  // the history cannot be replayed in this world
+        for (int j = 0; j < r; j++) owner[rows + j] = i;
+        rows += r;
+      }
+      if (rows) tc_mlp_forward(net, feat, rows, q);
+      for (int r = 0; r < rows; r++) {
+        const float *qr = q + (size_t)r * TC_NUM_ACTIONS;
+        const uint8_t *mr = mask + (size_t)r * TC_NUM_ACTIONS;
+        double top = -1e300, sum = 0.0;
+        int legal = 0;
+        for (int a = 0; a < TC_NUM_ACTIONS; a++) if (mr[a] && qr[a] > top) top = qr[a];
+        for (int a = 0; a < TC_NUM_ACTIONS; a++) if (mr[a]) { sum += exp((qr[a] - top) * pinv_t); legal++; }
+        double p = exp((qr[act[r]] - top) * pinv_t) / sum;
+        logw[owner[r]] += log((1.0 - peps) * p + peps / legal);
+      }
+    }
+    free(feat); free(mask); free(act); free(owner); free(q);
+  }
+  TC_PARALLEL_END
+  double t2 = now_s(); prof_s[1] += t2 - t1;
+  double top = -1e300, total = 0.0;
+  for (int i = 0; i < M; i++) if (logw[i] > top) top = logw[i];
+  for (int i = 0; i < M; i++) { logw[i] = logw[i] < -1e299 ? 0.0 : exp(logw[i] - top); total += logw[i]; }
+  if (total <= 0) { for (int i = 0; i < M; i++) logw[i] = 1.0; total = M; }
+  // Systematic resampling: as few duplicates as the weights force.
+  double u = unit(rng) / w * total, cum = logw[0];
+  for (int j = 0, i = 0; j < w; j++) {
+    double target = u + j * (total / w);
+    while (cum < target && i < M - 1) cum += logw[++i];
+    out[j] = cand[i];
+    src[j] = i;
+  }
+  free(cand); free(logw);
+  prof_s[2] += now_s() - t2;
+  return 0;
+}
+
+// Test hook: the w worlds the search would use at this observation (with the
+// belief when it applies, else uniform). Returns 0, or -1.
+int tc_search_worlds(TcEnv *e, const TcObs *o, int w, uint64_t *rng, TcDeal *out) {
+  if (belief_applies(e, o)) {
+    int *src = malloc(sizeof(int) * (size_t)w), status = belief_worlds(e, o, w, rng, out, src);
+    free(src);
+    return status;
+  }
+  for (int i = 0; i < w; i++)
+    if (tc_sample_world_sooli(o, rng, &out[i], e->sooli_belief, e->sooli_lambda) != 0) return -1;
+  return 0;
+}
+
+static const int dedup_worlds = 0;
 static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *actions, int k, int w,
                        int dd_left, uint64_t *rng, double *values, double *per_world) {
-  const int n = w * k;
-  if (n > e->n) return -2;
-  TcDeal world;
-  for (int wi = 0; wi < w; wi++) {
-    if (tc_sample_world_sooli(o, rng, &world, e->sooli_belief, e->sooli_lambda) != 0) return -1;
+  if (w * k > e->n) return -2;
+  TcDeal world, *picked = NULL;
+  // With play inference, resampling repeats worlds. In trick play the rollouts
+  // are deterministic in their world, so playing each distinct world once and
+  // counting it as often as it was drawn gives the same values. It is off
+  // (dedup_worlds = 0): in 12-process evaluations it made memory grow by about
+  // 90 MB a minute per process (2026-10-17, cause not found), and it saved only
+  // about 9% of CPU, with no wall time.
+  int *src = NULL, *slot = NULL, *copies = NULL, u = w;
+  const int belief = belief_applies(e, o);
+  if (belief) {
+    picked = malloc(sizeof(TcDeal) * (size_t)w);
+    src = malloc(sizeof(int) * (size_t)w);
+    if (belief_worlds(e, o, w, rng, picked, src) != 0) { free(picked); free(src); return -1; }
+    if (dedup_worlds && o->phase == TC_PH_PLAY) {
+      slot = malloc(sizeof(int) * (size_t)w); copies = calloc((size_t)w, sizeof(int));
+      u = 0;
+      for (int j = 0; j < w; j++) {
+        if (j == 0 || src[j] != src[j - 1]) picked[u++] = picked[j];
+        slot[j] = u - 1;
+        copies[u - 1]++;
+      }
+    }
+  }
+  const int n = u * k;
+  for (int wi = 0; wi < u; wi++) {
+    if (picked) world = picked[wi];
+    else if (tc_sample_world_sooli(o, rng, &world, e->sooli_belief, e->sooli_lambda) != 0) return -1;
     for (int ai = 0; ai < k; ai++) { e->g[wi * k + ai].d = world; e->g[wi * k + ai].live = 1; }
   }
+  free(picked); free(src);
   double *total = calloc((size_t)n, sizeof(double));
   int *idx = malloc(sizeof(int) * (size_t)n);
   for (int i = 0; i < n; i++) {
-    if (tc_apply(&e->g[i].d, actions[i % k]) != 0) { free(total); free(idx); return -3; }
+    if (tc_apply(&e->g[i].d, actions[i % k]) != 0) { free(total); free(idx); free(slot); free(copies); return -3; }
     record_if_done(e, i, total);
   }
   e->team_side = e->team_net ? (o->seat & 1) : -1;
@@ -730,17 +904,20 @@ static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *
   float maps[2][2][14];
   const float (*bucket_maps)[2][14] = NULL;
   if (e->exact_speed && !use_leaf && dd_left > 0) { reward_maps(e, o, maps); bucket_maps = maps; }
+  double t_roll = now_s();
   play_out(e, m, n, dd_left, rng, total, idx, use_leaf ? &leaf : NULL, NULL, bucket_maps);
+  prof_s[belief ? 3 : 4] += now_s() - t_roll; prof_n[belief ? 0 : 1]++;
   const double sign = (o->seat & 1) == 0 ? 1.0 : -1.0;
   for (int a = 0; a < k; a++) {
     double s = 0.0;
-    for (int wi = 0; wi < w; wi++) s += total[wi * k + a];
+    if (slot) for (int wi = 0; wi < u; wi++) s += copies[wi] * total[wi * k + a];
+    else for (int wi = 0; wi < w; wi++) s += total[wi * k + a];
     values[a] = sign * (s / w);
   }
   if (per_world)
-    for (int i = 0; i < n; i++) per_world[i] = sign * total[i];
+    for (int i = 0; i < w * k; i++) per_world[i] = sign * total[(slot ? slot[i / k] : i / k) * k + i % k];
   free(total);
-  free(idx);
+  free(idx); free(slot); free(copies);
   return 0;
 }
 

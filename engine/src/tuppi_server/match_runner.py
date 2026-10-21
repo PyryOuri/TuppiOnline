@@ -88,6 +88,7 @@ TEST_AI_PROFILE_KEY = "first_legal_action_v1"
 #: TuppiAI's best agent (the optional package ``tuppi_ai``): search over
 #: sampled worlds with a learned rollout policy; plays sooli itself.
 TUPPI_AI_PROFILE_KEY = "tuppi_ai_search_v1"
+HEIDI_LITE_PROFILE_KEY = "tuppi_ai_lite_c1h_v1"
 TUPPI_AI_WORLDS = 1024
 
 
@@ -154,6 +155,12 @@ def _construct_ai_agents(
 ) -> dict[int, object]:
     if profile_key == TEST_AI_PROFILE_KEY:
         return {seat: FirstLegalActionAgent() for seat in seats}
+    if profile_key == HEIDI_LITE_PROFILE_KEY:
+        if os.environ.get("TUPPI_HOSTED_BOT") == "1":
+            from .hosted_bot import hosted_agents
+            return hosted_agents(seats, options="c1h")
+        from tuppi_ai.lite import C1H, LiteAgent
+        return {seat: LiteAgent(seat, options=C1H) for seat in seats}
     if profile_key == TUPPI_AI_PROFILE_KEY:
         if os.environ.get("TUPPI_HOSTED_BOT") == "1":
             from .hosted_bot import hosted_agents
@@ -1169,6 +1176,8 @@ class LiveMatchRunner:
                 sample_count=self.contract_rollout_samples,
             )
             return decision.action, decision.record
+        if hasattr(agent, "set_human_seats"):  # hosted lite c1h: people's moves are read more loosely
+            agent.set_human_seats(self._human_seats())
         return agent.choose_action(observation), None
 
     # ------------------------------------------------------- bot stand-ins

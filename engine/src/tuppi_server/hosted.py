@@ -21,7 +21,7 @@ from urllib.parse import urlsplit
 from .persistence import PersistenceError
 from .usage import USAGE_INTERVAL_SECONDS, Usage, resident_megabytes
 
-ROOM_ROUTE = re.compile(r"^/v1/rooms/([A-Z0-9]{6})/(join|configure|settings|ready|leaderboard|name|release|seats|swap|leave|watch)$", re.I)
+ROOM_ROUTE = re.compile(r"^/v1/rooms/([A-Z0-9]{6})/(join|configure|settings|ready|leaderboard|name|release|seats|swap|leave|watch|records)$", re.I)
 #: Wrong room-creation passcodes accepted per minute before refusing all tries.
 MAX_PASSCODE_FAILURES_PER_MINUTE = 20
 #: Offline match reports accepted per minute (all browsers together).
@@ -84,7 +84,12 @@ def _verified_model_manifest(root: Path, level: str) -> dict:
     lite = models / "hosted-models.lite.json"
     full = models / "hosted-models.json"
     if level == "lite" and lite.is_file():
-        path, expected = lite, {"vrpo3_final.lite.npz"}
+        # The d1 options also read the equity table (TUPPI_HOSTED_LITE_OPTIONS).
+        from .hosted_bot import lite_options
+        path = lite
+        names = set(json.loads(lite.read_text()))
+        expected = {"vrpo3_final.lite.npz", "equity_incumbent.json"} if (
+            lite_options() != "off" or "equity_incumbent.json" in names) else {"vrpo3_final.lite.npz"}
     else:
         if level == "full" and not full.is_file() and lite.is_file():
             raise RuntimeError("this runtime contains only the lite bot; use the full image for TUPPI_HOSTED_BOT_LEVEL=full")
@@ -107,8 +112,10 @@ def verify_bot_identity(level: str = "full") -> dict:
     root = Path(spec.origin).resolve().parents[1]
     manifest = _verified_model_manifest(root, level)
     from tuppi_ai import native
-    bot = ({"profile": "tuppi_ai_lite_v1", "level": "lite", "search": None} if level == "lite"
-           else {"profile": "tuppi_ai_search_v1", "level": "full", "worlds": 1024})
+    from .hosted_bot import lite_options
+    options = lite_options() if level == "lite" else "off"
+    bot = ({"profile": "tuppi_ai_lite_v1" if options == "off" else f"tuppi_ai_lite_{options}_v1", "level": "lite",
+            "search": None} if level == "lite" else {"profile": "tuppi_ai_search_v1", "level": "full", "worlds": 1024})
     return {**bot,
         "models_sha256": hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest(),
         "native_sha256": hashlib.sha256(Path(native.lib._name).read_bytes()).hexdigest()}
@@ -555,7 +562,10 @@ class HostedBoundary:
                 "create_passcode_required": self.room_passcode is not None,
                 "protocol_version": "tuppi.network.v1", "ruleset_id": "project_target_v3",
                 "status": "storage_failed" if storage == "failed" else "ok", "storage": storage,
-                "bot": self.bot_identity})
+                "bot": self.bot_identity,
+                "bot_options": [{"profile": "tuppi_ai_search_v1", "name": "TuppiAI"},
+                                {"profile": "tuppi_ai_lite_c1h_v1", "name": "Heidi 0.5"}]
+                               if self.bot_identity.get("level") == "lite" else []})
             return
         if path == "/v1/results/summary" and scope.get("method") == "GET":
             await self.game._json_response(cors_send, 200, self.game.rooms.results.summary())

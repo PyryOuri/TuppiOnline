@@ -13,6 +13,8 @@ same rotations and assignments), extended to non-zero starting scores.
 from __future__ import annotations
 
 import argparse
+import os
+import sys
 import json
 import math
 import random
@@ -46,6 +48,13 @@ def _init(candidate: str, opponent: str, equity_path: str, ruleset: str = "v1") 
     from . import native
 
     native.set_rollout_chunk(128)  # several processes run: least total work, same moves
+    # One thread per worker unless TUPPI_AI_SERIAL=0: with every worker spreading its
+    # searches over all cores, worker memory grew about 70 MB a minute each in W=1024
+    # runs (2026-10-17); single-threaded it stays flat. The moves are the same.
+    if os.environ.get("TUPPI_AI_SERIAL") != "0":
+        native.set_parallel(False)
+    if hasattr(native, "set_belief_lanes"):
+        native.set_belief_lanes(int(os.environ.get("TUPPI_BELIEF_LANES", 2)))  # likewise: no extra CPU, same worlds
     from .equity import Equity
     from .incumbent import incumbent_agents
 
@@ -72,9 +81,24 @@ def _make_candidate(spec: str) -> dict:
     `vn=<value net>[:vlb=<tricks>][:vlp=<tricks>][:vbb=1]` value-net leaves
     for bid searches (vlb, default 0 = start of play; -1 off) and card-play
     searches (vlp, default -1 = off) (docs/VALUE_NET_PLAN.md)."""
-    if spec == "best":
-        from .best import best_agents
-        return best_agents()
+    # `best[:w=<worlds>][:pib=<k>][:pibt=<T>][:pibe=<eps>][:pibs=all|opp][:pibp=<policy>]`: the live
+    # bot, optionally with play inference in its searches (k x worlds resampled).
+    if spec == "best" or spec.startswith("best:"):
+        from .best import WORLDS, best_agents
+        opts = dict(part.split("=") for part in spec.split(":")[1:])
+        agents = best_agents(worlds=int(opts.get("w", WORLDS)))
+        if "pib" in opts:  # play inference (research/play-inference-20261016): pib=<oversampling>
+            from . import model as qmodel
+            from . import native
+            from .best import ANCHOR
+            policy = native.Mlp(qmodel.load(opts.get("pibp", str(ANCHOR)), "cpu"))
+            for agent in agents.values():
+                for searcher in (agent.searcher, agent.show_searcher):
+                    if searcher is not None:
+                        native.set_belief(searcher.env, policy, mult=int(opts["pib"]),
+                                          temperature=float(opts.get("pibt", 2.0)), eps=float(opts.get("pibe", 0.5)),
+                                          all_seats=opts.get("pibs", "all") == "all")
+        return agents
     if spec.startswith("profile:"):
         from .incumbent import incumbent_agents
         return incumbent_agents(spec.split(":", 1)[1])
@@ -222,7 +246,11 @@ def evaluate(candidate: str, deals: int, seed: str = "tuppi-ai-eval-v1", scores:
     t0 = time.time()
     with ProcessPoolExecutor(workers, initializer=_init,
                              initargs=(candidate, opponent, equity_path, ruleset)) as pool:
-        rows = list(pool.map(measure, range(deals), [seed] * deals, [scores] * deals, chunksize=8))
+        rows = []
+        for row in pool.map(measure, range(deals), [seed] * deals, [scores] * deals, chunksize=8):
+            rows.append(row)
+            if len(rows) % 64 == 0:  # progress for long runs (stderr; the summary goes to stdout)
+                print(f"evaluate: {len(rows)}/{deals} deals, {time.time() - t0:.0f} s", file=sys.stderr, flush=True)
     summary = summarise(rows)
     summary.update({"candidate": candidate, "opponent": opponent, "seed": seed, "scores": scores,
                     "ruleset": RULESETS[ruleset],

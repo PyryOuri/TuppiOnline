@@ -21,5 +21,8 @@ for name in ('__init__.py', 'native.py', 'bridge.py', 'lite.py'):
 shutil.copyfile(ai / 'native/libtuppi.so', out / 'native/libtuppi.so')
 (out / 'models').mkdir()
 shutil.copyfile(ai / 'models' / model, out / 'models' / model)
-(out / 'models/hosted-models.lite.json').write_text(json.dumps({model: manifest[model]}, indent=2) + '\n')
+equity = 'equity_incumbent.json'
+assert hashlib.sha256((ai / 'models' / equity).read_bytes()).hexdigest() == manifest[equity]
+shutil.copyfile(ai / 'models' / equity, out / 'models' / equity)
+(out / 'models/hosted-models.lite.json').write_text(json.dumps({name: manifest[name] for name in (model, equity)}, indent=2) + '\n')
 print(json.dumps({'lite_package': str(out), 'model_sha256': manifest[model]}))

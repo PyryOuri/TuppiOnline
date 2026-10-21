@@ -1,0 +1,61 @@
+{
+  "schema": "tuppi.browser.assets.v1",
+  "api_version": 1,
+  "ruleset": "project_target_v3",
+  "models": [
+    {
+      "role": 0,
+      "file": "vrpo1_actor_0504.f32",
+      "config": {
+        "width": 256,
+        "blocks": 2,
+        "encoder": 2
+      },
+      "in_dim": 1951,
+      "out_dim": 156,
+      "count": 804508,
+      "bytes": 3218032,
+      "sha256": "beb1f890947748a3df254dc200b9433547babc9fe40388fe76ba82e0f01abbda",
+      "source_file": "vrpo1_actor_0504.pt",
+      "source_sha256": "6043921643e423a56f307a92ca66b639f774967ffad61e981b69ad29734e11e3"
+    },
+    {
+      "role": 1,
+      "file": "vrpo3_final.f32",
+      "config": {
+        "width": 512,
+        "blocks": 4,
+        "encoder": 2
+      },
+      "in_dim": 1951,
+      "out_dim": 156,
+      "count": 3185820,
+      "bytes": 12743280,
+      "sha256": "0e4bba619908ad3fa92a75fb118470b436ffa571caaca5e8f6aab497be633b47",
+      "source_file": "vrpo3_final.pt",
+      "source_sha256": "3f14de574e324ac2a2263e1c77626684a8031b4837d444967549be426e810590"
+    }
+  ],
+  "equity": {
+    "file": "equity.f64",
+    "bytes": 400,
+    "sha256": "8e01246f723210a8e0364a63748de460b94b6e5a513e8e747dc91744f1bc3f0b",
+    "source_sha256": "1496f77104f411c5cb55e2cef4573a10aead59acbd643261b755886bfeb60b91"
+  },
+  "controller": {
+    "reference_worlds": 1024,
+    "dd_left": 6,
+    "keep": 0.003,
+    "keep_show": 0.03,
+    "adaptive": {
+      "batch": 128,
+      "z": 2.5,
+      "delta": 0.005
+    },
+    "showing_fix": true,
+    "sooli_belief": 17,
+    "sooli_lambda": 0.3,
+    "sooli_offer_margin": 0.02
+  },
+  "qualification": "Prototype; device performance and decision parity require separate results."
+}

@@ -106,7 +106,8 @@ ADAPTIVE_BIDS = {"batch": 128, "z": 2.5, "delta": 0.005}
 
 
 def best_agents(seats=range(4), worlds: int = WORLDS, seed: int = 0, team_rollout: bool = True,
-                showing_fix: bool | None = None, speedups: bool = True) -> dict:
+                showing_fix: bool | None = None, speedups: bool = True,
+                play_inference: int | None = None) -> dict:
     """team_rollout=False: the clone on all rollout seats and no policy anchor
     (the configuration before 2026-09-30, the research programme's pinned B0);
     otherwise the live configuration (strong opponent model, own-team policy, anchors).
@@ -116,7 +117,13 @@ def best_agents(seats=range(4), worlds: int = WORLDS, seed: int = 0, team_rollou
     speedups: enable per-controller compact128 computation with unchanged worlds,
     margins and solver tail. Identical rollout weights are shared read-only;
     environments and RNG streams remain separate. False retains reference
-    computation for differential checks."""
+    computation for differential checks.
+    play_inference: candidates per world for reading the other seats' play
+    (docs/PLAY_INFERENCE.md: T=2, eps=0.5, all other seats); 0 = off. None reads
+    TUPPI_AI_PLAY_INFERENCE (default 0), so research comparisons stay off unless
+    asked; the local product server sets 4 (owner's choice, 2026-10-18).
+    TUPPI_AI_PLAY_INFERENCE_HUMANS=1 also reads the moves of seats played by
+    people more loosely (SearchAgent.set_human_seats)."""
     from . import model as qmodel
     from . import native
 
@@ -134,10 +141,27 @@ def best_agents(seats=range(4), worlds: int = WORLDS, seed: int = 0, team_rollou
     anchor = qmodel.load(ANCHOR, "cpu") if team_rollout else None
     table = Equity.load(EQUITY).table
     adaptive = ADAPTIVE_BIDS if worlds > ADAPTIVE_BIDS["batch"] else None
-    return {s: SearchAgent(net, table, s, worlds=worlds, dd_left=SOLVER_TAIL, search_showing=1, seed=seed + s,
-                           adaptive=adaptive, team_net=team_net, shared_mlp=shared_mlp,
-                           exact_speed=speedups,
-                           keep=KEEP if team_rollout else None, blueprint_net=anchor,
-                           rami_bonus=-RAMI_MARGIN if team_rollout else 0.0,
-                           keep_show=KEEP_SHOW if team_rollout else None)
-            for s in seats}
+    agents = {s: SearchAgent(net, table, s, worlds=worlds, dd_left=SOLVER_TAIL, search_showing=1, seed=seed + s,
+                             adaptive=adaptive, team_net=team_net, shared_mlp=shared_mlp,
+                             exact_speed=speedups,
+                             keep=KEEP if team_rollout else None, blueprint_net=anchor,
+                             rami_bonus=-RAMI_MARGIN if team_rollout else 0.0,
+                             keep_show=KEEP_SHOW if team_rollout else None)
+              for s in seats}
+    if play_inference is None:
+        import os
+        play_inference = int(os.environ.get("TUPPI_AI_PLAY_INFERENCE", "0"))
+    if play_inference > 1:
+        policy = native.Mlp(anchor if anchor is not None else qmodel.load(ANCHOR, "cpu"))
+        for agent in agents.values():
+            for searcher in (agent.searcher, agent.show_searcher):
+                if searcher is not None:
+                    native.set_belief(searcher.env, policy, mult=play_inference, temperature=2.0, eps=0.5)
+        # TUPPI_AI_PLAY_INFERENCE_HUMANS=1: read the moves of seats played by people at
+        # temperature 4, eps 0.8 (people's games, audit_deliverables/tuppi_human_games); the
+        # server names those seats before each decision (SearchAgent.set_human_seats).
+        import os
+        if os.environ.get("TUPPI_AI_PLAY_INFERENCE_HUMANS", "0") == "1":
+            for agent in agents.values():
+                agent.human_reading = (4.0, 0.8)
+    return agents

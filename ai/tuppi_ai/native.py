@@ -641,6 +641,66 @@ def duplicate_eval(env: "Env", mlp_a: "Mlp", mlp_b: "Mlp", base_deals: int, rule
 _sym("tc_set_showing_fix").argtypes = [C.c_int]
 
 
+lib.tc_env_set_belief.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_double, C.c_double, C.c_int]
+lib.tc_env_set_belief.restype = None
+
+
+def set_belief(env: "Env", model: "Mlp | None", mult: int = 4, temperature: float = 2.0, eps: float = 0.5,
+               all_seats: bool = True) -> None:
+    """Play inference for this controller's native searches (research/play-inference-20261016):
+    draw mult * w worlds and resample w by `model`'s likelihood of the other
+    seats' past choices. None (or mult <= 1) switches it off."""
+    env._belief_model = model if model is not None and mult > 1 else None  # keep the weights alive
+    lib.tc_env_set_belief(env._h, env._belief_model._h if env._belief_model else None, mult, temperature, eps,
+                          int(all_seats))
+
+
+if hasattr(lib, "tc_env_set_belief_humans"):
+    lib.tc_env_set_belief_humans.argtypes = [C.c_void_p, C.c_int, C.c_double, C.c_double]
+    lib.tc_env_set_belief_humans.restype = None
+
+
+def set_belief_humans(env: "Env", seats, temperature: float = 4.0, eps: float = 0.8) -> None:
+    """The seats people play: play inference reads their past moves at this
+    temperature and eps (audit_deliverables/tuppi_human_games: 4 and 0.8
+    predicted the cards best); every other seat as set_belief says. An empty
+    seats reads every seat as before."""
+    lib.tc_env_set_belief_humans(env._h, sum(1 << s for s in seats), temperature, eps)
+
+
+if hasattr(lib, "tc_belief_profile"):  # an older library has no counters
+    lib.tc_belief_profile.argtypes = [C.c_void_p, C.c_void_p, C.c_int]
+    lib.tc_belief_profile.restype = None
+
+
+def set_belief_lanes(lanes: int) -> None:
+    """Threads that score play-inference candidates (process-wide; default all cores).
+    The worlds are the same at any count; two use no more CPU than one, more
+    lower latency but contend for the matrix units (docs/PLAY_INFERENCE.md)."""
+    if hasattr(lib, "tc_set_belief_lanes"):  # an older library scores on one thread
+        lib.tc_set_belief_lanes(int(lanes))
+
+
+def belief_profile(reset: bool = False) -> dict:
+    """Seconds spent in play inference and in rollouts (measurement only)."""
+    sec = (C.c_double * 5)(); cnt = (C.c_long * 2)()
+    lib.tc_belief_profile(sec, cnt, int(reset))
+    keys = ("draw", "replay_and_network", "resample", "rollouts_belief", "rollouts_uniform")
+    return {**dict(zip(keys, list(sec))), "belief_searches": cnt[0], "uniform_searches": cnt[1]}
+
+
+lib.tc_search_worlds.argtypes = [C.c_void_p, _P(TcObs), C.c_int, _P(C.c_uint64), C.c_void_p]
+lib.tc_search_worlds.restype = C.c_int
+
+
+def search_worlds(env: "Env", obs: TcObs, w: int, rng_state: C.c_uint64) -> list:
+    """The worlds the native search would roll out at `obs` (belief applied when set)."""
+    out = (TcDeal * w)()
+    if lib.tc_search_worlds(env._h, C.byref(obs), w, C.byref(rng_state), out) != 0:
+        raise RuntimeError("no world consistent with the observation")
+    return list(out)
+
+
 def set_showing_fix(on: bool) -> None:
     """Honour showing-fallback restrictions when sampling worlds (B0-S1; off by default)."""
     lib.tc_set_showing_fix(int(bool(on)))

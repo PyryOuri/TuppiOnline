@@ -38,9 +38,15 @@ def offline_row(payload: object, *, day: str) -> dict[str, object]:
     (team 0). In the rising score the winner has 52 or more and the loser 0.
     """
 
-    if type(payload) is not dict or set(payload) != {"conceded", "deals", "final_score", "id", "winner_team", "worlds"}:
+    if type(payload) is not dict or set(payload) != ({"conceded", "deals", "final_score", "id", "winner_team", "worlds"} |
+                                                  ({"bot"} if "bot" in payload else set())):
         raise ResultRejected("invalid_result")
     match_id, worlds, winner = payload["id"], payload["worlds"], payload["winner_team"]
+    bot = payload.get("bot")
+    if bot is not None and (not isinstance(bot, str) or bot not in {"heidi05", "heidi10"}):
+        raise ResultRejected("invalid_result")
+    if (bot == "heidi05" and worlds != 128) or (bot == "heidi10" and worlds != 1024):
+        raise ResultRejected("invalid_result")
     score, deals, conceded = payload["final_score"], payload["deals"], payload["conceded"]
     if (not isinstance(match_id, str) or not _ID.fullmatch(match_id) or worlds not in OFFLINE_BOTS
             or type(worlds) is not int or winner not in (0, 1) or type(winner) is not int
@@ -49,7 +55,7 @@ def offline_row(payload: object, *, day: str) -> dict[str, object]:
             or type(deals) is not int or not 1 <= deals <= 1000
             or type(conceded) is not int or not 0 <= conceded < deals):
         raise ResultRejected("invalid_result")
-    return {"bot": OFFLINE_BOTS[worlds], "conceded": conceded, "day": day, "deals": deals,
+    return {"bot": bot or OFFLINE_BOTS[worlds], "conceded": conceded, "day": day, "deals": deals,
             "final_score": score, "id": f"offline-{match_id}", "source": "offline",
             "team_humans": [1, 0], "winner_team": winner}
 

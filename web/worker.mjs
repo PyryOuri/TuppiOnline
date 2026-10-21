@@ -1,5 +1,6 @@
 import {Runtime} from './runtime.mjs';
 import {LocalSession, analyseDeal, shuffledDeck} from './session.mjs';
+import {buildTimeline, TimelineBuilder} from './timeline.mjs';
 
 let session, generation = 0, delay = 350, running = false, finishReveal;
 let checkpointId = 0, durableCheckpoint = Promise.resolve();
@@ -23,8 +24,69 @@ async function runAnalysis(data) {
   } catch (error) { postMessage({type: 'analysis', id: data.id, error: error.message}); }
 }
 
+// A separate instance of this worker builds the game viewer's timelines
+// (round 16: replays of recorded games); it never plays a game.
+let viewerRuntime = null, viewerQueue = Promise.resolve();
+async function runTimeline(data) {
+  try {
+    if (!viewerRuntime) viewerRuntime = await Runtime.create({worlds: 128,
+      progress: message => postMessage({type: 'timeline-progress', id: data.id, message})});
+    postMessage({type: 'timeline', id: data.id, timeline: buildTimeline(viewerRuntime, data.match)});
+  } catch (error) { postMessage({type: 'timeline', id: data.id, error: error.message}); }
+}
+
+// Bot-only games for the viewer (round 16): four bots play a match to 52 on
+// this device, and every move goes to the viewer as a timeline step. Each team
+// has its own bot (legacy W128/W1024, Heidi 0.5 or Heidi 1.0); a runtime per
+// profile follows every move, and the actor's team runtime chooses. One game
+// at a time; `delay` paces the moves and can change while it plays.
+const botProfiles = {fast: {worlds: 128, bot: 'legacy'}, full: {worlds: 1024, bot: 'legacy'},
+  heidi05: {worlds: 128, bot: 'heidi05'}, heidi10: {worlds: 1024, bot: 'heidi10'}};
+const botRuntimes = new Map();
+let botGame = null;
+async function runBotMatch(data) {
+  const game = {id: data.id, stopped: false, delay: Math.max(0, Math.min(5000, data.delay ?? 1000))};
+  if (botGame) botGame.stopped = true;
+  botGame = game;
+  const post = (type, payload) => postMessage({type, id: game.id, ...payload});
+  try {
+    const teams = Array.isArray(data.teams) && data.teams.length === 2 && data.teams.every(name => name in botProfiles) ? data.teams : ['fast', 'fast'];
+    for (const name of new Set(teams))
+      if (!botRuntimes.has(name)) botRuntimes.set(name, await Runtime.create({...botProfiles[name], humanSeats: [],
+        progress: message => post('botmatch-progress', {message})}));
+    const runtimes = [...new Set(teams)].map(name => botRuntimes.get(name)), team = teams.map(name => botRuntimes.get(name));
+    const runtime = runtimes[0], others = runtimes.slice(1), builder = new TimelineBuilder(runtime);
+    // An optional starting score (tests start near the end): one side up, in fours, below 52.
+    const start = data.score, valid = Array.isArray(start) && start.length === 2 && start.every(v => Number.isInteger(v) && v >= 0 && v < 52 && v % 4 === 0) && !(start[0] && start[1]);
+    let score = valid ? [...start] : [0, 0], dealer = crypto.getRandomValues(new Uint8Array(1))[0] % 4;
+    // An optional deal limit (tests): the match ends after that many deals.
+    const limit = Number.isInteger(data.deals) && data.deals > 0 ? Math.min(data.deals, 500) : 500;
+    for (let d = 0; d < limit && !game.stopped; d++) {
+      const deal = {cards: shuffledDeck(), dealer, score: [...score], actions: []};
+      for (const r of runtimes) r.init(deal.cards, dealer, score);
+      post('botmatch-step', {step: builder.beginDeal(deal), info: builder.deals.at(-1), deal: {cards: deal.cards, dealer, score: [...score]}});
+      while (!game.stopped && runtime.state().phase !== 2) {
+        await new Promise(resolve => setTimeout(resolve, game.delay));
+        if (game.stopped) break;
+        const actor = runtime.state().actor, {action} = team[actor % 2].choose(actor);
+        post('botmatch-step', {step: builder.step(action, 'bot'), info: builder.deals.at(-1)});
+        for (const r of others) r.apply(action);
+      }
+      if (game.stopped) break;
+      score = builder.deals.at(-1).result.scoreAfter; dealer = (dealer + 1) % 4;
+      if (score[0] >= 52 || score[1] >= 52 || d === limit - 1) { post('botmatch-end', {score}); break; }
+      await new Promise(resolve => setTimeout(resolve, game.delay * 2));
+    }
+  } catch (error) { post('botmatch-error', {error: error.message}); }
+  finally { if (botGame === game) botGame = null; }
+}
+
 self.onmessage = async ({data}) => {
   if (data.type === 'analyse') { analysisQueue = analysisQueue.then(() => runAnalysis(data)); return; }
+  if (data.type === 'botmatch-start') { runBotMatch(data); return; }
+  if (data.type === 'botmatch-delay') { if (botGame?.id === data.id && Number.isFinite(data.delay)) botGame.delay = Math.max(0, Math.min(5000, data.delay)); return; }
+  if (data.type === 'botmatch-stop') { if (botGame?.id === data.id) botGame.stopped = true; return; }
+  if (data.type === 'timeline') { viewerQueue = viewerQueue.then(() => runTimeline(data)); return; }
   if (data.type === 'checkpoint-saved' && data.generation === generation) {
     const pending = checkpoints.get(data.checkpointId);
     if (pending) { checkpoints.delete(data.checkpointId); data.error ? pending.reject(new Error(`Tallennus keskeytyi: ${data.error}`)) : pending.resolve(); }
@@ -43,7 +105,8 @@ self.onmessage = async ({data}) => {
     if (data.type === 'init') {
       generation = data.generation; delay = data.delay ?? 350;
       send('loading', {message: 'Ladataan paikallinen botti…'});
-      const runtime = await Runtime.create({worlds: data.worlds, progress: message => send('loading', {message})});
+      const runtime = await Runtime.create({worlds: data.worlds, bot: data.save?.bot ?? data.bot ?? 'legacy',
+        progress: message => send('loading', {message})});
       session = new LocalSession(runtime, {
         checkpoint: save => {
           const id = ++checkpointId;

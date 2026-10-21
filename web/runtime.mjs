@@ -17,8 +17,11 @@ async function sha256(bytes) {
 }
 
 export class Runtime {
-  static async create({worlds = 1024, read = readAsset, progress = () => {}} = {}) {
+  static async create({worlds = 1024, bot = 'legacy', humanSeats = [0], read = readAsset, progress = () => {}} = {}) {
     if (![128, 1024].includes(worlds)) throw new Error('Bottiasetus ei ole tuettu.');
+    if (!['legacy', 'heidi05', 'heidi10'].includes(bot) ||
+        !Array.isArray(humanSeats) || humanSeats.some(seat => !Number.isInteger(seat) || seat < 0 || seat > 3))
+      throw new Error('Bottiasetus ei ole tuettu.');
     progress('Ladataan bottipaketin tiedot…');
     const metadata = await read('models.json');
     const manifest = JSON.parse(new TextDecoder().decode(metadata));
@@ -58,6 +61,12 @@ export class Runtime {
       if (module._tb_configure(worlds, pointer) !== 0) throw new Error('Hakubudjetti ei ole tuettu.');
     } finally { module._free(pointer); }
     runtime.worlds = worlds;
+    runtime.bot = bot;
+    if (bot !== 'legacy') {
+      const mask = [...new Set(humanSeats)].reduce((value, seat) => value | (1 << seat), 0);
+      if (!module._tb_configure_bot || module._tb_configure_bot(bot === 'heidi05' ? 1 : 2, mask) !== 0)
+        throw new Error('Tämä peliversio ei tue valittua bottia.');
+    }
     return runtime;
   }
 
@@ -128,13 +137,15 @@ export class Runtime {
   }
 
   context() { return Array.from({length: 4}, (_, seat) =>
-    Array.from({length: 3}, (_, field) => this.m._tb_context(seat, field) >>> 0)); }
+    Array.from({length: this.bot === 'heidi05' ? 7 : 3}, (_, field) => this.m._tb_context(seat, field) >>> 0)); }
   restoreContext(context) {
     if (!Array.isArray(context) || context.length !== 4 || context.some(row =>
-      !Array.isArray(row) || row.length !== 3 || row.some(v => !Number.isInteger(v) || v < 0 || v > 0xffffffff)))
+      !Array.isArray(row) || row.length !== (this.bot === 'heidi05' ? 7 : 3) || row.some(v => !Number.isInteger(v) || v < 0 || v > 0xffffffff)))
       throw new Error('Botin tallennustila on virheellinen.');
     context.forEach((row, seat) => {
-      if (this.m._tb_restore_context(seat, ...row) !== 0) throw new Error('Botin tallennustila ei ole tuettu.');
+      if (this.m._tb_restore_context(seat, ...row.slice(0, 3)) !== 0 ||
+          (this.bot === 'heidi05' && this.m._tb_restore_net_context(seat, ...row.slice(3)) !== 0))
+        throw new Error('Botin tallennustila ei ole tuettu.');
     });
   }
 

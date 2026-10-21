@@ -199,7 +199,8 @@ static int offer_world(TcDeal *w, uint64_t *rng) {
 static const TcMlp *offer_model = NULL;
 void tc_set_offer_model(const TcMlp *m) { offer_model = m; }
 
-static int offer(const TcObs *o, uint64_t *rng) {
+// `need` of the OFFER_WORLDS worlds must survive (the heuristic: half).
+static int offer_need(const TcObs *o, uint64_t *rng, int need) {
   if (!offer_prefilter(o->hand)) return TC_ACT_SOOLI_DECLINE;
   if (offer_model) {
     uint8_t f[2048];
@@ -209,7 +210,6 @@ static int offer(const TcObs *o, uint64_t *rng) {
     double u = (splitmix_(rng) >> 11) * (1.0 / 9007199254740992.0);
     return u < 1.0 / (1.0 + exp(-(double)logit)) ? TC_ACT_SOOLI_ACCEPT : TC_ACT_SOOLI_DECLINE;
   }
-  const int need = (OFFER_WORLDS + 1) / 2;
   TcDeal w[OFFER_WORLDS];
   int state[OFFER_WORLDS];  // 1 survives, 0 does not, -2 undecided
   for (int i = 0; i < OFFER_WORLDS; i++)
@@ -230,8 +230,15 @@ static int offer(const TcObs *o, uint64_t *rng) {
       if (state[i] != -2) { open--; alive += state[i]; }
     }
   }
-  return 2 * alive >= OFFER_WORLDS ? TC_ACT_SOOLI_ACCEPT : TC_ACT_SOOLI_DECLINE;
+  return alive >= need ? TC_ACT_SOOLI_ACCEPT : TC_ACT_SOOLI_DECLINE;
 }
+
+static int offer(const TcObs *o, uint64_t *rng) { return offer_need(o, rng, (OFFER_WORLDS + 1) / 2); }
+
+// The offer answer with another number of surviving worlds required, out of
+// OFFER_WORLDS, from the same draws (the lite bot's sooli option, A2 in
+// audit_deliverables/tuppi_faceup_improvements_20261020).
+int tc_sooli_offer_need(const TcObs *o, uint64_t *rng, int need) { return offer_need(o, rng, need); }
 
 // Heuristic action for the observer in a sooli phase; -1 otherwise.
 int tc_sooli_policy(const TcObs *o, uint64_t *rng) {

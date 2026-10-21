@@ -503,3 +503,38 @@ dialog > p { line-height: 1.6; }
   button.card.illegal.red { --card-ink: #a3524d; }
   button, .file-label, .lobby-seat, .trick-stair { border-color: #0007; }
 }
+
+/* The game viewer (round 16): every hand face up as suit rows, the trick in
+   the middle, the step's sentence and the replay controls. */
+.viewer { max-width: 1000px; margin: 0 auto 40px; display: grid; gap: 12px; }
+.viewer-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.viewer-heading h1 { font-size: 18px; }
+.viewer-rail { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-weight: 600; }
+.viewer-table { display: grid; grid-template-columns: 1fr minmax(170px, 1.2fr) 1fr; grid-template-areas: ". north ." "west trick east" ". south ."; gap: 10px; align-items: center; padding: 14px; border-radius: var(--surface-radius); background: var(--table); }
+.viewer-seat { display: grid; gap: 2px; min-width: 0; padding: 8px 10px; border-radius: 10px; background: #ffffffb8; border: 1px solid transparent; }
+.viewer-seat.north { grid-area: north; } .viewer-seat.south { grid-area: south; } .viewer-seat.west { grid-area: west; } .viewer-seat.east { grid-area: east; }
+.viewer-seat > span { color: var(--muted); font-size: 12px; min-height: 1.2em; }
+.viewer-seat.to-move { border-color: var(--amber); box-shadow: inset 0 0 0 1px var(--amber); }
+.viewer-seat.moved strong::after { content: " ●"; color: var(--amber-text); }
+.viewer-hand { display: grid; gap: 1px; font-variant-numeric: tabular-nums; font-size: 15px; letter-spacing: .5px; }
+.viewer-suit.suit-0, .viewer-suit.suit-1, .viewer-played.suit-0, .viewer-played.suit-1 { color: #c4281f; }
+.viewer-trick { grid-area: trick; position: relative; min-height: 150px; }
+.viewer-played { position: absolute; display: grid; place-items: center; width: 52px; height: 40px; border-radius: 8px; background: #fff; border: 1px solid var(--line); font-weight: 700; font-size: 16px; box-shadow: 0 1px 3px #172b2014; }
+.viewer-played.north { top: 0; left: calc(50% - 26px); } .viewer-played.south { bottom: 0; left: calc(50% - 26px); }
+.viewer-played.west { left: 0; top: calc(50% - 20px); } .viewer-played.east { right: 0; top: calc(50% - 20px); }
+.viewer-played.winner { outline: 3px solid var(--amber); }
+.viewer-narration { min-height: 2.9em; padding: 10px 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); font-size: 15px; }
+.viewer-controls { justify-content: center; flex-wrap: wrap; }
+.viewer-controls button { min-width: 44px; min-height: var(--control-height); }
+#viewer-position { width: 100%; }
+.viewer-options { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.viewer-list ol { margin: 6px 0 0; padding-left: 0; list-style: none; display: grid; gap: 4px; }
+.viewer-list button { width: 100%; text-align: left; font-weight: 500; }
+@media (max-width: 600px) {
+  .viewer-table { grid-template-columns: 1fr 1fr; grid-template-areas: "north north" "west east" "trick trick" "south south"; padding: 10px; }
+  .viewer-trick { min-height: 130px; }
+  .viewer-hand { font-size: 14px; }
+}
+
+.viewer-teams { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 4px 0 8px; }
+.viewer-teams label { display: flex; flex-direction: column; gap: 3px; font-size: .9em; }

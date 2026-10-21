@@ -42,10 +42,13 @@ COPY --from=qualified /app/start.sh .
 COPY --from=qualified /app/qualification/result.json qualification/builder-result.json
 COPY --from=qualified /app/qualification/lite-reference.json qualification/lite-reference.json
 COPY --from=qualified /app/qualification/qualify_lite.py qualification/qualify_lite.py
+COPY --from=qualified /app/qualification/qualify_heidi.py qualification/qualify_heidi.py
+COPY --from=qualified /app/qualification/heidi-reference.json qualification/heidi-reference.json
 ENV PYTHONPATH=/app/engine/src:/app/ai PYTHONDONTWRITEBYTECODE=1 \
     TUPPI_HOSTED_BOT_LEVEL=lite OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 # This check executes inside the final, PyTorch-free filesystem.
 RUN python qualification/qualify_lite.py \
+    && python qualification/qualify_heidi.py \
     && groupadd --gid 10001 tuppi && useradd --uid 10001 --gid tuppi --no-create-home tuppi \
     && chmod +x start.sh
 ENV TUPPI_WEB_DIR=/app/web TUPPI_SERVER_DATA_DIR=/data/rooms \
