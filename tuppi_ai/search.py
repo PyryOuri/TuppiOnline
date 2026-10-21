@@ -377,6 +377,21 @@ class SearchAgent:
         values = searcher.action_values(obs, ids)
         return values, int(np.argmax(values))
 
+    #: (temperature, eps) for reading the moves of seats played by people in
+    #: play inference, or None to read every seat alike (best_agents sets it
+    #: from TUPPI_AI_PLAY_INFERENCE_HUMANS).
+    human_reading = None
+
+    def set_human_seats(self, seats) -> None:
+        """The seats people play now; the host calls this before each decision.
+        Without human_reading (the default) it changes nothing."""
+        if self.human_reading is None:
+            return
+        people = frozenset(seats) - {self.seat}
+        for searcher in (self.searcher, self.show_searcher):
+            if searcher is not None and getattr(searcher.env, "_belief_model", None) is not None:
+                native.set_belief_humans(searcher.env, people, *self.human_reading)
+
     def choose_action(self, observation):
         legal = observation.legal_actions
         self.last_values = None

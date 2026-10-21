@@ -655,6 +655,19 @@ def set_belief(env: "Env", model: "Mlp | None", mult: int = 4, temperature: floa
                           int(all_seats))
 
 
+if hasattr(lib, "tc_env_set_belief_humans"):
+    lib.tc_env_set_belief_humans.argtypes = [C.c_void_p, C.c_int, C.c_double, C.c_double]
+    lib.tc_env_set_belief_humans.restype = None
+
+
+def set_belief_humans(env: "Env", seats, temperature: float = 4.0, eps: float = 0.8) -> None:
+    """The seats people play: play inference reads their past moves at this
+    temperature and eps (audit_deliverables/tuppi_human_games: 4 and 0.8
+    predicted the cards best); every other seat as set_belief says. An empty
+    seats reads every seat as before."""
+    lib.tc_env_set_belief_humans(env._h, sum(1 << s for s in seats), temperature, eps)
+
+
 if hasattr(lib, "tc_belief_profile"):  # an older library has no counters
     lib.tc_belief_profile.argtypes = [C.c_void_p, C.c_void_p, C.c_int]
     lib.tc_belief_profile.restype = None

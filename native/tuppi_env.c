@@ -53,6 +53,10 @@ typedef struct {
   const struct TcMlpS *belief_net;
   int belief_mult, belief_all;
   double belief_inv_t, belief_eps;
+  // Seats played by people (tc_env_set_belief_humans; 0 = none, the default):
+  // their past moves are read with their own temperature and eps.
+  int belief_humans;
+  double belief_h_inv_t, belief_h_eps;
 } TcEnv;
 #define INC_MAXA 320
 
@@ -742,6 +746,15 @@ void tc_env_set_belief(TcEnv *e, const TcMlp *m, int mult, double temperature, d
   e->belief_all = all_seats;
 }
 
+// The seats people play (bit s = seat s) and how loosely to read their moves
+// (people's games: temperature 4, eps 0.8 predicted the cards best;
+// audit_deliverables/tuppi_human_games). mask 0 reads every seat as before.
+void tc_env_set_belief_humans(TcEnv *e, int mask, double temperature, double eps) {
+  e->belief_humans = mask & 0xF;
+  e->belief_h_inv_t = temperature > 0 ? 1.0 / temperature : 1.0;
+  e->belief_h_eps = eps;
+}
+
 static int belief_applies(const TcEnv *e, const TcObs *o) {
   return e->belief_net && o->soolaaja < 0 && (o->phase == TC_PH_PLAY || o->phase == TC_PH_SOOLI_OFFER);
 }
@@ -759,6 +772,12 @@ static int belief_worlds(const TcEnv *e, const TcObs *o, int w, uint64_t *rng, T
   const int M = w * e->belief_mult, enc = tc_mlp_encoder(net), dim = tc_feature_dim_v(enc);
   const int opp = (1 << ((o->seat + 1) & 3)) | (1 << ((o->seat + 3) & 3));
   const int seats = e->belief_all ? (0xF & ~(1 << o->seat)) : opp;
+  // People's moves get their own pass and setting; with none at the table
+  // this is the single pass over all seats, as before.
+  const int people = e->belief_humans & seats, npass = people ? 2 : 1;
+  // (Plain variables: the parallel block cannot capture arrays.)
+  const int bot_seats = people ? seats & ~people : seats;
+  const double h_inv_t = e->belief_h_inv_t, h_eps = e->belief_h_eps;
   TcDeal *cand = malloc(sizeof(TcDeal) * (size_t)M);
   double *logw = calloc((size_t)M, sizeof(double));
   double t0 = now_s();
@@ -775,24 +794,30 @@ static int belief_worlds(const TcEnv *e, const TcObs *o, int w, uint64_t *rng, T
     uint8_t *feat = malloc((size_t)BLOCK * MAXR * dim), *mask = malloc((size_t)BLOCK * MAXR * TC_NUM_ACTIONS);
     int32_t *act = malloc(sizeof(int32_t) * (size_t)BLOCK * MAXR), *owner = malloc(sizeof(int32_t) * (size_t)BLOCK * MAXR);
     float *q = malloc(sizeof(float) * (size_t)BLOCK * MAXR * TC_NUM_ACTIONS);
-    int rows = 0;
-    for (int i = first; i < last; i++) {
-      int r = tc_history_rows(&cand[i], seats, enc, MAXR, feat + (size_t)rows * dim,
-                              mask + (size_t)rows * TC_NUM_ACTIONS, act + rows);
-      if (r < 0) { logw[i] = -1e300; continue; }  // the history cannot be replayed in this world
-      for (int j = 0; j < r; j++) owner[rows + j] = i;
-      rows += r;
-    }
-    if (rows) tc_mlp_forward(net, feat, rows, q);
-    for (int r = 0; r < rows; r++) {
-      const float *qr = q + (size_t)r * TC_NUM_ACTIONS;
-      const uint8_t *mr = mask + (size_t)r * TC_NUM_ACTIONS;
-      double top = -1e300, sum = 0.0;
-      int legal = 0;
-      for (int a = 0; a < TC_NUM_ACTIONS; a++) if (mr[a] && qr[a] > top) top = qr[a];
-      for (int a = 0; a < TC_NUM_ACTIONS; a++) if (mr[a]) { sum += exp((qr[a] - top) * inv_t); legal++; }
-      double p = exp((qr[act[r]] - top) * inv_t) / sum;
-      logw[owner[r]] += log((1.0 - eps) * p + eps / legal);
+    for (int pass = 0; pass < npass; pass++) {
+      const int pseats = pass == 0 ? bot_seats : people;
+      const double pinv_t = pass == 0 ? inv_t : h_inv_t, peps = pass == 0 ? eps : h_eps;
+      if (!pseats) continue;
+      int rows = 0;
+      for (int i = first; i < last; i++) {
+        if (logw[i] < -1e299) continue;
+        int r = tc_history_rows(&cand[i], pseats, enc, MAXR, feat + (size_t)rows * dim,
+                                mask + (size_t)rows * TC_NUM_ACTIONS, act + rows);
+        if (r < 0) { logw[i] = -1e300; continue; }  // the history cannot be replayed in this world
+        for (int j = 0; j < r; j++) owner[rows + j] = i;
+        rows += r;
+      }
+      if (rows) tc_mlp_forward(net, feat, rows, q);
+      for (int r = 0; r < rows; r++) {
+        const float *qr = q + (size_t)r * TC_NUM_ACTIONS;
+        const uint8_t *mr = mask + (size_t)r * TC_NUM_ACTIONS;
+        double top = -1e300, sum = 0.0;
+        int legal = 0;
+        for (int a = 0; a < TC_NUM_ACTIONS; a++) if (mr[a] && qr[a] > top) top = qr[a];
+        for (int a = 0; a < TC_NUM_ACTIONS; a++) if (mr[a]) { sum += exp((qr[a] - top) * pinv_t); legal++; }
+        double p = exp((qr[act[r]] - top) * pinv_t) / sum;
+        logw[owner[r]] += log((1.0 - peps) * p + peps / legal);
+      }
     }
     free(feat); free(mask); free(act); free(owner); free(q);
   }

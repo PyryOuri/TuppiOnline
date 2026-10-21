@@ -121,7 +121,9 @@ def best_agents(seats=range(4), worlds: int = WORLDS, seed: int = 0, team_rollou
     play_inference: candidates per world for reading the other seats' play
     (docs/PLAY_INFERENCE.md: T=2, eps=0.5, all other seats); 0 = off. None reads
     TUPPI_AI_PLAY_INFERENCE (default 0), so research comparisons stay off unless
-    asked; the local product server sets 4 (owner's choice, 2026-10-18)."""
+    asked; the local product server sets 4 (owner's choice, 2026-10-18).
+    TUPPI_AI_PLAY_INFERENCE_HUMANS=1 also reads the moves of seats played by
+    people more loosely (SearchAgent.set_human_seats)."""
     from . import model as qmodel
     from . import native
 
@@ -155,4 +157,11 @@ def best_agents(seats=range(4), worlds: int = WORLDS, seed: int = 0, team_rollou
             for searcher in (agent.searcher, agent.show_searcher):
                 if searcher is not None:
                     native.set_belief(searcher.env, policy, mult=play_inference, temperature=2.0, eps=0.5)
+        # TUPPI_AI_PLAY_INFERENCE_HUMANS=1: read the moves of seats played by people at
+        # temperature 4, eps 0.8 (people's games, audit_deliverables/tuppi_human_games); the
+        # server names those seats before each decision (SearchAgent.set_human_seats).
+        import os
+        if os.environ.get("TUPPI_AI_PLAY_INFERENCE_HUMANS", "0") == "1":
+            for agent in agents.values():
+                agent.human_reading = (4.0, 0.8)
     return agents
