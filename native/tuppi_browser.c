@@ -31,6 +31,7 @@ void tc_set_showing_fix(int on);
 void tc_set_rollout_chunk(int n);
 void tc_set_belief_lanes(int lanes);
 void tc_belief_profile(double *seconds, long *counts, int reset);
+int tc_belief_counters(double *out, int reset);
 
 static TcDeal game;
 static int hand_order[4][14], hand_count[4];
@@ -116,6 +117,9 @@ int tb_belief_profile(double *out, int reset) {
   out[5] = (double)counts[0]; out[6] = (double)counts[1];
   return 0;
 }
+
+/* Exact work counters; returns how many were written. */
+int tb_belief_counters(double *out, int reset) { return out ? tc_belief_counters(out, reset) : -1; }
 
 void tb_dispose(void) {
   for (int s = 0; s < 4; s++) { tc_env_free(envs[s]); envs[s] = NULL; }

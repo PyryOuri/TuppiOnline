@@ -731,11 +731,23 @@ int tc_history_rows(const TcDeal *world, int seat_mask, int encoder, int max_row
 // counts [belief searches, uniform searches]. Process-wide, for measurement only.
 static double prof_s[5];
 static long prof_n[2];
+// Work counters (tc_belief_counters), summed on the calling thread after the
+// lanes join: [candidates drawn, network rows scored, distinct (seat, hand)
+// keys scored, uniform fallbacks, candidates whose history cannot be
+// replayed, belief searches, history replays, rows the per-candidate method
+// scores]. Counting never touches results.
+enum { BC_CANDIDATES, BC_ROWS, BC_KEYS, BC_UNIFORM, BC_FAILED, BC_SEARCHES, BC_REPLAYS, BC_ROWS_PLAIN, BC_COUNT };
+static long prof_c[BC_COUNT];
 static double now_s(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec + t.tv_nsec * 1e-9; }
 void tc_belief_profile(double *seconds, long *counts, int reset) {
   for (int i = 0; i < 5; i++) seconds[i] = prof_s[i];
   for (int i = 0; i < 2; i++) counts[i] = prof_n[i];
   if (reset) { memset(prof_s, 0, sizeof prof_s); memset(prof_n, 0, sizeof prof_n); }
+}
+int tc_belief_counters(double *out, int reset) {
+  for (int i = 0; i < BC_COUNT; i++) out[i] = (double)prof_c[i];
+  if (reset) memset(prof_c, 0, sizeof prof_c);
+  return BC_COUNT;
 }
 // Threads that score candidates (tc_set_belief_lanes). The scores do not
 // depend on it; more lanes finish sooner but contend for the matrix units.
@@ -777,6 +789,7 @@ typedef struct {
   double inv_t, eps, h_inv_t, h_eps;
   TcDeal *cand;
   double *logw;
+  long *block_rows, *block_replays;  // per block, summed by the caller
 } BeliefWork;
 
 static void belief_score_lane(const BeliefWork *work, int lane, int lanes) {
@@ -802,11 +815,13 @@ static void belief_score_lane(const BeliefWork *work, int lane, int lanes) {
         if (logw[i] < -1e299) continue;
         int r = tc_history_rows(&cand[i], pseats, enc, MAXR, feat + (size_t)rows * dim,
                                 mask + (size_t)rows * TC_NUM_ACTIONS, act + rows);
+        work->block_replays[b]++;
         if (r < 0) { logw[i] = -1e300; continue; }  // the history cannot be replayed in this world
         for (int j = 0; j < r; j++) owner[rows + j] = i;
         rows += r;
       }
       if (rows) tc_mlp_forward(net, feat, rows, q);
+      work->block_rows[b] += rows;
       for (int r = 0; r < rows; r++) {
         const float *qr = q + (size_t)r * TC_NUM_ACTIONS;
         const uint8_t *mr = mask + (size_t)r * TC_NUM_ACTIONS;
@@ -854,8 +869,9 @@ static int belief_worlds(const TcEnv *e, const TcObs *o, int w, uint64_t *rng, T
     }
   double t1 = now_s(); prof_s[0] += t1 - t0;
   const int blocks = (M + BLOCK - 1) / BLOCK, lanes = belief_lanes < blocks ? belief_lanes : blocks;
+  long *block_counts = calloc((size_t)blocks * 2, sizeof(long));
   const BeliefWork work = {net, M, enc, dim, blocks, bot_seats, people, npass,
-                           inv_t, eps, h_inv_t, h_eps, cand, logw};
+                           inv_t, eps, h_inv_t, h_eps, cand, logw, block_counts, block_counts + blocks};
 #ifdef __EMSCRIPTEN_PTHREADS__
   // The build prewarms three workers. At most four lanes including caller;
   // an unavailable worker falls back locally, preserving every candidate.
@@ -878,10 +894,18 @@ static int belief_worlds(const TcEnv *e, const TcObs *o, int w, uint64_t *rng, T
   TC_PARALLEL_END
 #endif
   double t2 = now_s(); prof_s[1] += t2 - t1;
+  for (int b = 0; b < blocks; b++) {
+    prof_c[BC_ROWS] += block_counts[b]; prof_c[BC_ROWS_PLAIN] += block_counts[b];
+    prof_c[BC_REPLAYS] += block_counts[blocks + b];
+  }
+  free(block_counts);
+  prof_c[BC_CANDIDATES] += M; prof_c[BC_SEARCHES]++;
+  for (int i = 0; i < M; i++) prof_c[BC_FAILED] += logw[i] < -1e299;
   double top = -1e300, total = 0.0;
   for (int i = 0; i < M; i++) if (logw[i] > top) top = logw[i];
   for (int i = 0; i < M; i++) { logw[i] = logw[i] < -1e299 ? 0.0 : exp(logw[i] - top); total += logw[i]; }
-  if (total <= 0) { for (int i = 0; i < M; i++) logw[i] = 1.0; total = M; }
+  // Every candidate failed replay: uniform resampling (counted; never seen on the fixtures).
+  if (total <= 0) { for (int i = 0; i < M; i++) logw[i] = 1.0; total = M; prof_c[BC_UNIFORM]++; }
   // Systematic resampling: as few duplicates as the weights force.
   double u = unit(rng) / w * total, cum = logw[0];
   for (int j = 0, i = 0; j < w; j++) {
