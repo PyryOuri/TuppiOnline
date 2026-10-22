@@ -7,6 +7,7 @@
 #include <string.h>
 #include "tuppi_core.h"
 #include "tuppi_mlp.h"
+#include "tuppi_parallel.h"
 
 typedef struct TcEnv TcEnv;
 TcEnv *tc_env_new(int n, uint64_t seed);
@@ -101,10 +102,13 @@ int tb_configure_bot(int mode, int people) {
 }
 
 /* Search profile is explicit; execution backend never changes it. The old
- * configure_bot API retains PIB4 for existing callers and fixtures. */
+ * configure_bot API retains PIB4 for existing callers and fixtures. The
+ * threaded build keeps lanes - 1 workers for scoring and rollouts until
+ * tb_dispose; the single build has none. */
 int tb_configure_inference(int mult, int lanes) {
   if (bot_mode != 2 || (mult != 4 && mult != 8) || lanes < 1 || lanes > 4) return -1;
   tc_set_belief_lanes(lanes);
+  tc_parallel_start(lanes);
   for (int s = 0; s < 4; ++s)
     tc_env_set_belief(envs[s], models[1], mult, 2.0, 0.5, 1);
   return 0;
@@ -122,6 +126,7 @@ int tb_belief_profile(double *out, int reset) {
 int tb_belief_counters(double *out, int reset) { return out ? tc_belief_counters(out, reset) : -1; }
 
 void tb_dispose(void) {
+  tc_parallel_stop();
   for (int s = 0; s < 4; s++) { tc_env_free(envs[s]); envs[s] = NULL; }
   for (int role = 0; role < 2; role++) { tc_mlp_free(models[role]); models[role] = NULL; }
   last_count = 0;

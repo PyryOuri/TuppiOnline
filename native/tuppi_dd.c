@@ -24,6 +24,8 @@ typedef struct { u64 h[4]; uint32_t gen; uint8_t leader; int8_t lo, hi; } TTE;
 // polarity), so they stay valid across solves and are never cleared; the
 // polarity is part of the key (the high bit of `leader`).
 static __thread TTE *tt_tls = NULL;
+// A pool worker frees its table before it exits (tuppi_parallel.c).
+void tc_dd_release_thread(void) { free(tt_tls); tt_tls = NULL; }
 // One solve's state, read through a pointer: thread-local variables in a
 // dylib cost a function call per access (_tlv_get_addr), in every node.
 typedef struct { TTE *tt; uint32_t gen; int nolo; } Ctx;

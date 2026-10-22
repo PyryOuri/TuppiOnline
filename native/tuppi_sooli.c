@@ -41,6 +41,8 @@ typedef struct { u64 k0, k1; uint8_t val, used; } STE;
 #define STBITS 18
 static __thread STE *stt_tls = NULL;
 static __thread long nodes_tls;
+// A pool worker frees its table before it exits (tuppi_parallel.c).
+void tc_sooli_release_thread(void) { free(stt_tls); stt_tls = NULL; }
 
 // One solve's state, read through a pointer (thread-local variables in a dylib
 // cost a call per access). A non-zero budget aborts the solve after that many
