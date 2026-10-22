@@ -16,6 +16,10 @@ void tc_parallel_for(size_t count, TcParallelFn fn, void *ctx);
 int tc_parallel_start(int lanes);  /* pthread build: lanes - 1 workers (at most 3); returns how many started */
 void tc_parallel_stop(void);
 extern int tc_parallel_loops;      /* tc_set_parallel */
+/* A per-thread table to free when its thread exits (Mac: the system retires
+ * idle worker threads and starts new ones, each allocating fresh tables;
+ * without this the old ones stayed allocated). No-op in portable builds. */
+void tc_thread_owns(void *table);
 
 /* The older block form, kept for the training and evaluation loops. Browser
  * builds run it as a plain loop. */

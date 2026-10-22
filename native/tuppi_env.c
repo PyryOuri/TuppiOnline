@@ -136,7 +136,12 @@ TcEnv *tc_env_new(int n, uint64_t seed) {
   return e;
 }
 
-void tc_env_free(TcEnv *e) { free(e->inc_acc); free(e->inc_list); free(e->inc_len); free(e->g); free(e); }
+// NULL is allowed (tb_configure frees envs that may not exist yet; in WASM the
+// read through NULL happened to land on zeroed memory, natively it crashes).
+void tc_env_free(TcEnv *e) {
+  if (!e) return;
+  free(e->inc_acc); free(e->inc_list); free(e->inc_len); free(e->g); free(e);
+}
 
 void tc_env_set_team_rollout(TcEnv *e, const struct TcMlpS *team_net) { e->team_net = team_net; e->team_side = -1; }
 
@@ -1112,30 +1117,33 @@ int tc_search_worlds(TcEnv *e, const TcObs *o, int w, uint64_t *rng, TcDeal *out
   return 0;
 }
 
-static const int dedup_worlds = 0;
+// Repeated-world reuse (tc_set_dedup_worlds; Heidi fast plan, Stage 4). On.
+static int dedup_worlds = 1;
+void tc_set_dedup_worlds(int on) { dedup_worlds = on != 0; }
 static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *actions, int k, int w,
                        int dd_left, uint64_t *rng, double *values, double *per_world) {
   if (w * k > e->n) return -2;
   TcDeal world, *picked = NULL;
   // With play inference, resampling repeats worlds. In trick play the rollouts
-  // are deterministic in their world, so playing each distinct world once and
-  // counting it as often as it was drawn gives the same values. It is off
-  // (dedup_worlds = 0): in 12-process evaluations it made memory grow by about
-  // 90 MB a minute per process (2026-10-17, cause not found), and it saved only
-  // about 9% of CPU, with no wall time.
-  int *src = NULL, *slot = NULL, *copies = NULL, u = w;
+  // are deterministic in their world, so each distinct world is played once and
+  // its value is added once per drawn copy, in the drawn order: the same sums,
+  // bit for bit, as playing every copy (the earlier copies * value rounded
+  // differently). The memory growth once blamed on it (about 90 MB a minute per
+  // process in 12-process evaluations, 2026-10-17) came from worker threads'
+  // solver tables, never freed when the system retired an idle thread; they
+  // are now (tc_thread_owns), and the growth appears with or without reuse.
+  int *src = NULL, *slot = NULL, u = w;
   const int belief = belief_applies(e, o);
   if (belief) {
     picked = malloc(sizeof(TcDeal) * (size_t)w);
     src = malloc(sizeof(int) * (size_t)w);
     if (belief_worlds(e, o, w, rng, picked, src) != 0) { free(picked); free(src); return -1; }
     if (dedup_worlds && o->phase == TC_PH_PLAY) {
-      slot = malloc(sizeof(int) * (size_t)w); copies = calloc((size_t)w, sizeof(int));
+      slot = malloc(sizeof(int) * (size_t)w);
       u = 0;
       for (int j = 0; j < w; j++) {
         if (j == 0 || src[j] != src[j - 1]) picked[u++] = picked[j];
         slot[j] = u - 1;
-        copies[u - 1]++;
       }
     }
   }
@@ -1149,7 +1157,7 @@ static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *
   double *total = calloc((size_t)n, sizeof(double));
   int *idx = malloc(sizeof(int) * (size_t)n);
   for (int i = 0; i < n; i++) {
-    if (tc_apply(&e->g[i].d, actions[i % k]) != 0) { free(total); free(idx); free(slot); free(copies); return -3; }
+    if (tc_apply(&e->g[i].d, actions[i % k]) != 0) { free(total); free(idx); free(slot); return -3; }
     record_if_done(e, i, total);
   }
   e->team_side = e->team_net ? (o->seat & 1) : -1;
@@ -1169,14 +1177,14 @@ static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *
   const double sign = (o->seat & 1) == 0 ? 1.0 : -1.0;
   for (int a = 0; a < k; a++) {
     double s = 0.0;
-    if (slot) for (int wi = 0; wi < u; wi++) s += copies[wi] * total[wi * k + a];
+    if (slot) for (int wi = 0; wi < w; wi++) s += total[slot[wi] * k + a];
     else for (int wi = 0; wi < w; wi++) s += total[wi * k + a];
     values[a] = sign * (s / w);
   }
   if (per_world)
     for (int i = 0; i < w * k; i++) per_world[i] = sign * total[(slot ? slot[i / k] : i / k) * k + i % k];
   free(total);
-  free(idx); free(slot); free(copies);
+  free(idx); free(slot);
   return 0;
 }
 

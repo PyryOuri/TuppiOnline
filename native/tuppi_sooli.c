@@ -22,6 +22,7 @@
 #include <string.h>
 
 #include "tuppi_core.h"
+#include "tuppi_parallel.h"
 
 typedef uint64_t u64;
 #define SM 0x1FFFULL
@@ -219,7 +220,7 @@ static int solve_from(SCtx *x, SPos *p, int L, int pos, const int trick[2]) {
 int tc_sooli_solve_budget(const TcDeal *d, long budget) {
   if (d->phase == TC_PH_DONE && d->soolaaja >= 0) return d->sooli_won;
   if (d->phase != TC_PH_SOOLI_PLAY) return -1;
-  if (!stt_tls) stt_tls = calloc((size_t)1 << STBITS, sizeof(STE));
+  if (!stt_tls) tc_thread_owns(stt_tls = calloc((size_t)1 << STBITS, sizeof(STE)));
   SPos p;
   int L, trick[2];
   int pos = load(d, &p, &L, trick);

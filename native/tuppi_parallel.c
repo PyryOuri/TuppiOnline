@@ -13,6 +13,8 @@ void tc_search_release_thread(void);
 #if defined(__EMSCRIPTEN_PTHREADS__)
 #include <pthread.h>
 #include <stdatomic.h>
+// Pool workers free their tables explicitly before they exit (worker()).
+void tc_thread_owns(void *table) { (void)table; }
 
 static pthread_mutex_t mu = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t wake = PTHREAD_COND_INITIALIZER, idle = PTHREAD_COND_INITIALIZER;
@@ -93,6 +95,7 @@ void tc_parallel_for(size_t count, TcParallelFn fn, void *ctx) {
 }
 
 #elif defined(TC_PORTABLE)
+void tc_thread_owns(void *table) { (void)table; }
 int tc_parallel_start(int lanes) { (void)lanes; return 0; }
 void tc_parallel_stop(void) {}
 void tc_parallel_for(size_t count, TcParallelFn fn, void *ctx) {
@@ -101,6 +104,24 @@ void tc_parallel_for(size_t count, TcParallelFn fn, void *ctx) {
 
 #else
 #include <dispatch/dispatch.h>
+#include <pthread.h>
+#include <stdlib.h>
+typedef struct { void *table[8]; int n; } Owned;
+static pthread_key_t owned_key;
+static pthread_once_t owned_once = PTHREAD_ONCE_INIT;
+static void owned_free(void *value) {
+  Owned *owned = value;
+  for (int i = 0; i < owned->n; i++) free(owned->table[i]);
+  free(owned);
+}
+static void owned_init(void) { pthread_key_create(&owned_key, owned_free); }
+void tc_thread_owns(void *table) {
+  if (!table) return;
+  pthread_once(&owned_once, owned_init);
+  Owned *owned = pthread_getspecific(owned_key);
+  if (!owned && (owned = calloc(1, sizeof *owned))) pthread_setspecific(owned_key, owned);
+  if (owned && owned->n < 8) owned->table[owned->n++] = table;
+}
 int tc_parallel_start(int lanes) { (void)lanes; return 0; }
 void tc_parallel_stop(void) {}
 void tc_parallel_for(size_t count, TcParallelFn fn, void *ctx) {

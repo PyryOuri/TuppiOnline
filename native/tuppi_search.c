@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "tuppi_core.h"
+#include "tuppi_parallel.h"
 
 typedef uint64_t u64;
 #define SUIT_MASK(s) (0x1FFFULL << ((s) * 13))
@@ -176,7 +177,7 @@ static __thread int dp_next = 0;
 void tc_search_release_thread(void) { free(dp_cache); dp_cache = NULL; dp_next = 0; }
 
 static const DpTables *dp_tables(const int others[3], u64 free_cards, const int void_mask[4], const Tilt *tilt) {
-  if (!dp_cache) dp_cache = calloc(DP_CACHE, sizeof(DpTables));
+  if (!dp_cache) tc_thread_owns(dp_cache = calloc(DP_CACHE, sizeof(DpTables)));
   int voids[3];
   for (int j = 0; j < 3; j++) voids[j] = void_mask[others[j]] & 15;
   for (int i = 0; i < DP_CACHE; i++) {
