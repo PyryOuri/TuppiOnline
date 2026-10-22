@@ -651,6 +651,7 @@ def set_belief(env: "Env", model: "Mlp | None", mult: int = 4, temperature: floa
     draw mult * w worlds and resample w by `model`'s likelihood of the other
     seats' past choices. None (or mult <= 1) switches it off."""
     env._belief_model = model if model is not None and mult > 1 else None  # keep the weights alive
+    env._belief_mult = mult if env._belief_model else 0
     lib.tc_env_set_belief(env._h, env._belief_model._h if env._belief_model else None, mult, temperature, eps,
                           int(all_seats))
 
@@ -681,6 +682,13 @@ def set_belief_lanes(lanes: int) -> None:
         lib.tc_set_belief_lanes(int(lanes))
 
 
+def set_belief_keys(on: bool) -> None:
+    """Score each distinct (seat, hand) once (default) or every candidate in full
+    (process-wide). Both give the same weights; the plain path is the reference."""
+    if hasattr(lib, "tc_set_belief_keys"):  # an older library has only the plain path
+        lib.tc_set_belief_keys(int(bool(on)))
+
+
 def belief_profile(reset: bool = False) -> dict:
     """Seconds spent in play inference and in rollouts (measurement only)."""
     sec = (C.c_double * 5)(); cnt = (C.c_long * 2)()
@@ -701,7 +709,7 @@ def belief_counters(reset: bool = False) -> dict | None:
     out = (C.c_double * 16)()
     n = lib.tc_belief_counters(out, int(reset))
     keys = ("candidates", "rows_scored", "keys_scored", "uniform_fallbacks", "replay_failures",
-            "belief_searches", "replays", "rows_plain")
+            "belief_searches", "replays", "rows_plain", "key_searches")
     return {k: int(v) for k, v in zip(keys[:n], list(out)[:n])}
 
 
@@ -715,6 +723,21 @@ def search_worlds(env: "Env", obs: TcObs, w: int, rng_state: C.c_uint64) -> list
     if lib.tc_search_worlds(env._h, C.byref(obs), w, C.byref(rng_state), out) != 0:
         raise RuntimeError("no world consistent with the observation")
     return list(out)
+
+
+if hasattr(lib, "tc_belief_log_weights"):  # an older library has no hook
+    lib.tc_belief_log_weights.argtypes = [C.c_void_p, _P(TcObs), C.c_int, _P(C.c_uint64), C.c_void_p, C.c_void_p]
+    lib.tc_belief_log_weights.restype = C.c_int
+
+
+def belief_log_weights(env: "Env", obs: TcObs, w: int, rng_state: C.c_uint64) -> tuple[list, np.ndarray]:
+    """The w * mult candidates the play-inference search draws at `obs` and their
+    log-weights before normalization (test hook)."""
+    m = w * env._belief_mult
+    cand, logw = (TcDeal * m)(), np.zeros(m, np.float64)
+    if lib.tc_belief_log_weights(env._h, C.byref(obs), w, C.byref(rng_state), cand, logw.ctypes.data) != 0:
+        raise RuntimeError("play inference does not apply or no candidate can be drawn")
+    return list(cand), logw
 
 
 def set_showing_fix(on: bool) -> None:

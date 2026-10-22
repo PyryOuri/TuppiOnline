@@ -516,9 +516,10 @@ static int sample_sooli(const TcObs *o, uint64_t *rng, TcDeal *out, const int pl
 // `world` is a full state at the current decision (hands = current holdings);
 // initial hands are recovered by adding back each seat's played cards.
 // Forced decisions (one legal action) carry no information and are skipped.
-// Returns the number of rows written (at most max_rows).
-int tc_history_rows(const TcDeal *world, int seat_mask, int encoder, int max_rows,
-                    uint8_t *feat, uint8_t *mask, int32_t *action) {
+// Returns the number of rows written (at most max_rows). If `when` is given,
+// when[row] is the row's index in the world's history (shows, then cards).
+int tc_history_rows_when(const TcDeal *world, int seat_mask, int encoder, int max_rows,
+                         uint8_t *feat, uint8_t *mask, int32_t *action, uint8_t *when) {
   if (world->soolaaja >= 0) return -1;  // played soolis are not replayed here (declined offers are)
   uint64_t init[4];
   for (int s = 0; s < 4; s++) init[s] = world->hand[s];
@@ -551,12 +552,18 @@ int tc_history_rows(const TcDeal *world, int seat_mask, int encoder, int max_row
         uint8_t *mk = mask + (size_t)rows * TC_NUM_ACTIONS;
         memset(mk, 0, TC_NUM_ACTIONS);
         for (int j = 0; j < k; j++) mk[acts[j]] = 1;
+        if (when) when[rows] = (uint8_t)t;
         action[rows++] = a;
       }
     }
     if (tc_apply(&d, a) != 0) return -1;  // world inconsistent with history
   }
   return rows;
+}
+
+int tc_history_rows(const TcDeal *world, int seat_mask, int encoder, int max_rows,
+                    uint8_t *feat, uint8_t *mask, int32_t *action) {
+  return tc_history_rows_when(world, seat_mask, encoder, max_rows, feat, mask, action, NULL);
 }
 
 // Exact sampling from a product-form belief restricted to the hard-feasible set:
