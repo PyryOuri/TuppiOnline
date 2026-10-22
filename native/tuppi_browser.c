@@ -29,6 +29,8 @@ int tc_search_world_values(TcEnv *e, const TcMlp *m, const TcObs *o, const int32
                            int k, int w, int dd_left, uint64_t *rng, double *mean, double *out);
 void tc_set_showing_fix(int on);
 void tc_set_rollout_chunk(int n);
+void tc_set_belief_lanes(int lanes);
+void tc_belief_profile(double *seconds, long *counts, int reset);
 
 static TcDeal game;
 static int hand_order[4][14], hand_count[4];
@@ -95,6 +97,30 @@ int tb_configure_bot(int mode, int people) {
     belief_rngs[s] = UINT64_C(0xBE11EF00) + s;
   }
   return 0;
+}
+
+/* Search profile is explicit; execution backend never changes it. The old
+ * configure_bot API retains PIB4 for existing callers and fixtures. */
+int tb_configure_inference(int mult, int lanes) {
+  if (bot_mode != 2 || (mult != 4 && mult != 8) || lanes < 1 || lanes > 4) return -1;
+  tc_set_belief_lanes(lanes);
+  for (int s = 0; s < 4; ++s)
+    tc_env_set_belief(envs[s], models[1], mult, 2.0, 0.5, 1);
+  return 0;
+}
+
+int tb_belief_profile(double *out, int reset) {
+  if (!out) return -1;
+  long counts[2];
+  tc_belief_profile(out, counts, reset);
+  out[5] = (double)counts[0]; out[6] = (double)counts[1];
+  return 0;
+}
+
+void tb_dispose(void) {
+  for (int s = 0; s < 4; s++) { tc_env_free(envs[s]); envs[s] = NULL; }
+  for (int role = 0; role < 2; role++) { tc_mlp_free(models[role]); models[role] = NULL; }
+  last_count = 0;
 }
 
 int tb_init(const int32_t *cards, int dealer, int score0, int score1) {

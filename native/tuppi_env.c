@@ -5,6 +5,9 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef __EMSCRIPTEN_PTHREADS__
+#include <pthread.h>
+#endif
 
 #include "tuppi_core.h"
 
@@ -765,30 +768,26 @@ static int belief_applies(const TcEnv *e, const TcObs *o) {
 // from rng, then scored in fixed blocks of BLOCK candidates in parallel (each
 // block's rows in one network call), so the result does not depend on the
 // number of cores and memory stays bounded at any world count.
-static int belief_worlds(const TcEnv *e, const TcObs *o, int w, uint64_t *rng, TcDeal *out, int *src) {
+// Each lane owns disjoint candidates. Preserve the original block size,
+// history-row order, per-candidate log additions and final ordered resampling.
+// Drawing and RNG remain on the calling thread.
+typedef struct {
+  const TcMlp *net;
+  int M, enc, dim, blocks, bot_seats, people, npass;
+  double inv_t, eps, h_inv_t, h_eps;
+  TcDeal *cand;
+  double *logw;
+} BeliefWork;
+
+static void belief_score_lane(const BeliefWork *work, int lane, int lanes) {
   enum { MAXR = 64, BLOCK = 32 };
-  const TcMlp *net = e->belief_net;
-  const double inv_t = e->belief_inv_t, eps = e->belief_eps;
-  const int M = w * e->belief_mult, enc = tc_mlp_encoder(net), dim = tc_feature_dim_v(enc);
-  const int opp = (1 << ((o->seat + 1) & 3)) | (1 << ((o->seat + 3) & 3));
-  const int seats = e->belief_all ? (0xF & ~(1 << o->seat)) : opp;
-  // People's moves get their own pass and setting; with none at the table
-  // this is the single pass over all seats, as before.
-  const int people = e->belief_humans & seats, npass = people ? 2 : 1;
-  // (Plain variables: the parallel block cannot capture arrays.)
-  const int bot_seats = people ? seats & ~people : seats;
-  const double h_inv_t = e->belief_h_inv_t, h_eps = e->belief_h_eps;
-  TcDeal *cand = malloc(sizeof(TcDeal) * (size_t)M);
-  double *logw = calloc((size_t)M, sizeof(double));
-  double t0 = now_s();
-  for (int i = 0; i < M; i++)
-    if (tc_sample_world_sooli(o, rng, &cand[i], e->sooli_belief, e->sooli_lambda) != 0) {
-      free(cand); free(logw);
-      return -1;
-    }
-  double t1 = now_s(); prof_s[0] += t1 - t0;
-  const int blocks = (M + BLOCK - 1) / BLOCK, lanes = belief_lanes < blocks ? belief_lanes : blocks;
-  TC_PARALLEL_BEGIN((size_t)lanes, lane)
+  const TcMlp *net = work->net;
+  const int M = work->M, enc = work->enc, dim = work->dim, blocks = work->blocks;
+  const int bot_seats = work->bot_seats, people = work->people, npass = work->npass;
+  const double inv_t = work->inv_t, eps = work->eps;
+  const double h_inv_t = work->h_inv_t, h_eps = work->h_eps;
+  TcDeal *cand = work->cand;
+  double *logw = work->logw;
   for (int b = (int)lane; b < blocks; b += lanes) {
     const int first = b * BLOCK, last = first + BLOCK < M ? first + BLOCK : M;
     uint8_t *feat = malloc((size_t)BLOCK * MAXR * dim), *mask = malloc((size_t)BLOCK * MAXR * TC_NUM_ACTIONS);
@@ -821,7 +820,63 @@ static int belief_worlds(const TcEnv *e, const TcObs *o, int w, uint64_t *rng, T
     }
     free(feat); free(mask); free(act); free(owner); free(q);
   }
+}
+
+#ifdef __EMSCRIPTEN_PTHREADS__
+typedef struct { const BeliefWork *work; int lane, lanes; } BeliefJob;
+static void *belief_thread(void *argument) {
+  const BeliefJob *job = argument;
+  belief_score_lane(job->work, job->lane, job->lanes);
+  return NULL;
+}
+#endif
+
+static int belief_worlds(const TcEnv *e, const TcObs *o, int w, uint64_t *rng, TcDeal *out, int *src) {
+  enum { MAXR = 64, BLOCK = 32 };
+  const TcMlp *net = e->belief_net;
+  const double inv_t = e->belief_inv_t, eps = e->belief_eps;
+  const int M = w * e->belief_mult, enc = tc_mlp_encoder(net), dim = tc_feature_dim_v(enc);
+  const int opp = (1 << ((o->seat + 1) & 3)) | (1 << ((o->seat + 3) & 3));
+  const int seats = e->belief_all ? (0xF & ~(1 << o->seat)) : opp;
+  // People's moves get their own pass and setting; with none at the table
+  // this is the single pass over all seats, as before.
+  const int people = e->belief_humans & seats, npass = people ? 2 : 1;
+  // (Plain variables: the parallel block cannot capture arrays.)
+  const int bot_seats = people ? seats & ~people : seats;
+  const double h_inv_t = e->belief_h_inv_t, h_eps = e->belief_h_eps;
+  TcDeal *cand = malloc(sizeof(TcDeal) * (size_t)M);
+  double *logw = calloc((size_t)M, sizeof(double));
+  double t0 = now_s();
+  for (int i = 0; i < M; i++)
+    if (tc_sample_world_sooli(o, rng, &cand[i], e->sooli_belief, e->sooli_lambda) != 0) {
+      free(cand); free(logw);
+      return -1;
+    }
+  double t1 = now_s(); prof_s[0] += t1 - t0;
+  const int blocks = (M + BLOCK - 1) / BLOCK, lanes = belief_lanes < blocks ? belief_lanes : blocks;
+  const BeliefWork work = {net, M, enc, dim, blocks, bot_seats, people, npass,
+                           inv_t, eps, h_inv_t, h_eps, cand, logw};
+#ifdef __EMSCRIPTEN_PTHREADS__
+  // The build prewarms three workers. At most four lanes including caller;
+  // an unavailable worker falls back locally, preserving every candidate.
+  const int threads = lanes < 4 ? lanes : 4;
+  pthread_t workers[3];
+  int started[3] = {0};
+  BeliefJob jobs[3];
+  for (int lane = 1; lane < threads; lane++) {
+    jobs[lane - 1] = (BeliefJob){&work, lane, threads};
+    started[lane - 1] = pthread_create(&workers[lane - 1], NULL, belief_thread, &jobs[lane - 1]) == 0;
+  }
+  belief_score_lane(&work, 0, threads);
+  for (int lane = 1; lane < threads; lane++) {
+    if (started[lane - 1]) pthread_join(workers[lane - 1], NULL);
+    else belief_score_lane(&work, lane, threads);
+  }
+#else
+  TC_PARALLEL_BEGIN((size_t)lanes, lane)
+    belief_score_lane(&work, (int)lane, lanes);
   TC_PARALLEL_END
+#endif
   double t2 = now_s(); prof_s[1] += t2 - t1;
   double top = -1e300, total = 0.0;
   for (int i = 0; i < M; i++) if (logw[i] > top) top = logw[i];
