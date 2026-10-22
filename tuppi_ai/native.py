@@ -689,6 +689,22 @@ def belief_profile(reset: bool = False) -> dict:
     return {**dict(zip(keys, list(sec))), "belief_searches": cnt[0], "uniform_searches": cnt[1]}
 
 
+if hasattr(lib, "tc_belief_counters"):  # an older library has no work counters
+    lib.tc_belief_counters.argtypes = [C.c_void_p, C.c_int]
+    lib.tc_belief_counters.restype = C.c_int
+
+
+def belief_counters(reset: bool = False) -> dict | None:
+    """Exact work counts of play inference (measurement only); None for an older library."""
+    if not hasattr(lib, "tc_belief_counters"):
+        return None
+    out = (C.c_double * 16)()
+    n = lib.tc_belief_counters(out, int(reset))
+    keys = ("candidates", "rows_scored", "keys_scored", "uniform_fallbacks", "replay_failures",
+            "belief_searches", "replays", "rows_plain")
+    return {k: int(v) for k, v in zip(keys[:n], list(out)[:n])}
+
+
 lib.tc_search_worlds.argtypes = [C.c_void_p, _P(TcObs), C.c_int, _P(C.c_uint64), C.c_void_p]
 lib.tc_search_worlds.restype = C.c_int
 
