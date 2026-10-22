@@ -44,7 +44,10 @@ class HostedSite:
         immutable = bool(re.search(r'\.[a-f0-9]{16}\.',path) or path.startswith('runtime/'))
         headers=[(b'content-type',mime.encode()),(b'content-length',str(file.stat().st_size).encode()),
             (b'cache-control',b'public, max-age=31536000, immutable' if immutable else b'no-cache'),
-            (b'x-content-type-options',b'nosniff')]
+            (b'x-content-type-options',b'nosniff'),
+            (b'cross-origin-opener-policy',b'same-origin'),
+            (b'cross-origin-embedder-policy',b'require-corp'),
+            (b'cross-origin-resource-policy',b'same-origin')]
         if path=='sw.mjs': headers.append((b'service-worker-allowed',b'/'))
         await send({'type':'http.response.start','status':200,'headers':headers})
         if scope['method']=='HEAD':

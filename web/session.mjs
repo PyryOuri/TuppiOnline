@@ -38,6 +38,7 @@ export class LocalSession {
   save() {
     return {schema: 'tuppi.browser.save.v1', identity: this.runtime.identity, worlds: this.runtime.worlds,
       ...(this.runtime.bot && this.runtime.bot !== 'legacy' ? {bot: this.runtime.bot} : {}),
+      ...(this.runtime.bot === 'heidi10' ? {inference: this.runtime.inferenceCandidates ?? 4} : {}),
       cards: [...this.cards], dealer: this.dealer, score: [...this.score], actions: [...this.actions],
       context: this.runtime.context(), humanBid: this.humanBid, completed: structuredClone(this.completed),
       archived: this.archived};
@@ -45,7 +46,8 @@ export class LocalSession {
 
   restore(save) {
     if (save?.schema !== 'tuppi.browser.save.v1' || save.identity !== this.runtime.identity ||
-        save.worlds !== this.runtime.worlds || (save.bot ?? 'legacy') !== (this.runtime.bot ?? 'legacy'))
+        save.worlds !== this.runtime.worlds || (save.bot ?? 'legacy') !== (this.runtime.bot ?? 'legacy') ||
+        (save.bot === 'heidi10' && (save.inference ?? 4) !== (this.runtime.inferenceCandidates ?? 4)))
       throw new Error('Tallennus tarvitsee sen alkuperäisen peliversion ja bottiasetuksen.');
     if (!Array.isArray(save.cards) || save.cards.length !== 52 || !Array.isArray(save.score) || save.score.length !== 2 ||
         !Number.isInteger(save.dealer) || !Array.isArray(save.actions) || save.actions.length > 64 ||

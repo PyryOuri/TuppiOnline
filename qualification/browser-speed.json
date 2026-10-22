@@ -1,0 +1,63 @@
+{
+  "schema": "tuppi.browser.speed_qualification.v1",
+  "inference_candidates": 8,
+  "rollout_worlds": 1024,
+  "arithmetic": "unchanged per-output float32 accumulation order; separate mul/add",
+  "parity": {
+    "pib8_roots": 8,
+    "pib8_actions_values_rng_exact": true,
+    "matrix_bitwise_cases": 540,
+    "legacy_heidi_decisions": 397,
+    "legacy_controller_decisions": 113,
+    "legacy_rule_actions": 396
+  },
+  "recovery": {
+    "passed": true,
+    "sameSaveAcrossBackends": true,
+    "profileMismatchRefused": true,
+    "oldFourCandidateProfileRestoresExplicitly": true,
+    "threadFailureKeepsPib8": true,
+    "repeats": 4,
+    "heapBytes": 96665600,
+    "joinedWorkersReturnedToPool": true
+  },
+  "shared_memory_growth": {
+    "passed": true,
+    "externalSharedGrowthRefreshed": true,
+    "oldSize": 80543744,
+    "newSize": 80609280,
+    "decisionAndRngPreserved": true
+  },
+  "performance": {
+    "order": "ABCCBA per root",
+    "distinct_roots": 2,
+    "median_milliseconds": {
+      "A": {
+        "nolo-w1024": 31325.9152085,
+        "rami-w1024": 23772.885561999996
+      },
+      "B": {
+        "nolo-w1024": 16973.065250000003,
+        "rami-w1024": 11707.375833499995
+      },
+      "C": {
+        "nolo-w1024": 5220.009582999999,
+        "rami-w1024": 5571.429875000002
+      }
+    },
+    "reduction_vs_original_pib4": {
+      "single": 0.47947249881243215,
+      "threads": 0.8041438414794364
+    },
+    "scope": "Node WASM on this shared Mac, two fixed roots; no browser/phone or population claim"
+  },
+  "limits": [
+    "Actual Safari/phone/device validation not run: computer-use access to Safari was not approved.",
+    "An optional broad W128 full-match replay exceeded its enclosing 120-second wall cap; focused viewer/live tests pass.",
+    "No new strength experiment or new Linux image run."
+  ],
+  "deployment": {
+    "pushed": false,
+    "deployed": false
+  }
+}

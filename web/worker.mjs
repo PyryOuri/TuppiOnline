@@ -106,6 +106,7 @@ self.onmessage = async ({data}) => {
       generation = data.generation; delay = data.delay ?? 350;
       send('loading', {message: 'Ladataan paikallinen botti…'});
       const runtime = await Runtime.create({worlds: data.worlds, bot: data.save?.bot ?? data.bot ?? 'legacy',
+        inference: data.save ? (data.save.inference ?? 4) : (data.inference ?? 8),
         progress: message => send('loading', {message})});
       session = new LocalSession(runtime, {
         checkpoint: save => {
