@@ -1,7 +1,7 @@
-# One Heidi 1.0 table on the existing service
+# One Heidi 1.1 table on the existing service
 
 The image keeps `TUPPI_HOSTED_BOT_LEVEL=lite`. The old TuppiAI bot stays the
-default in the browser menus. Heidi 0.5 remains available, and Heidi 1.0 is an
+default in the browser menus. Nelli 1.0 remains available, and Heidi 1.1 is an
 explicit online choice. Its profile is `tuppi_ai_heidi10_pib8_v1`: unchanged
 W1024/PIB8, flat VRPO1/VRPO3 models, human T4/epsilon 0.8 and the existing tail
 and bid rules. No PyTorch is installed in the final image.
@@ -12,7 +12,7 @@ OpenBLAS build is a new numerical identity because batching changes; fixed
 reference qualification is required before release. No new model or reduced
 search profile is introduced. Published browser WASM remains unchanged.
 
-At most one unfinished Heidi 1.0 table is admitted. Paused, idle and temporarily
+At most one unfinished Heidi 1.1 table is admitted. Paused, idle and temporarily
 human-only Heidi tables keep their slot. Finish or close that table to free
 it. Other rooms use their selected lite bots. A busy table never silently
 switches to a weaker bot.
@@ -39,3 +39,12 @@ and no swap; it is an engineering trial, not a prediction of Render hardware
 latency or a playing-strength result. Render deployment and physical-device
 acceptance remain owner-run. The Blueprint's existing instance, disk and paid
 resource settings are unchanged; automatic deploy is off.
+
+## Names (release 2, 23 October 2026)
+
+The online search bot (`tuppi_ai_heidi10_pib8_v1`) is shown as Heidi 1.1 and the
+lite bot (`tuppi_ai_lite_c1h_v1`) as Nelli 1.0, formerly Heidi 1.0 and Heidi 0.5.
+Only display names changed: profile keys, room records, flags such as
+`TUPPI_HOSTED_HEIDI10` and decisions are the same. Locally, new Heidi games are
+Heidi 1.1 (bot id `heidi11`) on the faster browser engine; Heidi 1.0 saves
+continue on their retained engine.

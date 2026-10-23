@@ -187,7 +187,7 @@ class HostedHeidiAgent:
 
     def __init__(self, seat: int) -> None:
         if level() != "lite" or type(seat) is not int or seat not in range(4):
-            raise ValueError("hosted Heidi 1.0 is unavailable")
+            raise ValueError("hosted Heidi 1.1 is unavailable")
         self.seat = seat
         rng = (2 * seat) * 2654435761 + 1
         self.context = [rng & 0xffffffff, rng >> 32, 0]

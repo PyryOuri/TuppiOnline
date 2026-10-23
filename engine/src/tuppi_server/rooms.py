@@ -185,8 +185,10 @@ class Room:
                 seats.append(
                     {
                         "agent_profile": profile_key,
-                        "display_name": "Heidi 0.5" if profile_key == HEIDI_LITE_PROFILE_KEY else
-                            "Heidi 1.0" if profile_key == HEIDI_SEARCH_PROFILE_KEY else
+                        # Display names only; profile keys stay as stored (Nelli 1.0 was
+                        # Heidi 0.5, Heidi 1.1 was Heidi 1.0; the same bots).
+                        "display_name": "Nelli 1.0" if profile_key == HEIDI_LITE_PROFILE_KEY else
+                            "Heidi 1.1" if profile_key == HEIDI_SEARCH_PROFILE_KEY else
                             "TuppiAI" if profile_key == TUPPI_AI_PROFILE_KEY else "Tuppi partner AI",
                         "kind": "ai",
                         "ready": True,

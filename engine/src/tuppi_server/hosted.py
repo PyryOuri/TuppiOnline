@@ -641,8 +641,8 @@ class HostedBoundary:
                 "status": "storage_failed" if storage == "failed" else "ok", "storage": storage,
                 "bot": self.bot_identity,
                 "bot_options": [{"profile": "tuppi_ai_search_v1", "name": "TuppiAI"},
-                                {"profile": "tuppi_ai_lite_c1h_v1", "name": "Heidi 0.5"}] +
-                               ([{"profile": "tuppi_ai_heidi10_pib8_v1", "name": "Heidi 1.0", "max_active_tables": 1}]
+                                {"profile": "tuppi_ai_lite_c1h_v1", "name": "Nelli 1.0"}] +
+                               ([{"profile": "tuppi_ai_heidi10_pib8_v1", "name": "Heidi 1.1", "max_active_tables": 1}]
                                 if self.bot_identity.get("heidi10") else [])
                                if self.bot_identity.get("level") == "lite" else []})
             return

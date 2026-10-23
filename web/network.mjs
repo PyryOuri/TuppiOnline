@@ -4,7 +4,7 @@ const networkPhases = {SHOWING: 0, TRICK_PLAY: 1, DEAL_COMPLETE: 2, MATCH_COMPLE
   SOOLI_OFFER: 3, SOOLI_GIVE: 4, SOOLI_RETURN: 5, SOOLI_PLAY: 6};
 const networkErrors = {room_not_found:'Huonetta ei löydy. Tarkista huonekoodi.', room_full:'Huone on täynnä.',
   invalid_bot_profile:'Valittu botti ei ole käytettävissä tässä verkkopelissä.',
-  heidi_busy:'Heidi 1.0 pelaa jo toisessa pöydässä. Voit odottaa sen päättymistä tai luoda pelin toisella botilla.',
+  heidi_busy:'Heidi 1.1 pelaa jo toisessa pöydässä. Voit odottaa sen päättymistä tai luoda pelin toisella botilla.',
   invalid_session:'Tallennettua paikkaa ei löydy. Voit luoda uuden huoneen.',
   settings_locked:'Ottelu on jo alkanut. Paikat on lukittu.', host_required:'Vain huoneen luoja voi vaihtaa bottipaikkoja.',
   server_busy:'Palvelu on täynnä. Jatka huoneeseen myöhemmin.',

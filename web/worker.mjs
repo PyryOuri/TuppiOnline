@@ -37,11 +37,11 @@ async function runTimeline(data) {
 
 // Bot-only games for the viewer (round 16): four bots play a match to 52 on
 // this device, and every move goes to the viewer as a timeline step. Each team
-// has its own bot (legacy W128/W1024, Heidi 0.5 or Heidi 1.0); a runtime per
+// has its own bot (legacy W128/W1024, Nelli 1.0, Heidi 1.0 or 1.1); a runtime per
 // profile follows every move, and the actor's team runtime chooses. One game
 // at a time; `delay` paces the moves and can change while it plays.
 const botProfiles = {fast: {worlds: 128, bot: 'legacy'}, full: {worlds: 1024, bot: 'legacy'},
-  heidi05: {worlds: 128, bot: 'heidi05'}, heidi10: {worlds: 1024, bot: 'heidi10'}};
+  heidi05: {worlds: 128, bot: 'heidi05'}, heidi10: {worlds: 1024, bot: 'heidi10'}, heidi11: {worlds: 1024, bot: 'heidi11'}};
 // Profile -> runtime being created or ready. Each holds its own models and
 // WASM memory, so only the current game's (at most two) stay loaded, and
 // stopping the game releases them.
@@ -127,6 +127,8 @@ self.onmessage = async ({data}) => {
       send('loading', {message: 'Ladataan paikallinen botti…'});
       const runtime = await Runtime.create({worlds: data.worlds, bot: data.save?.bot ?? data.bot ?? 'legacy',
         inference: data.save ? (data.save.inference ?? 4) : (data.inference ?? 8),
+        bids: data.save ? (data.save.bids ?? 0) : (data.bids ?? 0),
+        singleInference: data.save ? null : (data.singleInference ?? null),
         progress: message => send('loading', {message})});
       session = new LocalSession(runtime, {
         checkpoint: save => {

@@ -14,11 +14,15 @@ import {liveDealFromObservation, liveDealFromResult, liveDealSteps, liveTimeline
 import {ReplayViewer, viewerMatchFromRecord, viewerMatchFromSave, viewerMatchesFromText, viewerReadFile, viewerReplayFile, viewerCompass, viewerSpeeds} from './replay.mjs';
 
 const $ = id => document.getElementById(id);
-const heidiNames = {heidi05: 'Heidi 0.5', heidi10: 'Heidi 1.0'};
-const onlineHeidiNames = {tuppi_ai_lite_c1h_v1: 'Heidi 0.5', tuppi_ai_heidi10_pib8_v1: 'Heidi 1.0'};
+// Heidi 1.1 is Heidi 1.0's search on the faster engine; saves and replays from
+// the earlier engine keep the name Heidi 1.0. Nelli 1.0 is the lite bot once
+// called Heidi 0.5 (id heidi05, profile tuppi_ai_lite_c1h_v1): only the name changed.
+const heidiNames = {heidi05: 'Nelli 1.0', heidi10: 'Heidi 1.0', heidi11: 'Heidi 1.1'};
+const onlineHeidiNames = {tuppi_ai_lite_c1h_v1: 'Nelli 1.0', tuppi_ai_heidi10_pib8_v1: 'Heidi 1.1'};
 function botSelection(save = null) {
-  const value = save ? (save.bot ?? String(save.worlds)) : $('worlds').value;
-  return value in heidiNames ? {bot: value, worlds: value === 'heidi10' ? 1024 : 128} :
+  let value = save ? (save.bot ?? String(save.worlds)) : $('worlds').value;
+  if (!save && value === 'heidi10') value = 'heidi11';  // a new game is always Heidi 1.1
+  return value in heidiNames ? {bot: value, worlds: value === 'heidi05' ? 128 : 1024} :
     {bot: 'legacy', worlds: save?.worlds ?? Number(value)};
 }
 function botSelectionValue(save) { return save?.bot ?? String(save?.worlds ?? 128); }

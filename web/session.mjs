@@ -3,6 +3,11 @@
 // team ahead has 7 tricks or, in RAMI (1), the team behind has 7. Normal trick
 // play (phase 1) only. The server's rule is match_runner.concede_available;
 // network.mjs keeps the same rule for online views (separate bundles).
+// Heidi 1.0 and 1.1: the same search, whose saves bind the inference count
+// (as runtime.mjs's list; not imported here, to keep the engine out, and
+// named differently because release bundles concatenate the modules).
+const inferenceBoundBots = ['heidi10', 'heidi11'];
+
 export function decidedForZero({phase, contract, tricks0, tricks1, score0, score1}) {
   if (phase !== 1 || (!score0 && !score1)) return false;
   const tricks = [tricks0, tricks1], ahead = score0 > 0 ? 0 : 1;
@@ -38,7 +43,8 @@ export class LocalSession {
   save() {
     return {schema: 'tuppi.browser.save.v1', identity: this.runtime.identity, worlds: this.runtime.worlds,
       ...(this.runtime.bot && this.runtime.bot !== 'legacy' ? {bot: this.runtime.bot} : {}),
-      ...(this.runtime.bot === 'heidi10' ? {inference: this.runtime.inferenceCandidates ?? 4} : {}),
+      ...(inferenceBoundBots.includes(this.runtime.bot) ? {inference: this.runtime.inferenceCandidates ?? 4} : {}),
+      ...(this.runtime.bidMode ? {bids: this.runtime.bidMode} : {}),
       cards: [...this.cards], dealer: this.dealer, score: [...this.score], actions: [...this.actions],
       context: this.runtime.context(), humanBid: this.humanBid, completed: structuredClone(this.completed),
       archived: this.archived};
@@ -47,7 +53,8 @@ export class LocalSession {
   restore(save) {
     if (save?.schema !== 'tuppi.browser.save.v1' || save.identity !== this.runtime.identity ||
         save.worlds !== this.runtime.worlds || (save.bot ?? 'legacy') !== (this.runtime.bot ?? 'legacy') ||
-        (save.bot === 'heidi10' && (save.inference ?? 4) !== (this.runtime.inferenceCandidates ?? 4)))
+        (inferenceBoundBots.includes(save.bot) && (save.inference ?? 4) !== (this.runtime.inferenceCandidates ?? 4)) ||
+        (save.bids ?? 0) !== (this.runtime.bidMode ?? 0))
       throw new Error('Tallennus tarvitsee sen alkuperäisen peliversion ja bottiasetuksen.');
     if (!Array.isArray(save.cards) || save.cards.length !== 52 || !Array.isArray(save.score) || save.score.length !== 2 ||
         !Number.isInteger(save.dealer) || !Array.isArray(save.actions) || save.actions.length > 64 ||

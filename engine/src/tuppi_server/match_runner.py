@@ -158,7 +158,7 @@ def _construct_ai_agents(
         return {seat: FirstLegalActionAgent() for seat in seats}
     if profile_key == HEIDI_SEARCH_PROFILE_KEY:
         if os.environ.get("TUPPI_HOSTED_BOT") != "1":
-            raise ValueError("Heidi 1.0 online requires the hosted compact worker")
+            raise ValueError("Heidi 1.1 online requires the hosted compact worker")
         from .hosted_bot import HostedHeidiAgent
         return {seat: HostedHeidiAgent(seat) for seat in seats}
     if profile_key == HEIDI_LITE_PROFILE_KEY:

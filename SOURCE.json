@@ -1,8 +1,8 @@
 {
   "schema": "tuppi.hosted.source.v1",
   "commits": {
-    "browser": "900d88f475af436529829664f4d97dab18d2c280",
-    "engine": "d9318b4ea62c3732474c1cdcc4026a77781aeab4",
+    "browser": "aa8a310c74156497542cf098f9d5d620296facf6",
+    "engine": "2ab18e08a1d85582a1b014bb052981235741d438",
     "ai": "4a0d44ee35a02444c24634ecbea2c071402985d0"
   },
   "files": [
@@ -13,8 +13,8 @@
     },
     {
       "path": "HOSTED_HEIDI.md",
-      "bytes": 2411,
-      "sha256": "d6835725c79d12a85cabe1b625c89712450ce9049d7be4e1263325dbd5b92907"
+      "bytes": 2874,
+      "sha256": "56c9e5e6412298812662533e22a9012a760f686785ff1b1e463e33ab45b0f034"
     },
     {
       "path": "ai/models/compact/equity.f64",
@@ -318,8 +318,8 @@
     },
     {
       "path": "browser-source/README.md",
-      "bytes": 685,
-      "sha256": "3e68e1c5211ea7ea497798341f3e376637e57997d9d64a71314a21ebb005d2f0"
+      "bytes": 944,
+      "sha256": "2e8d23f0e30abbe8dbee5c3cea0e82cdb7c3f6dbc9c3f15fc7066a8a5ea4d8cc"
     },
     {
       "path": "browser-source/TuppiAI-heidi-speed-20261022/native/showing_constraints.h",
@@ -397,6 +397,86 @@
       "sha256": "4952fd710386198206b0323acfa55b9f1a8da59c018f3ab3c4a8cddd7c360881"
     },
     {
+      "path": "browser-source/TuppiAI-heidi11-20261023/native/showing_constraints.h",
+      "bytes": 3081,
+      "sha256": "f641aa73bfe8373c8b88329f842d268a12d64b87791a9c501c1f0a911975afea"
+    },
+    {
+      "path": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_browser.c",
+      "bytes": 19285,
+      "sha256": "6d585126941f0dadacc8f84d98fcbd7c43883bdda2152652a207d9a03fbe6160"
+    },
+    {
+      "path": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_core.c",
+      "bytes": 16409,
+      "sha256": "2c3f0a539f6569d0927aea0d08fc8911304a88108e84667826b5c8a0c810ecbf"
+    },
+    {
+      "path": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_core.h",
+      "bytes": 5938,
+      "sha256": "fc301b9484d6bc1e6af5dacd4937542ff429eab51ca3cbfe6380220f8571033b"
+    },
+    {
+      "path": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_dd.c",
+      "bytes": 8825,
+      "sha256": "3ea6ec6e8dd9faab1de4f69738ebeb20d2c244e4920fa6b10a2bfc148b6a38c1"
+    },
+    {
+      "path": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_dd_wr.c",
+      "bytes": 17961,
+      "sha256": "beb856dee34a5e0da0484060035b6d53b438df3db7c68bca39a525a4e7b4249c"
+    },
+    {
+      "path": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_env.c",
+      "bytes": 78814,
+      "sha256": "8952fbcdfdb9f9ab02866e1391de0cb662519c64cdf3ed2fe6431caff6c521f9"
+    },
+    {
+      "path": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_lite_net.c",
+      "bytes": 12269,
+      "sha256": "87c9557eec98457db23218f71801098ca99722c19372f8ffc7d6b4c4b3fb9ca6"
+    },
+    {
+      "path": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_matrix.h",
+      "bytes": 6345,
+      "sha256": "b43a4012dbe18c575f70c019b2352014b5a105358882aaf4bcd6c94fda822969"
+    },
+    {
+      "path": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_mlp.c",
+      "bytes": 10430,
+      "sha256": "5bb6b4bb0484a0c787a973884e03b05d88ba3d7d216c8a7a716c86dc002d953c"
+    },
+    {
+      "path": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_mlp.h",
+      "bytes": 689,
+      "sha256": "89f7b352ba52edfedc289f9e47dc134957907568c481500412714e368f92f372"
+    },
+    {
+      "path": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_parallel.c",
+      "bytes": 4510,
+      "sha256": "4b617ed288ef0858d48849fd7eec2e97d6a22a6ceb2248291e1c16e8fbab5faf"
+    },
+    {
+      "path": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_parallel.h",
+      "bytes": 1824,
+      "sha256": "b5ba0046c642d3cc9004ad53d3fe0f7efb6a276e5f6918529dd06071bb86804b"
+    },
+    {
+      "path": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_search.c",
+      "bytes": 29067,
+      "sha256": "2aa5ca9dde01a861723791e520c3d7db693ca3fec271300b9c0a048e0329cfb5"
+    },
+    {
+      "path": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_sooli.c",
+      "bytes": 9649,
+      "sha256": "d88c6c7332216618d110120b92b3be6a699fcbe3dc6cf29928bc0bb340b2b38b"
+    },
+    {
+      "path": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_sooli_policy.c",
+      "bytes": 15267,
+      "sha256": "4952fd710386198206b0323acfa55b9f1a8da59c018f3ab3c4a8cddd7c360881"
+    },
+    {
       "path": "browser-source/TuppiBrowser-heidi-speed-20261022/tools/build.py",
       "bytes": 4069,
       "sha256": "df667e0655135fa8d251e57ba6a069bba1c1d6b2fe7c71f643fcbaecb2693b15"
@@ -413,6 +493,11 @@
     },
     {
       "path": "browser-source/TuppiBrowser-heidi-speed-20261022/tools/thread_runtime.js",
+      "bytes": 297,
+      "sha256": "ba365647c3022169c67b9bd7cece325ea564e5e2808788ec6a7ce79cc105d2b0"
+    },
+    {
+      "path": "browser-source/TuppiBrowser-heidi11-20261023/tools/thread_runtime.js",
       "bytes": 297,
       "sha256": "ba365647c3022169c67b9bd7cece325ea564e5e2808788ec6a7ce79cc105d2b0"
     },
@@ -2409,12 +2494,12 @@
     {
       "path": "engine/src/tuppi_server/hosted.py",
       "bytes": 38359,
-      "sha256": "a2088f21c4b787a2e6845fbe0ebe7b2caec5e81606aa6be75a72d2c96398f844"
+      "sha256": "821758251ff5c9408abf4bccafd261c90cd77c01eb2a95f061306f124295b1d9"
     },
     {
       "path": "engine/src/tuppi_server/hosted_bot.py",
       "bytes": 12759,
-      "sha256": "84821fb7a6c90ef6b8e291b964bb91a5108575bf349b3b1c1de8c089789e6908"
+      "sha256": "830c9a9bfb79d7980b2606a0bbcf05ecc907101c99da9049154c10b1f991f104"
     },
     {
       "path": "engine/src/tuppi_server/hosted_site.py",
@@ -2434,7 +2519,7 @@
     {
       "path": "engine/src/tuppi_server/match_runner.py",
       "bytes": 60291,
-      "sha256": "ec49cf152aa75da4566a2e0cc450590044f75ebf104e7f2c043f1b1c0da99bdf"
+      "sha256": "3afe9962734e4ec97867a24a270a8288054d50425a1feea7c88b366a9915a23c"
     },
     {
       "path": "engine/src/tuppi_server/persistence.py",
@@ -2468,8 +2553,8 @@
     },
     {
       "path": "engine/src/tuppi_server/rooms.py",
-      "bytes": 62196,
-      "sha256": "f2a2bcf10ab9b279f829ab7c3543b484470bc9902b4983ac982d2c9a67b7569a"
+      "bytes": 62363,
+      "sha256": "bfe0fae67d841a48eecfb191a509ccb5822e925a95c7c7d0a7f2d26472f5c685"
     },
     {
       "path": "engine/src/tuppi_server/sooli_training_analysis.py",
@@ -2522,6 +2607,11 @@
       "sha256": "a483fa3b940f0b00cfabe94f099aefd84d78b64fddc41ade8750685309b5a6d0"
     },
     {
+      "path": "qualification/heidi11-browser.json",
+      "bytes": 3389,
+      "sha256": "f4b98240ec250fc9e2a538774242c03fa54d598b934ae55501a66b0566d68994"
+    },
+    {
       "path": "qualification/hosted-heidi.json",
       "bytes": 7892,
       "sha256": "568c22c8caf47b242efb0bbad0fa1d08c58fa5a11092e7bfdb203656b002ec44"
@@ -2548,8 +2638,8 @@
     },
     {
       "path": "qualification/qualify_heidi.py",
-      "bytes": 3265,
-      "sha256": "3a47dd10ba19ef324e3b6ff3473158fd37969e5156644a455ea023f95a87ece4"
+      "bytes": 3286,
+      "sha256": "7cdafc1eb970e89ceadd0897d6b5480840d72009887103ea2b27722bff6b6a9b"
     },
     {
       "path": "qualification/qualify_hosted_compact.py",
@@ -2593,13 +2683,18 @@
     },
     {
       "path": "web/app.mjs",
-      "bytes": 106641,
-      "sha256": "54202996240ab68d2cb673b51b6bd960cef5a7106cacde31d3a596c6ee74419f"
+      "bytes": 106996,
+      "sha256": "6784a195c019138cebc20c821e36c8179abde8196de12eab30d860072767d243"
     },
     {
       "path": "web/bootstrap.033f26379c9ec791.mjs",
       "bytes": 3214,
       "sha256": "033f26379c9ec791520ed8e2e396232a72b1cc034623ce39c6cbe489d5b55687"
+    },
+    {
+      "path": "web/bootstrap.6428ca88a057b2ce.mjs",
+      "bytes": 3214,
+      "sha256": "6428ca88a057b2ce060db6d6493c144a32d5562b5fadfc6580613b321788ab51"
     },
     {
       "path": "web/bootstrap.754665da65c80049.mjs",
@@ -2647,9 +2742,14 @@
       "sha256": "319e55d7f0992cd395cb80fffdaf564fad42f169f198cd09e2498ac73f387b86"
     },
     {
+      "path": "web/client.8b7d5f92a3e6d15b.mjs",
+      "bytes": 212739,
+      "sha256": "8b7d5f92a3e6d15b4aea037546f3bdf734a71b0cfc4d5c2f44459311835cd37a"
+    },
+    {
       "path": "web/current-release.json",
       "bytes": 690,
-      "sha256": "aa88e52a076363d492986a6401bc67f457e016c8e361da8459d3982542206629"
+      "sha256": "3c728bfdbffca29b730a9da3aab7a2c6e4ec0bc4fe9e5310cc74c1d8c3d1dff4"
     },
     {
       "path": "web/deployment.json",
@@ -2672,6 +2772,11 @@
       "sha256": "accfec7c77dc6cf6ccec1839e49f29cd2ec529e223db3d3b2726dd71038ad94c"
     },
     {
+      "path": "web/engine.cc87cf7f8af415a5.mjs",
+      "bytes": 39493,
+      "sha256": "cc87cf7f8af415a588cd9d86ad9849d68c9aed3491fff0c71153dd08c992925f"
+    },
+    {
       "path": "web/engine.d64785159d9cec4e.mjs",
       "bytes": 23359,
       "sha256": "d64785159d9cec4e389717841ed05a925039a1c9722c95beb3000698940f560c"
@@ -2692,6 +2797,11 @@
       "sha256": "8408461e273a2f7c984eb7e6f3cbda9925ef856cdacf44a344f97dc1d0ece65c"
     },
     {
+      "path": "web/frontend.b78890772ac337b1.json",
+      "bytes": 690,
+      "sha256": "3c728bfdbffca29b730a9da3aab7a2c6e4ec0bc4fe9e5310cc74c1d8c3d1dff4"
+    },
+    {
       "path": "web/frontend.cc7a654acc150e1d.json",
       "bytes": 690,
       "sha256": "139386a35c22c61777d2d93a2bdadf29de2ccdefb5a06c41985b606798045fc9"
@@ -2699,7 +2809,7 @@
     {
       "path": "web/frontend.json",
       "bytes": 690,
-      "sha256": "aa88e52a076363d492986a6401bc67f457e016c8e361da8459d3982542206629"
+      "sha256": "3c728bfdbffca29b730a9da3aab7a2c6e4ec0bc4fe9e5310cc74c1d8c3d1dff4"
     },
     {
       "path": "web/hand.mjs",
@@ -2728,8 +2838,8 @@
     },
     {
       "path": "web/index.html",
-      "bytes": 27408,
-      "sha256": "ab24a01edd1fc2f6b96d22a88d3ef1c0f27a3c740908cc821e11b09fb1b3f1ab"
+      "bytes": 27457,
+      "sha256": "31be59ad2ecca75d3f058d10013120bddcebc44067848337f775c89303dfb3a2"
     },
     {
       "path": "web/launch.33988c7364d1fcf3.html",
@@ -2745,6 +2855,11 @@
       "path": "web/launch.a759381fff869624.html",
       "bytes": 23059,
       "sha256": "34908060c81b0e46c3b748c7962649dbee4ca32c636b88a0d8b0d0e91badc91b"
+    },
+    {
+      "path": "web/launch.b78890772ac337b1.html",
+      "bytes": 27491,
+      "sha256": "0f95d8770ed1526181de6bdeeafc9696b12657034f6216955823ccafaf917aa0"
     },
     {
       "path": "web/launch.cc7a654acc150e1d.html",
@@ -2764,17 +2879,27 @@
     {
       "path": "web/network.mjs",
       "bytes": 40756,
-      "sha256": "680fefbd94e1998bfce957b6f02d1496d8372f111d754d78946f611db9a6a03b"
+      "sha256": "248d704af88e989e8224b09864f7ebfe4090953feaaf89d0253f3f4e2b2ba8d1"
     },
     {
       "path": "web/offline-manifest.json",
-      "bytes": 15796,
-      "sha256": "1e2ffa509e53069b89351020c998428297a6a3add084a4d92b71a2991a991cdf"
+      "bytes": 18958,
+      "sha256": "1bcb8130aa74c23b47a19ba40e52d2747359dfc2af5517db74d6a34ccd979ac3"
+    },
+    {
+      "path": "web/offline-shell.0f95d8770ed15261.txt",
+      "bytes": 27491,
+      "sha256": "0f95d8770ed1526181de6bdeeafc9696b12657034f6216955823ccafaf917aa0"
     },
     {
       "path": "web/offline-shell.1221db35907d1177.txt",
       "bytes": 23025,
       "sha256": "1221db35907d1177fe4b65e40f4cfcdd50683912d6a026c9e59a05d0fcd92403"
+    },
+    {
+      "path": "web/offline-shell.31be59ad2ecca75d.txt",
+      "bytes": 27457,
+      "sha256": "31be59ad2ecca75d3f058d10013120bddcebc44067848337f775c89303dfb3a2"
     },
     {
       "path": "web/offline-shell.34908060c81b0e46.txt",
@@ -2845,6 +2970,51 @@
       "path": "web/recover.mjs",
       "bytes": 1706,
       "sha256": "44a9ea47ff5424120abc840da93d224e7e2bc0efbda234e4480cd45f9dca33b4"
+    },
+    {
+      "path": "web/runtime/31426bbf97821e2c275339a66147d8cdfe7ffcbbc6b089b3b9bbc41881415413/build.json",
+      "bytes": 12528,
+      "sha256": "7061aa10aad198a4f79452268afa4e83964c6e5db89628d102c98b0090724203"
+    },
+    {
+      "path": "web/runtime/31426bbf97821e2c275339a66147d8cdfe7ffcbbc6b089b3b9bbc41881415413/equity.f64",
+      "bytes": 400,
+      "sha256": "8e01246f723210a8e0364a63748de460b94b6e5a513e8e747dc91744f1bc3f0b"
+    },
+    {
+      "path": "web/runtime/31426bbf97821e2c275339a66147d8cdfe7ffcbbc6b089b3b9bbc41881415413/models.json",
+      "bytes": 1673,
+      "sha256": "8cb282aa3be3c4ebc0c4bcfcaaeceda93a9c225e3e51488148df181771ae2124"
+    },
+    {
+      "path": "web/runtime/31426bbf97821e2c275339a66147d8cdfe7ffcbbc6b089b3b9bbc41881415413/tuppi-thread.mjs",
+      "bytes": 23783,
+      "sha256": "79d7546158f4aa79b921a0dadd656078230f69ab23f0a7d65ac3333d01b1ffa8"
+    },
+    {
+      "path": "web/runtime/31426bbf97821e2c275339a66147d8cdfe7ffcbbc6b089b3b9bbc41881415413/tuppi-thread.wasm",
+      "bytes": 126902,
+      "sha256": "132067b70b95f5a455e02d668988728d02747747be2760fc3f762c3a0dfbaeff"
+    },
+    {
+      "path": "web/runtime/31426bbf97821e2c275339a66147d8cdfe7ffcbbc6b089b3b9bbc41881415413/tuppi.mjs",
+      "bytes": 9438,
+      "sha256": "0da5645c9ad1a88ab0fe036785013ef851839e71cb0e3c709b0d3834fce2de78"
+    },
+    {
+      "path": "web/runtime/31426bbf97821e2c275339a66147d8cdfe7ffcbbc6b089b3b9bbc41881415413/tuppi.wasm",
+      "bytes": 113078,
+      "sha256": "1b51c92de5e9b7b6e3a24c1bdb51c62e290c2e2f5548e1d92d8be1acf0be6517"
+    },
+    {
+      "path": "web/runtime/31426bbf97821e2c275339a66147d8cdfe7ffcbbc6b089b3b9bbc41881415413/vrpo1_actor_0504.f32",
+      "bytes": 3218032,
+      "sha256": "beb1f890947748a3df254dc200b9433547babc9fe40388fe76ba82e0f01abbda"
+    },
+    {
+      "path": "web/runtime/31426bbf97821e2c275339a66147d8cdfe7ffcbbc6b089b3b9bbc41881415413/vrpo3_final.f32",
+      "bytes": 12743280,
+      "sha256": "0e4bba619908ad3fa92a75fb118470b436ffa571caaca5e8f6aab497be633b47"
     },
     {
       "path": "web/runtime/4341014ea0acfb9a7673d2bc015ebb36a31ea89c1b638290a4c80652f3748a91/build.json",
@@ -2963,13 +3133,13 @@
     },
     {
       "path": "web/runtime.mjs",
-      "bytes": 11455,
-      "sha256": "ea2daf392548cb93ac2a1457b2f4a44340ed9b96d73a967f02676bd9b8c22bc6"
+      "bytes": 12708,
+      "sha256": "2d0656f138f23f72fa306f855afb5b0e8de2610fc5313d6e64d2e246528c7748"
     },
     {
       "path": "web/session.mjs",
-      "bytes": 11624,
-      "sha256": "b50c5e7dfec8497d8b4285891d38c9bb5b032b5e2fed114e1eff747b9ecefdac"
+      "bytes": 12056,
+      "sha256": "4facc26395dfbe55dcb75a941c14bc31433a128103a5750ca6e3bafcbe6fa57d"
     },
     {
       "path": "web/storage.mjs",
@@ -2994,7 +3164,7 @@
     {
       "path": "web/sw.mjs",
       "bytes": 22111,
-      "sha256": "315da0374cfbb7f2a5add56f24fb6c18628ce0f15eac9be3f9801917ef3340d5"
+      "sha256": "bceb6ff2041123e668ec68d65d2bb1580b171bc9a48e19b4693d1fdd3e7c19c4"
     },
     {
       "path": "web/table.mjs",
@@ -3003,41 +3173,140 @@
     },
     {
       "path": "web/worker.mjs",
-      "bytes": 9025,
-      "sha256": "d10180a2b5e16594beee88254a155e14e1001caf9a6a354da5c8477d54ba7581"
+      "bytes": 9215,
+      "sha256": "d82eff23f89acfe8b1d96171fe19d175a96c6f75d5f596947ad826629d1ad375"
     }
   ],
-  "release": "be02c5ee89771581cd0d22d4d1f6a97fd8849f0c451e1383598772077be08b0d",
+  "release": "b056a7daed495bef188b74bdcdcb20ba61efeb7e175c6ca9f1d90fd167fd38f4",
   "linux_image_executed": true,
-  "deployment_parent": "4b28471c7a051d76b669e5629627c87e274d6ebb",
+  "deployment_parent": "701f755bba813daa486e46dd885be4d436e3bdcf",
   "browser_build": {
-    "ai_commit": "c44dfbe9a1c301f8612482f27c8aa4840c64bdf8",
+    "ai_commit": "b30763c94c01c4211c47a76a54ac3f86f71fe52a",
+    "ai_worktree": "TuppiAI-heidi11-20261023",
     "file_map": {
-      "TuppiAI-heidi-speed-20261022/native/tuppi_core.c": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_core.c",
-      "TuppiAI-heidi-speed-20261022/native/tuppi_env.c": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_env.c",
-      "TuppiAI-heidi-speed-20261022/native/tuppi_search.c": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_search.c",
-      "TuppiAI-heidi-speed-20261022/native/tuppi_dd.c": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_dd.c",
-      "TuppiAI-heidi-speed-20261022/native/tuppi_mlp.c": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_mlp.c",
-      "TuppiAI-heidi-speed-20261022/native/tuppi_sooli.c": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_sooli.c",
-      "TuppiAI-heidi-speed-20261022/native/tuppi_sooli_policy.c": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_sooli_policy.c",
-      "TuppiAI-heidi-speed-20261022/native/tuppi_dd_wr.c": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_dd_wr.c",
-      "TuppiAI-heidi-speed-20261022/native/tuppi_lite_net.c": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_lite_net.c",
-      "TuppiAI-heidi-speed-20261022/native/tuppi_browser.c": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_browser.c",
-      "TuppiAI-heidi-speed-20261022/native/showing_constraints.h": "browser-source/TuppiAI-heidi-speed-20261022/native/showing_constraints.h",
-      "TuppiAI-heidi-speed-20261022/native/tuppi_core.h": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_core.h",
-      "TuppiAI-heidi-speed-20261022/native/tuppi_matrix.h": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_matrix.h",
-      "TuppiAI-heidi-speed-20261022/native/tuppi_mlp.h": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_mlp.h",
-      "TuppiAI-heidi-speed-20261022/native/tuppi_parallel.h": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_parallel.h",
-      "TuppiBrowser-heidi-speed-20261022/tools/thread_runtime.js": "browser-source/TuppiBrowser-heidi-speed-20261022/tools/thread_runtime.js"
+      "TuppiAI-heidi11-20261023/native/tuppi_core.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_core.c",
+      "TuppiAI-heidi11-20261023/native/tuppi_env.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_env.c",
+      "TuppiAI-heidi11-20261023/native/tuppi_search.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_search.c",
+      "TuppiAI-heidi11-20261023/native/tuppi_dd.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_dd.c",
+      "TuppiAI-heidi11-20261023/native/tuppi_mlp.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_mlp.c",
+      "TuppiAI-heidi11-20261023/native/tuppi_sooli.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_sooli.c",
+      "TuppiAI-heidi11-20261023/native/tuppi_sooli_policy.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_sooli_policy.c",
+      "TuppiAI-heidi11-20261023/native/tuppi_dd_wr.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_dd_wr.c",
+      "TuppiAI-heidi11-20261023/native/tuppi_lite_net.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_lite_net.c",
+      "TuppiAI-heidi11-20261023/native/tuppi_browser.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_browser.c",
+      "TuppiAI-heidi11-20261023/native/tuppi_parallel.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_parallel.c",
+      "TuppiAI-heidi11-20261023/native/showing_constraints.h": "browser-source/TuppiAI-heidi11-20261023/native/showing_constraints.h",
+      "TuppiAI-heidi11-20261023/native/tuppi_core.h": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_core.h",
+      "TuppiAI-heidi11-20261023/native/tuppi_matrix.h": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_matrix.h",
+      "TuppiAI-heidi11-20261023/native/tuppi_mlp.h": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_mlp.h",
+      "TuppiAI-heidi11-20261023/native/tuppi_parallel.h": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_parallel.h",
+      "TuppiBrowser-heidi11-20261023/tools/thread_runtime.js": "browser-source/TuppiBrowser-heidi11-20261023/tools/thread_runtime.js"
     },
     "inference_candidates": 8,
-    "shared_posterior_reuse": false,
-    "qualification": "Prior Node WASM exact-root checks retained; hosted qualification is separate; physical-device acceptance pending",
-    "scope": "Published WASM unchanged; hosted native source is separately recorded in commits.ai"
+    "runtime_identity": "31426bbf97821e2c275339a66147d8cdfe7ffcbbc6b089b3b9bbc41881415413",
+    "retained_runtimes": [
+      "31426bbf97821e2c275339a66147d8cdfe7ffcbbc6b089b3b9bbc41881415413",
+      "4341014ea0acfb9a7673d2bc015ebb36a31ea89c1b638290a4c80652f3748a91",
+      "63d3ac3e516499968243fb5a9e77f5b72138a1a9c3fc78d6f8c5e7f0d75e19c6",
+      "95497f1ebdf0979b8463f3822cf3db85ad8495ed85ae1fe3e5b3b09962871b5d"
+    ],
+    "previous_browser_build": {
+      "ai_commit": "b30763c94c01c4211c47a76a54ac3f86f71fe52a",
+      "ai_worktree": "TuppiAI-heidi11-20261023",
+      "file_map": {
+        "TuppiAI-heidi11-20261023/native/tuppi_core.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_core.c",
+        "TuppiAI-heidi11-20261023/native/tuppi_env.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_env.c",
+        "TuppiAI-heidi11-20261023/native/tuppi_search.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_search.c",
+        "TuppiAI-heidi11-20261023/native/tuppi_dd.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_dd.c",
+        "TuppiAI-heidi11-20261023/native/tuppi_mlp.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_mlp.c",
+        "TuppiAI-heidi11-20261023/native/tuppi_sooli.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_sooli.c",
+        "TuppiAI-heidi11-20261023/native/tuppi_sooli_policy.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_sooli_policy.c",
+        "TuppiAI-heidi11-20261023/native/tuppi_dd_wr.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_dd_wr.c",
+        "TuppiAI-heidi11-20261023/native/tuppi_lite_net.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_lite_net.c",
+        "TuppiAI-heidi11-20261023/native/tuppi_browser.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_browser.c",
+        "TuppiAI-heidi11-20261023/native/tuppi_parallel.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_parallel.c",
+        "TuppiAI-heidi11-20261023/native/showing_constraints.h": "browser-source/TuppiAI-heidi11-20261023/native/showing_constraints.h",
+        "TuppiAI-heidi11-20261023/native/tuppi_core.h": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_core.h",
+        "TuppiAI-heidi11-20261023/native/tuppi_matrix.h": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_matrix.h",
+        "TuppiAI-heidi11-20261023/native/tuppi_mlp.h": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_mlp.h",
+        "TuppiAI-heidi11-20261023/native/tuppi_parallel.h": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_parallel.h",
+        "TuppiBrowser-heidi11-20261023/tools/thread_runtime.js": "browser-source/TuppiBrowser-heidi11-20261023/tools/thread_runtime.js"
+      },
+      "inference_candidates": 8,
+      "runtime_identity": "31426bbf97821e2c275339a66147d8cdfe7ffcbbc6b089b3b9bbc41881415413",
+      "retained_runtimes": [
+        "31426bbf97821e2c275339a66147d8cdfe7ffcbbc6b089b3b9bbc41881415413",
+        "4341014ea0acfb9a7673d2bc015ebb36a31ea89c1b638290a4c80652f3748a91",
+        "63d3ac3e516499968243fb5a9e77f5b72138a1a9c3fc78d6f8c5e7f0d75e19c6",
+        "95497f1ebdf0979b8463f3822cf3db85ad8495ed85ae1fe3e5b3b09962871b5d"
+      ],
+      "previous_browser_build": {
+        "ai_commit": "b30763c94c01c4211c47a76a54ac3f86f71fe52a",
+        "ai_worktree": "TuppiAI-heidi11-20261023",
+        "file_map": {
+          "TuppiAI-heidi11-20261023/native/tuppi_core.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_core.c",
+          "TuppiAI-heidi11-20261023/native/tuppi_env.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_env.c",
+          "TuppiAI-heidi11-20261023/native/tuppi_search.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_search.c",
+          "TuppiAI-heidi11-20261023/native/tuppi_dd.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_dd.c",
+          "TuppiAI-heidi11-20261023/native/tuppi_mlp.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_mlp.c",
+          "TuppiAI-heidi11-20261023/native/tuppi_sooli.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_sooli.c",
+          "TuppiAI-heidi11-20261023/native/tuppi_sooli_policy.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_sooli_policy.c",
+          "TuppiAI-heidi11-20261023/native/tuppi_dd_wr.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_dd_wr.c",
+          "TuppiAI-heidi11-20261023/native/tuppi_lite_net.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_lite_net.c",
+          "TuppiAI-heidi11-20261023/native/tuppi_browser.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_browser.c",
+          "TuppiAI-heidi11-20261023/native/tuppi_parallel.c": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_parallel.c",
+          "TuppiAI-heidi11-20261023/native/showing_constraints.h": "browser-source/TuppiAI-heidi11-20261023/native/showing_constraints.h",
+          "TuppiAI-heidi11-20261023/native/tuppi_core.h": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_core.h",
+          "TuppiAI-heidi11-20261023/native/tuppi_matrix.h": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_matrix.h",
+          "TuppiAI-heidi11-20261023/native/tuppi_mlp.h": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_mlp.h",
+          "TuppiAI-heidi11-20261023/native/tuppi_parallel.h": "browser-source/TuppiAI-heidi11-20261023/native/tuppi_parallel.h",
+          "TuppiBrowser-heidi11-20261023/tools/thread_runtime.js": "browser-source/TuppiBrowser-heidi11-20261023/tools/thread_runtime.js"
+        },
+        "inference_candidates": 8,
+        "runtime_identity": "31426bbf97821e2c275339a66147d8cdfe7ffcbbc6b089b3b9bbc41881415413",
+        "retained_runtimes": [
+          "31426bbf97821e2c275339a66147d8cdfe7ffcbbc6b089b3b9bbc41881415413",
+          "4341014ea0acfb9a7673d2bc015ebb36a31ea89c1b638290a4c80652f3748a91",
+          "63d3ac3e516499968243fb5a9e77f5b72138a1a9c3fc78d6f8c5e7f0d75e19c6",
+          "95497f1ebdf0979b8463f3822cf3db85ad8495ed85ae1fe3e5b3b09962871b5d"
+        ],
+        "previous_browser_build": {
+          "ai_commit": "c44dfbe9a1c301f8612482f27c8aa4840c64bdf8",
+          "file_map": {
+            "TuppiAI-heidi-speed-20261022/native/tuppi_core.c": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_core.c",
+            "TuppiAI-heidi-speed-20261022/native/tuppi_env.c": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_env.c",
+            "TuppiAI-heidi-speed-20261022/native/tuppi_search.c": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_search.c",
+            "TuppiAI-heidi-speed-20261022/native/tuppi_dd.c": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_dd.c",
+            "TuppiAI-heidi-speed-20261022/native/tuppi_mlp.c": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_mlp.c",
+            "TuppiAI-heidi-speed-20261022/native/tuppi_sooli.c": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_sooli.c",
+            "TuppiAI-heidi-speed-20261022/native/tuppi_sooli_policy.c": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_sooli_policy.c",
+            "TuppiAI-heidi-speed-20261022/native/tuppi_dd_wr.c": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_dd_wr.c",
+            "TuppiAI-heidi-speed-20261022/native/tuppi_lite_net.c": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_lite_net.c",
+            "TuppiAI-heidi-speed-20261022/native/tuppi_browser.c": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_browser.c",
+            "TuppiAI-heidi-speed-20261022/native/showing_constraints.h": "browser-source/TuppiAI-heidi-speed-20261022/native/showing_constraints.h",
+            "TuppiAI-heidi-speed-20261022/native/tuppi_core.h": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_core.h",
+            "TuppiAI-heidi-speed-20261022/native/tuppi_matrix.h": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_matrix.h",
+            "TuppiAI-heidi-speed-20261022/native/tuppi_mlp.h": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_mlp.h",
+            "TuppiAI-heidi-speed-20261022/native/tuppi_parallel.h": "browser-source/TuppiAI-heidi-speed-20261022/native/tuppi_parallel.h",
+            "TuppiBrowser-heidi-speed-20261022/tools/thread_runtime.js": "browser-source/TuppiBrowser-heidi-speed-20261022/tools/thread_runtime.js"
+          },
+          "inference_candidates": 8,
+          "shared_posterior_reuse": false,
+          "qualification": "Prior Node WASM exact-root checks retained; hosted qualification is separate; physical-device acceptance pending",
+          "scope": "Published WASM unchanged; hosted native source is separately recorded in commits.ai"
+        },
+        "qualification": "qualification/heidi11-browser.json",
+        "scope": "Browser engine Heidi 1.1 (bit-identical decisions to Heidi 1.0 on fixed roots and a whole deal); hosted ai/ unchanged from release 1"
+      },
+      "qualification": "qualification/heidi11-browser.json",
+      "scope": "Browser engine Heidi 1.1 (bit-identical decisions to Heidi 1.0 on fixed roots and a whole deal); hosted ai/ unchanged from release 1"
+    },
+    "qualification": "qualification/heidi11-browser.json",
+    "scope": "Browser engine Heidi 1.1 (bit-identical decisions to Heidi 1.0 on fixed roots and a whole deal); hosted ai/ unchanged from release 1"
   },
   "hosted_compact": {
     "profile": "tuppi_ai_heidi10_pib8_v1",
-    "name": "Heidi 1.0",
+    "name": "Heidi 1.1",
     "default_bot_level": "lite",
     "max_unfinished_heidi_tables": 1,
     "workers": 1,
@@ -3051,14 +3320,12 @@
       "origin": "b5f7535b8cfc7ed8877a5b325ff81abb2d89eec7",
       "qualification": "PASS_FIXED_REFERENCE_AND_SERVICE_FIXTURE",
       "universal_blas_bit_identity_claimed": false
+    },
+    "lite_profile_name": {
+      "profile": "tuppi_ai_lite_c1h_v1",
+      "name": "Nelli 1.0"
     }
   },
-  "release_status": "QUALIFIED_PARKED_FOR_OTHER_LLM_PUSH",
-  "linux_image_scope": "Pinned integrated AMD64 production build; native ARM quota harness separately identified in qualification/hosted-heidi.json",
-  "release_handoff": {
-    "local_only": true,
-    "push_by_this_session": false,
-    "pushing_party": "Owner-designated other LLM",
-    "deployed": false
-  }
+  "release_status": "LOCAL_NOT_PUSHED: release 2 over release 1 (701f755); owner pushes and deploys",
+  "linux_image_scope": "Production AMD64 image and native ARM64 harness passed (qualification/heidi11-browser.json); Render hardware and devices remain owner-run"
 }

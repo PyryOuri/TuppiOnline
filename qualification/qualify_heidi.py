@@ -51,6 +51,6 @@ assert 'torch' not in sys.modules
 report = {'passed': True, 'cases': len(cases), 'decisions': decisions, 'three_rng_cursors_exact': True,
     'continuation_exact': True, 'default_options': 'off', 'torch_imported': False,
     'reference_sha256': hashlib.sha256(reference.read_bytes()).hexdigest(),
-    'scope': 'Heidi 0.5 fixed final-image parity and continuation, not human strength or Render capacity'}
+    'scope': 'Nelli 1.0 (formerly Heidi 0.5) fixed final-image parity and continuation, not human strength or Render capacity'}
 (root / 'qualification/heidi-result.json').write_text(json.dumps(report, indent=2) + '\n')
 print(json.dumps(report))

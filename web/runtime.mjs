@@ -16,18 +16,28 @@ async function sha256(bytes) {
     .map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Heidi 1.0 and Heidi 1.1 are the same W1024 search and decisions; 1.1 names
+// games played on the faster engine (distinct-hand scoring, worker lanes).
+export const heidiSearchBots = ['heidi10', 'heidi11'];
+const heidiSearch = bot => heidiSearchBots.includes(bot);
+
 export function inferenceLanes() {
   if (globalThis.crossOriginIsolated !== true || typeof SharedArrayBuffer !== 'function') return 1;
   return Math.max(1, Math.min(4, (globalThis.navigator?.hardwareConcurrency ?? 2) - 1));
 }
 
 export class Runtime {
+  // Profile options off by default (the owner's decision to enable): bids 1 takes Heidi 1.0's
+  // anchor bid in the show phase without search; singleInference 4 runs a new game at PIB4
+  // when it ends up on the single-thread backend. Saves record both (session.mjs).
   static async create({worlds = 1024, bot = 'legacy', humanSeats = [0], inference = 8,
-      backend = 'auto', lanes = inferenceLanes(), read = readAsset, progress = () => {}} = {}) {
+      backend = 'auto', lanes = inferenceLanes(), read = readAsset, progress = () => {},
+      bids = 0, singleInference = null} = {}) {
     if (![128, 1024].includes(worlds)) throw new Error('Bottiasetus ei ole tuettu.');
-    if (!['legacy', 'heidi05', 'heidi10'].includes(bot) ||
+    if (!['legacy', 'heidi05', ...heidiSearchBots].includes(bot) ||
         !Array.isArray(humanSeats) || humanSeats.some(seat => !Number.isInteger(seat) || seat < 0 || seat > 3) ||
-        (bot === 'heidi10' && ![4, 8].includes(inference)) || !['auto', 'single', 'threads'].includes(backend) ||
+        (heidiSearch(bot) && ![4, 8].includes(inference)) || !['auto', 'single', 'threads'].includes(backend) ||
+        ![0, 1].includes(bids) || (bids && !heidiSearch(bot)) || ![null, 4, 8].includes(singleInference) ||
         !Number.isInteger(lanes) || lanes < 1 || lanes > 4)
       throw new Error('Bottiasetus ei ole tuettu.');
     progress('Ladataan bottipaketin tiedot…');
@@ -65,7 +75,7 @@ export class Runtime {
         throw error;
       } finally { clearTimeout(timer); }
     };
-    let module, threaded = bot === 'heidi10' && backend !== 'single' && (backend === 'threads' || lanes > 1);
+    let module, threaded = heidiSearch(bot) && backend !== 'single' && (backend === 'threads' || lanes > 1);
     try { module = await load(threaded); }
     catch (error) {
       if (!threaded || backend !== 'auto') throw error;
@@ -75,7 +85,9 @@ export class Runtime {
     identityBytes.set(metadata); identityBytes.set(buildMetadata, metadata.length);
     const runtime = new Runtime(module, manifest, await sha256(identityBytes));
     runtime.backend = threaded ? 'threads' : 'single'; runtime.lanes = threaded ? lanes : 1;
-    runtime.inferenceCandidates = bot === 'heidi10' ? inference : 0;
+    if (heidiSearch(bot) && !threaded && singleInference) inference = singleInference;
+    runtime.inferenceCandidates = heidiSearch(bot) ? inference : 0;
+    runtime.bidMode = bids;
     try {
       if (module._tb_api_version() !== manifest.api_version) throw new Error('Pelin ja botin versiot eivät täsmää.');
       for (const record of manifest.models) {
@@ -105,8 +117,10 @@ export class Runtime {
         const mask = [...new Set(humanSeats)].reduce((value, seat) => value | (1 << seat), 0);
         if (!module._tb_configure_bot || module._tb_configure_bot(bot === 'heidi05' ? 1 : 2, mask) !== 0)
           throw new Error('Tämä peliversio ei tue valittua bottia.');
-        if (bot === 'heidi10' && (!module._tb_configure_inference ||
+        if (heidiSearch(bot) && (!module._tb_configure_inference ||
             module._tb_configure_inference(inference, runtime.lanes) !== 0))
+          throw new Error('Tämä peliversio ei tue valittua bottia.');
+        if (bids && (!module._tb_configure_bids || module._tb_configure_bids(bids) !== 0))
           throw new Error('Tämä peliversio ei tue valittua bottia.');
       }
       return runtime;
@@ -115,6 +129,12 @@ export class Runtime {
 
   constructor(module, manifest, identity) {
     this.m = module; this.manifest = manifest; this.identity = identity;
+  }
+
+  // The numerical profile a save is bound to (the execution backend is not part of it).
+  profile() {
+    return `${this.bot ?? 'legacy'} W${this.worlds}` + (heidiSearch(this.bot) ?
+      ` PIB${this.inferenceCandidates ?? 4} bids:${this.bidMode ? 'anchor' : 'search'}` : '');
   }
 
   close() {

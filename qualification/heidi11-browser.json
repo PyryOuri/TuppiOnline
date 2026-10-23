@@ -1,0 +1,95 @@
+{
+ "schema": "tuppi.release.heidi11_browser.v1",
+ "date": "2026-10-23",
+ "scope": "Node 24 WASM and native checks on this Mac; no browser/phone, Safari or Render measurement; no strength claim",
+ "browser_engine": {
+  "ai_commit": "b30763c (TuppiAI-heidi11-20261023)",
+  "runtime_identity": "31426bbf97821e2c275339a66147d8cdfe7ffcbbc6b089b3b9bbc41881415413"
+ },
+ "bit_identity_vs_published_engine_4341014e": {
+  "roots": "all 10 speed roots x lanes 1/2/4: action, values, before/after cursors, observation identical (40/40)",
+  "whole_deal_four_lanes": {
+   "decisions": 58,
+   "identical": true,
+   "seconds": 97.5,
+   "baseline_four_lane_seconds": 353.1
+  },
+  "heidi11_vs_heidi10_ids": "identical on 4 roots (check_heidi11_alias.mjs)"
+ },
+ "hosted_unchanged": {
+  "ai_in_package": "byte-identical to release 1 (4a0d44e)",
+  "merged_library_vs_table_library_compact_roots": "identical actions/cursors/values on 9 roots (BLAS build on Mac); value error vs WASM reference 0.0",
+  "cases": 9
+ },
+ "native": "21 tests pass; 24 regression positions identical to c44dfbe library",
+ "frontend": [
+  "table (default, heidi05, heidi10->heidi11, heidi11)",
+  "network",
+  "heidi_network",
+  "storage",
+  "offline",
+  "startup --threaded",
+  "recovery",
+  "viewer",
+  "live",
+  "replay",
+  "speed recovery",
+  "shared growth",
+  "cancel",
+  "threads 1/2/4",
+  "397 Heidi/C1H reference decisions",
+  "legacy engine reference",
+  "anchor-only bid mode (off by default)"
+ ],
+ "retained_engine_recovery": [
+  "release 1 Heidi 1.0 PIB8 save restores on its engine; new engine refuses it; fresh game is heidi11",
+  "release 1 legacy save",
+  "round 16 Heidi PIB4 save (fresh heidi10 and heidi11)",
+  "round 15 legacy save"
+ ],
+ "names": {
+  "local": {
+   "heidi05": "Nelli 1.0",
+   "heidi10": "Heidi 1.0 (old saves only)",
+   "heidi11": "Heidi 1.1"
+  },
+  "online": {
+   "tuppi_ai_lite_c1h_v1": "Nelli 1.0",
+   "tuppi_ai_heidi10_pib8_v1": "Heidi 1.1"
+  }
+ },
+ "record": "audit_deliverables/tuppi_heidi_fast_20261022/release2/ and INTEGRATION_PLAN.md",
+ "linux_image": {
+  "production_amd64": {
+   "passed": true,
+   "image": "tuppi-online:heidi11-20261023-01",
+   "scope": "actual pinned production Dockerfile; Python 3.14.8; no Torch or compilers; in-image lite/Nelli/compact qualification; compact roots and spawned worker at 0.5 CPU / 512 MiB; service smoke (translated on an ARM Mac)",
+   "compact_roots_max_value_error": 0.0
+  },
+  "native_arm64_harness": {
+   "passed": true,
+   "image": "tuppi-online:heidi11-20261023-03",
+   "scope": "audit-only native harness (keeps compilers), full service fixture at 0.5 CPU / 512 MiB / no swap",
+   "heidi_deal": {
+    "humans": 1,
+    "bots": 3,
+    "completedDeals": 1,
+    "actions": 16
+   },
+   "lite": {
+    "actions": 28,
+    "completedDeals": 2,
+    "ack_p50_ms": 102.95583400000032,
+    "ack_p95_ms": 750.8110420000003
+   },
+   "health_p95_ms": 47.68,
+   "memory_peak_bytes": 198492160,
+   "oom_events": 0,
+   "restart_restores_profile_and_public_state": true,
+   "second_heidi_table_refused": true,
+   "compact_roots_max_value_error": 0.0
+  },
+  "failed_attempt": "attempt 2 built the AMD64-pinned production Dockerfile for ARM64 by mistake and failed in the build; release 1 also used the native harness for ARM64. Retained in release2/linux.",
+  "records": "audit_deliverables/tuppi_heidi_fast_20261022/release2/linux/attempt_01, attempt_03"
+ }
+}
