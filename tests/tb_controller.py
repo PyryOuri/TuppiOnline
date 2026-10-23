@@ -11,6 +11,7 @@ for bit-identity checks). Networks come from models/compact (tools/export_compac
     python tests/tb_controller.py liteparity MODE PEOPLE SEEDS
     python tests/tb_controller.py rawpib ROLES
     python tests/tb_controller.py compact MODES
+    python tests/tb_controller.py keeprule WORLDS PEOPLE ROOTS
 
 ROLES, PEOPLE and SEEDS are comma-separated (PEOPLE may be empty: "-").
 Prints one JSON document.
@@ -352,15 +353,34 @@ def cmd_rawpib(roles) -> dict:
     return {"rows": rows}
 
 
+def observation_argmax(role: int, observation) -> int:
+    """The role's first maximum over the observation's legal ids in the engine's order (the order
+    tb_choose_observation searches and breaks ties in)."""
+    from tuppi_ai.bridge import action_id, obs_from_player_observation
+    feat = native.encode(obs_from_player_observation(observation), encoder=2)
+    logits = np.zeros(156, dtype=np.float32)
+    if lib.tb_inference(role, feat.ctypes.data_as(U8P), 1, logits.ctypes.data_as(F32P)):
+        raise SystemExit("tb_inference failed")
+    ids = [i for i in (action_id(a) for a in observation.legal_actions) if i < 156]
+    best = ids[0]
+    for a in ids[1:]:
+        if logits[a] > logits[best]:
+            best = a
+    return best
+
+
 def cmd_compact(modes) -> dict:
-    """CompactController on the fixed roots, switching modes in the given order (e.g. 2,4,2)."""
-    from tuppi_ai.bridge import action_id
+    """CompactController on the fixed roots, switching modes in the given order (e.g. 2,4,2);
+    "argmax" holds roles 1 and 2's first maximum at each bid or play root, "phases" each root's phase."""
+    from tuppi_ai.bridge import action_id, obs_from_player_observation
     from tuppi_ai.compact import CompactController
     modes = ints(modes)
     controller = CompactController(mode=modes[0])
     roots = engine_roots()
     runs = []
     try:
+        argmax = [{role: observation_argmax(role, observation) for role in (1, 2)}
+                  if obs_from_player_observation(observation).phase in (0, 1) else {} for observation, _ in roots]
         for mode in modes:
             rows = []
             for observation, people in roots:
@@ -371,7 +391,43 @@ def cmd_compact(modes) -> dict:
             runs.append({"mode": mode, "controller_mode": controller.mode, "rows": rows})
     finally:
         controller.close()
-    return {"runs": runs, "torch": "torch" in sys.modules}
+    phases = [int(obs_from_player_observation(observation).phase) for observation, _ in roots]
+    return {"runs": runs, "argmax": argmax, "phases": phases, "torch": "torch" in sys.modules}
+
+
+def cmd_keeprule(worlds, people, roots) -> dict:
+    """Modes 2 and 4 (PIB8) from the same position and the same restored cursor, with roles {0, 1, 2}.
+    ROOTS are seed:moves pairs; the prefix plays role 1's argmax in bids and play and the first legal
+    action in sooli phases. Each row holds both modes' action, values and seven cursor words and
+    roles 1 and 2's argmax over the legal ids (tb_legal order, the order tb_choose searches)."""
+    mask = sum(1 << s for s in ints(people))
+    setup([0, 1, 2], int(worlds), 2, mask, inference=8)
+    rows = []
+    for root in roots.split(","):
+        seed, moves = map(int, root.split(":"))
+        init(seed)
+        for _ in range(moves):
+            seat, phase = lib.tb_state(1), lib.tb_state(0)
+            action = network_argmax(1, seat) if phase in (0, 1) else legal(seat)[0]
+            if lib.tb_apply(action) < 0:
+                raise SystemExit("prefix failed")
+            if lib.tb_state(0) == PH_DONE:
+                raise SystemExit(f"root {root} is past the deal's end")
+        seat, phase = lib.tb_state(1), lib.tb_state(0)
+        start = context(seat)
+        row = {"root": root, "seat": seat, "phase": phase, "legal": len(legal(seat)),
+               "argmax": {role: network_argmax(role, seat) for role in (1, 2)} if phase in (0, 1) else {}}
+        for mode in (2, 4):
+            if (lib.tb_configure_bot(mode, mask) or lib.tb_configure_inference(8, 1)
+                    or lib.tb_restore_context(seat, start[0], start[1], start[2])):
+                raise SystemExit("mode switch failed")
+            action = lib.tb_choose(seat)
+            if action < 0:
+                raise SystemExit(f"tb_choose = {action}")
+            row[mode] = {"action": action, "values": values(), "context": context(seat)}
+        rows.append(row)
+    lib.tb_dispose()
+    return {"rows": rows}
 
 
 if __name__ == "__main__":

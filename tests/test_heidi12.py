@@ -121,8 +121,9 @@ def test_controller_refuses_a_mode_whose_network_is_missing():
     r = harness("refuse")
     assert r["load_role_3"] == -1 and r["configure_0"] == -1
     assert r["configure_01"] == r["configure_02"] == r["configure_012"] == 0
+    # Mode 4 (Heidi 1.2) reads all three roles: role 2 as the anchor, role 1 as the likelihood model.
     assert r["bot_01"] == {"-1": -1, "0": 0, "1": 0, "2": 0, "3": -1, "4": -1, "5": -1}
-    assert r["bot_02"] == {"-1": -1, "0": -1, "1": -1, "2": -1, "3": 0, "4": 0, "5": -1}
+    assert r["bot_02"] == {"-1": -1, "0": -1, "1": -1, "2": -1, "3": 0, "4": -1, "5": -1}
     assert r["bot_012"] == {"-1": -1, "0": 0, "1": 0, "2": 0, "3": 0, "4": 0, "5": -1}
     assert r["choose_mode0_02"] == -1 and r["choose_mode0_01"] >= 0 and r["choose_mode0_012"] >= 0
     gates = {"0": {"inference": -1, "bids": -1, "net_context": -1},
@@ -131,14 +132,15 @@ def test_controller_refuses_a_mode_whose_network_is_missing():
              "3": {"inference": -1, "bids": -1, "net_context": 0},
              "4": {"inference": 0, "bids": 0, "net_context": -1}}
     assert r["gates_012"] == gates
-    assert r["gates_01"] == {m: gates[m] for m in "012"} and r["gates_02"] == {m: gates[m] for m in "34"}
+    assert r["gates_01"] == {m: gates[m] for m in "012"} and r["gates_02"] == {"3": gates["3"]}
     assert r["inference_01"] == {"-1": -1, "0": 0, "1": 0, "2": -1, "3": -1}
     assert r["inference_02"] == {"-1": -1, "0": 0, "1": -1, "2": 0, "3": -1}
     assert r["inference_012"] == {"-1": -1, "0": 0, "1": 0, "2": 0, "3": -1}
 
 
 def test_mode4_anchor_is_the_role2_network_and_mode2_the_role1_network():
-    """Anchor-only bids (tb_configure_bids(1)) return the anchor itself, with no search or RNG draw."""
+    """Anchor-only bids (tb_configure_bids(1)) return the anchor itself, with no search or RNG draw:
+    role 2's argmax in mode 4 (Heidi 1.2's anchor), role 1's in mode 2."""
     seeds = ",".join(map(str, range(16)))
     for mode, role in ((4, "2"), (2, "1")):
         rows = harness("anchor", mode, "0,1,2", seeds)["rows"]
@@ -159,6 +161,54 @@ def test_mode3_plays_role2_and_restores_cursors_like_mode1():
             assert d["cursors_moved"] and d["greedy_checked"] >= 16 and d["greedy_equal"], (mode, d)
         actions[mode] = [d["actions"] for d in deals]
     assert actions[1] != actions[3]
+
+
+def keep_rule(values: list, anchor: int, margin: float) -> int:
+    """tb_choose's non-adaptive keep rule from its recorded values: the search's first maximum, or
+    the anchor when its value is within the margin of it."""
+    ids, v = [i for i, _ in values], [float.fromhex(h) for _, h in values]
+    best = max(range(len(v)), key=lambda i: (v[i], -i))
+    return anchor if v[ids.index(anchor)] >= v[best] - margin else ids[best]
+
+
+def check_anchor_only(rows: list, adaptive: bool) -> dict:
+    """Mode 4 against mode 2 from the same position and cursor (tests/tb_controller.py keeprule):
+    the search is the same (role 0 rollouts, role 1 likelihood), so values and cursors are always
+    equal; where roles 1 and 2 have the same argmax the decisions are equal bit for bit, and where
+    they differ only the keep rule can differ."""
+    counts = {"agree": 0, "disagree": 0, "kept_both": 0}
+    for row in rows:
+        two, four = row["2"], row["4"]
+        assert two["values"] == four["values"] and two["context"] == four["context"], row["root"]
+        argmax = row["argmax"]
+        if not argmax or not two["values"] or argmax["1"] == argmax["2"]:
+            assert two == four, row["root"]
+            counts["agree"] += bool(argmax and two["values"])
+            continue
+        counts["disagree"] += 1
+        if adaptive:  # the adaptive bid search's leader is not recomputable from its means
+            searched = {m["action"] for m, role in ((two, "1"), (four, "2")) if m["action"] != argmax[role]}
+            assert len(searched) <= 1, row
+        else:
+            margin = 0.03 if row["phase"] == 0 else 0.003
+            assert two["action"] == keep_rule(two["values"], argmax["1"], margin), row
+            assert four["action"] == keep_rule(four["values"], argmax["2"], margin), row
+        counts["kept_both"] += two["action"] == argmax["1"] and four["action"] == argmax["2"]
+    return counts
+
+
+def test_mode4_is_mode2_with_role2_as_the_anchor_only():
+    """Heidi 1.2 (anchor only): bids, play and sooli phases at W128 PIB8 with a person marked, and the
+    adaptive bid search at W256. Mode 4 equals mode 2 bit for bit (action, values and all seven
+    cursor words) where roles 1 and 2 agree; elsewhere values and cursors are still equal and each
+    mode's action is its own anchor's keep rule. A role-2 likelihood model would change the values."""
+    roots = ",".join(f"{s}:{m}" for s in range(8) for m in (0, 1, 2, 3, 5, 9, 17, 26, 35, 44))
+    counts = check_anchor_only(harness("keeprule", 128, "1", roots)["rows"], adaptive=False)
+    assert counts["agree"] >= 40 and counts["disagree"] >= 10 and counts["kept_both"] >= 5, counts
+    bids = harness("keeprule", 256, "-", "0:3,1:0,2:1,3:0,4:2,5:3,6:1,7:0")["rows"]
+    assert all(row["phase"] == 0 and row["argmax"] for row in bids)
+    counts = check_anchor_only(bids, adaptive=True)
+    assert counts["agree"] >= 1 and counts["disagree"] >= 1, counts
 
 
 def test_modes_0_1_2_are_bit_identical_to_the_heidi11_controller(before_library):
@@ -211,7 +261,8 @@ def test_compact_controller_rejects_two_networks_and_other_modes(tmp_path):
 def test_compact_mode2_equals_the_heidi11_controller_and_modes_switch_exactly(before_library):
     """W1024/PIB8 on fixed engine roots: CompactController mode 2 (three networks loaded) equals mode 2
     of the old build (roles {0, 1}); switching 2 -> 4 -> 2 per call repeats mode 2 exactly, and the
-    switched mode 4 equals a controller created in mode 4. Values differ between the modes in play."""
+    switched mode 4 equals a controller created in mode 4. Mode 4 (anchor only) has mode 2's values and
+    cursors on every root and its decision wherever roles 1 and 2 have the same argmax."""
     reference = harness("rawpib", "0,1", library=before_library)["rows"]
     switched = harness("compact", "2,4,2")
     assert not switched["torch"]
@@ -219,4 +270,13 @@ def test_compact_mode2_equals_the_heidi11_controller_and_modes_switch_exactly(be
     assert [run["controller_mode"] for run in switched["runs"]] == [2, 4, 2]
     assert first == reference and again == reference
     assert harness("compact", "4")["runs"][0]["rows"] == four
-    assert any(a["values"] != b["values"] for a, b in zip(first, four))
+    for a, b, argmax, phase in zip(first, four, switched["argmax"], switched["phases"]):
+        assert a["values"] == b["values"] and a["context"] == b["context"]
+        if not argmax or not a["values"] or argmax["1"] == argmax["2"]:
+            assert a == b
+        else:
+            if phase == 0:  # W1024 bids use the adaptive search; its leader is the shared non-anchor
+                assert len({r["action"] for r, role in ((a, "1"), (b, "2")) if r["action"] != argmax[role]}) <= 1
+            else:
+                assert (a["action"], b["action"]) == (keep_rule(a["values"], argmax["1"], 0.003),
+                                                      keep_rule(a["values"], argmax["2"], 0.003))

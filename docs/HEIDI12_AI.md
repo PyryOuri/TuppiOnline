@@ -1,23 +1,37 @@
 # Heidi 1.2 and Nelli 1.1: AI side (2026-10-23)
 
-Built to `audit_deliverables/tuppi_base_network_task_20261022/release/RELEASE_CONTRACT.md`.
-Branch `feature/heidi12-20261023` from `b30763c` (the Heidi 1.1 AI source). The new
-bots are the Heidi 1.1 and Nelli 1.0 controllers with a third network role: the 768x4
-encoder-2 QNet in `models/vrpo4_final.pt`. Today that file is the pilot stand-in
-(sha256 `bd1342e5…`); this document makes no strength claim about it.
+Built to `audit_deliverables/tuppi_base_network_task_20261022/release/RELEASE_CONTRACT.md`,
+including its amendment of 2026-10-23 ("anchor only"). Branch `feature/heidi12-20261023`
+from `b30763c` (the Heidi 1.1 AI source). The new bots are the Heidi 1.1 and Nelli 1.0
+controllers with a third network role: the 768x4 encoder-2 QNet in
+`models/vrpo4_final.pt`. Heidi 1.2 uses it only as its anchor (the keep rule for bids and
+play); its play-inference likelihood model stays VRPO3 (role 1) and its rollouts VRPO1
+(role 0). Nelli 1.1 uses it for its policy and its safety net. Today that file is the
+pilot stand-in (sha256 `bd1342e5…`); this document makes no strength claim about it.
 
 ## Native controller (`native/tuppi_browser.c`)
 
 Roles: 0 rollouts (VRPO1 256x2), 1 anchor (VRPO3 512x4), 2 the new network (768x4).
-`policy_model()` returns role 2 in modes 3 and 4 and role 1 otherwise; every decision-path
-use of the anchor (lite policy, safety-net likelihood, search anchor, bid anchor, play
-inference likelihood) goes through it. Rollouts always use role 0.
+Two helpers pick the decision-path networks; rollouts always use role 0:
+
+- `anchor_model()`: role 2 in modes 3 and 4, role 1 otherwise. The search's keep rule for
+  bids (margin 0.03) and play (0.003), the anchor-only bid (`tb_configure_bids(1)`) and
+  the lite policy of modes 1 and 3.
+- `likelihood_model()`: role 2 in mode 3 only, role 1 otherwise. The play-inference
+  likelihood (`tc_env_set_belief` in `tb_configure_bot` and `tb_configure_inference`,
+  modes 2 and 4) and the safety net's belief in modes 1 and 3 (the lite policy's own
+  network).
+
+So mode 4 searches exactly as mode 2 (same worlds, rollouts, likelihood weights, values and
+cursors) and differs only where the keep rule's anchor (role 2 instead of role 1) has a
+different argmax. `mode_ready(mode)` requires every network the mode reads: role 1 for modes
+0-2, role 2 for mode 3, roles 1 and 2 for mode 4 (role 0 is required by `tb_configure`).
 
 ```c
 int  tb_load_model(int role /* 0..2 */, int in_dim, int width, int blocks, int encoder,
                    int count, const float *params);
 int  tb_configure(int n_worlds, const double *equity);   /* role 0 and role 1 or 2, else -1 */
-int  tb_configure_bot(int mode /* 0..4 */, int people);  /* -1 if the mode's role is not loaded */
+int  tb_configure_bot(int mode /* 0..4 */, int people);  /* -1 unless the mode's roles are loaded (mode 4: 0, 1, 2) */
 int  tb_configure_inference(int mult, int lanes);         /* modes 2 and 4 */
 int  tb_configure_bids(int mode);                         /* 1 only in modes 2 and 4 */
 int  tb_restore_net_context(int seat, uint32_t glo, uint32_t ghi, uint32_t blo, uint32_t bhi); /* modes 1, 3 */
@@ -27,15 +41,18 @@ void tb_dispose(void);                                    /* frees all three rol
 
 | Mode | Bot | Network roles | Same as |
 |---|---|---|---|
-| 0 | legacy search | 0, 1 | unchanged |
-| 1 | Nelli 1.0 (lite C1H) | 1 (+0 loaded) | unchanged |
-| 2 | Heidi 1.0 / 1.1 (search, PIB) | 0, 1 | unchanged |
-| 3 | Nelli 1.1 | 2 (+0 loaded) | mode 1 with role 2 |
-| 4 | Heidi 1.2 | 0, 2 | mode 2 with role 2 as anchor and likelihood |
+| Mode | Bot | Anchor | Likelihood | Network roles read | Same as |
+|---|---|---|---|---|---|
+| 0 | legacy search | 1 | (none) | 0, 1 | unchanged |
+| 1 | Nelli 1.0 (lite C1H) | 1 | 1 | 1 (+0 loaded) | unchanged |
+| 2 | Heidi 1.0 / 1.1 (search, PIB) | 1 | 1 | 0, 1 | unchanged |
+| 3 | Nelli 1.1 | 2 | 2 | 2 (+0 loaded) | mode 1 with role 2 |
+| 4 | Heidi 1.2 | 2 | 1 | 0, 1, 2 | mode 2 with role 2 as the anchor only |
 
 `tb_configure` still leaves mode 0; with only roles {0, 2} loaded, `tb_choose` and
-`tb_choose_observation` return -1 until `tb_configure_bot(3 or 4)`. No function was
-added or removed, so the WASM export list is unchanged.
+`tb_choose_observation` return -1 until `tb_configure_bot(3)`, and mode 4 is refused
+(it needs role 1 for the likelihood). No function was added or removed, so the WASM
+export list is unchanged.
 
 ## Hosted Python
 
@@ -101,23 +118,37 @@ Sunday (final weights): copy the actor to `models/vrpo4_final.pt`, then
   deals, W128), mode 1 (5 deals, people marked and not), mode 2 (W128 PIB8 with people,
   2 deals including sooli offer/give/return/play; W256 PIB4 for the adaptive bid search).
   The same comparison was also run by hand against a build saved before editing
-  (`native/libtuppi_before.dylib`, untracked): identical.
+  (`native/libtuppi_before.dylib`, untracked): identical. After the anchor-only change
+  (2026-10-23) the test passes again against `b30763c` and, with
+  `TUPPI_BEFORE_LIBRARY` set to a build of `12a1a1f` (the previous Heidi 1.2 controller),
+  against that build too; mode 3 traces (4 deals with a person marked on roles {0, 2}, 2
+  deals on roles {0, 1, 2}) are identical to `12a1a1f`'s.
+- Anchor only (`test_mode4_is_mode2_with_role2_as_the_anchor_only`): modes 2 and 4 decide
+  from the same position and restored cursor on 80 roots at W128 PIB8 with a person marked
+  (bids, play, sooli phases) and 8 bid roots at W256 (adaptive search). Values and all seven
+  cursor words are equal on every root; where roles 1 and 2 have the same argmax the whole
+  decision is equal; where they differ each mode's action is its own anchor's keep rule
+  (recomputed from the recorded values at W128). With the stand-in, 20 of 69 W128 roots with
+  a choice of bid or card have different argmaxes.
 - Hosted mode 2: `CompactController(mode=2)` with three networks loaded equals mode 2 of the
   old build (roles {0, 1}) at W1024/PIB8 on six fixed engine roots (actions, cursors,
   values exactly); switching 2 → 4 → 2 per call repeats mode 2 exactly and the switched
-  mode 4 equals a controller created in mode 4.
+  mode 4 equals a controller created in mode 4. Mode 4 has mode 2's values and cursors on
+  every root (on these six roots the two networks agree, so the decisions are equal too).
 - The browser's `deploy/qualify_compact.py` (TuppiBrowser `aa8a310`, fixture
   `compact-reference.json` `51c5fc19…`, from published WASM) passes on this controller with
   the three-network directory: 9 roots, phases {0, 1, 3, 4, 5, 6}, max value error 0.0,
   no PyTorch.
 - Mutation checks: a `policy_model()` that ignores role 2 fails the anchor and lite parity
-  tests; a changed mode-2 likelihood temperature fails both bit-identity tests.
+  tests; a changed mode-2 likelihood temperature fails both bit-identity tests. The
+  `12a1a1f` library (role 2 as the mode-4 likelihood) fails the anchor-only test (values
+  differ at the first play root) and the refusal test (mode 4 accepted without role 1).
 
 ## Tests
 
 `PYTHONPATH=<this tree>:<TuppiProject>/src TUPPI_NATIVE_LIBRARY=native/libtuppi.dylib nice -n 10 python -m pytest -q tests`:
-84 passed in 108 s (72 existing, unchanged, also 72 passed on the `b30763c` baseline; 12 new
-in `tests/test_heidi12.py`, about 105 s of the total). New tests, with
+85 passed in 117 s on 23 October after the anchor-only change (72 existing, unchanged, also
+72 passed on the `b30763c` baseline; 13 new in `tests/test_heidi12.py`). New tests, with
 `tests/tb_controller.py` as their subprocess harness:
 
 - V4 lite export equals the checkpoint bitwise (native forward); `shared_mlp` caches one
@@ -127,10 +158,12 @@ in `tests/test_heidi12.py`, about 105 s of the total). New tests, with
   Torch logits differ by at most about 1e-5).
 - Native mode 3 equals Python `LiteAgent(C1H, MODEL_V4)` and mode 1 equals `LiteAgent(C1H)`
   move for move and cursor for cursor on engine deals (339 and 226 decisions), no PyTorch.
-- Missing roles are refused (load role 3; configure with role 0 only; modes 3/4 without
-  role 2; modes 0-2 without role 1; per-mode gates of inference, bids, net context).
+- Missing roles are refused (load role 3; configure with role 0 only; mode 3 without role 2;
+  modes 0-2 without role 1; mode 4 without role 1 or role 2; per-mode gates of inference,
+  bids, net context).
 - Anchor-only bids: mode 4 returns role 2's argmax and mode 2 role 1's on 16 roots (4 of them
   tell the networks apart), with no RNG draw.
+- Mode 4 is mode 2 with role 2 as the anchor only (above, Verification).
 - Mode 3 on roles {0, 2}: bids and the first four tricks are role 2's argmax; a rebuilt
   controller with the prefix replayed and all cursors restored finishes 4 deals exactly;
   mode 1 likewise on role 1.

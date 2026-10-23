@@ -6,7 +6,8 @@ once; callers restore each seat's three-word context before every decision.
 The directory holds three networks (models.json, tools/export_compact.py):
 role 0 rollouts (VRPO1), role 1 anchor (VRPO3) and role 2 the Heidi 1.2
 network. Mode 2 is Heidi 1.0/1.1 (anchor and likelihood role 1), mode 4 is
-Heidi 1.2 (the same controller with role 2); rollouts are role 0 in both.
+Heidi 1.2 (the same controller with role 2 as the anchor only; likelihood
+role 1); rollouts are role 0 in both.
 """
 from __future__ import annotations
 
