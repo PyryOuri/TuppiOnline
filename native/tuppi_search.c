@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "tuppi_core.h"
+#include "tuppi_parallel.h"
 
 typedef uint64_t u64;
 #define SUIT_MASK(s) (0x1FFFULL << ((s) * 13))
@@ -36,8 +37,16 @@ static void fill_lfact(void *unused) {
   lfact[0] = 0;
   for (int i = 1; i < 53; i++) lfact[i] = lfact[i - 1] + log((double)i);
 }
+#if defined(__EMSCRIPTEN_PTHREADS__)
+#include <pthread.h>
+static void init_lfact_once(void) { fill_lfact(NULL); }
+#endif
 static void init_lfact(void) {
-#ifdef TC_PORTABLE
+#if defined(__EMSCRIPTEN_PTHREADS__)
+  /* Pool workers resolve rollouts' soolis in parallel (tuppi_parallel.c). */
+  static pthread_once_t once = PTHREAD_ONCE_INIT;
+  pthread_once(&once, init_lfact_once);
+#elif defined(TC_PORTABLE)
   /* One worker/module owns this serial portable runtime. */
   static int once;
   if (!once) { fill_lfact(NULL); once = 1; }
@@ -164,9 +173,11 @@ typedef struct {
 #define DP_CACHE 8
 static __thread DpTables *dp_cache = NULL;
 static __thread int dp_next = 0;
+// A pool worker frees its cache before it exits (tuppi_parallel.c).
+void tc_search_release_thread(void) { free(dp_cache); dp_cache = NULL; dp_next = 0; }
 
 static const DpTables *dp_tables(const int others[3], u64 free_cards, const int void_mask[4], const Tilt *tilt) {
-  if (!dp_cache) dp_cache = calloc(DP_CACHE, sizeof(DpTables));
+  if (!dp_cache) tc_thread_owns(dp_cache = calloc(DP_CACHE, sizeof(DpTables)));
   int voids[3];
   for (int j = 0; j < 3; j++) voids[j] = void_mask[others[j]] & 15;
   for (int i = 0; i < DP_CACHE; i++) {

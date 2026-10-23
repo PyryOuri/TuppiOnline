@@ -7,6 +7,7 @@
 #include <string.h>
 #include "tuppi_core.h"
 #include "tuppi_mlp.h"
+#include "tuppi_parallel.h"
 
 typedef struct TcEnv TcEnv;
 TcEnv *tc_env_new(int n, uint64_t seed);
@@ -32,6 +33,7 @@ void tc_set_rollout_chunk(int n);
 void tc_set_belief_lanes(int lanes);
 void tc_belief_profile(double *seconds, long *counts, int reset);
 int tc_belief_counters(double *out, int reset);
+void tc_set_dedup_worlds(int on);
 
 static TcDeal game;
 static int hand_order[4][14], hand_count[4];
@@ -43,6 +45,8 @@ static double last_values[TC_NUM_ACTIONS_V2];
 static int last_ids[TC_NUM_ACTIONS_V2], last_count;
 /* Additive API: old callers keep the original controller and 3-word context. */
 static int bot_mode, human_mask;
+/* 0: searched bids (the default); 1: the anchor's bid in the show phase. */
+static int bid_mode;
 static uint64_t gate_rngs[4], belief_rngs[4];
 static double match_equity[50];
 
@@ -67,9 +71,14 @@ int tb_configure(int n_worlds, const double *equity) {
   if (!models[0] || !models[1] || !equity || n_worlds < 1 || n_worlds > 1024 ||
       (n_worlds > 128 && n_worlds % 128)) return -1;
   worlds = n_worlds;
-  bot_mode = 0; human_mask = 0;
+  bot_mode = 0; human_mask = 0; bid_mode = 0;
   memcpy(match_equity, equity, sizeof match_equity);
   tc_set_showing_fix(1);
+#ifdef __EMSCRIPTEN__
+  /* Exact in WASM (row-independent kernel): each repeated world is played once
+   * and its value added once per copy, in order. The hosted library keeps it off. */
+  tc_set_dedup_worlds(1);
+#endif
   for (int s = 0; s < 4; ++s) {
     if (envs[s]) tc_env_free(envs[s]);
     envs[s] = tc_env_new(worlds * 26, (uint64_t)(2 * s));
@@ -89,7 +98,7 @@ int tb_configure(int n_worlds, const double *equity) {
 /* 0: unchanged search; 1: Heidi 0.5 (C1H); 2: Heidi 1.0 (PIB4 humans). */
 int tb_configure_bot(int mode, int people) {
   if (mode < 0 || mode > 2 || people < 0 || people > 15 || !envs[0]) return -1;
-  bot_mode = mode; human_mask = people;
+  bot_mode = mode; human_mask = people; bid_mode = 0;
   for (int s = 0; s < 4; ++s) {
     tc_env_set_belief(envs[s], mode == 2 ? models[1] : NULL, mode == 2 ? 4 : 0, 2.0, 0.5, 1);
     tc_env_set_belief_humans(envs[s], mode == 2 ? people & ~(1 << s) : 0, 4.0, 0.8);
@@ -101,10 +110,13 @@ int tb_configure_bot(int mode, int people) {
 }
 
 /* Search profile is explicit; execution backend never changes it. The old
- * configure_bot API retains PIB4 for existing callers and fixtures. */
+ * configure_bot API retains PIB4 for existing callers and fixtures. The
+ * threaded build keeps lanes - 1 workers for scoring and rollouts until
+ * tb_dispose; the single build has none. */
 int tb_configure_inference(int mult, int lanes) {
   if (bot_mode != 2 || (mult != 4 && mult != 8) || lanes < 1 || lanes > 4) return -1;
   tc_set_belief_lanes(lanes);
+  tc_parallel_start(lanes);
   for (int s = 0; s < 4; ++s)
     tc_env_set_belief(envs[s], models[1], mult, 2.0, 0.5, 1);
   return 0;
@@ -120,6 +132,26 @@ int tb_set_human_seats(int people) {
   return 0;
 }
 
+/* Bid profile of Heidi 1.0 (Heidi fast plan, Stage 3). Mode 0 searches the
+ * show phase as before. Mode 1 takes the anchor's bid there: the argmax of
+ * its logits over the legal bids with tb_choose's tie rule, no search, no RNG
+ * draw and no values recorded; every other phase is unchanged. Off unless a
+ * caller sets it; saves record it so a game never changes mode. */
+int tb_configure_bids(int mode) {
+  if (mode < 0 || mode > 1 || (mode == 1 && bot_mode != 2)) return -1;
+  bid_mode = mode;
+  return 0;
+}
+
+static int anchor_index(const TcObs *obs, const int *ids, int k) {
+  uint8_t features[2048]; float logits[TC_NUM_ACTIONS];
+  tc_encode_v(obs, features, tc_mlp_encoder(models[1]));
+  tc_mlp_forward(models[1], features, 1, logits);
+  int anchor = 0;
+  for (int i = 1; i < k; ++i) if (logits[ids[i]] > logits[ids[anchor]]) anchor = i;
+  return anchor;
+}
+
 int tb_belief_profile(double *out, int reset) {
   if (!out) return -1;
   long counts[2];
@@ -132,6 +164,7 @@ int tb_belief_profile(double *out, int reset) {
 int tb_belief_counters(double *out, int reset) { return out ? tc_belief_counters(out, reset) : -1; }
 
 void tb_dispose(void) {
+  tc_parallel_stop();
   for (int s = 0; s < 4; s++) { if (envs[s]) tc_env_free(envs[s]); envs[s] = NULL; }
   for (int role = 0; role < 2; role++) { tc_mlp_free(models[role]); models[role] = NULL; }
   last_count = 0;
@@ -341,6 +374,7 @@ static int choose_observation(int seat, const TcObs *observation, const int *leg
       best = argmax(values, k);
     }
   } else {
+    if (obs.phase == TC_PH_SHOW && bid_mode == 1) return ids[anchor_index(&obs, ids, k)];
     /* Preserve the current v3 controller's persistent sooli setting. */
     if (obs.phase == TC_PH_SHOW && worlds > 128) best = adaptive(seat, &obs, ids, k, values);
     else {
@@ -348,11 +382,7 @@ static int choose_observation(int seat, const TcObs *observation, const int *leg
       best = argmax(values, k);
     }
     if (best < 0) return -3;
-    uint8_t features[2048]; float logits[TC_NUM_ACTIONS];
-    tc_encode_v(&obs, features, tc_mlp_encoder(models[1]));
-    tc_mlp_forward(models[1], features, 1, logits);
-    int anchor = 0;
-    for (int i = 1; i < k; ++i) if (logits[ids[i]] > logits[ids[anchor]]) anchor = i;
+    int anchor = anchor_index(&obs, ids, k);
     double margin = obs.phase == TC_PH_SHOW ? 0.03 : 0.003;
     if (values[anchor] >= values[best] - margin) best = anchor;
   }

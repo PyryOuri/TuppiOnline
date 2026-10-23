@@ -5,9 +5,6 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef __EMSCRIPTEN_PTHREADS__
-#include <pthread.h>
-#endif
 
 #include "tuppi_core.h"
 
@@ -66,14 +63,11 @@ typedef struct {
 void tc_env_set_exact_speed(TcEnv *e, int enabled) { e->exact_speed = enabled != 0; }
 
 // Parallel loops (every iteration touches only its own game, so the results
-// do not depend on the order). A batch job that already runs one process per
-// core can switch them off (tc_set_parallel(0)) to avoid oversubscribing the
-// machine with each process's worker threads.
-static int parallel_loops = 1;
-void tc_set_parallel(int on) { parallel_loops = on != 0; }
+// do not depend on the order); tc_set_parallel(0) in tuppi_parallel.c turns
+// them off.
 #ifndef TC_PORTABLE
 static void par_apply(size_t n, void (^block)(size_t)) {
-  if (!parallel_loops) {
+  if (!tc_parallel_loops) {
     for (size_t i = 0; i < n; i++) block(i);
     return;
   }
@@ -142,7 +136,12 @@ TcEnv *tc_env_new(int n, uint64_t seed) {
   return e;
 }
 
-void tc_env_free(TcEnv *e) { free(e->inc_acc); free(e->inc_list); free(e->inc_len); free(e->g); free(e); }
+// NULL is allowed (tb_configure frees envs that may not exist yet; in WASM the
+// read through NULL happened to land on zeroed memory, natively it crashes).
+void tc_env_free(TcEnv *e) {
+  if (!e) return;
+  free(e->inc_acc); free(e->inc_list); free(e->inc_len); free(e->g); free(e);
+}
 
 void tc_env_set_team_rollout(TcEnv *e, const struct TcMlpS *team_net) { e->team_net = team_net; e->team_side = -1; }
 
@@ -561,6 +560,123 @@ static void forward_games(TcEnv *e, const TcMlp *m, const int *games, int rows, 
   free(h0);
 }
 
+// The four parallel regions of play_out, one index each (tc_parallel_for):
+// value-leaf chunks, sooli resolutions, solver-tail chunks and rollout chunks.
+// Each index touches only its own games and its own slots of total[].
+typedef struct { TcEnv *e; const Leaf *leaf; const int *idx; int todo, chunk; double *total; } LeafWork;
+static void leaf_chunk(void *argument, size_t c) {
+  const LeafWork *w = argument;
+  const Leaf *leaf = w->leaf;
+  int lo = (int)c * w->chunk, hi = lo + w->chunk < w->todo ? lo + w->chunk : w->todo, rows = hi - lo;
+  uint8_t *feat = malloc((size_t)rows * P_DIM);
+  float *v = malloc(sizeof(float) * (size_t)rows);
+  for (int r = 0; r < rows; r++) {
+    const TcDeal *d = &w->e->g[w->idx[lo + r]].d;
+    tc_encode_pi(d, leaf->bot_team >= 0 && (d->cur & 1) == leaf->bot_team, feat + (size_t)r * P_DIM);
+  }
+  tc_mlp_forward(leaf->v, feat, rows, v);
+  for (int r = 0; r < rows; r++) {
+    int i = w->idx[lo + r];
+    TcDeal *d = &w->e->g[i].d;
+    w->total[i] += (d->cur & 1) == 0 ? (double)v[r] : -(double)v[r];  // v: side to move
+    d->phase = TC_PH_DONE;  // valued; no deal result is recorded
+  }
+  free(feat);
+  free(v);
+}
+
+typedef struct { TcEnv *e; const int *idx; u64 base; double *total; } SooliWork;
+static void sooli_game(void *argument, size_t j) {
+  const SooliWork *w = argument;
+  u64 local = w->base ^ (0x9E3779B97F4A7C15ULL * (u64)(w->idx[j] + 1));
+  splitmix(&local);
+  resolve_sooli(w->e, w->idx[j], &local, w->total);
+}
+
+typedef struct { TcEnv *e; const int *idx; int todo; const float (*buckets)[2][14]; uint8_t *utility_done; double *total; } TailWork;
+static void tail_chunk(void *argument, size_t c) {
+  const TailWork *w = argument;
+  int lo = (int)c * 32, hi = lo + 32 < w->todo ? lo + 32 : w->todo;
+  for (int j = lo; j < hi; j++) {
+    TcDeal *d = &w->e->g[w->idx[j]].d;
+    if (w->buckets) {
+      const int row = w->idx[j], decl = d->contract == TC_RAMI ? (d->declarer & 1) : 0;
+      w->total[row] += (double)tc_dd_reward_bucket(d, w->buckets[d->contract][decl]);
+      w->utility_done[row] = 1;
+    } else {
+      tc_finish_with_tricks(d, tc_dd_team0_tricks(d));
+      record_if_done(w->e, w->idx[j], w->total);
+    }
+  }
+}
+
+typedef struct { TcEnv *e; const TcMlp *m; const int *idx; int live, chunk, enc, dim; double *total; } RolloutWork;
+static void rollout_step(void *argument, size_t c) {
+  const RolloutWork *w = argument;
+  TcEnv *e = w->e;
+  const TcMlp *m = w->m;
+  const int *idx = w->idx, enc = w->enc, dim = w->dim;
+  double *total = w->total;
+  int lo = (int)c * w->chunk, hi = lo + w->chunk < w->live ? lo + w->chunk : w->live, rows = hi - lo;
+  uint8_t *feat = malloc((size_t)rows * dim);
+  float *q = malloc(sizeof(float) * (size_t)rows * TC_NUM_ACTIONS);
+  int legal_ids[rows][TC_NUM_ACTIONS], legal_count[rows], feature_slot[rows], nforced = 0, network_rows = 0;
+  const int compact = e->exact_speed && !e->team_net && !e->inc_on;
+  TcObs ob;
+  for (int r = 0; r < rows; r++) {
+    TcDeal *d = &e->g[idx[lo + r]].d;
+    legal_count[r] = tc_legal(d, legal_ids[r]);
+    const int forced = legal_count[r] == 1;
+    nforced += forced;
+    feature_slot[r] = compact && forced ? -1 : compact ? network_rows++ : r;
+    if (feature_slot[r] >= 0) {
+      tc_observe(d, d->cur, &ob);
+      tc_encode_v(&ob, feat + (size_t)feature_slot[r] * dim, enc);
+    }
+  }
+  if (!e->exact_speed || nforced < rows) {
+    if (e->team_net && e->team_side >= 0) {
+      // Rows of the searching team's seats go to team_net, the rest to m.
+      uint8_t *ft = malloc((size_t)rows * dim), *fo = malloc((size_t)rows * dim);
+      float *qt = malloc(sizeof(float) * (size_t)rows * TC_NUM_ACTIONS);
+      float *qo = malloc(sizeof(float) * (size_t)rows * TC_NUM_ACTIONS);
+      int *which = malloc(sizeof(int) * (size_t)rows), nt = 0, no = 0;
+      for (int r = 0; r < rows; r++) {
+        int own = (e->g[idx[lo + r]].d.cur & 1) == e->team_side;
+        memcpy((own ? ft + (size_t)nt * dim : fo + (size_t)no * dim), feat + (size_t)r * dim, (size_t)dim);
+        which[r] = own ? nt++ : -1 - no++;
+      }
+      if (nt) tc_mlp_forward(e->team_net, ft, nt, qt);
+      if (no) tc_mlp_forward(m, fo, no, qo);
+      for (int r = 0; r < rows; r++) {
+        const float *src = which[r] >= 0 ? qt + (size_t)which[r] * TC_NUM_ACTIONS
+                                         : qo + (size_t)(-1 - which[r]) * TC_NUM_ACTIONS;
+        memcpy(q + (size_t)r * TC_NUM_ACTIONS, src, sizeof(float) * TC_NUM_ACTIONS);
+      }
+      free(ft); free(fo); free(qt); free(qo); free(which);
+    } else {
+      if (compact) tc_mlp_forward(m, feat, network_rows, q);
+      else forward_games(e, m, idx + lo, rows, feat, dim, q);
+    }
+  }
+  for (int r = 0; r < rows; r++) {
+    int i = idx[lo + r];
+    TcDeal *d = &e->g[i].d;
+    // tc_legal lists actions in increasing id order, so scanning it keeps
+    // numpy's "first maximum" tie-break over the masked row.
+    const int *legal = legal_ids[r];
+    int nl = legal_count[r], best = legal[0];
+    if (!e->exact_speed || nl > 1) {
+      const float *qr = q + (size_t)feature_slot[r] * TC_NUM_ACTIONS;
+      for (int t = 1; t < nl; t++) if (qr[legal[t]] > qr[best]) best = legal[t];
+    }
+    tc_apply(d, best);
+    record_if_done(e, i, total);
+  }
+  free(feat);
+  free(q);
+}
+
 // Plays every live game of e->g[0..n) to its end (or its value leaf) exactly as
 // the search's rollouts do: sooli phases by the heuristics (resolved in
 // parallel from one draw of rng), the solver tail for the last dd_left tricks,
@@ -588,25 +704,8 @@ static void play_out(TcEnv *e, const TcMlp *m, int n, int dd_left, uint64_t *rng
       for (int i = 0; i < n; i++)
         if (at_leaf_point(&e->g[i].d, dd_left, leaf->min_completed)) idx[todo++] = i;
       if (todo) {
-        const int chunk = 256;
-        TC_PARALLEL_BEGIN((size_t)(todo + chunk - 1) / chunk, c)
-          int lo = (int)c * chunk, hi = lo + chunk < todo ? lo + chunk : todo, rows = hi - lo;
-          uint8_t *feat = malloc((size_t)rows * P_DIM);
-          float *v = malloc(sizeof(float) * (size_t)rows);
-          for (int r = 0; r < rows; r++) {
-            const TcDeal *d = &e->g[idx[lo + r]].d;
-            tc_encode_pi(d, leaf->bot_team >= 0 && (d->cur & 1) == leaf->bot_team, feat + (size_t)r * P_DIM);
-          }
-          tc_mlp_forward(leaf->v, feat, rows, v);
-          for (int r = 0; r < rows; r++) {
-            int i = idx[lo + r];
-            TcDeal *d = &e->g[i].d;
-            total[i] += (d->cur & 1) == 0 ? (double)v[r] : -(double)v[r];  // v: side to move
-            d->phase = TC_PH_DONE;  // valued; no deal result is recorded
-          }
-          free(feat);
-          free(v);
-        TC_PARALLEL_END
+        LeafWork work = {e, leaf, idx, todo, 256, total};
+        tc_parallel_for((size_t)(todo + work.chunk - 1) / work.chunk, leaf_chunk, &work);
       }
     }
     // Rollouts that reached a sooli (most RAMI rollouts of a bid search pass
@@ -617,12 +716,8 @@ static void play_out(TcEnv *e, const TcMlp *m, int n, int dd_left, uint64_t *rng
     for (int i = 0; i < n; i++)
       if (e->g[i].d.phase >= TC_PH_SOOLI_OFFER) idx[ns++] = i;
     if (ns) {
-      const u64 base = splitmix(rng);
-      TC_PARALLEL_BEGIN((size_t)ns, j)
-        u64 local = base ^ (0x9E3779B97F4A7C15ULL * (u64)(idx[j] + 1));
-        splitmix(&local);
-        resolve_sooli(e, idx[j], &local, total);
-      TC_PARALLEL_END
+      SooliWork work = {e, idx, splitmix(rng), total};
+      tc_parallel_for((size_t)ns, sooli_game, &work);
     }
     if (dd_left > 0) {
       int todo = 0;
@@ -632,86 +727,15 @@ static void play_out(TcEnv *e, const TcMlp *m, int n, int dd_left, uint64_t *rng
           idx[todo++] = i;
       }
       if (todo) {
-        TC_PARALLEL_BEGIN((size_t)(todo + 31) / 32, c)
-          int lo = (int)c * 32, hi = lo + 32 < todo ? lo + 32 : todo;
-          for (int j = lo; j < hi; j++) {
-            TcDeal *d = &e->g[idx[j]].d;
-            if (buckets) {
-              const int row = idx[j], decl = d->contract == TC_RAMI ? (d->declarer & 1) : 0;
-              total[row] += (double)tc_dd_reward_bucket(d, buckets[d->contract][decl]);
-              utility_done[row] = 1;
-            } else {
-              tc_finish_with_tricks(d, tc_dd_team0_tricks(d));
-              record_if_done(e, idx[j], total);
-            }
-          }
-        TC_PARALLEL_END
+        TailWork work = {e, idx, todo, buckets, utility_done, total};
+        tc_parallel_for((size_t)(todo + 31) / 32, tail_chunk, &work);
       }
     }
     int live = 0;
     for (int i = 0; i < n; i++) if ((!utility_done || !utility_done[i]) && e->g[i].d.phase != TC_PH_DONE) idx[live++] = i;
     if (!live) break;
-    const int chunk = e->exact_speed ? 128 : rollout_chunk;
-    TC_PARALLEL_BEGIN((size_t)(live + chunk - 1) / chunk, c)
-      int lo = (int)c * chunk, hi = lo + chunk < live ? lo + chunk : live, rows = hi - lo;
-      uint8_t *feat = malloc((size_t)rows * dim);
-      float *q = malloc(sizeof(float) * (size_t)rows * TC_NUM_ACTIONS);
-      int legal_ids[rows][TC_NUM_ACTIONS], legal_count[rows], feature_slot[rows], nforced = 0, network_rows = 0;
-      const int compact = e->exact_speed && !e->team_net && !e->inc_on;
-      TcObs ob;
-      for (int r = 0; r < rows; r++) {
-        TcDeal *d = &e->g[idx[lo + r]].d;
-        legal_count[r] = tc_legal(d, legal_ids[r]);
-        const int forced = legal_count[r] == 1;
-        nforced += forced;
-        feature_slot[r] = compact && forced ? -1 : compact ? network_rows++ : r;
-        if (feature_slot[r] >= 0) {
-          tc_observe(d, d->cur, &ob);
-          tc_encode_v(&ob, feat + (size_t)feature_slot[r] * dim, enc);
-        }
-      }
-      if (!e->exact_speed || nforced < rows) {
-        if (e->team_net && e->team_side >= 0) {
-          // Rows of the searching team's seats go to team_net, the rest to m.
-          uint8_t *ft = malloc((size_t)rows * dim), *fo = malloc((size_t)rows * dim);
-          float *qt = malloc(sizeof(float) * (size_t)rows * TC_NUM_ACTIONS);
-          float *qo = malloc(sizeof(float) * (size_t)rows * TC_NUM_ACTIONS);
-          int *which = malloc(sizeof(int) * (size_t)rows), nt = 0, no = 0;
-          for (int r = 0; r < rows; r++) {
-            int own = (e->g[idx[lo + r]].d.cur & 1) == e->team_side;
-            memcpy((own ? ft + (size_t)nt * dim : fo + (size_t)no * dim), feat + (size_t)r * dim, (size_t)dim);
-            which[r] = own ? nt++ : -1 - no++;
-          }
-          if (nt) tc_mlp_forward(e->team_net, ft, nt, qt);
-          if (no) tc_mlp_forward(m, fo, no, qo);
-          for (int r = 0; r < rows; r++) {
-            const float *src = which[r] >= 0 ? qt + (size_t)which[r] * TC_NUM_ACTIONS
-                                             : qo + (size_t)(-1 - which[r]) * TC_NUM_ACTIONS;
-            memcpy(q + (size_t)r * TC_NUM_ACTIONS, src, sizeof(float) * TC_NUM_ACTIONS);
-          }
-          free(ft); free(fo); free(qt); free(qo); free(which);
-        } else {
-          if (compact) tc_mlp_forward(m, feat, network_rows, q);
-          else forward_games(e, m, idx + lo, rows, feat, dim, q);
-        }
-      }
-      for (int r = 0; r < rows; r++) {
-        int i = idx[lo + r];
-        TcDeal *d = &e->g[i].d;
-        // tc_legal lists actions in increasing id order, so scanning it keeps
-        // numpy's "first maximum" tie-break over the masked row.
-        const int *legal = legal_ids[r];
-        int nl = legal_count[r], best = legal[0];
-        if (!e->exact_speed || nl > 1) {
-          const float *qr = q + (size_t)feature_slot[r] * TC_NUM_ACTIONS;
-          for (int t = 1; t < nl; t++) if (qr[legal[t]] > qr[best]) best = legal[t];
-        }
-        tc_apply(d, best);
-        record_if_done(e, i, total);
-      }
-      free(feat);
-      free(q);
-    TC_PARALLEL_END
+    RolloutWork work = {e, m, idx, live, e->exact_speed ? 128 : rollout_chunk, enc, dim, total};
+    tc_parallel_for((size_t)(live + work.chunk - 1) / work.chunk, rollout_step, &work);
   }
   free(utility_done);
 }
@@ -846,39 +870,19 @@ static void belief_score_lane(const void *argument, int lane, int lanes) {
   free(feat); free(mask); free(act); free(owner); free(q);
 }
 
-// Runs fn(work, lane, lanes) for every lane. The pthread build prewarms three
-// workers: at most four lanes including the caller, and an unavailable
-// worker's lane runs on the caller. Every use partitions its work by lane
+// Runs fn(work, lane, lanes) for every lane on tc_parallel_for (the pthread
+// build's pool: at most four lanes including the caller; an unavailable
+// worker's lanes run on the others). Every use partitions its work by lane
 // into disjoint outputs, so no result depends on the number of lanes.
 typedef void (*LaneFn)(const void *work, int lane, int lanes);
-#ifdef __EMSCRIPTEN_PTHREADS__
-typedef struct { LaneFn fn; const void *work; int lane, lanes; } LaneJob;
-static void *lane_thread(void *argument) {
-  const LaneJob *job = argument;
-  job->fn(job->work, job->lane, job->lanes);
-  return NULL;
+typedef struct { LaneFn fn; const void *work; int lanes; } LaneCall;
+static void lane_index(void *argument, size_t lane) {
+  const LaneCall *call = argument;
+  call->fn(call->work, (int)lane, call->lanes);
 }
-#endif
 static void run_lanes(LaneFn fn, const void *work, int lanes) {
-#ifdef __EMSCRIPTEN_PTHREADS__
-  const int threads = lanes < 4 ? lanes : 4;
-  pthread_t workers[3];
-  int started[3] = {0};
-  LaneJob jobs[3];
-  for (int lane = 1; lane < threads; lane++) {
-    jobs[lane - 1] = (LaneJob){fn, work, lane, threads};
-    started[lane - 1] = pthread_create(&workers[lane - 1], NULL, lane_thread, &jobs[lane - 1]) == 0;
-  }
-  fn(work, 0, threads);
-  for (int lane = 1; lane < threads; lane++) {
-    if (started[lane - 1]) pthread_join(workers[lane - 1], NULL);
-    else fn(work, lane, threads);
-  }
-#else
-  TC_PARALLEL_BEGIN((size_t)lanes, lane)
-    fn(work, (int)lane, lanes);
-  TC_PARALLEL_END
-#endif
+  LaneCall call = {fn, work, lanes};
+  tc_parallel_for((size_t)lanes, lane_index, &call);
 }
 
 // Distinct-key scoring (Heidi fast plan, Stage 1; exact). A candidate's rows
@@ -1113,30 +1117,37 @@ int tc_search_worlds(TcEnv *e, const TcObs *o, int w, uint64_t *rng, TcDeal *out
   return 0;
 }
 
-static const int dedup_worlds = 0;
+// Repeated-world reuse (tc_set_dedup_worlds; Heidi fast plan, Stage 4). Off
+// natively: with OpenBLAS (the hosted library) fewer rollouts change the
+// matrix batches, so values are not bit-exact there and the hosted
+// qualification covers the library without it. The browser turns it on
+// (tb_configure), where the kernel is row-independent and it is exact.
+static int dedup_worlds = 0;
+void tc_set_dedup_worlds(int on) { dedup_worlds = on != 0; }
 static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *actions, int k, int w,
                        int dd_left, uint64_t *rng, double *values, double *per_world) {
   if (w * k > e->n) return -2;
   TcDeal world, *picked = NULL;
   // With play inference, resampling repeats worlds. In trick play the rollouts
-  // are deterministic in their world, so playing each distinct world once and
-  // counting it as often as it was drawn gives the same values. It is off
-  // (dedup_worlds = 0): in 12-process evaluations it made memory grow by about
-  // 90 MB a minute per process (2026-10-17, cause not found), and it saved only
-  // about 9% of CPU, with no wall time.
-  int *src = NULL, *slot = NULL, *copies = NULL, u = w;
+  // are deterministic in their world, so each distinct world is played once and
+  // its value is added once per drawn copy, in the drawn order: the same sums,
+  // bit for bit, as playing every copy (the earlier copies * value rounded
+  // differently). The memory growth once blamed on it (about 90 MB a minute per
+  // process in 12-process evaluations, 2026-10-17) came from worker threads'
+  // solver tables, never freed when the system retired an idle thread; they
+  // are now (tc_thread_owns), and the growth appears with or without reuse.
+  int *src = NULL, *slot = NULL, u = w;
   const int belief = belief_applies(e, o);
   if (belief) {
     picked = malloc(sizeof(TcDeal) * (size_t)w);
     src = malloc(sizeof(int) * (size_t)w);
     if (belief_worlds(e, o, w, rng, picked, src) != 0) { free(picked); free(src); return -1; }
     if (dedup_worlds && o->phase == TC_PH_PLAY) {
-      slot = malloc(sizeof(int) * (size_t)w); copies = calloc((size_t)w, sizeof(int));
+      slot = malloc(sizeof(int) * (size_t)w);
       u = 0;
       for (int j = 0; j < w; j++) {
         if (j == 0 || src[j] != src[j - 1]) picked[u++] = picked[j];
         slot[j] = u - 1;
-        copies[u - 1]++;
       }
     }
   }
@@ -1150,7 +1161,7 @@ static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *
   double *total = calloc((size_t)n, sizeof(double));
   int *idx = malloc(sizeof(int) * (size_t)n);
   for (int i = 0; i < n; i++) {
-    if (tc_apply(&e->g[i].d, actions[i % k]) != 0) { free(total); free(idx); free(slot); free(copies); return -3; }
+    if (tc_apply(&e->g[i].d, actions[i % k]) != 0) { free(total); free(idx); free(slot); return -3; }
     record_if_done(e, i, total);
   }
   e->team_side = e->team_net ? (o->seat & 1) : -1;
@@ -1170,14 +1181,14 @@ static int search_core(TcEnv *e, const TcMlp *m, const TcObs *o, const int32_t *
   const double sign = (o->seat & 1) == 0 ? 1.0 : -1.0;
   for (int a = 0; a < k; a++) {
     double s = 0.0;
-    if (slot) for (int wi = 0; wi < u; wi++) s += copies[wi] * total[wi * k + a];
+    if (slot) for (int wi = 0; wi < w; wi++) s += total[slot[wi] * k + a];
     else for (int wi = 0; wi < w; wi++) s += total[wi * k + a];
     values[a] = sign * (s / w);
   }
   if (per_world)
     for (int i = 0; i < w * k; i++) per_world[i] = sign * total[(slot ? slot[i / k] : i / k) * k + i % k];
   free(total);
-  free(idx); free(slot); free(copies);
+  free(idx); free(slot);
   return 0;
 }
 
