@@ -139,6 +139,16 @@ Sunday (final weights): copy the actor to `models/vrpo4_final.pt`, then
   `compact-reference.json` `51c5fc19…`, from published WASM) passes on this controller with
   the three-network directory: 9 roots, phases {0, 1, 3, 4, 5, 6}, max value error 0.0,
   no PyTorch.
+- Mode 4 against WASM (anchor only, 23 October): with `compact-reference-heidi12.json`
+  regenerated from the anchor-only WASM (TuppiBrowser `8300edd`, `tuppi.wasm` `34e88963…`),
+  the per-root value error of mode 4 (11 roots, actions and cursors exact) is 0.0 on every
+  root with all three macOS builds of `native/build.sh`: default (non-portable Accelerate),
+  `--blas` (portable + Accelerate BLAS) and `--portable`; `qualify_compact.py --mode 4` passes
+  at its 2e-6 tolerance with the default and `--blas` libraries, `--mode 2` (9 roots) too.
+  Before the change (role 2 as the likelihood model, the earlier fixture) the default build
+  differed by 4.2877287341980264e-05 on nolo-w1024 (the other 10 roots 0.0), the `--blas` and
+  `--portable` builds by 0.0. Mode 4 now scores with the same networks as mode 2, whose
+  values were already exact on every build tried (including the ARM64 OpenBLAS harness).
 - Mutation checks: a `policy_model()` that ignores role 2 fails the anchor and lite parity
   tests; a changed mode-2 likelihood temperature fails both bit-identity tests. The
   `12a1a1f` library (role 2 as the mode-4 likelihood) fails the anchor-only test (values
