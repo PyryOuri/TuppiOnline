@@ -138,7 +138,9 @@
           "enum": [
             "partner_aware_v1",
             "partner_aware_lead_v2",
-            "tuppi_ai_search_v1"
+            "tuppi_ai_search_v1",
+            "tuppi_ai_lite_c1h_v1",
+            "tuppi_ai_heidi10_pib8_v1"
           ]
         },
         "connected": {
@@ -269,7 +271,8 @@
         },
         "bot_profile": {
           "enum": [
-            "tuppi_ai_lite_c1h_v1"
+            "tuppi_ai_lite_c1h_v1",
+            "tuppi_ai_heidi10_pib8_v1"
           ]
         }
       }
@@ -336,6 +339,10 @@
               },
               "name": {
                 "type": "string"
+              },
+              "max_active_tables": {
+                "type": "integer",
+                "minimum": 1
               }
             }
           }
@@ -365,7 +372,8 @@
         "bot_profile": {
           "enum": [
             "tuppi_ai_search_v1",
-            "tuppi_ai_lite_c1h_v1"
+            "tuppi_ai_lite_c1h_v1",
+            "tuppi_ai_heidi10_pib8_v1"
           ]
         }
       }

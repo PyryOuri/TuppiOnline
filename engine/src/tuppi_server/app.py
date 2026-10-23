@@ -516,7 +516,7 @@ class TuppiASGIApp:
             self._require_fields(payload, required=set())
             runner = self._require_runner(room)
             if not room.paused and runner.concede(seat=session.seat):
-                self.rooms.persist(room)
+                await self.rooms.persist_async(room)
                 await self._broadcast_match(room.code)
                 self._schedule_ai_continuation(room.code)
             else:
@@ -567,11 +567,11 @@ class TuppiASGIApp:
                 await self._reject_submission(connection, payload, runner, "paused")
                 return
             async def publish_ai_action() -> None:
-                self.rooms.persist(room)
+                await self.rooms.persist_async(room)
                 await self._broadcast_match(room.code)
 
             async def publish_human_action() -> None:
-                self.rooms.persist(room)
+                await self.rooms.persist_async(room)
                 await self._broadcast_match(room.code)
 
             result = await runner.submit_async(
@@ -588,7 +588,7 @@ class TuppiASGIApp:
             if result.get("status") == "accepted":
                 if runner.terminal:
                     room.lifecycle = "completed"
-                self.rooms.persist(room)
+                await self.rooms.persist_async(room)
                 if runner.terminal:
                     self.rooms.record_finished_match(room)
             acknowledgement = {
@@ -784,7 +784,7 @@ class TuppiASGIApp:
         runner = self._require_runner(room)
 
         async def publish_ai_action() -> None:
-            self.rooms.persist(room)
+            await self.rooms.persist_async(room)
             await self._broadcast_match(room.code)
 
         await runner.run_ai_async(
@@ -792,11 +792,11 @@ class TuppiASGIApp:
             ai_action_delay_seconds=room.ai_action_delay_ms / 1000,
             paused=lambda: room.paused,
         )
-        self.rooms.persist(room)
+        await self.rooms.persist_async(room)
         await self._broadcast_match(room.code)
         if runner.terminal:
             room.lifecycle = "completed"
-            self.rooms.persist(room)
+            await self.rooms.persist_async(room)
             self.rooms.record_finished_match(room)
 
     async def _send_match_update(self, connection: Connection) -> None:

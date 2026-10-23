@@ -12,8 +12,9 @@ root = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(root / 'engine/src'), str(root / 'ai')]
 assert importlib.util.find_spec('torch') is None, 'PyTorch must not be installed in the lite image'
 assert not any(shutil.which(name) for name in ('cc', 'gcc', 'g++', 'make')), 'Compiler tools must stay in the build stage'
-assert {p.name for p in (root / 'ai/models').iterdir()} == {'vrpo3_final.lite.npz', 'equity_incumbent.json', 'hosted-models.lite.json'}
-assert {p.name for p in (root / 'ai/tuppi_ai').iterdir()} == {'__init__.py', 'native.py', 'bridge.py', 'lite.py'}
+assert {p.name for p in (root / 'ai/models').iterdir()} == {'vrpo3_final.lite.npz', 'equity_incumbent.json', 'hosted-models.lite.json', 'compact'}
+assert {p.name for p in (root / 'ai/models/compact').iterdir()} == {'models.json', 'vrpo1_actor_0504.f32', 'vrpo3_final.f32', 'equity.f64'}
+assert {p.name for p in (root / 'ai/tuppi_ai').iterdir()} == {'__init__.py', 'native.py', 'bridge.py', 'lite.py', 'compact.py'}
 from tuppi_server.hosted import verify_bot_identity
 from tuppi_ai.bridge import action_id
 from tuppi_ai.lite import lite_agents

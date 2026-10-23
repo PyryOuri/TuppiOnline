@@ -29,6 +29,9 @@ int tc_search_world_values(TcEnv *e, const TcMlp *m, const TcObs *o, const int32
                            int k, int w, int dd_left, uint64_t *rng, double *mean, double *out);
 void tc_set_showing_fix(int on);
 void tc_set_rollout_chunk(int n);
+void tc_set_belief_lanes(int lanes);
+void tc_belief_profile(double *seconds, long *counts, int reset);
+int tc_belief_counters(double *out, int reset);
 
 static TcDeal game;
 static int hand_order[4][14], hand_count[4];
@@ -68,7 +71,7 @@ int tb_configure(int n_worlds, const double *equity) {
   memcpy(match_equity, equity, sizeof match_equity);
   tc_set_showing_fix(1);
   for (int s = 0; s < 4; ++s) {
-    tc_env_free(envs[s]);
+    if (envs[s]) tc_env_free(envs[s]);
     envs[s] = tc_env_new(worlds * 26, (uint64_t)(2 * s));
     if (!envs[s]) return -2;
     tc_env_set_encoder(envs[s], tc_mlp_encoder(models[0]));
@@ -95,6 +98,43 @@ int tb_configure_bot(int mode, int people) {
     belief_rngs[s] = UINT64_C(0xBE11EF00) + s;
   }
   return 0;
+}
+
+/* Search profile is explicit; execution backend never changes it. The old
+ * configure_bot API retains PIB4 for existing callers and fixtures. */
+int tb_configure_inference(int mult, int lanes) {
+  if (bot_mode != 2 || (mult != 4 && mult != 8) || lanes < 1 || lanes > 4) return -1;
+  tc_set_belief_lanes(lanes);
+  for (int s = 0; s < 4; ++s)
+    tc_env_set_belief(envs[s], models[1], mult, 2.0, 0.5, 1);
+  return 0;
+}
+
+/* Seat ownership may change online. This must not reset a controller cursor
+ * or its persistent sooli setting. */
+int tb_set_human_seats(int people) {
+  if (people < 0 || people > 15 || !envs[0]) return -1;
+  human_mask = people;
+  for (int s = 0; s < 4; ++s)
+    tc_env_set_belief_humans(envs[s], bot_mode == 2 ? people & ~(1 << s) : 0, 4.0, 0.8);
+  return 0;
+}
+
+int tb_belief_profile(double *out, int reset) {
+  if (!out) return -1;
+  long counts[2];
+  tc_belief_profile(out, counts, reset);
+  out[5] = (double)counts[0]; out[6] = (double)counts[1];
+  return 0;
+}
+
+/* Exact work counters; returns how many were written. */
+int tb_belief_counters(double *out, int reset) { return out ? tc_belief_counters(out, reset) : -1; }
+
+void tb_dispose(void) {
+  for (int s = 0; s < 4; s++) { if (envs[s]) tc_env_free(envs[s]); envs[s] = NULL; }
+  for (int role = 0; role < 2; role++) { tc_mlp_free(models[role]); models[role] = NULL; }
+  last_count = 0;
 }
 
 int tb_init(const int32_t *cards, int dealer, int score0, int score1) {
@@ -263,11 +303,11 @@ static int adaptive(int seat, const TcObs *obs, const int *ids, int k, double *v
   free(rows); free(batch_rows); return lead;
 }
 
-int tb_choose(int seat) {
+static int choose_observation(int seat, const TcObs *observation, const int *legal, int k) {
   last_count = 0;
-  if (seat != game.cur || seat < 0 || seat > 3 || !envs[seat] || game.phase == TC_PH_DONE) return -1;
-  TcObs obs; tc_observe(&game, seat, &obs);
-  int ids[TC_NUM_ACTIONS_V2], k = tb_legal(seat, ids);
+  TcObs obs = *observation;
+  int ids[TC_NUM_ACTIONS_V2];
+  memcpy(ids, legal, sizeof(int) * k);
   if (k == 0) return -2;
   if (k == 1) return ids[0];
   if (bot_mode == 1) {
@@ -319,6 +359,34 @@ int tb_choose(int seat) {
   last_count = k;
   memcpy(last_ids, ids, sizeof(int) * k); memcpy(last_values, values, sizeof(double) * k);
   return ids[best];
+}
+
+int tb_choose(int seat) {
+  last_count = 0;
+  if (seat != game.cur || seat < 0 || seat > 3 || !envs[seat] || game.phase == TC_PH_DONE) return -1;
+  TcObs obs; tc_observe(&game, seat, &obs);
+  int ids[TC_NUM_ACTIONS_V2], k = tb_legal(seat, ids);
+  return choose_observation(seat, &obs, ids, k);
+}
+
+/* Trusted server adapter: only the acting seat's observation, never a full
+ * deal. Preserve the authoritative engine's legal-action order for ties and
+ * per-action RNG assignment. Validate its complete legal set before search. */
+int tb_choose_observation(const TcObs *obs, const int32_t *ids, int k) {
+  last_count = 0;
+  if (!obs || !ids || obs->seat > 3 || !envs[obs->seat] || k < 1 || k > TC_NUM_ACTIONS_V2 ||
+      obs->phase == TC_PH_DONE || obs->phase > TC_PH_SOOLI_PLAY || obs->dealer > 3 ||
+      obs->n_shows > 4 || obs->n_played > 52 || obs->n_decisions > 2 ||
+      (obs->hand >> 52) || obs->ruleset != 3) return -1;
+  int canonical[TC_NUM_ACTIONS_V2], count = tc_legal_obs(obs, canonical);
+  if (count != k) return -2;
+  for (int i = 0; i < k; ++i) {
+    int found = 0;
+    for (int j = 0; j < count; ++j) if (ids[i] == canonical[j]) ++found;
+    for (int j = 0; j < i; ++j) if (ids[i] == ids[j]) return -2;
+    if (found != 1) return -2;
+  }
+  return choose_observation(obs->seat, obs, ids, k);
 }
 
 int tb_values(int32_t *ids, double *values) {

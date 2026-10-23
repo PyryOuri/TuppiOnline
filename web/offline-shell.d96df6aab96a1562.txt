@@ -1,0 +1,6 @@
+<!doctype html>
+<html lang="fi">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Tuppi – käynnistyksen korjaus</title>
+<link rel="stylesheet" href="./recover.css"></head>
+<body><main><h1>Korjaa Tuppin käynnistys</h1><p>Sulje muut Tuppi-välilehdet ensin. Päivitys poistaa tämän pelin vanhan offline-käynnistyksen käytöstä ja lataa pelitiedostot uudelleen.</p><p>Tallennettu ottelu ja varmuuskopiot säilyvät.</p><button id="repair">Päivitä pelitiedostot</button><p id="status" role="status"></p><a id="open" href="./" hidden>Avaa Tuppi</a></main>
+<script type="module" src="./recover.mjs"></script></body></html>

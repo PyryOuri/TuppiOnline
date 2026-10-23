@@ -89,6 +89,7 @@ TEST_AI_PROFILE_KEY = "first_legal_action_v1"
 #: sampled worlds with a learned rollout policy; plays sooli itself.
 TUPPI_AI_PROFILE_KEY = "tuppi_ai_search_v1"
 HEIDI_LITE_PROFILE_KEY = "tuppi_ai_lite_c1h_v1"
+HEIDI_SEARCH_PROFILE_KEY = "tuppi_ai_heidi10_pib8_v1"
 TUPPI_AI_WORLDS = 1024
 
 
@@ -155,6 +156,11 @@ def _construct_ai_agents(
 ) -> dict[int, object]:
     if profile_key == TEST_AI_PROFILE_KEY:
         return {seat: FirstLegalActionAgent() for seat in seats}
+    if profile_key == HEIDI_SEARCH_PROFILE_KEY:
+        if os.environ.get("TUPPI_HOSTED_BOT") != "1":
+            raise ValueError("Heidi 1.0 online requires the hosted compact worker")
+        from .hosted_bot import HostedHeidiAgent
+        return {seat: HostedHeidiAgent(seat) for seat in seats}
     if profile_key == HEIDI_LITE_PROFILE_KEY:
         if os.environ.get("TUPPI_HOSTED_BOT") == "1":
             from .hosted_bot import hosted_agents

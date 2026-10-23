@@ -42,8 +42,17 @@ async function runTimeline(data) {
 // at a time; `delay` paces the moves and can change while it plays.
 const botProfiles = {fast: {worlds: 128, bot: 'legacy'}, full: {worlds: 1024, bot: 'legacy'},
   heidi05: {worlds: 128, bot: 'heidi05'}, heidi10: {worlds: 1024, bot: 'heidi10'}};
+// Profile -> runtime being created or ready. Each holds its own models and
+// WASM memory, so only the current game's (at most two) stay loaded, and
+// stopping the game releases them.
 const botRuntimes = new Map();
 let botGame = null;
+function releaseBotRuntimes(keep = []) {
+  for (const [name, created] of botRuntimes) if (!keep.includes(name)) {
+    botRuntimes.delete(name);
+    created.then(runtime => runtime.close(), () => {});
+  }
+}
 async function runBotMatch(data) {
   const game = {id: data.id, stopped: false, delay: Math.max(0, Math.min(5000, data.delay ?? 1000))};
   if (botGame) botGame.stopped = true;
@@ -51,10 +60,17 @@ async function runBotMatch(data) {
   const post = (type, payload) => postMessage({type, id: game.id, ...payload});
   try {
     const teams = Array.isArray(data.teams) && data.teams.length === 2 && data.teams.every(name => name in botProfiles) ? data.teams : ['fast', 'fast'];
-    for (const name of new Set(teams))
-      if (!botRuntimes.has(name)) botRuntimes.set(name, await Runtime.create({...botProfiles[name], humanSeats: [],
-        progress: message => post('botmatch-progress', {message})}));
-    const runtimes = [...new Set(teams)].map(name => botRuntimes.get(name)), team = teams.map(name => botRuntimes.get(name));
+    const names = [...new Set(teams)];
+    releaseBotRuntimes(names);
+    for (const name of names) if (!botRuntimes.has(name)) {
+      const created = Runtime.create({...botProfiles[name], humanSeats: [], progress: message => post('botmatch-progress', {message})});
+      created.catch(() => { if (botRuntimes.get(name) === created) botRuntimes.delete(name); });
+      botRuntimes.set(name, created);
+    }
+    const runtimes = await Promise.all(names.map(name => botRuntimes.get(name)));
+    // A newer game or a stop may have released these runtimes meanwhile.
+    if (game.stopped) return;
+    const team = teams.map(name => runtimes[names.indexOf(name)]);
     const runtime = runtimes[0], others = runtimes.slice(1), builder = new TimelineBuilder(runtime);
     // An optional starting score (tests start near the end): one side up, in fours, below 52.
     const start = data.score, valid = Array.isArray(start) && start.length === 2 && start.every(v => Number.isInteger(v) && v >= 0 && v < 52 && v % 4 === 0) && !(start[0] && start[1]);
@@ -85,7 +101,11 @@ self.onmessage = async ({data}) => {
   if (data.type === 'analyse') { analysisQueue = analysisQueue.then(() => runAnalysis(data)); return; }
   if (data.type === 'botmatch-start') { runBotMatch(data); return; }
   if (data.type === 'botmatch-delay') { if (botGame?.id === data.id && Number.isFinite(data.delay)) botGame.delay = Math.max(0, Math.min(5000, data.delay)); return; }
-  if (data.type === 'botmatch-stop') { if (botGame?.id === data.id) botGame.stopped = true; return; }
+  if (data.type === 'botmatch-stop') {
+    if (botGame?.id === data.id) botGame.stopped = true;
+    if (!botGame || botGame.stopped) releaseBotRuntimes();
+    return;
+  }
   if (data.type === 'timeline') { viewerQueue = viewerQueue.then(() => runTimeline(data)); return; }
   if (data.type === 'checkpoint-saved' && data.generation === generation) {
     const pending = checkpoints.get(data.checkpointId);

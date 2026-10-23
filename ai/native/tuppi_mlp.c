@@ -31,7 +31,7 @@ static float *copy_floats(const float *src, size_t n) {
 
 static float *copy_matrix(const float *src, int rows, int cols) {
 #ifdef TC_PORTABLE
-  /* Pack output columns contiguously for scalar and four-lane SIMD kernels. */
+  /* Pack output columns contiguously for scalar and SIMD kernels. */
   float *out = malloc(sizeof(float) * (size_t)rows * cols);
   for (int r = 0; r < rows; ++r)
     for (int c = 0; c < cols; ++c) out[(size_t)c * rows + r] = src[(size_t)r * cols + c];

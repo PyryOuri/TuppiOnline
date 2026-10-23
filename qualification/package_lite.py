@@ -15,7 +15,7 @@ model = 'vrpo3_final.lite.npz'
 assert hashlib.sha256((ai / 'models' / model).read_bytes()).hexdigest() == manifest[model]
 out.mkdir(exist_ok=False)
 (out / 'tuppi_ai').mkdir()
-for name in ('__init__.py', 'native.py', 'bridge.py', 'lite.py'):
+for name in ('__init__.py', 'native.py', 'bridge.py', 'lite.py', 'compact.py'):
     shutil.copyfile(ai / 'tuppi_ai' / name, out / 'tuppi_ai' / name)
 (out / 'native').mkdir()
 shutil.copyfile(ai / 'native/libtuppi.so', out / 'native/libtuppi.so')
@@ -25,4 +25,5 @@ equity = 'equity_incumbent.json'
 assert hashlib.sha256((ai / 'models' / equity).read_bytes()).hexdigest() == manifest[equity]
 shutil.copyfile(ai / 'models' / equity, out / 'models' / equity)
 (out / 'models/hosted-models.lite.json').write_text(json.dumps({name: manifest[name] for name in (model, equity)}, indent=2) + '\n')
+shutil.copytree(ai / 'models/compact', out / 'models/compact')
 print(json.dumps({'lite_package': str(out), 'model_sha256': manifest[model]}))

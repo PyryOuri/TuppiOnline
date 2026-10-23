@@ -31,6 +31,7 @@ MULTI_MATCH_ROOM_RECORD_SCHEMA_VERSION = "tuppi.server.room_record.v4"
 #: host or be a bot. Other rooms keep writing v2-v4.
 OPEN_SEATS_ROOM_RECORD_SCHEMA_VERSION = "tuppi.server.room_record.v5"
 HEIDI_ROOM_RECORD_SCHEMA_VERSION = "tuppi.server.room_record.v6"
+HEIDI_SEARCH_ROOM_RECORD_SCHEMA_VERSION = "tuppi.server.room_record.v7"
 POST_MATCH_ANALYSIS_RECORD_SCHEMA_VERSION = (
     "tuppi.server.post_match_analysis_record.v1"
 )
@@ -64,6 +65,7 @@ class FileRoomStore:
             MULTI_MATCH_ROOM_RECORD_SCHEMA_VERSION,
             OPEN_SEATS_ROOM_RECORD_SCHEMA_VERSION,
             HEIDI_ROOM_RECORD_SCHEMA_VERSION,
+            HEIDI_SEARCH_ROOM_RECORD_SCHEMA_VERSION,
         ):
             raise PersistenceError("unsupported room record schema_version")
         try:

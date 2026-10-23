@@ -5,6 +5,9 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef __EMSCRIPTEN_PTHREADS__
+#include <pthread.h>
+#endif
 
 #include "tuppi_core.h"
 
@@ -722,17 +725,32 @@ static void play_out(TcEnv *e, const TcMlp *m, int n, int dd_left, uint64_t *rng
 // runs) and not in sooli play. Per controller: off unless tc_env_set_belief.
 int tc_history_rows(const TcDeal *world, int seat_mask, int encoder, int max_rows,
                     uint8_t *feat, uint8_t *mask, int32_t *action);
+int tc_history_rows_when(const TcDeal *world, int seat_mask, int encoder, int max_rows,
+                         uint8_t *feat, uint8_t *mask, int32_t *action, uint8_t *when);
 #include <time.h>
 // Profiling (tc_belief_profile): seconds in [drawing candidates, history
 // replay + network (parallel), resampling, rollouts of belief searches, rollouts of uniform searches], and
 // counts [belief searches, uniform searches]. Process-wide, for measurement only.
 static double prof_s[5];
 static long prof_n[2];
+// Work counters (tc_belief_counters), summed on the calling thread after the
+// lanes join: [candidates drawn, network rows scored, distinct (seat, hand)
+// keys scored, uniform fallbacks, candidates whose history cannot be
+// replayed, belief searches, history replays, rows the per-candidate method
+// scores, searches scored by distinct keys]. Counting never touches results.
+enum { BC_CANDIDATES, BC_ROWS, BC_KEYS, BC_UNIFORM, BC_FAILED, BC_SEARCHES, BC_REPLAYS, BC_ROWS_PLAIN,
+       BC_KEY_SEARCHES, BC_COUNT };
+static long prof_c[BC_COUNT];
 static double now_s(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec + t.tv_nsec * 1e-9; }
 void tc_belief_profile(double *seconds, long *counts, int reset) {
   for (int i = 0; i < 5; i++) seconds[i] = prof_s[i];
   for (int i = 0; i < 2; i++) counts[i] = prof_n[i];
   if (reset) { memset(prof_s, 0, sizeof prof_s); memset(prof_n, 0, sizeof prof_n); }
+}
+int tc_belief_counters(double *out, int reset) {
+  for (int i = 0; i < BC_COUNT; i++) out[i] = (double)prof_c[i];
+  if (reset) memset(prof_c, 0, sizeof prof_c);
+  return BC_COUNT;
 }
 // Threads that score candidates (tc_set_belief_lanes). The scores do not
 // depend on it; more lanes finish sooner but contend for the matrix units.
@@ -765,7 +783,252 @@ static int belief_applies(const TcEnv *e, const TcObs *o) {
 // from rng, then scored in fixed blocks of BLOCK candidates in parallel (each
 // block's rows in one network call), so the result does not depend on the
 // number of cores and memory stays bounded at any world count.
-static int belief_worlds(const TcEnv *e, const TcObs *o, int w, uint64_t *rng, TcDeal *out, int *src) {
+// Each lane owns disjoint candidates. Preserve the original block size,
+// history-row order, per-candidate log additions and final ordered resampling.
+// Drawing and RNG remain on the calling thread.
+typedef struct {
+  const TcMlp *net;
+  int M, enc, dim, blocks, bot_seats, people, npass;
+  double inv_t, eps, h_inv_t, h_eps;
+  TcDeal *cand;
+  double *logw;
+  long *block_rows, *block_replays;  // per block, summed by the caller
+} BeliefWork;
+
+// One history row's log factor: log((1 - eps) softmax(q / T)[action] + eps / k)
+// over the row's legal mask. Both scoring paths call this one function.
+static double row_factor(const float *qr, const uint8_t *mr, int action, double pinv_t, double peps) {
+  double top = -1e300, sum = 0.0;
+  int legal = 0;
+  for (int a = 0; a < TC_NUM_ACTIONS; a++) if (mr[a] && qr[a] > top) top = qr[a];
+  for (int a = 0; a < TC_NUM_ACTIONS; a++) if (mr[a]) { sum += exp((qr[a] - top) * pinv_t); legal++; }
+  double p = exp((qr[action] - top) * pinv_t) / sum;
+  return log((1.0 - peps) * p + peps / legal);
+}
+
+static void belief_score_lane(const void *argument, int lane, int lanes) {
+  enum { MAXR = 64, BLOCK = 32 };
+  const BeliefWork *work = argument;
+  const TcMlp *net = work->net;
+  const int M = work->M, enc = work->enc, dim = work->dim, blocks = work->blocks;
+  const int bot_seats = work->bot_seats, people = work->people, npass = work->npass;
+  const double inv_t = work->inv_t, eps = work->eps;
+  const double h_inv_t = work->h_inv_t, h_eps = work->h_eps;
+  TcDeal *cand = work->cand;
+  double *logw = work->logw;
+  // One set of block buffers per lane; every block writes its rows before reading them.
+  uint8_t *feat = malloc((size_t)BLOCK * MAXR * dim), *mask = malloc((size_t)BLOCK * MAXR * TC_NUM_ACTIONS);
+  int32_t *act = malloc(sizeof(int32_t) * (size_t)BLOCK * MAXR), *owner = malloc(sizeof(int32_t) * (size_t)BLOCK * MAXR);
+  float *q = malloc(sizeof(float) * (size_t)BLOCK * MAXR * TC_NUM_ACTIONS);
+  for (int b = (int)lane; b < blocks; b += lanes) {
+    const int first = b * BLOCK, last = first + BLOCK < M ? first + BLOCK : M;
+    for (int pass = 0; pass < npass; pass++) {
+      const int pseats = pass == 0 ? bot_seats : people;
+      const double pinv_t = pass == 0 ? inv_t : h_inv_t, peps = pass == 0 ? eps : h_eps;
+      if (!pseats) continue;
+      int rows = 0;
+      for (int i = first; i < last; i++) {
+        if (logw[i] < -1e299) continue;
+        int r = tc_history_rows(&cand[i], pseats, enc, MAXR, feat + (size_t)rows * dim,
+                                mask + (size_t)rows * TC_NUM_ACTIONS, act + rows);
+        work->block_replays[b]++;
+        if (r < 0) { logw[i] = -1e300; continue; }  // the history cannot be replayed in this world
+        for (int j = 0; j < r; j++) owner[rows + j] = i;
+        rows += r;
+      }
+      if (rows) tc_mlp_forward(net, feat, rows, q);
+      work->block_rows[b] += rows;
+      for (int r = 0; r < rows; r++)
+        logw[owner[r]] += row_factor(q + (size_t)r * TC_NUM_ACTIONS, mask + (size_t)r * TC_NUM_ACTIONS,
+                                     act[r], pinv_t, peps);
+    }
+  }
+  free(feat); free(mask); free(act); free(owner); free(q);
+}
+
+// Runs fn(work, lane, lanes) for every lane. The pthread build prewarms three
+// workers: at most four lanes including the caller, and an unavailable
+// worker's lane runs on the caller. Every use partitions its work by lane
+// into disjoint outputs, so no result depends on the number of lanes.
+typedef void (*LaneFn)(const void *work, int lane, int lanes);
+#ifdef __EMSCRIPTEN_PTHREADS__
+typedef struct { LaneFn fn; const void *work; int lane, lanes; } LaneJob;
+static void *lane_thread(void *argument) {
+  const LaneJob *job = argument;
+  job->fn(job->work, job->lane, job->lanes);
+  return NULL;
+}
+#endif
+static void run_lanes(LaneFn fn, const void *work, int lanes) {
+#ifdef __EMSCRIPTEN_PTHREADS__
+  const int threads = lanes < 4 ? lanes : 4;
+  pthread_t workers[3];
+  int started[3] = {0};
+  LaneJob jobs[3];
+  for (int lane = 1; lane < threads; lane++) {
+    jobs[lane - 1] = (LaneJob){fn, work, lane, threads};
+    started[lane - 1] = pthread_create(&workers[lane - 1], NULL, lane_thread, &jobs[lane - 1]) == 0;
+  }
+  fn(work, 0, threads);
+  for (int lane = 1; lane < threads; lane++) {
+    if (started[lane - 1]) pthread_join(workers[lane - 1], NULL);
+    else fn(work, lane, threads);
+  }
+#else
+  TC_PARALLEL_BEGIN((size_t)lanes, lane)
+    fn(work, (int)lane, lanes);
+  TC_PARALLEL_END
+#endif
+}
+
+// Distinct-key scoring (Heidi fast plan, Stage 1; exact). A candidate's rows
+// for seat s (the observation, legal mask and action of each of s's unforced
+// past decisions) depend only on s and the candidate's current hand of s: the
+// public history is the same in every candidate, s's hand at each past
+// decision is its current hand plus the cards it played since, and
+// tc_observe/tc_legal read no other hand. Likewise whether a world replays:
+// tc_apply checks only the actor's own hand against public state, so a world
+// replays exactly when every seat's past actions are legal for that seat's
+// hand. So each distinct (s, hand) of every other seat is replayed once, from
+// its first candidate: if that replay succeeds, the hand is consistent and
+// (for a scored seat) its rows go through the same network and the same
+// row_factor; every candidate then adds its scored seats' factors in the
+// original order (by pass, then by history index). Off with
+// tc_set_belief_keys(0): the per-candidate path above, the reference.
+enum { KEY_ROWS = 16, KEY_BLOCK = 32 };
+// A seat has at most 14 unforced decisions (one show, thirteen cards), so a
+// pass over at most three seats stays below the per-candidate cap of 64 rows
+// and that cap never truncates a candidate the keys score.
+_Static_assert(3 * KEY_ROWS < 64, "per-candidate history rows are never truncated");
+static int belief_keys = 1;
+void tc_set_belief_keys(int on) { belief_keys = on != 0; }
+
+typedef struct {
+  const TcMlp *net;
+  int enc, dim, nkeys, kblocks, scored;
+  const TcDeal *cand;
+  const int *rep;            // the key's first candidate
+  const uint8_t *seat;       // the key's seat
+  const double *inv_t, *eps; // per seat: its pass's temperature and eps
+  int *nrows;                // rows per key; -1 if its world does not replay
+  uint8_t *when;             // [key * KEY_ROWS + j]: history index of the key's row j
+  double *factor;            // [key * KEY_ROWS + j]: its log factor
+  long *block_rows;          // per key block, summed by the caller
+} KeyWork;
+
+static void key_score_lane(const void *argument, int lane, int lanes) {
+  const KeyWork *work = argument;
+  const int dim = work->dim, cap = KEY_BLOCK * (KEY_ROWS + 1);
+  uint8_t *feat = malloc((size_t)cap * dim), *mask = malloc((size_t)cap * TC_NUM_ACTIONS), *when = malloc((size_t)cap);
+  int32_t *act = malloc(sizeof(int32_t) * (size_t)cap), *owner = malloc(sizeof(int32_t) * (size_t)cap);
+  float *q = malloc(sizeof(float) * (size_t)cap * TC_NUM_ACTIONS);
+  for (int b = lane; b < work->kblocks; b += lanes) {
+    const int first = b * KEY_BLOCK, last = first + KEY_BLOCK < work->nkeys ? first + KEY_BLOCK : work->nkeys;
+    int rows = 0;
+    for (int k = first; k < last; k++) {
+      // An unscored seat (the partner unless every seat is read) is only checked.
+      const int s = work->seat[k], emit = work->scored >> s & 1;
+      int r = tc_history_rows_when(&work->cand[work->rep[k]], emit << s, work->enc, KEY_ROWS + 1,
+                                   feat + (size_t)rows * dim, mask + (size_t)rows * TC_NUM_ACTIONS, act + rows,
+                                   when + rows);
+      if (r < 0 || r > KEY_ROWS) { work->nrows[k] = -1; continue; }
+      work->nrows[k] = r;
+      for (int j = 0; j < r; j++) owner[rows + j] = k;
+      rows += r;
+    }
+    if (rows) tc_mlp_forward(work->net, feat, rows, q);
+    work->block_rows[b] = rows;
+    for (int r = 0, j = 0; r < rows; r++) {
+      const int k = owner[r], s = work->seat[k];
+      j = r > 0 && owner[r - 1] == k ? j + 1 : 0;
+      work->when[(size_t)k * KEY_ROWS + j] = when[r];
+      work->factor[(size_t)k * KEY_ROWS + j] = row_factor(q + (size_t)r * TC_NUM_ACTIONS,
+          mask + (size_t)r * TC_NUM_ACTIONS, act[r], work->inv_t[s], work->eps[s]);
+    }
+  }
+  free(feat); free(mask); free(when); free(act); free(owner); free(q);
+}
+
+// Fills logw as belief_score_lane would (callers pass it zeroed) and returns 0,
+// or returns -1 with logw untouched; the caller then scores every candidate on
+// the plain path. That happens when a key's first candidate does not replay
+// (one of its seats is inconsistent and the keys cannot say which; the
+// sampler's worlds always replay) and when nearly every key is distinct
+// (early in a deal), where the keys would only add replays.
+static int belief_score_keys(const TcMlp *net, int M, int enc, int dim, int observer, int bot_seats, int people,
+                             int npass, const double inv_t[4], const double eps[4], const TcDeal *cand, double *logw) {
+  const int scored = bot_seats | people, others = 0xF & ~(1 << observer);
+  // Keys of each other seat in first-occurrence order.
+  int bits = 1;
+  while ((1 << bits) < 2 * M) bits++;
+  const size_t cap = (size_t)1 << bits;
+  uint64_t *slot_hand = malloc(sizeof(uint64_t) * cap);
+  int *slot_key = malloc(sizeof(int) * cap), *cand_key = malloc(sizeof(int) * 4 * (size_t)M);
+  int *rep = malloc(sizeof(int) * 3 * (size_t)M), nkeys = 0, nscored = 0;
+  uint8_t *kseat = malloc(3 * (size_t)M);
+  for (int s = 0; s < 4; s++) {
+    if (!(others >> s & 1)) continue;
+    memset(slot_key, 0xFF, sizeof(int) * cap);
+    for (int i = 0; i < M; i++) {
+      const uint64_t h = cand[i].hand[s];
+      size_t x = (size_t)((h * 0x9E3779B97F4A7C15ULL) >> (64 - bits));
+      while (slot_key[x] >= 0 && slot_hand[x] != h) x = (x + 1) & (cap - 1);
+      if (slot_key[x] < 0) {
+        slot_key[x] = nkeys; slot_hand[x] = h; rep[nkeys] = i; kseat[nkeys] = (uint8_t)s; nkeys++;
+        nscored += scored >> s & 1;
+      }
+      cand_key[(size_t)s * M + i] = slot_key[x];
+    }
+  }
+  free(slot_hand); free(slot_key);
+  int ok = (long)nscored * 16 <= (long)__builtin_popcount((unsigned)scored) * M * 15;
+  const int kblocks = (nkeys + KEY_BLOCK - 1) / KEY_BLOCK;
+  int *nrows = NULL;
+  uint8_t *when = NULL;
+  double *factor = NULL;
+  long *block_rows = NULL;
+  if (ok) {
+    nrows = malloc(sizeof(int) * (size_t)nkeys);
+    when = malloc((size_t)nkeys * KEY_ROWS);
+    factor = malloc(sizeof(double) * (size_t)nkeys * KEY_ROWS);
+    block_rows = calloc((size_t)kblocks, sizeof(long));
+    const KeyWork work = {net, enc, dim, nkeys, kblocks, scored, cand, rep, kseat, inv_t, eps,
+                          nrows, when, factor, block_rows};
+    run_lanes(key_score_lane, &work, belief_lanes < kblocks ? belief_lanes : kblocks);
+    for (int k = 0; k < nkeys; k++) ok &= nrows[k] >= 0;
+  }
+  if (ok) {
+    long rows_plain = 0;
+    for (int i = 0; i < M; i++)
+      for (int pass = 0; pass < npass; pass++) {
+        const int pseats = pass == 0 ? bot_seats : people;
+        if (!pseats) continue;
+        int ks[3], pos[3] = {0, 0, 0}, n = 0, total = 0;
+        for (int s = 0; s < 4; s++)
+          if (pseats >> s & 1) { ks[n] = cand_key[(size_t)s * M + i]; total += nrows[ks[n]]; n++; }
+        // The pass's rows in history order, as tc_history_rows emits them.
+        for (int r = 0; r < total; r++) {
+          int best = -1;
+          for (int j = 0; j < n; j++)
+            if (pos[j] < nrows[ks[j]] && (best < 0 ||
+                when[(size_t)ks[j] * KEY_ROWS + pos[j]] < when[(size_t)ks[best] * KEY_ROWS + pos[best]])) best = j;
+          logw[i] += factor[(size_t)ks[best] * KEY_ROWS + pos[best]++];
+        }
+        rows_plain += total;
+      }
+    for (int b = 0; b < kblocks; b++) prof_c[BC_ROWS] += block_rows[b];
+    prof_c[BC_ROWS_PLAIN] += rows_plain;
+    prof_c[BC_KEYS] += nkeys;
+    prof_c[BC_REPLAYS] += nkeys;
+    prof_c[BC_KEY_SEARCHES]++;
+  }
+  free(cand_key); free(rep); free(kseat); free(nrows); free(when); free(factor); free(block_rows);
+  return ok ? 0 : -1;
+}
+
+// Draws the M = w * mult candidates into cand and their log-weights into logw
+// (zeroed by the caller); 0, or -1 if a candidate cannot be drawn.
+static int belief_draw_score(const TcEnv *e, const TcObs *o, int w, uint64_t *rng, TcDeal *cand, double *logw) {
   enum { MAXR = 64, BLOCK = 32 };
   const TcMlp *net = e->belief_net;
   const double inv_t = e->belief_inv_t, eps = e->belief_eps;
@@ -778,55 +1041,52 @@ static int belief_worlds(const TcEnv *e, const TcObs *o, int w, uint64_t *rng, T
   // (Plain variables: the parallel block cannot capture arrays.)
   const int bot_seats = people ? seats & ~people : seats;
   const double h_inv_t = e->belief_h_inv_t, h_eps = e->belief_h_eps;
-  TcDeal *cand = malloc(sizeof(TcDeal) * (size_t)M);
-  double *logw = calloc((size_t)M, sizeof(double));
   double t0 = now_s();
   for (int i = 0; i < M; i++)
-    if (tc_sample_world_sooli(o, rng, &cand[i], e->sooli_belief, e->sooli_lambda) != 0) {
-      free(cand); free(logw);
-      return -1;
-    }
+    if (tc_sample_world_sooli(o, rng, &cand[i], e->sooli_belief, e->sooli_lambda) != 0) return -1;
   double t1 = now_s(); prof_s[0] += t1 - t0;
-  const int blocks = (M + BLOCK - 1) / BLOCK, lanes = belief_lanes < blocks ? belief_lanes : blocks;
-  TC_PARALLEL_BEGIN((size_t)lanes, lane)
-  for (int b = (int)lane; b < blocks; b += lanes) {
-    const int first = b * BLOCK, last = first + BLOCK < M ? first + BLOCK : M;
-    uint8_t *feat = malloc((size_t)BLOCK * MAXR * dim), *mask = malloc((size_t)BLOCK * MAXR * TC_NUM_ACTIONS);
-    int32_t *act = malloc(sizeof(int32_t) * (size_t)BLOCK * MAXR), *owner = malloc(sizeof(int32_t) * (size_t)BLOCK * MAXR);
-    float *q = malloc(sizeof(float) * (size_t)BLOCK * MAXR * TC_NUM_ACTIONS);
-    for (int pass = 0; pass < npass; pass++) {
-      const int pseats = pass == 0 ? bot_seats : people;
-      const double pinv_t = pass == 0 ? inv_t : h_inv_t, peps = pass == 0 ? eps : h_eps;
-      if (!pseats) continue;
-      int rows = 0;
-      for (int i = first; i < last; i++) {
-        if (logw[i] < -1e299) continue;
-        int r = tc_history_rows(&cand[i], pseats, enc, MAXR, feat + (size_t)rows * dim,
-                                mask + (size_t)rows * TC_NUM_ACTIONS, act + rows);
-        if (r < 0) { logw[i] = -1e300; continue; }  // the history cannot be replayed in this world
-        for (int j = 0; j < r; j++) owner[rows + j] = i;
-        rows += r;
-      }
-      if (rows) tc_mlp_forward(net, feat, rows, q);
-      for (int r = 0; r < rows; r++) {
-        const float *qr = q + (size_t)r * TC_NUM_ACTIONS;
-        const uint8_t *mr = mask + (size_t)r * TC_NUM_ACTIONS;
-        double top = -1e300, sum = 0.0;
-        int legal = 0;
-        for (int a = 0; a < TC_NUM_ACTIONS; a++) if (mr[a] && qr[a] > top) top = qr[a];
-        for (int a = 0; a < TC_NUM_ACTIONS; a++) if (mr[a]) { sum += exp((qr[a] - top) * pinv_t); legal++; }
-        double p = exp((qr[act[r]] - top) * pinv_t) / sum;
-        logw[owner[r]] += log((1.0 - peps) * p + peps / legal);
-      }
+  const double seat_inv_t[4] = {(people & 1) ? h_inv_t : inv_t, (people & 2) ? h_inv_t : inv_t,
+                                 (people & 4) ? h_inv_t : inv_t, (people & 8) ? h_inv_t : inv_t};
+  const double seat_eps[4] = {(people & 1) ? h_eps : eps, (people & 2) ? h_eps : eps,
+                              (people & 4) ? h_eps : eps, (people & 8) ? h_eps : eps};
+  if (!belief_keys ||
+      belief_score_keys(net, M, enc, dim, o->seat, bot_seats, people, npass, seat_inv_t, seat_eps, cand, logw)) {
+    const int blocks = (M + BLOCK - 1) / BLOCK, lanes = belief_lanes < blocks ? belief_lanes : blocks;
+    long *block_counts = calloc((size_t)blocks * 2, sizeof(long));
+    const BeliefWork work = {net, M, enc, dim, blocks, bot_seats, people, npass,
+                             inv_t, eps, h_inv_t, h_eps, cand, logw, block_counts, block_counts + blocks};
+    run_lanes(belief_score_lane, &work, lanes);
+    for (int b = 0; b < blocks; b++) {
+      prof_c[BC_ROWS] += block_counts[b]; prof_c[BC_ROWS_PLAIN] += block_counts[b];
+      prof_c[BC_REPLAYS] += block_counts[blocks + b];
     }
-    free(feat); free(mask); free(act); free(owner); free(q);
+    free(block_counts);
   }
-  TC_PARALLEL_END
-  double t2 = now_s(); prof_s[1] += t2 - t1;
+  prof_s[1] += now_s() - t1;
+  prof_c[BC_CANDIDATES] += M; prof_c[BC_SEARCHES]++;
+  for (int i = 0; i < M; i++) prof_c[BC_FAILED] += logw[i] < -1e299;
+  return 0;
+}
+
+// Test hook: the candidates the search draws at this observation and their
+// log-weights before normalization (w * mult of each). Returns 0, or -1.
+int tc_belief_log_weights(const TcEnv *e, const TcObs *o, int w, uint64_t *rng, TcDeal *cand, double *logw) {
+  if (!belief_applies(e, o)) return -1;
+  memset(logw, 0, sizeof(double) * (size_t)w * e->belief_mult);
+  return belief_draw_score(e, o, w, rng, cand, logw);
+}
+
+static int belief_worlds(const TcEnv *e, const TcObs *o, int w, uint64_t *rng, TcDeal *out, int *src) {
+  const int M = w * e->belief_mult;
+  TcDeal *cand = malloc(sizeof(TcDeal) * (size_t)M);
+  double *logw = calloc((size_t)M, sizeof(double));
+  if (belief_draw_score(e, o, w, rng, cand, logw) != 0) { free(cand); free(logw); return -1; }
+  double t2 = now_s();
   double top = -1e300, total = 0.0;
   for (int i = 0; i < M; i++) if (logw[i] > top) top = logw[i];
   for (int i = 0; i < M; i++) { logw[i] = logw[i] < -1e299 ? 0.0 : exp(logw[i] - top); total += logw[i]; }
-  if (total <= 0) { for (int i = 0; i < M; i++) logw[i] = 1.0; total = M; }
+  // Every candidate failed replay: uniform resampling (counted; never seen on the fixtures).
+  if (total <= 0) { for (int i = 0; i < M; i++) logw[i] = 1.0; total = M; prof_c[BC_UNIFORM]++; }
   // Systematic resampling: as few duplicates as the weights force.
   double u = unit(rng) / w * total, cum = logw[0];
   for (int j = 0, i = 0; j < w; j++) {

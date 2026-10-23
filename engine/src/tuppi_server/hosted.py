@@ -16,21 +16,38 @@ import os
 from pathlib import Path
 import re
 import time
+import threading
 from urllib.parse import urlsplit
 
+from .limits import WindowLimit, client_address, client_header_from_environment
 from .persistence import PersistenceError
 from .usage import USAGE_INTERVAL_SECONDS, Usage, resident_megabytes
 
 ROOM_ROUTE = re.compile(r"^/v1/rooms/([A-Z0-9]{6})/(join|configure|settings|ready|leaderboard|name|release|seats|swap|leave|watch|records)$", re.I)
-#: Wrong room-creation passcodes accepted per minute before refusing all tries.
-MAX_PASSCODE_FAILURES_PER_MINUTE = 20
-#: Offline match reports accepted per minute (all browsers together).
+# Each limit below holds for all clients together; the *_PER_CLIENT limits
+# hold for one client address (limits.py), so one address cannot use up the
+# shared allowance alone.
+#: Wrong room-creation passcodes accepted per minute before refusing tries.
+MAX_PASSCODE_FAILURES_PER_MINUTE = 30
+PASSCODE_FAILURES_PER_CLIENT = 5
+#: Rooms created per minute.
+MAX_ROOMS_PER_MINUTE = 12
+ROOMS_PER_CLIENT = 4
+#: Offline match reports accepted per minute.
 MAX_RESULTS_PER_MINUTE = 30
-#: Offline match records (with every card) accepted per minute, all browsers
-#: together; each is checked by replaying it, one at a time.
+RESULTS_PER_CLIENT = 10
+#: Offline match records (with every card) accepted per minute; each is
+#: checked by replaying it, one at a time.
 MAX_RECORDS_PER_MINUTE = 10
-#: Wrong research download keys accepted per minute before refusing all tries.
+RECORDS_PER_CLIENT = 4
+#: Wrong research download keys accepted per minute before refusing tries.
 MAX_RESEARCH_KEY_FAILURES_PER_MINUTE = 10
+RESEARCH_KEY_FAILURES_PER_CLIENT = 5
+#: Open WebSocket connections from one client address (max_connections in all).
+CONNECTIONS_PER_CLIENT = 16
+#: Browser security policy reports counted per minute (see _csp_report).
+MAX_CSP_REPORTS_PER_MINUTE = 60
+CSP_REPORTS_PER_CLIENT = 10
 #: How often idle rooms are archived and old archives pruned.
 MAINTENANCE_INTERVAL_SECONDS = 3600
 #: An unfinished room nobody is connected to stops counting towards the
@@ -112,11 +129,13 @@ def verify_bot_identity(level: str = "full") -> dict:
     root = Path(spec.origin).resolve().parents[1]
     manifest = _verified_model_manifest(root, level)
     from tuppi_ai import native
-    from .hosted_bot import lite_options
+    from .hosted_bot import lite_options, heidi_enabled, heidi_identity
     options = lite_options() if level == "lite" else "off"
     bot = ({"profile": "tuppi_ai_lite_v1" if options == "off" else f"tuppi_ai_lite_{options}_v1", "level": "lite",
             "search": None} if level == "lite" else {"profile": "tuppi_ai_search_v1", "level": "full", "worlds": 1024})
     return {**bot,
+        **({"heidi10": {"worlds": 1024, "inference": 8, "max_active_tables": 1,
+                        "models_sha256": heidi_identity()}} if level == "lite" and heidi_enabled() else {}),
         "models_sha256": hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest(),
         "native_sha256": hashlib.sha256(Path(native.lib._name).read_bytes()).hexdigest()}
 
@@ -143,7 +162,8 @@ def create_hosted_app():
     # Import only after the hosted configuration and weights have been checked.
     from .app import app
     return HostedBoundary(app, origins=origins, bot_identity=identity, max_bot_rooms=bot_room_limit(level, 8),
-                          room_passcode=room_passcode_from_environment(), **storage_limits_from_environment())
+                          room_passcode=room_passcode_from_environment(), client_header=client_header_from_environment(),
+                          **storage_limits_from_environment())
 
 
 class PasscodeRefused(Exception):
@@ -155,7 +175,7 @@ class PasscodeRefused(Exception):
 class HostedBoundary:
     def __init__(self, game, *, origins, bot_identity=None, max_rooms=8, max_connections=32, max_bot_rooms=1,
                  max_retained_rooms=32, room_passcode=None, archive_days=30, archive_max_bytes=200 * 2**20,
-                 min_free_bytes=50 * 2**20):
+                 min_free_bytes=50 * 2**20, client_header=None):
         self.game = game
         self.archive_days, self.archive_max_bytes = archive_days, archive_max_bytes
         self.min_free_bytes = min_free_bytes
@@ -164,10 +184,15 @@ class HostedBoundary:
         #: The served browser release, set by HostedSite; logged at startup.
         self.release = None
         self.room_passcode = room_passcode
-        self.passcode_failures = []
-        self.result_posts = []
-        self.record_posts = []
-        self.research_key_failures = []
+        #: The proxy header naming the client address (limits.py); None: the peer.
+        self.client_header = client_header
+        self.passcode_failures = WindowLimit(PASSCODE_FAILURES_PER_CLIENT, MAX_PASSCODE_FAILURES_PER_MINUTE)
+        self.created = WindowLimit(ROOMS_PER_CLIENT, MAX_ROOMS_PER_MINUTE)
+        self.result_posts = WindowLimit(RESULTS_PER_CLIENT, MAX_RESULTS_PER_MINUTE)
+        self.record_posts = WindowLimit(RECORDS_PER_CLIENT, MAX_RECORDS_PER_MINUTE)
+        self.research_key_failures = WindowLimit(RESEARCH_KEY_FAILURES_PER_CLIENT, MAX_RESEARCH_KEY_FAILURES_PER_MINUTE)
+        self.csp_reports = WindowLimit(CSP_REPORTS_PER_CLIENT, MAX_CSP_REPORTS_PER_MINUTE)
+        self.client_connections: dict[str, int] = {}
         self.record_check = asyncio.Lock()
         #: The owner's download key for the match records (research.py); no
         #: key, no download.
@@ -180,10 +205,13 @@ class HostedBoundary:
         self.max_bot_rooms = max_bot_rooms
         self.max_retained_rooms = max_retained_rooms
         self.connections = 0
-        self.created = []
         self.room_locks = {}
         self.creation_lock = asyncio.Lock()
         self.executor = None
+        # One thread writes every room record: each room is saved under its
+        # lock (below), so the loop serves the others during a long save.
+        self.save_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="room-save")
+        game.rooms.save_executor = self.save_executor
         self.activity = {code: self._mtime(code) for code in game.rooms._rooms}
         self.usage = Usage()
         self.usage.baseline(game.rooms._rooms)
@@ -211,14 +239,23 @@ class HostedBoundary:
         original_message = game._handle_message
         original_continue = game._continue_ai
         original_ready = game.rooms.mark_ready
+        heidi_admission = threading.Lock()
         def ready(*, code, token, auto_run_ai=True):
-            room, _ = game.rooms.session(code=code, token=token)
-            active = sum(other.runner is not None and not other.runner.terminal and bool(other.ai_seats)
-                and self.in_use(other.code) for other in game.rooms._rooms.values() if other.code != room.code)
-            if room.runner is None and room.ai_seats and active >= self.max_bot_rooms:
+            # A paused/idle or temporarily human-only Heidi table retains its
+            # slot: reconnect, resume or a bot covering a seat cannot bypass it.
+            with heidi_admission:
+                from .match_runner import HEIDI_SEARCH_PROFILE_KEY
                 from .rooms import RoomError
-                raise RoomError("server_busy")
-            return original_ready(code=code, token=token, auto_run_ai=auto_run_ai)
+                room, _ = game.rooms.session(code=code, token=token)
+                others = [r for r in game.rooms._rooms.values() if r.code != room.code
+                          and r.runner is not None and not r.runner.terminal]
+                if room.runner is None and room.ai_profile_key == HEIDI_SEARCH_PROFILE_KEY and any(
+                        r.ai_profile_key == HEIDI_SEARCH_PROFILE_KEY for r in others):
+                    raise RoomError("heidi_busy")
+                active = sum(bool(r.ai_seats) and self.in_use(r.code) for r in others)
+                if room.runner is None and room.ai_seats and active >= self.max_bot_rooms:
+                    raise RoomError("server_busy")
+                return original_ready(code=code, token=token, auto_run_ai=auto_run_ai)
         game.rooms.mark_ready = ready
 
         async def auth(request, send):
@@ -250,7 +287,7 @@ class HostedBoundary:
 
         game._authenticate, game._handle_message, game._continue_ai = auth, message, continuation
 
-    async def _room_creation_body(self, receive) -> bytes:
+    async def _room_creation_body(self, receive, client=None) -> bytes:
         """Read a create-room body, check and remove its room_passcode.
 
         The passcode is a hosting concern; the game sees the request without it.
@@ -269,27 +306,22 @@ class HostedBoundary:
             payload = None
         offered = payload.pop("room_passcode", None) if type(payload) is dict else None
         if self.room_passcode is not None:
-            now = time.time()
-            self.passcode_failures = [t for t in self.passcode_failures if now - t < 60]
-            if len(self.passcode_failures) >= MAX_PASSCODE_FAILURES_PER_MINUTE:
+            if not self.passcode_failures.allows(client):
                 raise PasscodeRefused("too_many_attempts", 429)
             if not isinstance(offered, str) or not offered:
                 raise PasscodeRefused("room_passcode_required", 403)
             if not hmac.compare_digest(offered.encode(), self.room_passcode.encode()):
-                self.passcode_failures.append(now)
+                self.passcode_failures.add(client)
                 raise PasscodeRefused("invalid_room_passcode", 403)
         return json.dumps(payload).encode() if type(payload) is dict else body
 
-    async def _offline_result(self, receive, send) -> None:
+    async def _offline_result(self, receive, send, client=None) -> None:
         """A browser reports a finished offline match (anonymous; see results.py)."""
 
         from .results import ResultRejected, offline_row, today
-        now = time.time()
-        self.result_posts = [t for t in self.result_posts if now - t < 60]
-        if len(self.result_posts) >= MAX_RESULTS_PER_MINUTE:
+        if not self.result_posts.take(client):
             await self.game._json_response(send, 429, {"error": "too_many_attempts"})
             return
-        self.result_posts.append(now)
         body, size = b"", 0
         try:
             while True:
@@ -310,17 +342,14 @@ class HostedBoundary:
         self.usage.counts["results"] += 1
         await self.game._json_response(send, 200, {"recorded": recorded})
 
-    async def _offline_record(self, receive, send) -> None:
+    async def _offline_record(self, receive, send, client=None) -> None:
         """A browser sends a finished offline match with every card (research.py)."""
 
         from .research import MAX_OFFLINE_BODY_BYTES, RecordRejected, offline_record
         from .results import today
-        now = time.time()
-        self.record_posts = [t for t in self.record_posts if now - t < 60]
-        if len(self.record_posts) >= MAX_RECORDS_PER_MINUTE:
+        if not self.record_posts.take(client):
             await self.game._json_response(send, 429, {"error": "too_many_attempts"})
             return
-        self.record_posts.append(now)
         body = b""
         try:
             while True:
@@ -344,19 +373,17 @@ class HostedBoundary:
         self.usage.counts["records"] += 1
         await self.game._json_response(send, 200, {"recorded": recorded})
 
-    async def _research_download(self, scope, send) -> None:
+    async def _research_download(self, scope, send, client=None) -> None:
         """The owner downloads every match record as one gzip file of JSON
         lines: GET /v1/research/matches?key=<TUPPI_RESEARCH_KEY>. Without the
         key configured this endpoint does not exist."""
 
         from urllib.parse import parse_qs
-        now = time.time()
-        self.research_key_failures = [t for t in self.research_key_failures if now - t < 60]
         offered = (parse_qs((scope.get("query_string") or b"").decode("ascii", errors="replace")).get("key") or [""])[0]
-        if self.research_key is None or len(self.research_key_failures) >= MAX_RESEARCH_KEY_FAILURES_PER_MINUTE or not (
+        if self.research_key is None or not self.research_key_failures.allows(client) or not (
                 offered and hmac.compare_digest(offered.encode(), self.research_key.encode())):
             if self.research_key is not None:
-                self.research_key_failures.append(now)
+                self.research_key_failures.add(client)
             await self.game._json_response(send, 404, {"error": "unknown_endpoint"})
             return
         records = self.game.rooms.records
@@ -367,6 +394,41 @@ class HostedBoundary:
         for chunk in records.download():
             await send({"type": "http.response.body", "body": chunk, "more_body": True})
         await send({"type": "http.response.body", "body": b"", "more_body": False})
+
+    async def _csp_report(self, receive, send, client=None) -> None:
+        """A browser reports something the Content-Security-Policy blocked
+        (hosted_site.py). Only the directive and the kind of blocked source
+        are counted for the usage line; no addresses, paths or room codes."""
+
+        accepted = self.csp_reports.take(client)
+        body = b""
+        try:
+            while True:
+                message = await asyncio.wait_for(receive(), timeout=10)
+                body += message.get("body", b"")
+                if len(body) > 16384:
+                    raise ValueError("request_too_large")
+                if not message.get("more_body", False):
+                    break
+            reports = json.loads(body) if accepted else []
+        except (ValueError, asyncio.TimeoutError):
+            reports = []
+        # report-uri sends {"csp-report": {...}}; report-to a list of reports.
+        for report in (reports if type(reports) is list else [reports])[:8]:
+            if type(report) is not dict:
+                continue
+            fields = report.get("csp-report") if "csp-report" in report else report.get("body")
+            if type(fields) is not dict:
+                continue
+            directive = str(fields.get("effective-directive") or fields.get("effectiveDirective")
+                            or fields.get("violated-directive") or "").split(" ")[0]
+            blocked = str(fields.get("blocked-uri") or fields.get("blockedURL") or "")
+            scheme = blocked.split(":", 1)[0]  # report-uri sends a bare "data" or "blob"
+            kind = blocked if blocked in {"inline", "eval", "wasm-eval", "trusted-types-sink"} else \
+                scheme if scheme in {"data", "blob"} else "url" if blocked else "none"
+            self.usage.csp_violation(directive, kind)
+        await send({"type": "http.response.start", "status": 204, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
 
     def storage_state(self) -> str:
         """failed: a save failed, so changes stop until a restart recovers the
@@ -405,7 +467,10 @@ class HostedBoundary:
         except OSError:
             free = None
         return {"in_play": sum(rooms[code].runner is not None and not rooms[code].runner.terminal for code in in_use),
-                "connections": self.connections, "rooms": len(rooms), "in_use": len(in_use),
+                # Distinct client addresses among the connections: 0 while
+                # people are connected means the client header is not arriving.
+                "connections": self.connections, "clients": len(self.client_connections),
+                "rooms": len(rooms), "in_use": len(in_use),
                 "rss_mb": resident_megabytes(), "disk_free_mb": free, "storage": self.storage_state()}
 
     def usage_line(self, *, force: bool = False) -> str | None:
@@ -487,7 +552,9 @@ class HostedBoundary:
                         self.maintain()
                         self.maintenance_task = asyncio.create_task(self._maintenance_loop())
                         self.usage_task = asyncio.create_task(self._usage_loop())
-                        print(f"tuppi started release={str(self.release)[:12]} rooms={len(self.game.rooms._rooms)}", flush=True)
+                        client = self.client_header.decode() if self.client_header else "peer"
+                        print(f"tuppi started release={str(self.release)[:12]} rooms={len(self.game.rooms._rooms)} "
+                              f"client_address={client}", flush=True)
                         await send({"type": "lifespan.startup.complete"})
                     except Exception as exc:
                         await send({"type": "lifespan.startup.failed", "message": str(exc)})
@@ -502,6 +569,8 @@ class HostedBoundary:
                     for task in self.game._ai_tasks.values():
                         task.cancel()
                     await asyncio.gather(*self.game._ai_tasks.values(), return_exceptions=True)
+                    # A save already started finishes before the process exits.
+                    await asyncio.to_thread(self.save_executor.shutdown, wait=True)
                     from .hosted_bot import shutdown
                     await asyncio.to_thread(shutdown)
                     await send({"type": "lifespan.shutdown.complete"})
@@ -516,11 +585,15 @@ class HostedBoundary:
                 await self.game._json_response(send, 403, {"error": "origin_not_allowed"})
             return
         path = scope.get("path", "")
+        client = client_address(scope, self.client_header)
         if kind == "websocket":
-            if path != "/v1/ws" or self.connections >= self.max_connections or self.game.rooms.storage_failed:
+            if (path != "/v1/ws" or self.connections >= self.max_connections or self.game.rooms.storage_failed
+                    or self.client_connections.get(client, 0) >= CONNECTIONS_PER_CLIENT):
                 await send({"type": "websocket.close", "code": 1013})
                 return
             self.connections += 1
+            if client is not None:
+                self.client_connections[client] = self.client_connections.get(client, 0) + 1
             first = True
             async def limited_receive():
                 nonlocal first
@@ -540,6 +613,10 @@ class HostedBoundary:
                 await send({"type": "websocket.close", "code": 1011})
             finally:
                 self.connections -= 1
+                if client is not None:
+                    remaining = self.client_connections.pop(client) - 1
+                    if remaining:
+                        self.client_connections[client] = remaining
             return
         if kind != "http":
             return
@@ -564,20 +641,25 @@ class HostedBoundary:
                 "status": "storage_failed" if storage == "failed" else "ok", "storage": storage,
                 "bot": self.bot_identity,
                 "bot_options": [{"profile": "tuppi_ai_search_v1", "name": "TuppiAI"},
-                                {"profile": "tuppi_ai_lite_c1h_v1", "name": "Heidi 0.5"}]
+                                {"profile": "tuppi_ai_lite_c1h_v1", "name": "Heidi 0.5"}] +
+                               ([{"profile": "tuppi_ai_heidi10_pib8_v1", "name": "Heidi 1.0", "max_active_tables": 1}]
+                                if self.bot_identity.get("heidi10") else [])
                                if self.bot_identity.get("level") == "lite" else []})
             return
         if path == "/v1/results/summary" and scope.get("method") == "GET":
             await self.game._json_response(cors_send, 200, self.game.rooms.results.summary())
             return
         if path == "/v1/results" and scope.get("method") == "POST":
-            await self._offline_result(receive, cors_send)
+            await self._offline_result(receive, cors_send, client)
             return
         if path == "/v1/research/matches" and scope.get("method") == "POST":
-            await self._offline_record(receive, cors_send)
+            await self._offline_record(receive, cors_send, client)
             return
         if path == "/v1/research/matches" and scope.get("method") == "GET":
-            await self._research_download(scope, send)
+            await self._research_download(scope, send, client)
+            return
+        if path == "/v1/csp-report" and scope.get("method") == "POST":
+            await self._csp_report(receive, cors_send, client)
             return
         if scope.get("method") == "POST" and self.game.rooms.storage_failed:
             await self.game._json_response(cors_send, 503, {"error": "storage_unavailable"})
@@ -598,7 +680,7 @@ class HostedBoundary:
             return message
         if path == "/v1/rooms":
             try:
-                body = await self._room_creation_body(limited_body)
+                body = await self._room_creation_body(limited_body, client)
             except PasscodeRefused as refusal:
                 await self.game._json_response(cors_send, refusal.status, {"error": str(refusal)})
                 return
@@ -612,10 +694,9 @@ class HostedBoundary:
                 return
             async with self.creation_lock:
                 self.expire_idle_rooms()
-                self.created = [t for t in self.created if time.time() - t < 60]
                 active_rooms = sum((r.runner is None or not r.runner.terminal) and self.in_use(code)
                                    for code, r in self.game.rooms._rooms.items())
-                if active_rooms >= self.max_rooms or len(self.created) >= 12:
+                if active_rooms >= self.max_rooms or not self.created.allows(client):
                     await self.game._json_response(cors_send, 503, {"error": "server_busy"})
                     return
                 if len(self.game.rooms._rooms) >= self.max_retained_rooms:
@@ -632,7 +713,7 @@ class HostedBoundary:
                         await self.game._json_response(cors_send, 503, {"error": "server_busy"})
                         return
                     self._archive(candidates[0])
-                self.created.append(time.time())
+                self.created.add(client)
                 before = set(self.game.rooms._rooms)
                 await self._http_game(scope, creation_body, cors_send)
                 for code in set(self.game.rooms._rooms) - before:

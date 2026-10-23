@@ -1,4 +1,6 @@
-FROM python:3.14-slim-bookworm AS qualified
+# Immutable Python index used by the qualified AMD64 image (3.14.8).
+# The explicit platform also prevents legacy builders selecting their ARM host.
+FROM --platform=linux/amd64 python:3.14-slim-bookworm@sha256:48b13b003dda20b16f9442b8475aa05fe21bf6579a8c881db92ffb4d8fd20f83 AS qualified
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential libopenblas-dev gosu \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
@@ -29,7 +31,7 @@ FROM qualified AS full
 FROM qualified AS lite-package
 RUN python qualification/package_lite.py
 
-FROM python:3.14-slim-bookworm AS lite
+FROM --platform=linux/amd64 python:3.14-slim-bookworm@sha256:48b13b003dda20b16f9442b8475aa05fe21bf6579a8c881db92ffb4d8fd20f83 AS lite
 RUN apt-get update && apt-get install -y --no-install-recommends libopenblas0-pthread gosu \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
@@ -44,16 +46,23 @@ COPY --from=qualified /app/qualification/lite-reference.json qualification/lite-
 COPY --from=qualified /app/qualification/qualify_lite.py qualification/qualify_lite.py
 COPY --from=qualified /app/qualification/qualify_heidi.py qualification/qualify_heidi.py
 COPY --from=qualified /app/qualification/heidi-reference.json qualification/heidi-reference.json
+COPY --from=qualified /app/qualification/qualify_compact.py qualification/qualify_compact.py
+COPY --from=qualified /app/qualification/qualify_hosted_compact.py qualification/qualify_hosted_compact.py
+COPY --from=qualified /app/qualification/compact-reference.json qualification/compact-reference.json
 ENV PYTHONPATH=/app/engine/src:/app/ai PYTHONDONTWRITEBYTECODE=1 \
-    TUPPI_HOSTED_BOT_LEVEL=lite OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+    TUPPI_HOSTED_BOT_LEVEL=lite TUPPI_HOSTED_HEIDI10=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 # This check executes inside the final, PyTorch-free filesystem.
 RUN python qualification/qualify_lite.py \
     && python qualification/qualify_heidi.py \
+    && python qualification/qualify_compact.py --no-torch --report qualification/compact-result.json \
     && groupadd --gid 10001 tuppi && useradd --uid 10001 --gid tuppi --no-create-home tuppi \
     && chmod +x start.sh
+# TUPPI_CLIENT_IP_HEADER: Render is behind Cloudflare, which sets the client
+# address in this header; per-client rate limits fall back to the global ones
+# without it.
 ENV TUPPI_WEB_DIR=/app/web TUPPI_SERVER_DATA_DIR=/data/rooms \
     TUPPI_SERVER_RULESET=project_target_v3 TUPPI_SERVER_AI_PROFILE=tuppi_ai_search_v1 \
     TUPPI_HOSTED_BOT=1 TUPPI_SERVER_REVIEW=0 TUPPI_SERVER_SOOLI_ODDS=0 \
-    TUPPI_CONTRACT_ROLLOUT_SAMPLES=0
+    TUPPI_CONTRACT_ROLLOUT_SAMPLES=0 TUPPI_CLIENT_IP_HEADER=cf-connecting-ip
 EXPOSE 10000
 CMD ["/app/start.sh"]

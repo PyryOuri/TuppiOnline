@@ -15,6 +15,7 @@ import {ReplayViewer, viewerMatchFromRecord, viewerMatchFromSave, viewerMatchesF
 
 const $ = id => document.getElementById(id);
 const heidiNames = {heidi05: 'Heidi 0.5', heidi10: 'Heidi 1.0'};
+const onlineHeidiNames = {tuppi_ai_lite_c1h_v1: 'Heidi 0.5', tuppi_ai_heidi10_pib8_v1: 'Heidi 1.0'};
 function botSelection(save = null) {
   const value = save ? (save.bot ?? String(save.worlds)) : $('worlds').value;
   return value in heidiNames ? {bot: value, worlds: value === 'heidi10' ? 1024 : 128} :
@@ -116,7 +117,7 @@ function showGame() {
   $('mode-label').textContent = !networkClient?.session ? '· Paikallinen peli' :
     `· ${networkClient.session.watching ? 'Katsot huonetta' : 'Verkkopeli'} ${networkClient.session.room_code}`;
   const botName = networkClient?.session ?
-    (networkClient.session.lobby?.bot_profile === 'tuppi_ai_lite_c1h_v1' ? 'Heidi 0.5' : '') :
+    (onlineHeidiNames[networkClient.session.lobby?.bot_profile] ?? '') :
     heidiNames[view?.bot ?? lastSave?.bot];
   if (botName) $('mode-label').textContent += ` · ${botName}`;
 }
@@ -1154,7 +1155,7 @@ function showNetworkLobby(lobby) {
   $('network-invite').value = invitationURL(location.href, lobby.room_code);
   if (playing && screen === 'game') $('mode-label').textContent =
     (spectator ? `· Katsot huonetta ${lobby.room_code}` : `· Verkkopeli ${lobby.room_code}`) +
-    (lobby.bot_profile === 'tuppi_ai_lite_c1h_v1' ? ' · Heidi 0.5' : '');
+    (onlineHeidiNames[lobby.bot_profile] ? ' · ' + onlineHeidiNames[lobby.bot_profile] : '');
 }
 // The room-creation passcode field appears only when this host asks for it.
 async function showPasscodeIfRequired() {
@@ -1165,7 +1166,10 @@ async function showPasscodeIfRequired() {
       passcodeRequired = required;
       const available = probe.botOptions.some(bot => bot.profile === 'tuppi_ai_lite_c1h_v1');
       $('network-heidi-option').disabled = $('network-heidi-option').hidden = !available;
-      if (!available) $('network-bot').value = '';
+      const searchAvailable = probe.botOptions.some(bot => bot.profile === 'tuppi_ai_heidi10_pib8_v1');
+      $('network-heidi10-option').disabled = $('network-heidi10-option').hidden = !searchAvailable;
+      if ($('network-bot').value && !probe.botOptions.some(bot => bot.profile === $('network-bot').value))
+        $('network-bot').value = '';
     })
     .catch(() => { passcodeCheck = null; });
   await passcodeCheck;

@@ -23,6 +23,8 @@ checkpoint. Every setting restores both schemas.
 from __future__ import annotations
 
 from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
+from functools import lru_cache
 import multiprocessing
 import os
 import threading
@@ -35,6 +37,72 @@ LITE_OPTIONS = ("off", "c1", "c1h", "d1")
 _pool: ProcessPoolExecutor | None = None
 _pool_lock = threading.Lock()
 _agents = None
+HEIDI_PROFILE = "tuppi_ai_heidi10_pib8_v1"
+_heidi_pool: ProcessPoolExecutor | None = None
+_heidi_pool_lock = threading.Lock()
+_heidi_controller = None
+
+
+def heidi_enabled() -> bool:
+    value = os.environ.get("TUPPI_HOSTED_HEIDI10", "0")
+    if value not in ("0", "1"):
+        raise ValueError("TUPPI_HOSTED_HEIDI10 must be 0 or 1")
+    return value == "1" and level() == "lite"
+
+
+@lru_cache(maxsize=1)
+def heidi_identity() -> str:
+    from tuppi_ai.compact import model_identity
+    return model_identity()["sha256"]
+
+
+def _initialise_heidi() -> None:
+    global _heidi_controller
+    from tuppi_ai.compact import CompactController
+    _heidi_controller = CompactController()
+
+
+def heidi_pool() -> ProcessPoolExecutor:
+    global _heidi_pool
+    with _heidi_pool_lock:
+        if _heidi_pool is None:
+            _heidi_pool = ProcessPoolExecutor(max_workers=1,
+                mp_context=multiprocessing.get_context("spawn"), initializer=_initialise_heidi)
+        return _heidi_pool
+
+
+def _stop_heidi_pool(expected=None) -> None:
+    """Stop only our compact worker, including a search that exceeded its deadline."""
+    global _heidi_pool
+    with _heidi_pool_lock:
+        current = _heidi_pool
+        if current is None or (expected is not None and current is not expected):
+            return
+        _heidi_pool = None
+        if hasattr(current, "terminate_workers"):
+            current.terminate_workers()
+        else:  # Python <3.14 development hosts; these are our own child processes.
+            processes = list((current._processes or {}).values())
+            for process in processes:
+                process.terminate()
+            current.shutdown(wait=False, cancel_futures=True)
+            for process in processes:
+                process.join(timeout=2)
+
+
+def _warm_heidi() -> str:
+    if 'torch' in sys.modules:
+        raise RuntimeError('compact Heidi worker must not import PyTorch')
+    return _heidi_controller.model_sha256
+
+
+def _heidi_decision(observation, context, people):
+    started, cpu = time.perf_counter(), time.process_time()
+    action, cursor, _ = _heidi_controller.choose(observation, context, people)
+    peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    return action, cursor, {"decision_seconds": time.perf_counter() - started,
+        "decision_cpu_seconds": time.process_time() - cpu,
+        "process_peak_rss_bytes": peak if sys.platform == "darwin" else peak * 1024}
 
 
 def _initialise() -> None:
@@ -98,6 +166,8 @@ def warm() -> None:
     if level() == "lite":
         from tuppi_ai.lite import shared_mlp
         shared_mlp()
+        if heidi_enabled() and heidi_pool().submit(_warm_heidi).result(timeout=90) != heidi_identity():
+            raise RuntimeError("compact Heidi model identity mismatch")
         return
     if not pool().submit(_warm).result(timeout=120):
         raise RuntimeError("hosted bot did not initialise")
@@ -108,6 +178,57 @@ def shutdown() -> None:
     if _pool is not None:
         _pool.shutdown(wait=True, cancel_futures=True)
         _pool = None
+    _stop_heidi_pool()
+
+
+class HostedHeidiAgent:
+    """PIB8 is part of the saved profile; a missing worker is never a lite fallback."""
+    handles_sooli = True
+
+    def __init__(self, seat: int) -> None:
+        if level() != "lite" or type(seat) is not int or seat not in range(4):
+            raise ValueError("hosted Heidi 1.0 is unavailable")
+        self.seat = seat
+        rng = (2 * seat) * 2654435761 + 1
+        self.context = [rng & 0xffffffff, rng >> 32, 0]
+        self.people = frozenset()
+
+    def set_human_seats(self, seats) -> None:
+        seats = frozenset(seats)
+        if any(type(s) is not int or s not in range(4) for s in seats):
+            raise ValueError("invalid human seats")
+        self.people = seats
+
+    def choose_action(self, observation):
+        if observation.observing_seat != self.seat:
+            raise ValueError("bot observation seat mismatch")
+        worker = heidi_pool()
+        try:
+            action, context, stats = worker.submit(_heidi_decision,
+                observation, self.context, self.people).result(timeout=90)
+        except (TimeoutError, BrokenProcessPool):
+            _stop_heidi_pool(worker)
+            raise
+        if action not in observation.legal_actions:
+            raise RuntimeError("hosted Heidi returned an illegal action")
+        self.context, self.last_stats = context, stats
+        return action
+
+    def checkpoint(self):
+        return {"schema": "tuppi.hosted.controller.heidi10.v1", "worlds": 1024,
+                "inference": 8, "models": heidi_identity(), "context": list(self.context)}
+
+    def restore(self, record) -> None:
+        if (type(record) is not dict or set(record) != {"schema", "worlds", "inference", "models", "context"}
+                or record["schema"] != "tuppi.hosted.controller.heidi10.v1"
+                or type(record["worlds"]) is not int or record["worlds"] != 1024
+                or type(record["inference"]) is not int or record["inference"] != 8
+                or record["models"] != heidi_identity() or type(record["context"]) is not list
+                or len(record["context"]) != 3
+                or any(type(v) is not int or not 0 <= v <= 0xffffffff for v in record["context"])
+                or record["context"][2] > 2):
+            raise ValueError("invalid hosted Heidi checkpoint")
+        self.context = list(record["context"])
 
 
 class HostedSearchAgent:

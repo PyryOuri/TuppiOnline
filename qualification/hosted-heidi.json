@@ -1,0 +1,214 @@
+{
+  "schema": "tuppi.hosted.heidi.qualification.v1",
+  "passed": true,
+  "recorded_at_utc": "2026-10-23T04:56:55.061022+00:00",
+  "source_commits": {
+    "browser": "900d88f475af436529829664f4d97dab18d2c280",
+    "engine": "d9318b4ea62c3732474c1cdcc4026a77781aeab4",
+    "ai": "4a0d44ee35a02444c24634ecbea2c071402985d0"
+  },
+  "browser_release": "be02c5ee89771581cd0d22d4d1f6a97fd8849f0c451e1383598772077be08b0d",
+  "hosted_speedup": {
+    "origin_commit": "b5f7535b8cfc7ed8877a5b325ff81abb2d89eec7",
+    "method": "Score each distinct seat/holding once",
+    "models_changed": false,
+    "universal_blas_bit_identity_claimed": false
+  },
+  "browser_runtime_identity": "4341014ea0acfb9a7673d2bc015ebb36a31ea89c1b638290a4c80652f3748a91",
+  "default": "lite",
+  "heidi_profile": "tuppi_ai_heidi10_pib8_v1",
+  "worlds": 1024,
+  "inference": 8,
+  "max_unfinished_heidi_tables": 1,
+  "models_sha256": "8cb282aa3be3c4ebc0c4bcfcaaeceda93a9c225e3e51488148df181771ae2124",
+  "reference_sha256": "51c5fc19058478fb3162be9e05ef7c5cb963d3ac4be825ad8b2f495141ff9bc5",
+  "source_checks": {
+    "focused_server_tests": 75,
+    "passed": true,
+    "scope": "Focused tests ran before the distinct-hand C integration; server logic is unchanged; the new image references and game fixture are checked separately",
+    "frontend": [
+      "Heidi menus/defaults/capability fallback",
+      "recovery",
+      "viewer/runtime cleanup",
+      "real WASM startup"
+    ],
+    "full_server_suite_claimed": false,
+    "combined_real_browser_csp_claimed": false
+  },
+  "production_amd64": {
+    "image": {
+      "tag": "tuppi-online:heidi-fast-table-20261023-02",
+      "id": "sha256:e551a5afa6c0b17e64d45833e105cb2dadd1ceb991776a87f320f951848e1004"
+    },
+    "translated_execution": true,
+    "torch_installed": false,
+    "compiler_tools": false,
+    "python": "3.14.8 (main, Oct  6 2026, 02:01:53) [GCC 12.2.0]",
+    "lite": {
+      "deals": 500,
+      "decisions": 28036,
+      "phases": {
+        "SHOWING": 1394,
+        "SOOLI_OFFER": 849,
+        "TRICK_PLAY": 25532,
+        "SOOLI_GIVE": 9,
+        "SOOLI_RETURN": 9,
+        "SOOLI_PLAY": 243
+      },
+      "exact_actions_and_cursors": true,
+      "torch_installed": false,
+      "torch_imported": false,
+      "compiler_tools_present": false,
+      "elapsed_seconds": 61.83566497800001,
+      "reference_sha256": "f5c951fca3f3554d8a9fa200c1f13f42f9202aa6eff6e9d45dcd878bff7113df"
+    },
+    "c1h": {
+      "passed": true,
+      "cases": 6,
+      "decisions": 338,
+      "three_rng_cursors_exact": true,
+      "continuation_exact": true,
+      "default_options": "off",
+      "torch_imported": false,
+      "reference_sha256": "a483fa3b940f0b00cfabe94f099aefd84d78b64fddc41ade8750685309b5a6d0",
+      "scope": "Heidi 0.5 fixed final-image parity and continuation, not human strength or Render capacity"
+    },
+    "full_build_references": [
+      {
+        "worlds": 128,
+        "passed": true,
+        "reference_sha256": "a1f55416a3f1b6907cb64c1dd9643b612b5bb46f7cf9a302fe93db629a2f6842"
+      },
+      {
+        "worlds": 1024,
+        "passed": true,
+        "reference_sha256": "f09af2b3d32cdd346a70d1d95c8561a483475524e4d8b57ac93fdfd6fbb3892e"
+      }
+    ],
+    "compact_reference_passed": true,
+    "scope": "Actual pinned production Dockerfile; integrated server and browser; AMD64 compatibility, no provider latency claim"
+  },
+  "native_arm_quota": {
+    "image": "sha256:5f74a1b05d335b3dccf2222814416d553b10a3e1c6e55f729fdd3793396d08cf",
+    "audit_only_compiler_tools_retained": true,
+    "frozen_lite": {
+      "deals": 500,
+      "decisions": 28036,
+      "phases": {
+        "SHOWING": 1394,
+        "SOOLI_OFFER": 849,
+        "TRICK_PLAY": 25532,
+        "SOOLI_GIVE": 9,
+        "SOOLI_RETURN": 9,
+        "SOOLI_PLAY": 243
+      },
+      "exact_actions_and_cursors": true,
+      "torch_installed": false,
+      "torch_imported": false,
+      "compiler_tools_present": true,
+      "audit_only": true,
+      "elapsed_seconds": 26.205512026,
+      "reference_sha256": "f5c951fca3f3554d8a9fa200c1f13f42f9202aa6eff6e9d45dcd878bff7113df"
+    },
+    "frozen_c1h": {
+      "passed": true,
+      "cases": 6,
+      "decisions": 338,
+      "three_rng_cursors_exact": true,
+      "continuation_exact": true,
+      "default_options": "off",
+      "torch_imported": false,
+      "reference_sha256": "a483fa3b940f0b00cfabe94f099aefd84d78b64fddc41ade8750685309b5a6d0",
+      "scope": "Heidi 0.5 fixed final-image parity and continuation, not human strength or Render capacity"
+    },
+    "compact_roots": 9,
+    "max_value_error": 0.0,
+    "root_wall_seconds": {
+      "nolo-w1024": 19.385571840999994,
+      "sooli-3": 5.110826856000003,
+      "rami-w1024": 17.903312164,
+      "rami-late": 2.337010144000004,
+      "nolo-late": 0.5935092279999878,
+      "sooli-4": 14.721477625999995,
+      "sooli-5": 3.072400001258302e-05,
+      "sooli-6": 3.785771283999992,
+      "showing": 3.9028703239999913
+    },
+    "active_phase_ids": [
+      0,
+      1,
+      3,
+      4,
+      5,
+      6
+    ],
+    "worker_requests": 10,
+    "fresh_worker_repeat": true,
+    "worker_limits": {
+      "cpu.max": "50000 100000",
+      "memory.max": "536870912",
+      "memory.swap.max": "0",
+      "memory.peak": "162340864",
+      "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\n"
+    },
+    "service": {
+      "passed": true,
+      "scope": "Local Linux/arm64, native execution, 0.5 CPU / 512 MiB; no Render latency claim",
+      "qualificationScope": "full",
+      "imageArchitecture": "arm64",
+      "staticFiles": 80,
+      "image": "sha256:5f74a1b05d335b3dccf2222814416d553b10a3e1c6e55f729fdd3793396d08cf",
+      "worlds": 1024,
+      "inference": 8,
+      "heidi": {
+        "humans": 1,
+        "bots": 3,
+        "completedDeals": 1,
+        "actions": 16
+      },
+      "lite": {
+        "actions": 28,
+        "completedDeals": 2,
+        "ack_p50_ms": 103.72091700000055,
+        "ack_p95_ms": 181.81324999999924
+      },
+      "health": {
+        "samples": 876,
+        "p50_ms": 3.0990419999870937,
+        "p95_ms": 49.29879200004507,
+        "max_ms": 73.36999999999534
+      },
+      "secondHeidiTableRefused": true,
+      "pauseRetainsSlot": true,
+      "restartRestoresProfileAndPublicState": true,
+      "limits": [
+        {
+          "cpu.max": "50000 100000",
+          "cpu.stat": "usage_usec 4571290\nuser_usec 4352813\nsystem_usec 218477\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 99\nnr_throttled 85\nthrottled_usec 4106173\nnr_bursts 0\nburst_usec 0",
+          "memory.max": "536870912",
+          "memory.swap.max": "0",
+          "memory.peak": "200130560",
+          "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+        },
+        {
+          "cpu.max": "50000 100000",
+          "cpu.stat": "usage_usec 175678188\nuser_usec 175341554\nsystem_usec 336634\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 3520\nnr_throttled 3508\nthrottled_usec 174037941\nnr_bursts 0\nburst_usec 0",
+          "memory.max": "536870912",
+          "memory.swap.max": "0",
+          "memory.peak": "178847744",
+          "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+        }
+      ]
+    },
+    "scope": "One-vCPU Apple Virtualization Linux ARM guest; enforced 0.5 CPU / 512 MiB / zero swap; one full Heidi deal plus lite table and paused restart"
+  },
+  "unchanged_immutable_assets": 46,
+  "limitations": [
+    "Actual Render hardware and user-device acceptance remain owner-run",
+    "Slow decisions can take tens of seconds at this CPU quota",
+    "Finite engineering fixtures do not establish playing strength or general concurrent capacity",
+    "No new combined Chrome CSP run; upstream website-hardening evidence is separate"
+  ],
+  "deployment_triggered": false,
+  "owner_deploys": true
+}

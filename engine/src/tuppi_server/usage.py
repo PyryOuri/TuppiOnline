@@ -17,6 +17,7 @@ USAGE_INTERVAL_SECONDS = 60
 #: Seconds between lines on an idle server.
 QUIET_INTERVAL_SECONDS = 900
 _CODE = re.compile(r"[a-z_]{1,40}")
+_DIRECTIVE = re.compile(r"[a-z-]{1,40}")
 
 
 def resident_megabytes() -> int:
@@ -36,6 +37,8 @@ class Usage:
     def __init__(self) -> None:
         self.counts: Counter[str] = Counter()
         self.errors: Counter[str] = Counter()
+        #: Content-Security-Policy violations: "directive:kind" -> count.
+        self.csp: Counter[str] = Counter()
         self.save_ms_max = 0.0
         self.record_bytes_max = 0
         self.matches_seen: set[tuple[str, str]] = set()
@@ -44,6 +47,11 @@ class Usage:
 
     def error(self, code: str) -> None:
         self.errors[code if _CODE.fullmatch(code) else "other"] += 1
+
+    def csp_violation(self, directive: str, kind: str) -> None:
+        directive = directive if _DIRECTIVE.fullmatch(directive) else "other"
+        kind = kind if kind in {"inline", "eval", "wasm-eval", "trusted-types-sink", "data", "blob", "url", "none"} else "other"
+        self.csp[f"{directive}:{kind}"] += 1
 
     def saved(self, seconds: float, record_bytes: int) -> None:
         self.counts["saves"] += 1
@@ -75,7 +83,7 @@ class Usage:
     def line(self, gauges: dict[str, object], now: float | None = None, *, force: bool = False) -> str | None:
         """The next log line, or None while the server is quiet."""
         now = time.time() if now is None else now
-        busy = bool(self.counts or self.errors or gauges.get("connections") or gauges.get("in_play"))
+        busy = bool(self.counts or self.errors or self.csp or gauges.get("connections") or gauges.get("in_play"))
         if not force and not busy and now - self.last_line < QUIET_INTERVAL_SECONDS:
             return None
         fields = dict(gauges)
@@ -88,6 +96,10 @@ class Usage:
             fields["record_kb_max"] = round(self.record_bytes_max / 1024)
         if self.errors:
             fields["errors"] = ",".join(f"{code}:{n}" for code, n in sorted(self.errors.items()))
-        self.counts.clear(); self.errors.clear()
+        if self.csp:
+            # What the browser security policy blocked: reveals a policy that
+            # breaks something on a real device.
+            fields["csp"] = ",".join(f"{key}:{n}" for key, n in sorted(self.csp.items()))
+        self.counts.clear(); self.errors.clear(); self.csp.clear()
         self.save_ms_max, self.record_bytes_max, self.last_line = 0.0, 0, now
         return "tuppi usage " + " ".join(f"{key}={value}" for key, value in fields.items())
