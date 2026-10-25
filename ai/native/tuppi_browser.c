@@ -7,6 +7,7 @@
 #include <string.h>
 #include "tuppi_core.h"
 #include "tuppi_mlp.h"
+#include "tuppi_parallel.h"
 
 typedef struct TcEnv TcEnv;
 TcEnv *tc_env_new(int n, uint64_t seed);
@@ -32,10 +33,12 @@ void tc_set_rollout_chunk(int n);
 void tc_set_belief_lanes(int lanes);
 void tc_belief_profile(double *seconds, long *counts, int reset);
 int tc_belief_counters(double *out, int reset);
+void tc_set_dedup_worlds(int on);
 
 static TcDeal game;
 static int hand_order[4][14], hand_count[4];
-static TcMlp *models[2];
+/* Roles: 0 rollouts (VRPO1), 1 anchor (VRPO3), 2 the Heidi 1.2 network. */
+static TcMlp *models[3];
 static TcEnv *envs[4];
 static uint64_t rngs[4];
 static int sooli_modes[4], worlds = 128;
@@ -43,6 +46,23 @@ static double last_values[TC_NUM_ACTIONS_V2];
 static int last_ids[TC_NUM_ACTIONS_V2], last_count;
 /* Additive API: old callers keep the original controller and 3-word context. */
 static int bot_mode, human_mask;
+/* Mode 3 is mode 1 on role 2 (Nelli 1.1); mode 4 is mode 2 with role 2 as
+ * the anchor only (Heidi 1.2). */
+static int lite_mode(int mode) { return mode == 1 || mode == 3; }
+static int pib_mode(int mode) { return mode == 2 || mode == 4; }
+/* The anchor: the keep rule's network for bids and play, the anchor-only bid
+ * and the lite policy. Role 2 in modes 3 and 4, role 1 otherwise. */
+static TcMlp *anchor_for(int mode) { return models[mode >= 3 ? 2 : 1]; }
+/* The likelihood model: play inference (modes 2 and 4) and the safety net's
+ * belief (modes 1 and 3, the lite policy's own network). Role 2 in mode 3
+ * only; Heidi 1.2 keeps role 1 here. Rollouts always use models[0]. */
+static TcMlp *likelihood_for(int mode) { return models[mode == 3 ? 2 : 1]; }
+static TcMlp *anchor_model(void) { return anchor_for(bot_mode); }
+static TcMlp *likelihood_model(void) { return likelihood_for(bot_mode); }
+/* Every network a mode reads is loaded (role 0 is required by tb_configure). */
+static int mode_ready(int mode) { return models[0] && anchor_for(mode) && likelihood_for(mode); }
+/* 0: searched bids (the default); 1: the anchor's bid in the show phase. */
+static int bid_mode;
 static uint64_t gate_rngs[4], belief_rngs[4];
 static double match_equity[50];
 
@@ -50,7 +70,7 @@ int tb_api_version(void) { return 1; }
 
 int tb_load_model(int role, int in_dim, int width, int blocks, int encoder,
                   int count, const float *params) {
-  if (role < 0 || role > 1 || width < 1 || width > 1024 || blocks < 0 || blocks > 8 ||
+  if (role < 0 || role > 2 || width < 1 || width > 1024 || blocks < 0 || blocks > 8 ||
       encoder < 1 || encoder > 2 || in_dim != tc_feature_dim_v(encoder) || !params) return -1;
   int expected = width * in_dim + width + blocks * (2 * width * width + 4 * width)
                  + 2 * width + TC_NUM_ACTIONS * width + TC_NUM_ACTIONS;
@@ -64,12 +84,17 @@ int tb_load_model(int role, int in_dim, int width, int blocks, int encoder,
 }
 
 int tb_configure(int n_worlds, const double *equity) {
-  if (!models[0] || !models[1] || !equity || n_worlds < 1 || n_worlds > 1024 ||
+  if (!models[0] || (!models[1] && !models[2]) || !equity || n_worlds < 1 || n_worlds > 1024 ||
       (n_worlds > 128 && n_worlds % 128)) return -1;
   worlds = n_worlds;
-  bot_mode = 0; human_mask = 0;
+  bot_mode = 0; human_mask = 0; bid_mode = 0;
   memcpy(match_equity, equity, sizeof match_equity);
   tc_set_showing_fix(1);
+#ifdef __EMSCRIPTEN__
+  /* Exact in WASM (row-independent kernel): each repeated world is played once
+   * and its value added once per copy, in order. The hosted library keeps it off. */
+  tc_set_dedup_worlds(1);
+#endif
   for (int s = 0; s < 4; ++s) {
     if (envs[s]) tc_env_free(envs[s]);
     envs[s] = tc_env_new(worlds * 26, (uint64_t)(2 * s));
@@ -86,14 +111,18 @@ int tb_configure(int n_worlds, const double *equity) {
   return 0;
 }
 
-/* 0: unchanged search; 1: Heidi 0.5 (C1H); 2: Heidi 1.0 (PIB4 humans). */
+/* 0: unchanged search; 1: Heidi 0.5 / Nelli 1.0 (C1H); 2: Heidi 1.0 / 1.1
+ * (PIB4 humans); 3: Nelli 1.1 (mode 1 on role 2); 4: Heidi 1.2 (mode 2 with
+ * role 2 as the anchor only; likelihood role 1). Modes 0-2 need role 1,
+ * mode 3 role 2, mode 4 roles 1 and 2. */
 int tb_configure_bot(int mode, int people) {
-  if (mode < 0 || mode > 2 || people < 0 || people > 15 || !envs[0]) return -1;
-  bot_mode = mode; human_mask = people;
+  if (mode < 0 || mode > 4 || people < 0 || people > 15 || !envs[0] || !mode_ready(mode)) return -1;
+  bot_mode = mode; human_mask = people; bid_mode = 0;
+  const int pib = pib_mode(mode);
   for (int s = 0; s < 4; ++s) {
-    tc_env_set_belief(envs[s], mode == 2 ? models[1] : NULL, mode == 2 ? 4 : 0, 2.0, 0.5, 1);
-    tc_env_set_belief_humans(envs[s], mode == 2 ? people & ~(1 << s) : 0, 4.0, 0.8);
-    if (mode == 1) rngs[s] = UINT64_C(0x9E3779B97F4A7C15) * (s + 1);
+    tc_env_set_belief(envs[s], pib ? likelihood_model() : NULL, pib ? 4 : 0, 2.0, 0.5, 1);
+    tc_env_set_belief_humans(envs[s], pib ? people & ~(1 << s) : 0, 4.0, 0.8);
+    if (lite_mode(mode)) rngs[s] = UINT64_C(0x9E3779B97F4A7C15) * (s + 1);
     gate_rngs[s] = UINT64_C(0x5AFE0000) + s;
     belief_rngs[s] = UINT64_C(0xBE11EF00) + s;
   }
@@ -101,12 +130,15 @@ int tb_configure_bot(int mode, int people) {
 }
 
 /* Search profile is explicit; execution backend never changes it. The old
- * configure_bot API retains PIB4 for existing callers and fixtures. */
+ * configure_bot API retains PIB4 for existing callers and fixtures. The
+ * threaded build keeps lanes - 1 workers for scoring and rollouts until
+ * tb_dispose; the single build has none. */
 int tb_configure_inference(int mult, int lanes) {
-  if (bot_mode != 2 || (mult != 4 && mult != 8) || lanes < 1 || lanes > 4) return -1;
+  if (!pib_mode(bot_mode) || (mult != 4 && mult != 8) || lanes < 1 || lanes > 4) return -1;
   tc_set_belief_lanes(lanes);
+  tc_parallel_start(lanes);
   for (int s = 0; s < 4; ++s)
-    tc_env_set_belief(envs[s], models[1], mult, 2.0, 0.5, 1);
+    tc_env_set_belief(envs[s], likelihood_model(), mult, 2.0, 0.5, 1);
   return 0;
 }
 
@@ -116,8 +148,29 @@ int tb_set_human_seats(int people) {
   if (people < 0 || people > 15 || !envs[0]) return -1;
   human_mask = people;
   for (int s = 0; s < 4; ++s)
-    tc_env_set_belief_humans(envs[s], bot_mode == 2 ? people & ~(1 << s) : 0, 4.0, 0.8);
+    tc_env_set_belief_humans(envs[s], pib_mode(bot_mode) ? people & ~(1 << s) : 0, 4.0, 0.8);
   return 0;
+}
+
+/* Bid profile of Heidi 1.0 (Heidi fast plan, Stage 3). Mode 0 searches the
+ * show phase as before. Mode 1 takes the anchor's bid there: the argmax of
+ * its logits over the legal bids with tb_choose's tie rule, no search, no RNG
+ * draw and no values recorded; every other phase is unchanged. Off unless a
+ * caller sets it; saves record it so a game never changes mode. */
+int tb_configure_bids(int mode) {
+  if (mode < 0 || mode > 1 || (mode == 1 && !pib_mode(bot_mode))) return -1;
+  bid_mode = mode;
+  return 0;
+}
+
+static int anchor_index(const TcObs *obs, const int *ids, int k) {
+  const TcMlp *model = anchor_model();
+  uint8_t features[2048]; float logits[TC_NUM_ACTIONS];
+  tc_encode_v(obs, features, tc_mlp_encoder(model));
+  tc_mlp_forward(model, features, 1, logits);
+  int anchor = 0;
+  for (int i = 1; i < k; ++i) if (logits[ids[i]] > logits[ids[anchor]]) anchor = i;
+  return anchor;
 }
 
 int tb_belief_profile(double *out, int reset) {
@@ -132,8 +185,9 @@ int tb_belief_profile(double *out, int reset) {
 int tb_belief_counters(double *out, int reset) { return out ? tc_belief_counters(out, reset) : -1; }
 
 void tb_dispose(void) {
+  tc_parallel_stop();
   for (int s = 0; s < 4; s++) { if (envs[s]) tc_env_free(envs[s]); envs[s] = NULL; }
-  for (int role = 0; role < 2; role++) { tc_mlp_free(models[role]); models[role] = NULL; }
+  for (int role = 0; role < 3; role++) { tc_mlp_free(models[role]); models[role] = NULL; }
   last_count = 0;
 }
 
@@ -248,7 +302,7 @@ int tb_restore_context(int seat, uint32_t lo, uint32_t hi, int mode) {
   rngs[seat] = (uint64_t)lo | ((uint64_t)hi << 32); set_sooli(seat, mode); return 0;
 }
 int tb_restore_net_context(int seat, uint32_t glo, uint32_t ghi, uint32_t blo, uint32_t bhi) {
-  if (seat < 0 || seat > 3 || bot_mode != 1) return -1;
+  if (seat < 0 || seat > 3 || !lite_mode(bot_mode)) return -1;
   gate_rngs[seat] = (uint64_t)glo | ((uint64_t)ghi << 32);
   belief_rngs[seat] = (uint64_t)blo | ((uint64_t)bhi << 32);
   return 0;
@@ -310,17 +364,18 @@ static int choose_observation(int seat, const TcObs *observation, const int *leg
   memcpy(ids, legal, sizeof(int) * k);
   if (k == 0) return -2;
   if (k == 1) return ids[0];
-  if (bot_mode == 1) {
+  if (lite_mode(bot_mode)) {
     if (obs.phase >= TC_PH_SOOLI_OFFER) return tc_sooli_policy(&obs, &rngs[seat]);
+    TcMlp *model = anchor_model();
     uint8_t features[2048]; float q[TC_NUM_ACTIONS];
-    tc_encode_v(&obs, features, tc_mlp_encoder(models[1]));
-    tc_mlp_forward(models[1], features, 1, q);
+    tc_encode_v(&obs, features, tc_mlp_encoder(model));
+    tc_mlp_forward(model, features, 1, q);
     int best = 0;
     for (int i = 1; i < k; ++i)
       if (q[ids[i]] > q[ids[best]] || (q[ids[i]] == q[ids[best]] && ids[i] < ids[best])) best = i;
     int action = ids[best];
     if (tc_lite_net_applies(&obs, 9, 0))
-      action = tc_lite_net_h(models[1], match_equity, &obs, action, 16, 4,
+      action = tc_lite_net_h(likelihood_model(), match_equity, &obs, action, 16, 4,
                             human_mask & ~(1 << seat), 4.0, 0.8, &gate_rngs[seat], &belief_rngs[seat]);
     return action;
   }
@@ -341,6 +396,7 @@ static int choose_observation(int seat, const TcObs *observation, const int *leg
       best = argmax(values, k);
     }
   } else {
+    if (obs.phase == TC_PH_SHOW && bid_mode == 1) return ids[anchor_index(&obs, ids, k)];
     /* Preserve the current v3 controller's persistent sooli setting. */
     if (obs.phase == TC_PH_SHOW && worlds > 128) best = adaptive(seat, &obs, ids, k, values);
     else {
@@ -348,11 +404,7 @@ static int choose_observation(int seat, const TcObs *observation, const int *leg
       best = argmax(values, k);
     }
     if (best < 0) return -3;
-    uint8_t features[2048]; float logits[TC_NUM_ACTIONS];
-    tc_encode_v(&obs, features, tc_mlp_encoder(models[1]));
-    tc_mlp_forward(models[1], features, 1, logits);
-    int anchor = 0;
-    for (int i = 1; i < k; ++i) if (logits[ids[i]] > logits[ids[anchor]]) anchor = i;
+    int anchor = anchor_index(&obs, ids, k);
     double margin = obs.phase == TC_PH_SHOW ? 0.03 : 0.003;
     if (values[anchor] >= values[best] - margin) best = anchor;
   }
@@ -363,7 +415,7 @@ static int choose_observation(int seat, const TcObs *observation, const int *leg
 
 int tb_choose(int seat) {
   last_count = 0;
-  if (seat != game.cur || seat < 0 || seat > 3 || !envs[seat] || game.phase == TC_PH_DONE) return -1;
+  if (seat != game.cur || seat < 0 || seat > 3 || !envs[seat] || !mode_ready(bot_mode) || game.phase == TC_PH_DONE) return -1;
   TcObs obs; tc_observe(&game, seat, &obs);
   int ids[TC_NUM_ACTIONS_V2], k = tb_legal(seat, ids);
   return choose_observation(seat, &obs, ids, k);
@@ -374,7 +426,7 @@ int tb_choose(int seat) {
  * per-action RNG assignment. Validate its complete legal set before search. */
 int tb_choose_observation(const TcObs *obs, const int32_t *ids, int k) {
   last_count = 0;
-  if (!obs || !ids || obs->seat > 3 || !envs[obs->seat] || k < 1 || k > TC_NUM_ACTIONS_V2 ||
+  if (!obs || !ids || obs->seat > 3 || !envs[obs->seat] || !mode_ready(bot_mode) || k < 1 || k > TC_NUM_ACTIONS_V2 ||
       obs->phase == TC_PH_DONE || obs->phase > TC_PH_SOOLI_PLAY || obs->dealer > 3 ||
       obs->n_shows > 4 || obs->n_played > 52 || obs->n_decisions > 2 ||
       (obs->hand >> 52) || obs->ruleset != 3) return -1;
@@ -404,6 +456,6 @@ int tb_features(int seat, int encoder, uint8_t *out) {
   TcObs obs; tc_observe(&game, seat, &obs); tc_encode_v(&obs, out, encoder); return tc_feature_dim_v(encoder);
 }
 int tb_inference(int role, const uint8_t *features, int rows, float *out) {
-  if (role < 0 || role > 1 || !models[role] || rows < 1 || rows > 64) return -1;
+  if (role < 0 || role > 2 || !models[role] || rows < 1 || rows > 64) return -1;
   tc_mlp_forward(models[role], features, rows, out); return 0;
 }

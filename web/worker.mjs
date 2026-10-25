@@ -37,11 +37,12 @@ async function runTimeline(data) {
 
 // Bot-only games for the viewer (round 16): four bots play a match to 52 on
 // this device, and every move goes to the viewer as a timeline step. Each team
-// has its own bot (legacy W128/W1024, Nelli 1.0, Heidi 1.0 or 1.1); a runtime per
-// profile follows every move, and the actor's team runtime chooses. One game
-// at a time; `delay` paces the moves and can change while it plays.
+// has its own bot (legacy W128/W1024, Nelli 1.0 or 1.1, Heidi 1.0, 1.1 or 1.2); a
+// runtime per profile follows every move, and the actor's team runtime chooses.
+// One game at a time; `delay` paces the moves and can change while it plays.
 const botProfiles = {fast: {worlds: 128, bot: 'legacy'}, full: {worlds: 1024, bot: 'legacy'},
-  heidi05: {worlds: 128, bot: 'heidi05'}, heidi10: {worlds: 1024, bot: 'heidi10'}, heidi11: {worlds: 1024, bot: 'heidi11'}};
+  heidi05: {worlds: 128, bot: 'heidi05'}, nelli11: {worlds: 128, bot: 'nelli11'},
+  heidi10: {worlds: 1024, bot: 'heidi10'}, heidi11: {worlds: 1024, bot: 'heidi11'}, heidi12: {worlds: 1024, bot: 'heidi12'}};
 // Profile -> runtime being created or ready. Each holds its own models and
 // WASM memory, so only the current game's (at most two) stay loaded, and
 // stopping the game releases them.

@@ -30,8 +30,13 @@ from .match_runner import (
     AI_ACTION_DELAY_SECONDS,
     DEFAULT_AI_PROFILE_KEY,
     TUPPI_AI_PROFILE_KEY,
+    BOT_DISPLAY_NAMES,
     HEIDI_LITE_PROFILE_KEY,
+    HEIDI_LITE_PROFILE_KEYS,
     HEIDI_SEARCH_PROFILE_KEY,
+    HEIDI_SEARCH_PROFILE_KEYS,
+    HEIDI12_PROFILE_KEY,
+    NELLI11_PROFILE_KEY,
     LiveMatchRunner,
     tuppi_ai_available,
 )
@@ -111,6 +116,12 @@ MAX_SPECTATORS = 8
 #: Earlier results a room keeps after rematches (summaries only).
 MAX_PREVIOUS_MATCHES = 10
 _PREVIOUS_MATCH_FIELDS = frozenset({"deals", "final_score", "match_ref", "winner_team"})
+#: Profiles a room records and shows by key (room records v6 and v7).
+HEIDI_PROFILE_KEYS = HEIDI_LITE_PROFILE_KEYS | HEIDI_SEARCH_PROFILE_KEYS
+#: The bot named in research results and match records (the browser's bot ids;
+#: the online Nelli 1.0 and Heidi 1.1 keep their earlier ids heidi05 and heidi10).
+RESEARCH_BOT_IDS = {HEIDI_LITE_PROFILE_KEY: "heidi05", HEIDI_SEARCH_PROFILE_KEY: "heidi10",
+                    NELLI11_PROFILE_KEY: "nelli11", HEIDI12_PROFILE_KEY: "heidi12"}
 
 
 @dataclass(slots=True)
@@ -186,10 +197,9 @@ class Room:
                     {
                         "agent_profile": profile_key,
                         # Display names only; profile keys stay as stored (Nelli 1.0 was
-                        # Heidi 0.5, Heidi 1.1 was Heidi 1.0; the same bots).
-                        "display_name": "Nelli 1.0" if profile_key == HEIDI_LITE_PROFILE_KEY else
-                            "Heidi 1.1" if profile_key == HEIDI_SEARCH_PROFILE_KEY else
-                            "TuppiAI" if profile_key == TUPPI_AI_PROFILE_KEY else "Tuppi partner AI",
+                        # Heidi 0.5, Heidi 1.1 was Heidi 1.0; the same bots). Nelli 1.1
+                        # and Heidi 1.2 are the same bots on the new base network.
+                        "display_name": BOT_DISPLAY_NAMES.get(profile_key, "Tuppi partner AI"),
                         "kind": "ai",
                         "ready": True,
                         "seat": seat,
@@ -220,7 +230,7 @@ class Room:
         }
         if self.ruleset_id is not RulesetId.PROJECT_TARGET_V1:
             snapshot["ruleset_id"] = self.ruleset_id.value
-        if self.ai_profile_key in {HEIDI_LITE_PROFILE_KEY, HEIDI_SEARCH_PROFILE_KEY}:
+        if self.ai_profile_key in HEIDI_PROFILE_KEYS:
             snapshot["bot_profile"] = self.ai_profile_key
         if self.paused:
             snapshot["paused"] = True
@@ -263,8 +273,10 @@ class Room:
         if self.open_seats_record():
             record.update(schema_version=OPEN_SEATS_ROOM_RECORD_SCHEMA_VERSION,
                 open_seats=sorted(self.open_seats), handover_seats=sorted(self.handover_seats()))
-        if self.ai_profile_key in {HEIDI_LITE_PROFILE_KEY, HEIDI_SEARCH_PROFILE_KEY}:
-            schema = HEIDI_ROOM_RECORD_SCHEMA_VERSION if self.ai_profile_key == HEIDI_LITE_PROFILE_KEY else HEIDI_SEARCH_ROOM_RECORD_SCHEMA_VERSION
+        if self.ai_profile_key in HEIDI_PROFILE_KEYS:
+            # v6 binds a lite C1H profile (Nelli 1.0 or 1.1), v7 a search profile
+            # (Heidi 1.1 or 1.2); the fields are the same for both keys of each.
+            schema = HEIDI_ROOM_RECORD_SCHEMA_VERSION if self.ai_profile_key in HEIDI_LITE_PROFILE_KEYS else HEIDI_SEARCH_ROOM_RECORD_SCHEMA_VERSION
             record.update(schema_version=schema, ai_profile_key=self.ai_profile_key,
                 ruleset_id=self.ruleset_id.value, match_index=self.match_index, paused=self.paused,
                 previous_matches=deepcopy(self.previous_matches), open_seats=sorted(self.open_seats),
@@ -367,10 +379,12 @@ class RoomManager:
     ) -> tuple[Room, Session]:
         name = self._validate_name(display_name)
         self._validate_ai_seats(ai_seats)
+        # Nelli 1.0 and Heidi 1.1 stay accepted (an older client may still ask
+        # for them); new clients are offered Nelli 1.1 and Heidi 1.2.
         if bot_profile is not None and (self._ai_profile_key != TUPPI_AI_PROFILE_KEY or
-                bot_profile not in {TUPPI_AI_PROFILE_KEY, HEIDI_LITE_PROFILE_KEY, HEIDI_SEARCH_PROFILE_KEY}):
+                bot_profile not in {TUPPI_AI_PROFILE_KEY, *HEIDI_PROFILE_KEYS}):
             raise RoomError("invalid_bot_profile")
-        if bot_profile == HEIDI_SEARCH_PROFILE_KEY:
+        if bot_profile in HEIDI_SEARCH_PROFILE_KEYS:
             from .hosted_bot import heidi_enabled
             if not heidi_enabled():
                 raise RoomError("invalid_bot_profile")
@@ -729,7 +743,7 @@ class RoomManager:
             # Research row (no names or codes); best effort, never stops play.
             people = [sum(1 for seat in seats if seat % 2 == team) for team in (0, 1)]
             try:
-                self.results.record({"bot": {HEIDI_LITE_PROFILE_KEY: "heidi05", HEIDI_SEARCH_PROFILE_KEY: "heidi10"}.get(
+                self.results.record({"bot": RESEARCH_BOT_IDS.get(
                     runner.ai_profile_key, os.environ.get("TUPPI_HOSTED_BOT_LEVEL") or "server"),
                     "conceded": len(runner.conceded_deals()), "day": results_today(),
                     "deals": len(runner.state.completed_deals), "final_score": list(result["final_score"]),
@@ -753,9 +767,9 @@ class RoomManager:
             return
         try:
             profile = room.runner.ai_profile_key
-            heidi = {HEIDI_LITE_PROFILE_KEY: "heidi05", HEIDI_SEARCH_PROFILE_KEY: "heidi10"}.get(profile)
+            heidi = RESEARCH_BOT_IDS.get(profile)
             version = (profile + ":" + self.bot_version.split(":", 1)[-1]) if heidi and self.bot_version else self.bot_version
-            if profile == HEIDI_SEARCH_PROFILE_KEY:
+            if profile in HEIDI_SEARCH_PROFILE_KEYS:
                 from .hosted_bot import heidi_identity
                 version = profile + ":" + heidi_identity()[:12]
             record = online_record(room.runner, bot=heidi or os.environ.get("TUPPI_HOSTED_BOT_LEVEL") or "server",
@@ -1254,7 +1268,8 @@ class RoomManager:
         schema_version = record.get("schema_version")
         ruleset_id = RulesetId.PROJECT_TARGET_V1
         heidi_record = schema_version in (HEIDI_ROOM_RECORD_SCHEMA_VERSION, HEIDI_SEARCH_ROOM_RECORD_SCHEMA_VERSION)
-        heidi_profile = HEIDI_SEARCH_PROFILE_KEY if schema_version == HEIDI_SEARCH_ROOM_RECORD_SCHEMA_VERSION else HEIDI_LITE_PROFILE_KEY
+        heidi_profiles = HEIDI_SEARCH_PROFILE_KEYS if schema_version == HEIDI_SEARCH_ROOM_RECORD_SCHEMA_VERSION else HEIDI_LITE_PROFILE_KEYS
+        heidi_profile = record.get("ai_profile_key")
         multi_match = schema_version in (MULTI_MATCH_ROOM_RECORD_SCHEMA_VERSION, OPEN_SEATS_ROOM_RECORD_SCHEMA_VERSION,
                                         HEIDI_ROOM_RECORD_SCHEMA_VERSION, HEIDI_SEARCH_ROOM_RECORD_SCHEMA_VERSION)
         open_seats_record = schema_version in (OPEN_SEATS_ROOM_RECORD_SCHEMA_VERSION, HEIDI_ROOM_RECORD_SCHEMA_VERSION,
@@ -1265,7 +1280,7 @@ class RoomManager:
                 expected |= {"open_seats", "handover_seats"}
             if heidi_record:
                 expected |= {"ai_profile_key"}
-                if record.get("ai_profile_key") != heidi_profile:
+                if not isinstance(heidi_profile, str) or heidi_profile not in heidi_profiles:
                     raise PersistenceError("persisted bot profile is invalid")
             ai_action_delay_ms = record.get("ai_action_delay_ms")
             try:

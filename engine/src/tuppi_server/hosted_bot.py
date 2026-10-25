@@ -19,12 +19,23 @@ those seats before each decision); or ``d1``, c1 plus sooli at 2 of 8
 (audit_deliverables/tuppi_faceup_improvements_20261020). c1, c1h and d1 add
 two cursors to each agent's checkpoint (schema lite.v2); off keeps the v1
 checkpoint. Every setting restores both schemas.
+
+Per-room profiles (match_runner.py) choose a lite network and a search mode:
+``HostedLiteAgent(seat, options="c1h", model="v4")`` is Nelli 1.1 (the C1H
+bot on tuppi_ai.lite.MODEL_V4; ``model="v3"``, the default, is Nelli 1.0 and
+TuppiAI). The checkpoint does not name the network: the room's profile key
+does. ``HostedHeidiAgent(seat, mode=2)`` is Heidi 1.1 and ``mode=4`` Heidi 1.2;
+the one spawned compact worker serves both, switching the controller's mode
+per decision (CompactController.choose(..., mode=)). TUPPI_HOSTED_HEIDI10=1
+enables both search profiles (docs/HEIDI12_SERVER.md).
 """
 from __future__ import annotations
 
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
 from functools import lru_cache
+import hashlib
+import json
 import multiprocessing
 import os
 import threading
@@ -34,6 +45,12 @@ import time
 
 LEVELS = ("lite", "full")
 LITE_OPTIONS = ("off", "c1", "c1h", "d1")
+#: Lite networks: "v3" is tuppi_ai.lite.MODEL (VRPO3), "v4" tuppi_ai.lite.MODEL_V4.
+LITE_MODELS = ("v3", "v4")
+#: Compact controller mode -> (checkpoint schema, display name). Mode 2 is
+#: Heidi 1.1 (anchor and likelihood VRPO3), mode 4 Heidi 1.2 (the new network).
+HEIDI_MODES = {2: ("tuppi.hosted.controller.heidi10.v1", "Heidi 1.1"),
+               4: ("tuppi.hosted.controller.heidi12.v1", "Heidi 1.2")}
 _pool: ProcessPoolExecutor | None = None
 _pool_lock = threading.Lock()
 _agents = None
@@ -54,6 +71,24 @@ def heidi_enabled() -> bool:
 def heidi_identity() -> str:
     from tuppi_ai.compact import model_identity
     return model_identity()["sha256"]
+
+
+@lru_cache(maxsize=1)
+def heidi11_previous_identity() -> str:
+    """The identity a Heidi 1.1 checkpoint saved by the previous release names.
+
+    That release's compact manifest listed only the rollout (role 0) and
+    anchor (role 1) networks, and checkpoints name the manifest's sha256.
+    This release adds the Heidi 1.2 network (role 2), which changes
+    heidi_identity(). Without it, the manifest written as the export tools
+    write it (two-space JSON and a newline) has the previous sha256 exactly
+    when every file Heidi 1.1 uses and the controller settings are unchanged,
+    so those saved tables restore and play on (mode 2 is bit-identical).
+    """
+    from tuppi_ai.compact import model_identity
+    manifest = model_identity()["manifest"]
+    previous = {**manifest, "models": [r for r in manifest["models"] if r.get("role") != 2]}
+    return hashlib.sha256((json.dumps(previous, indent=2) + "\n").encode()).hexdigest()
 
 
 def _initialise_heidi() -> None:
@@ -96,9 +131,10 @@ def _warm_heidi() -> str:
     return _heidi_controller.model_sha256
 
 
-def _heidi_decision(observation, context, people):
+def _heidi_decision(observation, context, people, mode=2):
     started, cpu = time.perf_counter(), time.process_time()
-    action, cursor, _ = _heidi_controller.choose(observation, context, people)
+    # The worker serves both search profiles: always name the mode.
+    action, cursor, _ = _heidi_controller.choose(observation, context, people, mode=mode)
     peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     return action, cursor, {"decision_seconds": time.perf_counter() - started,
         "decision_cpu_seconds": time.process_time() - cpu,
@@ -153,19 +189,22 @@ def lite_options() -> str:
     return value
 
 
-def hosted_agents(seats, *, options: str | None = None) -> dict:
+def hosted_agents(seats, *, options: str | None = None, model: str = "v3") -> dict:
     if options is not None:
-        if level() != "lite" or options not in LITE_OPTIONS:
+        if level() != "lite" or options not in LITE_OPTIONS or model not in LITE_MODELS:
             raise ValueError("unsupported hosted bot option")
-        return {seat: HostedLiteAgent(seat, options=options) for seat in seats}
+        return {seat: HostedLiteAgent(seat, options=options, model=model) for seat in seats}
+    if model != "v3":
+        raise ValueError("unsupported hosted bot option")
     kind = HostedLiteAgent if level() == "lite" else HostedSearchAgent
     return {seat: kind(seat) for seat in seats}
 
 
 def warm() -> None:
     if level() == "lite":
-        from tuppi_ai.lite import shared_mlp
+        from tuppi_ai.lite import MODEL_V4, shared_mlp
         shared_mlp()
+        shared_mlp(MODEL_V4)  # Nelli 1.1: a missing or damaged network fails at startup
         if heidi_enabled() and heidi_pool().submit(_warm_heidi).result(timeout=90) != heidi_identity():
             raise RuntimeError("compact Heidi model identity mismatch")
         return
@@ -182,12 +221,20 @@ def shutdown() -> None:
 
 
 class HostedHeidiAgent:
-    """PIB8 is part of the saved profile; a missing worker is never a lite fallback."""
+    """PIB8 is part of the saved profile; a missing worker is never a lite fallback.
+
+    ``mode`` 2 is Heidi 1.1, 4 Heidi 1.2; the room's profile key chooses it and
+    each mode has its own checkpoint schema, so a saved table never changes bot.
+    """
     handles_sooli = True
 
-    def __init__(self, seat: int) -> None:
+    def __init__(self, seat: int, *, mode: int = 2) -> None:
+        if type(mode) is not int or mode not in HEIDI_MODES:
+            raise ValueError("unsupported hosted Heidi mode")
+        self.mode = mode
+        self.schema, name = HEIDI_MODES[mode]
         if level() != "lite" or type(seat) is not int or seat not in range(4):
-            raise ValueError("hosted Heidi 1.1 is unavailable")
+            raise ValueError(f"hosted {name} is unavailable")
         self.seat = seat
         rng = (2 * seat) * 2654435761 + 1
         self.context = [rng & 0xffffffff, rng >> 32, 0]
@@ -203,9 +250,10 @@ class HostedHeidiAgent:
         if observation.observing_seat != self.seat:
             raise ValueError("bot observation seat mismatch")
         worker = heidi_pool()
+        # Mode 2 sends the same request as before (the worker's default is 2).
+        request = (observation, self.context, self.people) + ((self.mode,) if self.mode != 2 else ())
         try:
-            action, context, stats = worker.submit(_heidi_decision,
-                observation, self.context, self.people).result(timeout=90)
+            action, context, stats = worker.submit(_heidi_decision, *request).result(timeout=90)
         except (TimeoutError, BrokenProcessPool):
             _stop_heidi_pool(worker)
             raise
@@ -215,15 +263,22 @@ class HostedHeidiAgent:
         return action
 
     def checkpoint(self):
-        return {"schema": "tuppi.hosted.controller.heidi10.v1", "worlds": 1024,
+        return {"schema": self.schema, "worlds": 1024,
                 "inference": 8, "models": heidi_identity(), "context": list(self.context)}
+
+    def _known_models(self, models) -> bool:
+        """This worker's networks; for Heidi 1.1 also a previous release's
+        manifest whose role-0/1 networks and settings are the ones here."""
+        if models == heidi_identity():
+            return True
+        return self.mode == 2 and isinstance(models, str) and models == heidi11_previous_identity()
 
     def restore(self, record) -> None:
         if (type(record) is not dict or set(record) != {"schema", "worlds", "inference", "models", "context"}
-                or record["schema"] != "tuppi.hosted.controller.heidi10.v1"
+                or record["schema"] != self.schema
                 or type(record["worlds"]) is not int or record["worlds"] != 1024
                 or type(record["inference"]) is not int or record["inference"] != 8
-                or record["models"] != heidi_identity() or type(record["context"]) is not list
+                or not self._known_models(record["models"]) or type(record["context"]) is not list
                 or len(record["context"]) != 3
                 or any(type(v) is not int or not 0 <= v <= 0xffffffff for v in record["context"])
                 or record["context"][2] > 2):
@@ -260,13 +315,24 @@ class HostedSearchAgent:
 
 
 class HostedLiteAgent:
+    """``model`` "v3" (the default) is the VRPO3 lite bot as before; "v4" the
+    new base network (tuppi_ai.lite.MODEL_V4, Nelli 1.1). Checkpoints do not
+    name the network (the room's profile key does), so both restore alike."""
     handles_sooli = True
 
-    def __init__(self, seat: int, *, options: str | None = None) -> None:
+    def __init__(self, seat: int, *, options: str | None = None, model: str = "v3") -> None:
         from tuppi_ai.lite import C1, C1H, D1, LiteAgent
+        if model not in LITE_MODELS:
+            raise ValueError("unsupported hosted lite model")
         self.seat = seat
+        self.model = model
         self.options = lite_options() if options is None else options
-        self._agent = LiteAgent(seat, options={"off": None, "c1": C1, "c1h": C1H, "d1": D1}[self.options])
+        chosen = {"off": None, "c1": C1, "c1h": C1H, "d1": D1}[self.options]
+        if model == "v3":
+            self._agent = LiteAgent(seat, options=chosen)
+        else:
+            from tuppi_ai.lite import MODEL_V4
+            self._agent = LiteAgent(seat, options=chosen, model=MODEL_V4)
 
     def set_human_seats(self, seats) -> None:
         """The seats people play now (the runner calls this before each decision; c1h reads their moves loosely)."""

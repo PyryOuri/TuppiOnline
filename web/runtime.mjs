@@ -18,8 +18,20 @@ async function sha256(bytes) {
 
 // Heidi 1.0 and Heidi 1.1 are the same W1024 search and decisions; 1.1 names
 // games played on the faster engine (distinct-hand scoring, worker lanes).
-export const heidiSearchBots = ['heidi10', 'heidi11'];
+// Heidi 1.2 is that search with the new base network (model role 2) as its
+// anchor only: the play-inference likelihood model stays VRPO3 (role 1) and the
+// rollouts VRPO1 (role 0). Nelli 1.1 is Nelli 1.0 (heidi05, the lite C1H bot) on
+// the new network (its policy and its safety net).
+export const heidiSearchBots = ['heidi10', 'heidi11', 'heidi12'];
 const heidiSearch = bot => heidiSearchBots.includes(bot);
+// The lite bots' saves carry their network cursors (seven context words).
+export const liteNetBots = ['heidi05', 'nelli11'];
+// Controller mode (tb_configure_bot) and the model roles each bot loads: 0 rollouts,
+// 1 VRPO3 (anchor and likelihood of the older bots, likelihood of Heidi 1.2), 2 the new
+// network. Legacy keeps tb_configure's mode 0.
+export const runtimeBotModes = {legacy: 0, heidi05: 1, heidi10: 2, heidi11: 2, nelli11: 3, heidi12: 4};
+const modeRoles = {3: [0, 2], 4: [0, 1, 2]};
+export const runtimeBotRoles = bot => modeRoles[runtimeBotModes[bot]] ?? [0, 1];
 
 export function inferenceLanes() {
   if (globalThis.crossOriginIsolated !== true || typeof SharedArrayBuffer !== 'function') return 1;
@@ -34,7 +46,7 @@ export class Runtime {
       backend = 'auto', lanes = inferenceLanes(), read = readAsset, progress = () => {},
       bids = 0, singleInference = null} = {}) {
     if (![128, 1024].includes(worlds)) throw new Error('Bottiasetus ei ole tuettu.');
-    if (!['legacy', 'heidi05', ...heidiSearchBots].includes(bot) ||
+    if (!Object.hasOwn(runtimeBotModes, bot) ||
         !Array.isArray(humanSeats) || humanSeats.some(seat => !Number.isInteger(seat) || seat < 0 || seat > 3) ||
         (heidiSearch(bot) && ![4, 8].includes(inference)) || !['auto', 'single', 'threads'].includes(backend) ||
         ![0, 1].includes(bids) || (bids && !heidiSearch(bot)) || ![null, 4, 8].includes(singleInference) ||
@@ -90,8 +102,12 @@ export class Runtime {
     runtime.bidMode = bids;
     try {
       if (module._tb_api_version() !== manifest.api_version) throw new Error('Pelin ja botin versiot eivät täsmää.');
-      for (const record of manifest.models) {
-        progress(`Ladataan botti ${manifest.models.indexOf(record) + 1}/${manifest.models.length}…`);
+      // Only the networks this bot uses: a Nelli 1.1 game never reads the VRPO3 file, a
+      // Heidi 1.2 game reads all three, and the older bots never read the new network.
+      const roles = runtimeBotRoles(bot), records = manifest.models.filter(record => roles.includes(record.role));
+      if (records.length !== roles.length) throw new Error('Bottipaketin versio ei ole tuettu.');
+      for (const record of records) {
+        progress(`Ladataan botti ${records.indexOf(record) + 1}/${records.length}…`);
         const bytes = await read(record.file);
         if (!Number.isInteger(record.count) || bytes.byteLength !== record.count * 4 ||
             bytes.byteLength !== record.bytes || await sha256(bytes) !== record.sha256)
@@ -115,7 +131,7 @@ export class Runtime {
       runtime.bot = bot;
       if (bot !== 'legacy') {
         const mask = [...new Set(humanSeats)].reduce((value, seat) => value | (1 << seat), 0);
-        if (!module._tb_configure_bot || module._tb_configure_bot(bot === 'heidi05' ? 1 : 2, mask) !== 0)
+        if (!module._tb_configure_bot || module._tb_configure_bot(runtimeBotModes[bot], mask) !== 0)
           throw new Error('Tämä peliversio ei tue valittua bottia.');
         if (heidiSearch(bot) && (!module._tb_configure_inference ||
             module._tb_configure_inference(inference, runtime.lanes) !== 0))
@@ -211,14 +227,15 @@ export class Runtime {
   }
 
   context() { return Array.from({length: 4}, (_, seat) =>
-    Array.from({length: this.bot === 'heidi05' ? 7 : 3}, (_, field) => this.m._tb_context(seat, field) >>> 0)); }
+    Array.from({length: liteNetBots.includes(this.bot) ? 7 : 3}, (_, field) => this.m._tb_context(seat, field) >>> 0)); }
   restoreContext(context) {
+    const lite = liteNetBots.includes(this.bot);
     if (!Array.isArray(context) || context.length !== 4 || context.some(row =>
-      !Array.isArray(row) || row.length !== (this.bot === 'heidi05' ? 7 : 3) || row.some(v => !Number.isInteger(v) || v < 0 || v > 0xffffffff)))
+      !Array.isArray(row) || row.length !== (lite ? 7 : 3) || row.some(v => !Number.isInteger(v) || v < 0 || v > 0xffffffff)))
       throw new Error('Botin tallennustila on virheellinen.');
     context.forEach((row, seat) => {
       if (this.m._tb_restore_context(seat, ...row.slice(0, 3)) !== 0 ||
-          (this.bot === 'heidi05' && this.m._tb_restore_net_context(seat, ...row.slice(3)) !== 0))
+          (lite && this.m._tb_restore_net_context(seat, ...row.slice(3)) !== 0))
         throw new Error('Botin tallennustila ei ole tuettu.');
     });
   }

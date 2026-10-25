@@ -2,6 +2,12 @@
 
 One serial worker owns the native globals. Its immutable networks are loaded
 once; callers restore each seat's three-word context before every decision.
+
+The directory holds three networks (models.json, tools/export_compact.py):
+role 0 rollouts (VRPO1), role 1 anchor (VRPO3) and role 2 the Heidi 1.2
+network. Mode 2 is Heidi 1.0/1.1 (anchor and likelihood role 1), mode 4 is
+Heidi 1.2 (the same controller with role 2 as the anchor only; likelihood
+role 1); rollouts are role 0 in both.
 """
 from __future__ import annotations
 
@@ -17,6 +23,12 @@ from .bridge import action_id, obs_from_player_observation
 
 ROOT = Path(__file__).resolve().parents[1]
 WORLDS, INFERENCE = 1024, 8
+#: The controller's search modes (tb_configure_bot): Heidi 1.0/1.1 and Heidi 1.2.
+MODES = (2, 4)
+#: (role, file, width, blocks, flat parameter count) of every network, in order.
+NETWORKS = ((0, "vrpo1_actor_0504.f32", 256, 2, 804508),
+            (1, "vrpo3_final.f32", 512, 4, 3185820),
+            (2, "vrpo4_final.f32", 768, 4, 6351516))
 
 
 def model_identity(directory: Path | None = None) -> dict:
@@ -25,12 +37,10 @@ def model_identity(directory: Path | None = None) -> dict:
     manifest = json.loads(blob)
     if (manifest.get("schema") != "tuppi.browser.assets.v1" or manifest.get("api_version") != 1
             or manifest.get("ruleset") != "project_target_v3"
-            or [r.get("file") for r in manifest.get("models", [])] !=
-               ["vrpo1_actor_0504.f32", "vrpo3_final.f32"]
+            or [r.get("file") for r in manifest.get("models", [])] != [n[1] for n in NETWORKS]
             or manifest.get("equity", {}).get("file") != "equity.f64"):
         raise ValueError("invalid compact model manifest")
-    expected = [(0, 256, 2, 804508), (1, 512, 4, 3185820)]
-    for record, (role, width, blocks, count) in zip(manifest["models"], expected):
+    for record, (role, _, width, blocks, count) in zip(manifest["models"], NETWORKS):
         if (record["role"] != role or record["config"] != {"width": width, "blocks": blocks, "encoder": 2}
                 or record["in_dim"] != 1951 or record["out_dim"] != 156 or record["count"] != count
                 or record["bytes"] != count * 4):
@@ -59,8 +69,15 @@ def validate_context(context) -> list[int]:
     return list(context)
 
 
+def _mode(mode) -> int:
+    if type(mode) is not int or mode not in MODES:
+        raise ValueError("compact controller mode must be 2 (Heidi 1.0/1.1) or 4 (Heidi 1.2)")
+    return mode
+
+
 class CompactController:
-    def __init__(self, directory: Path | None = None):
+    def __init__(self, directory: Path | None = None, mode: int = 2):
+        mode = _mode(mode)
         directory = ROOT / "models/compact" if directory is None else Path(directory)
         identity = model_identity(directory)
         self.model_sha256 = identity["sha256"]
@@ -89,23 +106,36 @@ class CompactController:
             equity = np.fromfile(directory / "equity.f64", dtype="<f8")
             if not np.isfinite(equity).all() or lib.tb_configure(WORLDS, equity.ctypes.data_as(C.POINTER(C.c_double))):
                 raise RuntimeError("compact controller configuration failed")
-            if lib.tb_configure_bot(2, 0) or lib.tb_configure_inference(INFERENCE, 1):
-                raise RuntimeError("compact inference configuration failed")
+            self._configure(mode, 0)
         except BaseException:
             lib.tb_dispose()
             raise
 
-    def choose(self, observation, context, human_seats=()):
+    def _configure(self, mode: int, people: int) -> None:
+        """Select the bot; the per-decision state is restored by choose as before."""
+        self.mode = None
+        if self.lib.tb_configure_bot(mode, people) or self.lib.tb_configure_inference(INFERENCE, 1):
+            raise RuntimeError("compact inference configuration failed")
+        self.mode = mode
+
+    def choose(self, observation, context, human_seats=(), mode=None):
+        """`mode` None keeps the current mode; 2 or 4 switches to it when it differs."""
         context = validate_context(context)
         people = frozenset(human_seats)
         if any(type(s) is not int or s not in range(4) for s in people):
             raise ValueError("invalid human seats")
+        mode = self.mode if mode is None else _mode(mode)
+        if mode is None:
+            raise RuntimeError("compact controller mode is not configured")
+        mask = sum(1 << s for s in people)
+        if mode != self.mode:
+            self._configure(mode, mask)
         obs = obs_from_player_observation(observation)
         seat = observation.observing_seat
         legal = list(observation.legal_actions)
         ids = [action_id(a) for a in legal]
         ordered = (C.c_int32 * len(ids))(*ids)
-        if self.lib.tb_set_human_seats(sum(1 << s for s in people)) or self.lib.tb_restore_context(seat, *context):
+        if self.lib.tb_set_human_seats(mask) or self.lib.tb_restore_context(seat, *context):
             raise RuntimeError("compact controller restore failed")
         selected = self.lib.tb_choose_observation(C.byref(obs), ordered, len(ids))
         if selected not in ids:

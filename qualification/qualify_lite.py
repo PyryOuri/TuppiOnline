@@ -12,8 +12,10 @@ root = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(root / 'engine/src'), str(root / 'ai')]
 assert importlib.util.find_spec('torch') is None, 'PyTorch must not be installed in the lite image'
 assert not any(shutil.which(name) for name in ('cc', 'gcc', 'g++', 'make')), 'Compiler tools must stay in the build stage'
-assert {p.name for p in (root / 'ai/models').iterdir()} == {'vrpo3_final.lite.npz', 'equity_incumbent.json', 'hosted-models.lite.json', 'compact'}
-assert {p.name for p in (root / 'ai/models/compact').iterdir()} == {'models.json', 'vrpo1_actor_0504.f32', 'vrpo3_final.f32', 'equity.f64'}
+assert {p.name for p in (root / 'ai/models').iterdir()} == {'vrpo3_final.lite.npz', 'vrpo4_final.lite.npz', 'equity_incumbent.json',
+                                                            'hosted-models.lite.json', 'compact'}
+assert {p.name for p in (root / 'ai/models/compact').iterdir()} == {'models.json', 'vrpo1_actor_0504.f32', 'vrpo3_final.f32',
+                                                                    'vrpo4_final.f32', 'equity.f64'}
 assert {p.name for p in (root / 'ai/tuppi_ai').iterdir()} == {'__init__.py', 'native.py', 'bridge.py', 'lite.py', 'compact.py'}
 from tuppi_server.hosted import verify_bot_identity
 from tuppi_ai.bridge import action_id
@@ -36,8 +38,10 @@ assert len(reference['rows']) == 500
 identity = verify_bot_identity('lite')
 assert identity['native_sha256'] == builder['bot']['native_sha256']
 # The frozen plain-lite oracle binds its original single model. The release
-# additionally carries C1H's unchanged equity table in the verified manifest.
+# additionally carries C1H's unchanged equity table and Nelli 1.1's network
+# (vrpo4_final.lite.npz) in the verified manifest.
 manifest = json.loads((root / 'ai/models/hosted-models.lite.json').read_text())
+assert set(manifest) == {'vrpo3_final.lite.npz', 'vrpo4_final.lite.npz', 'equity_incumbent.json'}
 assert hashlib.sha256(json.dumps({'vrpo3_final.lite.npz': manifest['vrpo3_final.lite.npz']}, sort_keys=True).encode()).hexdigest() == reference['models_sha256']
 try:
     verify_bot_identity('full')

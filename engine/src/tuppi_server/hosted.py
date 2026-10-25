@@ -102,16 +102,20 @@ def _verified_model_manifest(root: Path, level: str) -> dict:
     full = models / "hosted-models.json"
     if level == "lite" and lite.is_file():
         # The d1 options also read the equity table (TUPPI_HOSTED_LITE_OPTIONS).
+        # Nelli 1.1 (tuppi_ai_lite_c1h_v2) plays vrpo4_final.lite.npz, so every
+        # lite package lists and verifies it: no network is loaded unverified.
         from .hosted_bot import lite_options
         path = lite
         names = set(json.loads(lite.read_text()))
-        expected = {"vrpo3_final.lite.npz", "equity_incumbent.json"} if (
-            lite_options() != "off" or "equity_incumbent.json" in names) else {"vrpo3_final.lite.npz"}
+        expected = {"vrpo3_final.lite.npz", "vrpo4_final.lite.npz", "equity_incumbent.json"} if (
+            lite_options() != "off" or "equity_incumbent.json" in names) else {"vrpo3_final.lite.npz",
+                                                                               "vrpo4_final.lite.npz"}
     else:
         if level == "full" and not full.is_file() and lite.is_file():
             raise RuntimeError("this runtime contains only the lite bot; use the full image for TUPPI_HOSTED_BOT_LEVEL=full")
         path = full
-        expected = {"vrpo1_actor_0504.pt", "vrpo3_final.pt", "equity_incumbent.json", "vrpo3_final.lite.npz"}
+        expected = {"vrpo1_actor_0504.pt", "vrpo3_final.pt", "equity_incumbent.json", "vrpo3_final.lite.npz",
+                    "vrpo4_final.pt", "vrpo4_final.lite.npz"}
     manifest = json.loads(path.read_text())
     if type(manifest) is not dict or set(manifest) != expected:
         raise RuntimeError("hosted model manifest fields are invalid")
@@ -138,6 +142,19 @@ def verify_bot_identity(level: str = "full") -> dict:
                         "models_sha256": heidi_identity()}} if level == "lite" and heidi_enabled() else {}),
         "models_sha256": hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest(),
         "native_sha256": hashlib.sha256(Path(native.lib._name).read_bytes()).hexdigest()}
+
+
+def bot_options(identity: dict) -> list[dict]:
+    """The bots new rooms may choose. Nelli 1.0 and Heidi 1.1 are no longer
+    offered; rooms that chose them keep them (match_runner.py). Heidi 1.2
+    needs the hosted compact worker (TUPPI_HOSTED_HEIDI10=1, the identity's
+    ``heidi10`` entry), which serves both search profiles one table at a time."""
+    from .match_runner import BOT_DISPLAY_NAMES, HEIDI12_PROFILE_KEY, NELLI11_PROFILE_KEY, TUPPI_AI_PROFILE_KEY
+    if identity.get("level") != "lite":
+        return []
+    return ([{"profile": key, "name": BOT_DISPLAY_NAMES[key]} for key in (TUPPI_AI_PROFILE_KEY, NELLI11_PROFILE_KEY)] +
+            ([{"profile": HEIDI12_PROFILE_KEY, "name": BOT_DISPLAY_NAMES[HEIDI12_PROFILE_KEY], "max_active_tables": 1}]
+             if identity.get("heidi10") else []))
 
 
 def bot_room_limit(level: str, max_rooms: int) -> int:
@@ -244,13 +261,15 @@ class HostedBoundary:
             # A paused/idle or temporarily human-only Heidi table retains its
             # slot: reconnect, resume or a bot covering a seat cannot bypass it.
             with heidi_admission:
-                from .match_runner import HEIDI_SEARCH_PROFILE_KEY
+                # Heidi 1.1 and Heidi 1.2 share the one compact worker: at most
+                # one unfinished search table of either kind.
+                from .match_runner import HEIDI_SEARCH_PROFILE_KEYS
                 from .rooms import RoomError
                 room, _ = game.rooms.session(code=code, token=token)
                 others = [r for r in game.rooms._rooms.values() if r.code != room.code
                           and r.runner is not None and not r.runner.terminal]
-                if room.runner is None and room.ai_profile_key == HEIDI_SEARCH_PROFILE_KEY and any(
-                        r.ai_profile_key == HEIDI_SEARCH_PROFILE_KEY for r in others):
+                if room.runner is None and room.ai_profile_key in HEIDI_SEARCH_PROFILE_KEYS and any(
+                        r.ai_profile_key in HEIDI_SEARCH_PROFILE_KEYS for r in others):
                     raise RoomError("heidi_busy")
                 active = sum(bool(r.ai_seats) and self.in_use(r.code) for r in others)
                 if room.runner is None and room.ai_seats and active >= self.max_bot_rooms:
@@ -640,11 +659,7 @@ class HostedBoundary:
                 "protocol_version": "tuppi.network.v1", "ruleset_id": "project_target_v3",
                 "status": "storage_failed" if storage == "failed" else "ok", "storage": storage,
                 "bot": self.bot_identity,
-                "bot_options": [{"profile": "tuppi_ai_search_v1", "name": "TuppiAI"},
-                                {"profile": "tuppi_ai_lite_c1h_v1", "name": "Nelli 1.0"}] +
-                               ([{"profile": "tuppi_ai_heidi10_pib8_v1", "name": "Heidi 1.1", "max_active_tables": 1}]
-                                if self.bot_identity.get("heidi10") else [])
-                               if self.bot_identity.get("level") == "lite" else []})
+                "bot_options": bot_options(self.bot_identity)})
             return
         if path == "/v1/results/summary" and scope.get("method") == "GET":
             await self.game._json_response(cors_send, 200, self.game.rooms.results.summary())

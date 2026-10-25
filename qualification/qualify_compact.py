@@ -1,4 +1,8 @@
-"""Check the PyTorch-free hosted controller against the published WASM controller."""
+"""Check the PyTorch-free hosted controller against the published WASM controller.
+
+The compact directory holds three networks (roles 0, 1, 2). --mode 2 (Heidi 1.1, the
+default) uses compact-reference.json; --mode 4 (Heidi 1.2, role 2 as the anchor only;
+likelihood role 1) uses a reference written by tests/export_compact_reference.mjs --bot heidi12."""
 import argparse
 import ctypes
 import hashlib
@@ -14,6 +18,7 @@ p.add_argument('--reference',type=Path,default=Path(__file__).with_name('compact
 p.add_argument('--report',type=Path)
 p.add_argument('--require-host-limits',action='store_true')
 p.add_argument('--no-torch',action='store_true')
+p.add_argument('--mode',type=int,choices=(2,4),default=2,help='2 Heidi 1.1, 4 Heidi 1.2')
 a=p.parse_args()
 limits={}
 if a.require_host_limits:
@@ -24,7 +29,7 @@ if a.require_host_limits:
         p.error('host check requires at most 0.5 CPU and 512 MiB')
     limits={'cpu.max':' '.join(cpu),'memory.max':memory,
             'memory.events.before':(cgroup/'memory.events').read_text()}
-from tuppi_ai.compact import CompactController
+from tuppi_ai.compact import CompactController, model_identity
 from tuppi_ai.bridge import action_id, engine_action, obs_from_player_observation
 from tuppi_engine import (ExplicitDeal,apply_match_action,begin_explicit_deal,create_match,
                           match_observation_for)
@@ -34,7 +39,14 @@ from tuppi_rules.cards import card_from_index
 
 fixture=json.loads(a.reference.read_text())
 assert fixture['schema']=='tuppi.hosted.compact_reference.v1'
-controller=CompactController();rows=[];phases=set()
+bots={2:{'heidi10','heidi11'},4:{'heidi12'}}[a.mode]
+assert all(test['bot'] in bots for test in fixture['cases']),'reference bot and --mode differ'
+controller=CompactController(mode=a.mode);rows=[];phases=set()
+assert controller.mode==a.mode
+# Every file of the three-network directory is hashed into the identity (roles 0, 1, 2 and equity).
+identity=model_identity()
+assert identity['sha256']==controller.model_sha256
+assert [record['role'] for record in identity['manifest']['models']]==[0,1,2]
 try:
     with trusted_transitions():
         for test in fixture['cases']:
@@ -63,6 +75,8 @@ try:
             wanted={int(k):v for k,v in expected['values'].items()}
             assert values.keys()==wanted.keys(),test['name']+' actions priced'
             error=max((abs(values[k]-wanted[k]) for k in values),default=0.0)
+            # Both modes: mode 4 (anchor only) scores with mode 2's networks and measured 0.0 on
+            # every root with the macOS default, --blas and --portable builds (23 October 2026).
             assert error<=2e-6,(test['name'],error)
             # Repeating a restored cursor after other seats/roots must be exact.
             if test['name'] in ('nolo-late','sooli-5'):
@@ -82,9 +96,10 @@ if limits:
     assert limits['memory.events.before']==limits['memory.events.after']
     limits['memory.peak']=(cgroup/'memory.peak').read_text().strip()
 peak=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-result={'passed':True,'worlds':1024,'inference':8,'cases':rows,'phases':sorted(phases),
+result={'passed':True,'mode':a.mode,'worlds':1024,'inference':8,'cases':rows,'phases':sorted(phases),
         'reference_sha256':hashlib.sha256(a.reference.read_bytes()).hexdigest(),
-        'models_sha256':controller.model_sha256,'torch_imported':False,
+        'models_sha256':controller.model_sha256,'models':[{'role':r['role'],'file':r['file'],'sha256':r['sha256']}
+            for r in identity['manifest']['models']],'reference_bots':sorted(bots&{t['bot'] for t in fixture['cases']}),'torch_imported':False,
         'peak_rss_bytes':peak if sys.platform=='darwin' else peak*1024,'host_limits':limits,
         'scope':'Frozen synthetic root parity and cost; not match strength or provider capacity'}
 if a.report:a.report.write_text(json.dumps(result,indent=2)+'\n')

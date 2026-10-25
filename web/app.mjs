@@ -17,12 +17,20 @@ const $ = id => document.getElementById(id);
 // Heidi 1.1 is Heidi 1.0's search on the faster engine; saves and replays from
 // the earlier engine keep the name Heidi 1.0. Nelli 1.0 is the lite bot once
 // called Heidi 0.5 (id heidi05, profile tuppi_ai_lite_c1h_v1): only the name changed.
-const heidiNames = {heidi05: 'Nelli 1.0', heidi10: 'Heidi 1.0', heidi11: 'Heidi 1.1'};
-const onlineHeidiNames = {tuppi_ai_lite_c1h_v1: 'Nelli 1.0', tuppi_ai_heidi10_pib8_v1: 'Heidi 1.1'};
+// Heidi 1.2 and Nelli 1.1 are Heidi 1.1 and Nelli 1.0 with the new base network.
+// New games offer only those two; the older ids stay selectable for their saves.
+const heidiNames = {heidi05: 'Nelli 1.0', nelli11: 'Nelli 1.1', heidi10: 'Heidi 1.0', heidi11: 'Heidi 1.1', heidi12: 'Heidi 1.2'};
+const onlineHeidiNames = {tuppi_ai_lite_c1h_v1: 'Nelli 1.0', tuppi_ai_lite_c1h_v2: 'Nelli 1.1',
+  tuppi_ai_heidi10_pib8_v1: 'Heidi 1.1', tuppi_ai_heidi12_pib8_v1: 'Heidi 1.2'};
+// A new game started from an older bot's selection plays that bot's current version.
+const currentLocalBots = {heidi05: 'nelli11', heidi10: 'heidi12', heidi11: 'heidi12'};
+const liteLocalBots = ['heidi05', 'nelli11'];  // W128; the Heidi search bots are W1024
+// The online bots new rooms may choose, shown when the server lists them in bot_options.
+const onlineBotChoices = [['network-nelli11-option', 'tuppi_ai_lite_c1h_v2'], ['network-heidi12-option', 'tuppi_ai_heidi12_pib8_v1']];
 function botSelection(save = null) {
   let value = save ? (save.bot ?? String(save.worlds)) : $('worlds').value;
-  if (!save && value === 'heidi10') value = 'heidi11';  // a new game is always Heidi 1.1
-  return value in heidiNames ? {bot: value, worlds: value === 'heidi05' ? 128 : 1024} :
+  if (!save) value = currentLocalBots[value] ?? value;  // a new game is always Heidi 1.2 or Nelli 1.1
+  return value in heidiNames ? {bot: value, worlds: liteLocalBots.includes(value) ? 128 : 1024} :
     {bot: 'legacy', worlds: save?.worlds ?? Number(value)};
 }
 function botSelectionValue(save) { return save?.bot ?? String(save?.worlds ?? 128); }
@@ -1168,10 +1176,11 @@ async function showPasscodeIfRequired() {
   passcodeCheck ??= probe.createPasscodeRequired(networkAddress)
     .then(required => {
       passcodeRequired = required;
-      const available = probe.botOptions.some(bot => bot.profile === 'tuppi_ai_lite_c1h_v1');
-      $('network-heidi-option').disabled = $('network-heidi-option').hidden = !available;
-      const searchAvailable = probe.botOptions.some(bot => bot.profile === 'tuppi_ai_heidi10_pib8_v1');
-      $('network-heidi10-option').disabled = $('network-heidi10-option').hidden = !searchAvailable;
+      for (const [id, profile] of onlineBotChoices) {
+        const offered = probe.botOptions.find(bot => bot.profile === profile);
+        $(id).disabled = $(id).hidden = !offered;
+        $(id).textContent = typeof offered?.name === 'string' && offered.name ? offered.name : onlineHeidiNames[profile];
+      }
       if ($('network-bot').value && !probe.botOptions.some(bot => bot.profile === $('network-bot').value))
         $('network-bot').value = '';
     })

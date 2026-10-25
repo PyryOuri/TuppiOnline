@@ -24,6 +24,9 @@ RESULT_SCHEMA_VERSION = "tuppi.server.result.v1"
 #: About 100,000 matches.
 MAX_RESULT_BYTES = 16 * 2**20
 OFFLINE_BOTS = {128: "w128", 1024: "w1024"}
+#: Bots a browser names in its report, with their worlds: heidi05 is Nelli 1.0,
+#: nelli11 Nelli 1.1, heidi10/heidi11 Heidi 1.0/1.1 and heidi12 Heidi 1.2.
+OFFLINE_NAMED_BOTS = {"heidi05": 128, "nelli11": 128, "heidi10": 1024, "heidi11": 1024, "heidi12": 1024}
 _ID = re.compile(r"[A-Za-z0-9-]{16,64}")
 
 
@@ -43,9 +46,9 @@ def offline_row(payload: object, *, day: str) -> dict[str, object]:
         raise ResultRejected("invalid_result")
     match_id, worlds, winner = payload["id"], payload["worlds"], payload["winner_team"]
     bot = payload.get("bot")
-    if bot is not None and (not isinstance(bot, str) or bot not in {"heidi05", "heidi10"}):
+    if bot is not None and (not isinstance(bot, str) or bot not in OFFLINE_NAMED_BOTS):
         raise ResultRejected("invalid_result")
-    if (bot == "heidi05" and worlds != 128) or (bot == "heidi10" and worlds != 1024):
+    if bot is not None and worlds != OFFLINE_NAMED_BOTS[bot]:
         raise ResultRejected("invalid_result")
     score, deals, conceded = payload["final_score"], payload["deals"], payload["conceded"]
     if (not isinstance(match_id, str) or not _ID.fullmatch(match_id) or worlds not in OFFLINE_BOTS

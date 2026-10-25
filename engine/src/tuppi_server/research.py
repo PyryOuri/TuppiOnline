@@ -31,6 +31,7 @@ from tuppi_rules.cards import card_from_index, card_to_code
 
 from .persistence import PersistenceError
 from .projection import project_completed_deals
+from .results import OFFLINE_NAMED_BOTS
 
 RECORD_SCHEMA_VERSION = "tuppi.research.match.v1"
 RESEARCH_DIRECTORY = "research"
@@ -163,10 +164,10 @@ def _offline_record(payload: object, *, day: str) -> dict[str, object]:
                                                   ({"bot"} if "bot" in payload else set())):
         raise RecordRejected("invalid_record")
     bot = payload.get("bot")
-    if bot is not None and (not isinstance(bot, str) or bot not in {"heidi05", "heidi10"}):
+    if bot is not None and (not isinstance(bot, str) or bot not in OFFLINE_NAMED_BOTS):
         raise RecordRejected("invalid_record")
     match_id, worlds, runtime, saved = payload["id"], payload["worlds"], payload["runtime"], payload["deals"]
-    if (bot == "heidi05" and worlds != 128) or (bot == "heidi10" and worlds != 1024):
+    if bot is not None and worlds != OFFLINE_NAMED_BOTS[bot]:
         raise RecordRejected("invalid_record")
     if (not isinstance(match_id, str) or not _ID.fullmatch(match_id) or type(worlds) is not int
             or worlds not in OFFLINE_BOTS or not isinstance(runtime, str) or not _VERSION.fullmatch(runtime)

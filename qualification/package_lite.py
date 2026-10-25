@@ -12,7 +12,11 @@ assert qualification['passed'] and qualification['bot']['level'] == 'full'
 assert [item['worlds'] for item in qualification['references']] == [128, 1024]
 manifest = json.loads((ai / 'models/hosted-models.json').read_text())
 model = 'vrpo3_final.lite.npz'
-assert hashlib.sha256((ai / 'models' / model).read_bytes()).hexdigest() == manifest[model]
+# Nelli 1.1 (tuppi_ai_lite_c1h_v2) plays the new base network's lite file; the server's
+# lite manifest must list and verify it (tuppi_server.hosted._verified_model_manifest).
+models = (model, 'vrpo4_final.lite.npz')
+for name in models:
+    assert hashlib.sha256((ai / 'models' / name).read_bytes()).hexdigest() == manifest[name], name
 out.mkdir(exist_ok=False)
 (out / 'tuppi_ai').mkdir()
 for name in ('__init__.py', 'native.py', 'bridge.py', 'lite.py', 'compact.py'):
@@ -20,10 +24,11 @@ for name in ('__init__.py', 'native.py', 'bridge.py', 'lite.py', 'compact.py'):
 (out / 'native').mkdir()
 shutil.copyfile(ai / 'native/libtuppi.so', out / 'native/libtuppi.so')
 (out / 'models').mkdir()
-shutil.copyfile(ai / 'models' / model, out / 'models' / model)
+for name in models:
+    shutil.copyfile(ai / 'models' / name, out / 'models' / name)
 equity = 'equity_incumbent.json'
 assert hashlib.sha256((ai / 'models' / equity).read_bytes()).hexdigest() == manifest[equity]
 shutil.copyfile(ai / 'models' / equity, out / 'models' / equity)
-(out / 'models/hosted-models.lite.json').write_text(json.dumps({name: manifest[name] for name in (model, equity)}, indent=2) + '\n')
+(out / 'models/hosted-models.lite.json').write_text(json.dumps({name: manifest[name] for name in (*models, equity)}, indent=2) + '\n')
 shutil.copytree(ai / 'models/compact', out / 'models/compact')
-print(json.dumps({'lite_package': str(out), 'model_sha256': manifest[model]}))
+print(json.dumps({'lite_package': str(out), 'model_sha256': manifest[model], 'models': {name: manifest[name] for name in models}}))

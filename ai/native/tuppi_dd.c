@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "tuppi_core.h"
+#include "tuppi_parallel.h"
 
 typedef uint64_t u64;
 #define SUIT_MASK(s) (0x1FFFULL << ((s) * 13))
@@ -24,6 +25,8 @@ typedef struct { u64 h[4]; uint32_t gen; uint8_t leader; int8_t lo, hi; } TTE;
 // polarity), so they stay valid across solves and are never cleared; the
 // polarity is part of the key (the high bit of `leader`).
 static __thread TTE *tt_tls = NULL;
+// A pool worker frees its table before it exits (tuppi_parallel.c).
+void tc_dd_release_thread(void) { free(tt_tls); tt_tls = NULL; }
 // One solve's state, read through a pointer: thread-local variables in a
 // dylib cost a function call per access (_tlv_get_addr), in every node.
 typedef struct { TTE *tt; uint32_t gen; int nolo; } Ctx;
@@ -175,7 +178,7 @@ static void to_pos(const TcDeal *d, Pos *p) {
 // Final team-0 tricks for the whole deal under perfect-information optimal play
 // from this trick-play position.
 int tc_dd_team0_tricks(const TcDeal *d) {
-  if (!tt_tls) tt_tls = calloc(1ULL << TTBITS, sizeof(TTE));
+  if (!tt_tls) tc_thread_owns(tt_tls = calloc(1ULL << TTBITS, sizeof(TTE)));
   const Ctx x = {tt_tls, 1, d->contract == TC_NOLO};
   Pos p;
   to_pos(d, &p);
@@ -196,7 +199,7 @@ float tc_dd_reward_bucket(const TcDeal *d, const float payoff[14]) {
   for (int i = 1; i <= remaining; i++)
     if (payoff[base+i] != payoff[base+i-1]) cuts[n++] = i;
   if (!n) return payoff[base];
-  if (!tt_tls) tt_tls = calloc(1ULL << TTBITS, sizeof(TTE));
+  if (!tt_tls) tc_thread_owns(tt_tls = calloc(1ULL << TTBITS, sizeof(TTE)));
   const Ctx x = {tt_tls, 1, d->contract == TC_NOLO};
   Pos p; to_pos(d, &p);
   int lo = 0, hi = n;

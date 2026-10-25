@@ -689,6 +689,13 @@ def set_belief_keys(on: bool) -> None:
         lib.tc_set_belief_keys(int(bool(on)))
 
 
+def set_dedup_worlds(on: bool) -> None:
+    """Play each distinct resampled trick-play world once (process-wide; off by default).
+    The sums repeat every drawn copy in order, so values are unchanged."""
+    if hasattr(lib, "tc_set_dedup_worlds"):
+        lib.tc_set_dedup_worlds(int(bool(on)))
+
+
 def belief_profile(reset: bool = False) -> dict:
     """Seconds spent in play inference and in rollouts (measurement only)."""
     sec = (C.c_double * 5)(); cnt = (C.c_long * 2)()

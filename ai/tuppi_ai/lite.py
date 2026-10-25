@@ -25,6 +25,10 @@ C1 (the net alone) is the candidate: it gains against the plain lite bot,
 older networks and the W128 search bot. D1 (C1 plus ``sooli_need=2``) gains
 against the lite bot's own family but loses its sooli part against the search
 bot. The options reproduce the research harness's decisions.
+
+``LiteAgent(model=MODEL_V4)`` plays the same bot on the Heidi 1.2 network
+(Nelli 1.1 is C1H on it); with ``model=None`` the agent uses ``MODEL`` exactly
+as before. Each network file is loaded once per process (``shared_mlp``).
 """
 from __future__ import annotations
 
@@ -40,8 +44,10 @@ from .bridge import action_id, obs_from_player_observation
 
 ROOT = Path(__file__).resolve().parents[1]
 MODEL = ROOT / "models" / "vrpo3_final.lite.npz"
+#: The Heidi 1.2 network (768x4, encoder 2), exported by tools/export_lite_model.py.
+MODEL_V4 = ROOT / "models" / "vrpo4_final.lite.npz"
 EQUITY = ROOT / "models" / "equity_incumbent.json"
-_shared: native.Mlp | None = None
+_shared: dict[Path, native.Mlp] = {}
 _equity: np.ndarray | None = None
 
 
@@ -98,12 +104,13 @@ def load_mlp(path: Path = MODEL) -> native.Mlp:
         return native.Mlp.from_flat(blob["weights"], width, blocks, encoder)
 
 
-def shared_mlp() -> native.Mlp:
-    """One immutable network for every lite agent in the process."""
-    global _shared
-    if _shared is None:
-        _shared = load_mlp()
-    return _shared
+def shared_mlp(path: Path = MODEL) -> native.Mlp:
+    """One immutable network per file for every lite agent in the process."""
+    key = Path(path).resolve()
+    mlp = _shared.get(key)
+    if mlp is None:
+        mlp = _shared[key] = load_mlp(key)
+    return mlp
 
 
 def initial_cursor(seat: int) -> int:
@@ -119,9 +126,13 @@ class LiteAgent:
     handles_sooli = True
 
     def __init__(self, seat: int, mlp: native.Mlp | None = None, rng: int | None = None,
-                 options: LiteOptions | None = None, net_rng: tuple[int, int] | None = None):
+                 options: LiteOptions | None = None, net_rng: tuple[int, int] | None = None,
+                 model: Path | str | None = None):
+        """`model`: a network file (e.g. MODEL_V4), loaded once through shared_mlp; None keeps MODEL."""
+        if mlp is not None and model is not None:
+            raise ValueError("pass either mlp or model, not both")
         self.seat = seat
-        self.mlp = mlp or shared_mlp()
+        self.mlp = mlp or (shared_mlp() if model is None else shared_mlp(model))
         self.rng = C.c_uint64(initial_cursor(seat) if rng is None else rng)
         self._feat = np.zeros((1, native.feature_dim(self.mlp.encoder)), dtype=np.uint8)
         self.options = options or LiteOptions()
@@ -144,6 +155,12 @@ class LiteAgent:
             return o.sooli_need_behind
         return o.sooli_need
 
+    def greedy_action(self, obs: native.TcObs, ids) -> int:
+        """The network's action: the first maximum of its Q over the legal network ids."""
+        native.encode(obs, self._feat[0], self.mlp.encoder)
+        q = self.mlp.forward(self._feat)[0]
+        return max(ids, key=lambda a: (q[a], -a))  # first maximum, as an argmax over the mask
+
     def choose_action(self, observation):
         legal = observation.legal_actions
         if len(legal) == 1:
@@ -155,9 +172,7 @@ class LiteAgent:
             if need:
                 return legal[ids.index(native.lib.tc_sooli_offer_need(C.byref(obs), C.byref(self.rng), need))]
             return legal[ids.index(native.sooli_policy(obs, self.rng))]
-        native.encode(obs, self._feat[0], self.mlp.encoder)
-        q = self.mlp.forward(self._feat)[0]
-        action = max(ids, key=lambda a: (q[a], -a))  # first maximum, as an argmax over the mask
+        action = self.greedy_action(obs, ids)
         o = self.options
         if o.net and native.lib.tc_lite_net_applies(C.byref(obs), o.tricks, o.rami_tricks):
             if o.human_aware and self.human_mask:

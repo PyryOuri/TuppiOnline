@@ -26,6 +26,7 @@
 #include <string.h>
 
 #include "tuppi_core.h"
+#include "tuppi_parallel.h"
 
 typedef uint64_t u64;
 #define SUIT_MASK(s) (0x1FFFULL << ((s) * 13))
@@ -383,8 +384,8 @@ uint64_t tc_dd_wr_last_nodes(void) { return last_nodes; }
 // trick-play position.
 int tc_dd_wr_team0_tricks(const TcDeal *d) {
   if (!table_tls) {
-    table_tls = calloc(1ULL << table_bits, sizeof(Bucket));
-    mlist_tls = calloc(1ULL << (table_bits - 2), sizeof(MList));
+    tc_thread_owns(table_tls = calloc(1ULL << table_bits, sizeof(Bucket)));
+    tc_thread_owns(mlist_tls = calloc(1ULL << (table_bits - 2), sizeof(MList)));
   }
   const Ctx x = {table_tls, mlist_tls, d->contract == TC_NOLO};
   nodes_tls = 0;
@@ -420,8 +421,8 @@ int tc_dd_wr_team0_at_least(const TcDeal *d, int final_tricks) {
   if (target <= 0) return 1;
   if (target > remaining) return 0;
   if (!table_tls) {
-    table_tls = calloc(1ULL << table_bits, sizeof(Bucket));
-    mlist_tls = calloc(1ULL << (table_bits - 2), sizeof(MList));
+    tc_thread_owns(table_tls = calloc(1ULL << table_bits, sizeof(Bucket)));
+    tc_thread_owns(mlist_tls = calloc(1ULL << (table_bits - 2), sizeof(MList)));
   }
   const Ctx x = {table_tls, mlist_tls, d->contract == TC_NOLO};
   Pos p; to_pos(d, &p);

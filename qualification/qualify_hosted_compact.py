@@ -1,4 +1,7 @@
-"""Exercise the production spawned-worker protocol, including a fresh worker."""
+"""Exercise the production spawned-worker protocol, including a fresh worker.
+
+--mode 2 (default) is Heidi 1.1 with compact-reference.json; --mode 4 is Heidi 1.2
+(HostedHeidiAgent(seat, mode=4)) with compact-reference-heidi12.json."""
 import argparse
 import importlib.util
 import json
@@ -29,7 +32,10 @@ def main():
     p.add_argument('--report',type=Path)
     p.add_argument('--no-torch',action='store_true')
     p.add_argument('--require-host-limits',action='store_true')
+    p.add_argument('--mode',type=int,choices=(2,4),default=2,help='2 Heidi 1.1, 4 Heidi 1.2')
     a=p.parse_args();fixture=json.loads(a.reference.read_text());rows=[]
+    bots={2:{'heidi10','heidi11'},4:{'heidi12'}}[a.mode]
+    assert all(test['bot'] in bots for test in fixture['cases']),'reference bot and --mode differ'
     limits={}
     if a.require_host_limits:
         if sys.platform!='linux':p.error('host check requires Linux cgroup limits')
@@ -43,21 +49,21 @@ def main():
         warm()
         for test in fixture['cases']:
             obs=observation_for(test);expected=test['expected']
-            agent=HostedHeidiAgent(obs.observing_seat)
+            agent=HostedHeidiAgent(obs.observing_seat,mode=a.mode)
             saved={**agent.checkpoint(),'context':expected['before'][agent.seat]}
             agent.restore(saved);agent.set_human_seats(test['humanSeats'])
             assert action_id(agent.choose_action(obs))==expected['action'],test['name']
             assert agent.context==expected['after'][agent.seat],test['name']+' cursor'
             rows.append({'name':test['name'],**agent.last_stats})
         shutdown();warm()
-        test=fixture['cases'][0];obs=observation_for(test);agent=HostedHeidiAgent(obs.observing_seat)
+        test=fixture['cases'][0];obs=observation_for(test);agent=HostedHeidiAgent(obs.observing_seat,mode=a.mode)
         agent.restore({**agent.checkpoint(),'context':test['expected']['before'][agent.seat]})
         agent.set_human_seats(test['humanSeats'])
         assert action_id(agent.choose_action(obs))==test['expected']['action']
         assert agent.context==test['expected']['after'][agent.seat]
         assert 'torch' not in sys.modules
         if a.no_torch:assert importlib.util.find_spec('torch') is None
-        report={'passed':True,'worker_requests':len(rows)+1,'fresh_worker_repeat':True,'cases':rows,
+        report={'passed':True,'mode':a.mode,'worker_requests':len(rows)+1,'fresh_worker_repeat':True,'cases':rows,
                 'worlds':1024,'inference':8,'torch_imported':False,'host_limits':limits}
         if limits:
             limits['memory.peak']=(cgroup/'memory.peak').read_text().strip()

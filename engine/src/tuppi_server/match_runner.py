@@ -88,8 +88,30 @@ TEST_AI_PROFILE_KEY = "first_legal_action_v1"
 #: TuppiAI's best agent (the optional package ``tuppi_ai``): search over
 #: sampled worlds with a learned rollout policy; plays sooli itself.
 TUPPI_AI_PROFILE_KEY = "tuppi_ai_search_v1"
+#: Nelli 1.0: the hosted lite C1H bot on VRPO3. No longer offered to new rooms.
 HEIDI_LITE_PROFILE_KEY = "tuppi_ai_lite_c1h_v1"
+#: Heidi 1.1: the hosted W1024 PIB8 search (compact controller mode 2). No longer offered.
 HEIDI_SEARCH_PROFILE_KEY = "tuppi_ai_heidi10_pib8_v1"
+#: Nelli 1.1: Nelli 1.0 on the new base network (tuppi_ai.lite.MODEL_V4).
+NELLI11_PROFILE_KEY = "tuppi_ai_lite_c1h_v2"
+#: Heidi 1.2: Heidi 1.1 with the new base network as anchor and likelihood
+#: (compact controller mode 4); shares the one search-table slot with Heidi 1.1.
+HEIDI12_PROFILE_KEY = "tuppi_ai_heidi12_pib8_v1"
+#: The hosted lite C1H profiles and the hosted search profiles. A room record
+#: of each family keeps its own schema version (rooms.py, persistence.py).
+HEIDI_LITE_PROFILE_KEYS = frozenset({HEIDI_LITE_PROFILE_KEY, NELLI11_PROFILE_KEY})
+HEIDI_SEARCH_PROFILE_KEYS = frozenset({HEIDI_SEARCH_PROFILE_KEY, HEIDI12_PROFILE_KEY})
+#: Compact controller mode of each hosted search profile.
+HEIDI_SEARCH_MODES = {HEIDI_SEARCH_PROFILE_KEY: 2, HEIDI12_PROFILE_KEY: 4}
+#: Display names. Profile keys stay as stored; Nelli 1.0 was Heidi 0.5 and
+#: Heidi 1.1 was Heidi 1.0 (the same bots under new names).
+BOT_DISPLAY_NAMES = {
+    TUPPI_AI_PROFILE_KEY: "TuppiAI",
+    HEIDI_LITE_PROFILE_KEY: "Nelli 1.0",
+    NELLI11_PROFILE_KEY: "Nelli 1.1",
+    HEIDI_SEARCH_PROFILE_KEY: "Heidi 1.1",
+    HEIDI12_PROFILE_KEY: "Heidi 1.2",
+}
 TUPPI_AI_WORLDS = 1024
 
 
@@ -156,17 +178,24 @@ def _construct_ai_agents(
 ) -> dict[int, object]:
     if profile_key == TEST_AI_PROFILE_KEY:
         return {seat: FirstLegalActionAgent() for seat in seats}
-    if profile_key == HEIDI_SEARCH_PROFILE_KEY:
+    if profile_key in HEIDI_SEARCH_PROFILE_KEYS:
         if os.environ.get("TUPPI_HOSTED_BOT") != "1":
-            raise ValueError("Heidi 1.1 online requires the hosted compact worker")
+            raise ValueError(f"{BOT_DISPLAY_NAMES[profile_key]} online requires the hosted compact worker")
         from .hosted_bot import HostedHeidiAgent
-        return {seat: HostedHeidiAgent(seat) for seat in seats}
+        mode = HEIDI_SEARCH_MODES[profile_key]
+        return {seat: HostedHeidiAgent(seat, mode=mode) for seat in seats}
     if profile_key == HEIDI_LITE_PROFILE_KEY:
         if os.environ.get("TUPPI_HOSTED_BOT") == "1":
             from .hosted_bot import hosted_agents
             return hosted_agents(seats, options="c1h")
         from tuppi_ai.lite import C1H, LiteAgent
         return {seat: LiteAgent(seat, options=C1H) for seat in seats}
+    if profile_key == NELLI11_PROFILE_KEY:
+        if os.environ.get("TUPPI_HOSTED_BOT") == "1":
+            from .hosted_bot import hosted_agents
+            return hosted_agents(seats, options="c1h", model="v4")
+        from tuppi_ai.lite import C1H, MODEL_V4, LiteAgent
+        return {seat: LiteAgent(seat, options=C1H, model=MODEL_V4) for seat in seats}
     if profile_key == TUPPI_AI_PROFILE_KEY:
         if os.environ.get("TUPPI_HOSTED_BOT") == "1":
             from .hosted_bot import hosted_agents
