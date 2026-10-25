@@ -1,5 +1,12 @@
 # Heidi 1.2 and Nelli 1.1: AI side (2026-10-23)
 
+<!-- sunday_finalize:begin -->
+> **Final weights** (written by `sunday_finalize.sh`, 2026-10-25T18:59:18+00:00): `models/vrpo4_final.pt`
+> sha256 `0e980b4f3344c511cd7faf6e7258433a088be26431000e83cfb21c36c51d0deb`, `vrpo4_final.lite.npz` `8ae2dd681938fee0aa1d5f71ca71d304c028d98f56df036798c0a63192839e88`, compact
+> `vrpo4_final.f32` `d1789d37a19a0b3834b0299967675bcd828e4fbb58df8001cb0ec8f51504f5ff`, `models.json` `7df039e64004910223071e1225ac139c6d6df3db3ed135ad4cdfcd42d476c9df`. Statements below
+> that name the pilot stand-in (`bd1342e5…`) describe the checks run with it.
+<!-- sunday_finalize:end -->
+
 Built to `audit_deliverables/tuppi_base_network_task_20261022/release/RELEASE_CONTRACT.md`,
 including its amendment of 2026-10-23 ("anchor only"). Branch `feature/heidi12-20261023`
 from `b30763c` (the Heidi 1.1 AI source). The new bots are the Heidi 1.1 and Nelli 1.0
@@ -91,18 +98,18 @@ every decision).
 
 | File | Bytes | sha256 |
 |---|---:|---|
-| `models.json` | 2,133 | `4694a18c82eacf7b7ee3b6aea47d0a8138c999f6d9ed1a8bfce7951b12cb660c` |
+| `models.json` | 2,133 | `7df039e64004910223071e1225ac139c6d6df3db3ed135ad4cdfcd42d476c9df` |
 | `vrpo1_actor_0504.f32` (role 0) | 3,218,032 | `beb1f890947748a3df254dc200b9433547babc9fe40388fe76ba82e0f01abbda` (unchanged) |
 | `vrpo3_final.f32` (role 1) | 12,743,280 | `0e4bba619908ad3fa92a75fb118470b436ffa571caaca5e8f6aab497be633b47` (unchanged) |
-| `vrpo4_final.f32` (role 2) | 25,406,064 | `528b85eb0c408087c6cb5c32cbebffe903757152f1619ffa343b0d10a55ba81b` (stand-in) |
+| `vrpo4_final.f32` (role 2) | 25,406,064 | `d1789d37a19a0b3834b0299967675bcd828e4fbb58df8001cb0ec8f51504f5ff` (final) |
 | `equity.f64` | 400 | `8e01246f723210a8e0364a63748de460b94b6e5a513e8e747dc91744f1bc3f0b` (unchanged) |
 
 `models.json` uses the browser's `tuppi.browser.assets.v1` record format and the same
 code as the browser's `tools/export_models.py`; with the third record removed it is
 byte-identical to the Heidi 1.1 file (`8cb282aa…`). The tool refuses to change the role
 0/1 files or the equity table; `--check` compares without writing.
-`models/hosted-models.json` adds `vrpo4_final.pt` (`bd1342e5…`) and
-`vrpo4_final.lite.npz` (`b7c9900d…`, equal to a fresh export by `--check`).
+`models/hosted-models.json` adds `vrpo4_final.pt` (`0e980b4f…`) and
+`vrpo4_final.lite.npz` (`8ae2dd68…`, equal to a fresh export by `--check`).
 
 Sunday (final weights): copy the actor to `models/vrpo4_final.pt`, then
 `python tools/export_lite_model.py --model models/vrpo4_final.pt --out models/vrpo4_final.lite.npz`,
