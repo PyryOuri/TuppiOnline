@@ -204,7 +204,9 @@ def test_mode4_is_mode2_with_role2_as_the_anchor_only():
     mode's action is its own anchor's keep rule. A role-2 likelihood model would change the values."""
     roots = ",".join(f"{s}:{m}" for s in range(8) for m in (0, 1, 2, 3, 5, 9, 17, 26, 35, 44))
     counts = check_anchor_only(harness("keeprule", 128, "1", roots)["rows"], adaptive=False)
-    assert counts["agree"] >= 40 and counts["disagree"] >= 10 and counts["kept_both"] >= 5, counts
+    # Coverage only: both branches must be exercised. How often the two anchors agree depends on
+    # the network (stand-in 49/20, final VRPO4 34/35), so the floors do not assume a split.
+    assert counts["agree"] >= 10 and counts["disagree"] >= 10 and counts["kept_both"] >= 5, counts
     bids = harness("keeprule", 256, "-", "0:3,1:0,2:1,3:0,4:2,5:3,6:1,7:0")["rows"]
     assert all(row["phase"] == 0 and row["argmax"] for row in bids)
     counts = check_anchor_only(bids, adaptive=True)
