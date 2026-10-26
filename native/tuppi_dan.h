@@ -26,6 +26,7 @@ typedef struct {
   double means[13], losses[13], gaps_base[13], gaps_best[13], se_base[13], se_best[13];
 } TcDanResult;
 int tc_dan_config_valid(const TcDanConfig *c);
+void tc_dan_default_config(TcDanConfig *out);
 /* The margin is in VRPO4 actor score units, never described as equity. */
 int tc_dan_bid_select(const int32_t *ids, int k, const float *scores, double margin, TcDanBidResult *out);
 int tc_dan_bid(const TcMlp *nelli_model, const TcObs *o, const int32_t *ids, int k,

@@ -514,6 +514,55 @@ int tb_dan_choose(int seat, const TcDanConfig *config, uint64_t *base_rng,
   return tb_dan_choose_observation(&obs, ids, k, config, base_rng, proposal, result);
 }
 
+/* Browser save ABI for Dan 1.1. All values are uint32 words, including the
+ * exact double bits of the ledger. A proposal never mutates the before row. */
+#define DAN_WORDS 8
+#define DAN_MAGIC UINT32_C(0xDA110001)
+static uint64_t dan_u64(const uint32_t *p) { return (uint64_t)p[0] | ((uint64_t)p[1] << 32); }
+static void dan_put_u64(uint32_t *p, uint64_t v) { p[0] = (uint32_t)v; p[1] = (uint32_t)(v >> 32); }
+int tb_dan_context_words(void) { return DAN_WORDS; }
+int tb_dan_validate_context(const uint32_t *row) {
+  if (!row || row[6] != DAN_MAGIC || row[7] != 0) return -1;
+  uint64_t bits = dan_u64(row+4); double remaining; memcpy(&remaining, &bits, sizeof remaining);
+  TcDanConfig cfg; tc_dan_default_config(&cfg);
+  return isfinite(remaining) && remaining >= 0 && remaining <= cfg.deal_loss ? 0 : -1;
+}
+int tb_dan_reset_deal(uint32_t *row) {
+  if (tb_dan_validate_context(row)) return -1;
+  TcDanConfig cfg; tc_dan_default_config(&cfg);
+  uint64_t bits; memcpy(&bits, &cfg.deal_loss, sizeof bits); dan_put_u64(row+4, bits);
+  return 0;
+}
+int tb_dan_initial_context(int seat, uint32_t *out) {
+  if (!out || seat < 0 || seat > 3) return -1;
+  memset(out, 0, sizeof(uint32_t)*DAN_WORDS);
+  dan_put_u64(out, UINT64_C(0x9E3779B97F4A7C15)*(seat+1));
+  dan_put_u64(out+2, UINT64_C(0xDAA00000)+seat);
+  out[6] = DAN_MAGIC;
+  return tb_dan_reset_deal(out);
+}
+int tb_dan_choose_context(int seat, const uint32_t *before, uint32_t *after) {
+  last_count = 0;
+  if (!after || tb_dan_validate_context(before)) return -1;
+  TcDanConfig cfg; tc_dan_default_config(&cfg);
+  uint64_t base = dan_u64(before), bits = dan_u64(before+4);
+  TcDanContext proposal = {.rng=dan_u64(before+2)};
+  memcpy(&proposal.remaining, &bits, sizeof proposal.remaining);
+  TcDanResult result;
+  int action = tb_dan_choose(seat, &cfg, &base, &proposal, &result);
+  if (action < 0) return action;
+  memcpy(after, before, sizeof(uint32_t)*DAN_WORDS);
+  dan_put_u64(after, base); dan_put_u64(after+2, proposal.rng);
+  memcpy(&bits, &proposal.remaining, sizeof bits); dan_put_u64(after+4, bits);
+  if (result.k) {
+    int32_t ids[TC_NUM_ACTIONS_V2]; int k = tb_legal(seat, ids);
+    if (k != result.k) return -6;
+    last_count = k;
+    memcpy(last_ids, ids, sizeof(int)*k); memcpy(last_values, result.means, sizeof(double)*k);
+  }
+  return action;
+}
+
 int tb_observation_size(void) { return sizeof(TcObs); }
 int tb_observation(int seat, uint8_t *out) {
   if (seat < 0 || seat > 3 || !out) return -1;
