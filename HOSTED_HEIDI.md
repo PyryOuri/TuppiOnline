@@ -15,9 +15,9 @@ OpenBLAS build is a new numerical identity because batching changes; fixed
 reference qualification is required before release. No new model or reduced
 search profile is introduced. Published browser WASM remains unchanged.
 
-At most one unfinished Heidi 1.1 table is admitted. Paused, idle and temporarily
-human-only Heidi tables keep their slot. Finish or close that table to free
-it. Other rooms use their selected lite bots. A busy table never silently
+At most one unfinished Heidi 1.1 table is admitted. Paused and temporarily
+human-only Heidi tables keep their slot until completion, closure or the
+15-minute player-inactivity timeout (see the reservation section below). Other rooms use their selected lite bots. A busy table never silently
 switches to a weaker bot.
 
 The dedicated native worker holds shared weights and serves Heidi seats
@@ -87,3 +87,28 @@ The hosted `ai/` now carries the same native controller as the browser (TuppiAI
 Nelli bots in the final, PyTorch-free filesystem. New browser games offer Nelli 1.1 and Heidi
 1.2 (runtime `d0ef4461...`); the four earlier runtimes stay served byte-identical.
 Render deployment and physical-device acceptance remain owner-run.
+
+
+## Reservation release (26 October 2026)
+
+Unfinished Heidi 1.1/1.2 tables close after 15 minutes without player activity,
+even when paused or a tab stays connected. Heartbeats, reconnects, spectators
+and bot moves do not renew the timer. Cleanup runs every 30 seconds and before
+another table requests Heidi. In-flight decisions/saves finish safely first;
+the one-table limit remains in force. The room checkpoint is archived and the
+played-deal records retained; players cannot resume the closed room by code.
+
+For manual release, add `TUPPI_ADMIN_KEY` as a separate Render Environment secret
+(16–256 characters, no surrounding spaces; use a long random value), then open
+`/v1/admin/heidi` on the site. Enter the key, review the room code, connected-player
+count, idle time and pause state, then confirm “Sulje pöytä ja vapauta Heidi”.
+This also closes a table with connected players. The key is sent in an
+Authorization header, never in a URL, and is not saved by the page. The page/API
+are disabled without the key; automatic expiry still works. Room creation and
+research keys do not grant these controls. Wrong-key attempts are rate limited.
+Archive failure keeps the slot reserved and activates the existing storage-error
+mode. On restart, saved room modification times initialize the activity timer.
+
+This patch changes server lifecycle and owner controls only. Bot budgets,
+models, native sources, browser files, historical runtimes and hosting resource
+settings are unchanged. Deployment remains owner-run; auto-deploy stays off.

@@ -2,7 +2,7 @@
   "schema": "tuppi.hosted.source.v1",
   "commits": {
     "browser": "35a028c22a18729e6ddec2e5a4f7e2d112d01f29",
-    "engine": "d1494283934d49a6455e8de8cf6724957d5f37ff",
+    "engine": "59fc345a2d70fe0270844fde7091efedf194b0f0",
     "ai": "593589d1db2c9c5dcdbc092b49ad27012b9ee993"
   },
   "files": [
@@ -13,8 +13,8 @@
     },
     {
       "path": "HOSTED_HEIDI.md",
-      "bytes": 5695,
-      "sha256": "29b3c47e1346e73a21ed1e2b879a25a1de6c60afb6dbdd752df4f687ce4209ba"
+      "bytes": 7304,
+      "sha256": "f87f3c1412c217ac63ee7f7c575c66f62717903299807937c81c76b341e495fb"
     },
     {
       "path": "ai/models/compact/equity.f64",
@@ -2597,9 +2597,14 @@
       "sha256": "a74ad95d33e1a786014d4f959e217bfdde634c3f82eff165121602c5015fcd01"
     },
     {
+      "path": "engine/src/tuppi_server/heidi_admin.py",
+      "bytes": 4691,
+      "sha256": "ba428a3415f4f51e17c935c141dde03ef053aaa094a88f06e4287a667f75c5ec"
+    },
+    {
       "path": "engine/src/tuppi_server/hosted.py",
-      "bytes": 39274,
-      "sha256": "a23b70c402fb2e9708c07cbd4a0e6e23d71ae3ca13315fd612e43638d3401b10"
+      "bytes": 48377,
+      "sha256": "68f2df16c6ea41dd20b7b55b922fc117cd3a292574c2e7593f0e695ae0ed2d42"
     },
     {
       "path": "engine/src/tuppi_server/hosted_bot.py",
@@ -2673,8 +2678,8 @@
     },
     {
       "path": "engine/src/tuppi_server/usage.py",
-      "bytes": 4731,
-      "sha256": "7b17cf2f511a49c2f8f742a14ca966ea2de009b66b9a605ace8efb5faba4239f"
+      "bytes": 4749,
+      "sha256": "35dd8ac322bee159b99e214e280edd73679d19dbef523225f126603360fba107"
     },
     {
       "path": "engine/src/tuppi_ui_fixtures/__init__.py",
@@ -2788,8 +2793,8 @@
     },
     {
       "path": "render.yaml",
-      "bytes": 1137,
-      "sha256": "55fc23a4e25fc470c29777b202f85605a2c527394fd7b0def0c26a674bb74bb1"
+      "bytes": 1321,
+      "sha256": "6e276f681b80feb4933165e43f713d93e635e0566f2b8efd15834e16b2af830f"
     },
     {
       "path": "requirements.txt",
@@ -3127,6 +3132,11 @@
       "sha256": "44a9ea47ff5424120abc840da93d224e7e2bc0efbda234e4480cd45f9dca33b4"
     },
     {
+      "path": "web/runtime.mjs",
+      "bytes": 13951,
+      "sha256": "7f5ed7bcfbf1c1c341877dd262b7763067276a134646b2414716981cdbf1c56e"
+    },
+    {
       "path": "web/runtime/31426bbf97821e2c275339a66147d8cdfe7ffcbbc6b089b3b9bbc41881415413/build.json",
       "bytes": 12528,
       "sha256": "7061aa10aad198a4f79452268afa4e83964c6e5db89628d102c98b0090724203"
@@ -3335,11 +3345,6 @@
       "path": "web/runtime/d0ef4461f89ef7ac126bf428b908d8dbf2227d82c2a8f6cb823ecde6d02cb769/vrpo4_final.f32",
       "bytes": 25406064,
       "sha256": "d1789d37a19a0b3834b0299967675bcd828e4fbb58df8001cb0ec8f51504f5ff"
-    },
-    {
-      "path": "web/runtime.mjs",
-      "bytes": 13951,
-      "sha256": "7f5ed7bcfbf1c1c341877dd262b7763067276a134646b2414716981cdbf1c56e"
     },
     {
       "path": "web/session.mjs",

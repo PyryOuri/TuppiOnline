@@ -87,7 +87,7 @@ class Usage:
         if not force and not busy and now - self.last_line < QUIET_INTERVAL_SECONDS:
             return None
         fields = dict(gauges)
-        for name in ("created", "started", "finished", "moves", "opens", "saves", "results"):
+        for name in ("created", "started", "finished", "moves", "opens", "saves", "results", "heidi_releases"):
             fields[name] = self.counts.get(name, 0)
         if self.counts.get("records"):
             fields["records"] = self.counts["records"]  # offline match records received (research.py)

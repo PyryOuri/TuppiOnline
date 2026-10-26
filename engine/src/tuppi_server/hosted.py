@@ -54,6 +54,17 @@ MAINTENANCE_INTERVAL_SECONDS = 3600
 #: active-room and bot-room limits after this long without activity. It stays
 #: resumable; abandoned lobbies and matches must not lock others out.
 IDLE_ROOM_SECONDS = 1800
+#: A search table needs actual player activity to keep its scarce slot.
+#: Heartbeats, reconnects, spectators and bot moves do not renew it.
+HEIDI_IDLE_SECONDS = 15 * 60
+HEIDI_MAINTENANCE_SECONDS = 30
+
+
+def admin_key_from_environment() -> str | None:
+    value = os.environ.get("TUPPI_ADMIN_KEY") or None
+    if value is not None and (not 16 <= len(value) <= 256 or value != value.strip()):
+        raise ValueError("TUPPI_ADMIN_KEY must be 16-256 characters without surrounding spaces")
+    return value
 
 
 def storage_limits_from_environment() -> dict:
@@ -180,6 +191,7 @@ def create_hosted_app():
     from .app import app
     return HostedBoundary(app, origins=origins, bot_identity=identity, max_bot_rooms=bot_room_limit(level, 8),
                           room_passcode=room_passcode_from_environment(), client_header=client_header_from_environment(),
+                          admin_key=admin_key_from_environment(),
                           **storage_limits_from_environment())
 
 
@@ -192,12 +204,15 @@ class PasscodeRefused(Exception):
 class HostedBoundary:
     def __init__(self, game, *, origins, bot_identity=None, max_rooms=8, max_connections=32, max_bot_rooms=1,
                  max_retained_rooms=32, room_passcode=None, archive_days=30, archive_max_bytes=200 * 2**20,
-                 min_free_bytes=50 * 2**20, client_header=None):
+                 min_free_bytes=50 * 2**20, client_header=None, admin_key=None):
         self.game = game
         self.archive_days, self.archive_max_bytes = archive_days, archive_max_bytes
         self.min_free_bytes = min_free_bytes
         self.maintenance_task = None
         self.usage_task = None
+        self.heidi_maintenance_task = None
+        self.admin_key = admin_key
+        self.admin_failures = WindowLimit(5, 30)
         #: The served browser release, set by HostedSite; logged at startup.
         self.release = None
         self.room_passcode = room_passcode
@@ -230,6 +245,7 @@ class HostedBoundary:
         self.save_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="room-save")
         game.rooms.save_executor = self.save_executor
         self.activity = {code: self._mtime(code) for code in game.rooms._rooms}
+        self.heidi_activity = dict(self.activity)
         self.usage = Usage()
         self.usage.baseline(game.rooms._rooms)
         store = game.rooms._store
@@ -258,8 +274,9 @@ class HostedBoundary:
         original_ready = game.rooms.mark_ready
         heidi_admission = threading.Lock()
         def ready(*, code, token, auto_run_ai=True):
-            # A paused/idle or temporarily human-only Heidi table retains its
-            # slot: reconnect, resume or a bot covering a seat cannot bypass it.
+            # Until a table is closed/archived it keeps its slot, including
+            # while paused or temporarily human-only. Expiry never merely
+            # discounts a resumable table and admits a second search table.
             with heidi_admission:
                 # Heidi 1.1 and Heidi 1.2 share the one compact worker: at most
                 # one unfinished search table of either kind.
@@ -274,7 +291,9 @@ class HostedBoundary:
                 active = sum(bool(r.ai_seats) and self.in_use(r.code) for r in others)
                 if room.runner is None and room.ai_seats and active >= self.max_bot_rooms:
                     raise RoomError("server_busy")
-                return original_ready(code=code, token=token, auto_run_ai=auto_run_ai)
+                result = original_ready(code=code, token=token, auto_run_ai=auto_run_ai)
+                self.heidi_activity[code] = time.time()
+                return result
         game.rooms.mark_ready = ready
 
         async def auth(request, send):
@@ -282,6 +301,7 @@ class HostedBoundary:
                 from .rooms import RoomError
                 raise RoomError("storage_unavailable")
             code = str(request.get("payload", {}).get("room_code", "")).upper()
+            await self.expire_idle_heidi_rooms()
             self.game.rooms.get(code)
             async with self._lock(code):
                 connection = await original_auth(request, send)
@@ -295,9 +315,17 @@ class HostedBoundary:
                 raise RoomError("storage_unavailable")
             if request.get("message_type") == "action_submission":
                 self.usage.counts["moves"] += 1
+            if request.get("message_type") == "ready":
+                await self.expire_idle_heidi_rooms(exclude_code=connection.room_code)
             async with self._lock(connection.room_code):
+                room = game.rooms._rooms.get(connection.room_code)
+                cursor = room.runner.event_cursor if room is not None and room.runner is not None else None
                 await original_message(connection, request)
                 self.activity[connection.room_code] = time.time()
+                changed = (request.get("message_type") != "action_submission" or
+                           (room is not None and room.runner is not None and room.runner.event_cursor != cursor))
+                if changed and not connection.watching and request.get("message_type") not in {"ping", "reconnect"}:
+                    self.heidi_activity[connection.room_code] = time.time()
 
         async def continuation(code):
             async with self._lock(code):
@@ -305,6 +333,124 @@ class HostedBoundary:
                 self.activity[code] = time.time()
 
         game._authenticate, game._handle_message, game._continue_ai = auth, message, continuation
+
+    def heidi_tables(self) -> list[dict]:
+        from .match_runner import HEIDI_SEARCH_PROFILE_KEYS
+        now = time.time()
+        return [{"room_code": room.code, "paused": room.paused,
+                 "idle_seconds": max(0, int(now - self.heidi_activity.get(room.code, now))),
+                 "connected_players": sum(token in self.game._connections.get(room.code, {})
+                                          for token in room.sessions)}
+                for room in self.game.rooms._rooms.values()
+                if room.ai_profile_key in HEIDI_SEARCH_PROFILE_KEYS
+                and room.runner is not None and not room.runner.terminal]
+
+    async def release_heidi_table(self, code: str, *, idle_only=False) -> bool:
+        """Close one search table under its mutation lock; retain its archive.
+
+        Wait for an in-flight native decision/save instead of cancelling its
+        thread and allowing it to write after the room has been archived.
+        """
+        from .match_runner import HEIDI_SEARCH_PROFILE_KEYS
+        async with self._lock(code):
+            room = self.game.rooms._rooms.get(code)
+            if (room is None or room.ai_profile_key not in HEIDI_SEARCH_PROFILE_KEYS
+                    or room.runner is None or room.runner.terminal):
+                return False
+            if idle_only and time.time() - self.heidi_activity.get(code, time.time()) < HEIDI_IDLE_SECONDS:
+                return False
+            connections = tuple(self.game._connections.get(code, {}).values())
+            # Archive first: a storage failure must not free the slot.
+            try:
+                self._archive(code)
+            except PersistenceError:
+                self.game.rooms.storage_failed = True
+                raise
+            task = self.game._ai_tasks.pop(code, None)
+            if task is not None:
+                task.cancel()
+            async def close(connection):
+                try:
+                    await asyncio.wait_for(connection.send({"type": "websocket.close", "code": 4004}), 1)
+                except Exception:
+                    pass
+            await asyncio.gather(*(close(connection) for connection in connections))
+            self.usage.counts["heidi_releases"] += 1
+            return True
+
+    async def expire_idle_heidi_rooms(self, *, exclude_code=None):
+        if self.game.rooms.storage_failed:
+            return
+        for table in self.heidi_tables():
+            code = table["room_code"]
+            # A running decision holds this lock. Check again on the next tick.
+            if code != exclude_code and table["idle_seconds"] >= HEIDI_IDLE_SECONDS and not self._lock(code).locked():
+                await self.release_heidi_table(code, idle_only=True)
+
+    async def _heidi_maintenance_loop(self):
+        while True:
+            await asyncio.sleep(HEIDI_MAINTENANCE_SECONDS)
+            try:
+                await self.expire_idle_heidi_rooms()
+            except Exception:
+                self.usage.error("heidi_release_failed")
+
+    async def _heidi_admin(self, scope, receive, send, client):
+        from .heidi_admin import ASSETS
+        path, method = scope.get("path"), scope.get("method")
+        if self.admin_key is None:
+            await self.game._json_response(send, 404, {"error": "unknown_endpoint"})
+            return
+        if method == "GET" and path in ASSETS:
+            mime, body = ASSETS[path]
+            await send({"type": "http.response.start", "status": 200, "headers": [
+                (b"content-type", mime.encode()), (b"x-content-type-options", b"nosniff"),
+                (b"referrer-policy", b"no-referrer"),
+                (b"content-security-policy", b"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'")]})
+            await send({"type": "http.response.body", "body": body.encode()})
+            return
+        offered = dict(scope.get("headers", [])).get(b"authorization", b"")
+        if not self.admin_failures.allows(client) or not hmac.compare_digest(
+                offered, b"Bearer " + self.admin_key.encode()):
+            self.admin_failures.add(client)
+            await self.game._json_response(send, 403, {"error": "admin_required"})
+            return
+        if path == "/v1/admin/heidi/status" and method == "GET":
+            await self.game._json_response(send, 200, {"tables": self.heidi_tables(), "idle_timeout_seconds": HEIDI_IDLE_SECONDS})
+            return
+        if path == "/v1/admin/heidi/release" and method == "POST":
+            if self.game.rooms.storage_failed:
+                await self.game._json_response(send, 503, {"error": "storage_unavailable"})
+                return
+            try:
+                body = b""
+                while True:
+                    message = await asyncio.wait_for(receive(), 10)
+                    if message["type"] != "http.request":
+                        raise ValueError("invalid_request")
+                    body += message.get("body", b"")
+                    if len(body) > 1024:
+                        raise ValueError("request_too_large")
+                    if not message.get("more_body", False):
+                        break
+                payload = json.loads(body)
+                if (type(payload) is not dict or set(payload) != {"room_code"}
+                        or not isinstance(payload["room_code"], str)
+                        or re.fullmatch(r"[A-Z0-9]{6}", payload["room_code"]) is None):
+                    raise ValueError("invalid_request")
+                code = payload["room_code"]
+                if code not in self.game.rooms._rooms:
+                    released = False
+                else:
+                    released = await self.release_heidi_table(code)
+                await self.game._json_response(send, 200 if released else 409,
+                                               {"released": True, "room_code": code} if released else {"error": "heidi_table_not_active"})
+            except (ValueError, UnicodeError, asyncio.TimeoutError):
+                await self.game._json_response(send, 400, {"error": "invalid_request"})
+            except PersistenceError:
+                await self.game._json_response(send, 503, {"error": "storage_unavailable"})
+            return
+        await self.game._json_response(send, 404, {"error": "unknown_endpoint"})
 
     async def _room_creation_body(self, receive, client=None) -> bytes:
         """Read a create-room body, check and remove its room_passcode.
@@ -508,15 +654,19 @@ class HostedBoundary:
 
     async def _http_game(self, scope, receive, send):
         started = False
+        status = None
         async def tracked(message):
-            nonlocal started
+            nonlocal started, status
             started = started or message["type"] == "http.response.start"
+            if message["type"] == "http.response.start":
+                status = message["status"]
             await send(message)
         try:
             await self.game(scope, receive, tracked)
         except PersistenceError:
             if not started:
                 await self.game._json_response(send, 503, {"error": "storage_unavailable"})
+        return status
 
     def _lock(self, code):
         return self.room_locks.setdefault(code, asyncio.Lock())
@@ -553,6 +703,7 @@ class HostedBoundary:
             store.archive_room(code)
         del self.game.rooms._rooms[code]
         self.activity.pop(code, None)
+        self.heidi_activity.pop(code, None)
         self.room_locks.pop(code, None)
         self.game._connections.pop(code, None)
         self.game.forget_chat(code)
@@ -569,7 +720,9 @@ class HostedBoundary:
                         from .hosted_bot import warm
                         await asyncio.to_thread(warm)
                         self.maintain()
+                        await self.expire_idle_heidi_rooms()
                         self.maintenance_task = asyncio.create_task(self._maintenance_loop())
+                        self.heidi_maintenance_task = asyncio.create_task(self._heidi_maintenance_loop())
                         self.usage_task = asyncio.create_task(self._usage_loop())
                         client = self.client_header.decode() if self.client_header else "peer"
                         print(f"tuppi started release={str(self.release)[:12]} rooms={len(self.game.rooms._rooms)} "
@@ -578,7 +731,7 @@ class HostedBoundary:
                     except Exception as exc:
                         await send({"type": "lifespan.startup.failed", "message": str(exc)})
                 elif message["type"] == "lifespan.shutdown":
-                    for task in (self.maintenance_task, self.usage_task):
+                    for task in (self.maintenance_task, self.usage_task, self.heidi_maintenance_task):
                         if task is not None:
                             task.cancel()
                     try:
@@ -649,6 +802,9 @@ class HostedBoundary:
             await send(message)
         if scope.get("method") == "OPTIONS":
             await self.game._json_response(cors_send, 200, {})
+            return
+        if path.startswith("/v1/admin/heidi"):
+            await self._heidi_admin(scope, receive, cors_send, client)
             return
         if scope.get("method") == "GET" and path in {"/healthz", "/v1/compatibility"}:
             from .app import FEATURES
@@ -735,10 +891,18 @@ class HostedBoundary:
                     self.activity[code] = time.time()
                     self.usage.counts["created"] += 1
         else:
+            if route[2] == "ready":
+                try:
+                    await self.expire_idle_heidi_rooms()
+                except PersistenceError:
+                    await self.game._json_response(cors_send, 503, {"error": "storage_unavailable"})
+                    return
             if route[1].upper() not in self.game.rooms._rooms:
                 await self.game._json_response(cors_send, 404, {"error": "room_not_found"})
                 return
             async with self._lock(route[1].upper()):
-                await self._http_game(scope, limited_body, cors_send)
+                status = await self._http_game(scope, limited_body, cors_send)
                 if route[1].upper() in self.game.rooms._rooms:
                     self.activity[route[1].upper()] = time.time()
+                    if status == 200 and route[2] in {"join", "configure", "settings", "name", "release", "swap", "leave"}:
+                        self.heidi_activity[route[1].upper()] = time.time()
