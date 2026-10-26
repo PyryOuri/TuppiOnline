@@ -16,7 +16,7 @@ assert {p.name for p in (root / 'ai/models').iterdir()} == {'vrpo3_final.lite.np
                                                             'hosted-models.lite.json', 'compact'}
 assert {p.name for p in (root / 'ai/models/compact').iterdir()} == {'models.json', 'vrpo1_actor_0504.f32', 'vrpo3_final.f32',
                                                                     'vrpo4_final.f32', 'equity.f64'}
-assert {p.name for p in (root / 'ai/tuppi_ai').iterdir()} == {'__init__.py', 'native.py', 'bridge.py', 'lite.py', 'compact.py'}
+assert {p.name for p in (root / 'ai/tuppi_ai').iterdir()} == {'__init__.py', 'native.py', 'bridge.py', 'lite.py', 'compact.py', 'dan.py'}
 from tuppi_server.hosted import verify_bot_identity
 from tuppi_ai.bridge import action_id
 from tuppi_ai.lite import lite_agents

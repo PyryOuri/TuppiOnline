@@ -1,7 +1,7 @@
 {
   "schema": "tuppi.hosted.source.v1",
   "commits": {
-    "browser": "953c479ee56ffed70e30c252d95a9ca6541942d7",
+    "browser": "13018acd9538605310c4f201166ef776285edb68",
     "engine": "68fbd4b5b9002b6f75034339f1968e90e8c3c98e",
     "ai": "7c38db6a825ecfaced3dbdb830899f3358f4ebab"
   },
@@ -2903,8 +2903,8 @@
     },
     {
       "path": "qualification/qualify_lite.py",
-      "bytes": 5002,
-      "sha256": "28f22bcd974685fbff49055ffaaf7e739fa46f74f43d1efde5cc2f45a59e55c5"
+      "bytes": 5012,
+      "sha256": "3d45c921059e7f85506d850966b621e99dda571f781978265de30b0ff9d99108"
     },
     {
       "path": "qualification/reference-w1024.json",
@@ -3783,5 +3783,6 @@
     "checkpoint_schema": "tuppi.hosted.controller.dan11.v1",
     "uses_heidi_reservation": false
   },
-  "release_status": "Dan 1.1 over the Heidi reservation release (40b6c8a); owner deploys"
+  "release_status": "Dan 1.1 over the Heidi reservation release (40b6c8a); owner deploys",
+  "browser_build_commit_note": "browser 953c479 built the web runtime; 13018ac only fixes deploy/qualify_lite.py"
 }
