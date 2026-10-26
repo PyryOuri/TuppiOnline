@@ -12,7 +12,7 @@ from tuppi_rules.cards import FULL_DECK
 
 from . import native
 from .bridge import action_id, obs_from_player_observation
-from .dan import DanAgent, DanConfig, NativeResult, diagnostic
+from .dan import BOT_NAME, DanAgent, DanConfig, NativeResult, diagnostic
 from .lite import LiteAgent, shared_equity
 
 
@@ -36,13 +36,13 @@ def root(seed: int, plays: int = 0, match_ref: str | None = None):
     return state
 
 
-def fixed_roots(count=16):
+def fixed_roots(count=16, seed_start=0):
     """First eligible roots in a finite roster; eligibility uses no rollout EV."""
     if not 1 <= count <= 16:
         raise ValueError("qualification roster has at most 16 positions")
     found = []
     schedule = (0, 1, 4, 5, 8)
-    for seed in range(512):
+    for seed in range(seed_start, seed_start+512):
         plays = schedule[len(found) % len(schedule)]
         state = root(seed, plays)
         if state is None:
@@ -57,9 +57,9 @@ def fixed_roots(count=16):
     raise RuntimeError("Finite Dan qualification roster did not supply enough roots")
 
 
-def probe(count=16, audit=False):
+def probe(count=16, audit=False, seed_start=0):
     native.set_parallel(False)
-    roots = fixed_roots(count)
+    roots = fixed_roots(count, seed_start)
     rows = []
     for seed, plays, state in roots:
         obs = match_observation_for(state, state.current_actor)
@@ -102,7 +102,8 @@ def probe(count=16, audit=False):
         rows.append(row)
         agent.close()
         restored.close()
-    return {"schema": "tuppi.dan.probe.v1", "forced_nolo": True, "independent_strength_observations": 0,
+    return {"schema": "tuppi.dan11.probe.v1", "name": BOT_NAME, "seed_start": seed_start,
+            "forced_nolo": True, "independent_strength_observations": 0,
             "config": DanConfig().__dict__, "positions": rows,
             "guard_cpu_seconds": sum(r["cpu_seconds"] for r in rows),
             "accepted": sum(r["diagnostics"]["reason"] == "accepted" for r in rows)}
@@ -146,6 +147,7 @@ def natural(count=64):
         contracts[state.active_deal.contract.value] += 1
         traces.append(trace)
     dan.close()
-    return {"schema": "tuppi.dan.natural_preview.v1", "deals": count, "forced_contract": False,
+    return {"schema": "tuppi.dan11.natural_preview.v1", "name": BOT_NAME, "profile": dan.profile,
+            "runtime": dan.runtime, "config": dan.config.__dict__, "deals": count, "forced_contract": False,
             "strength_evaluation": False, "dan_seat": 1, "contracts": dict(contracts),
             "phases": dict(phases), "reasons": dict(reasons), "guard_calls": calls, "traces": traces}

@@ -8,11 +8,12 @@ p = argparse.ArgumentParser()
 p.add_argument("--count", type=int, default=16)
 p.add_argument("--audit", action="store_true")
 p.add_argument("--natural", action="store_true")
+p.add_argument("--seed-start", type=int, default=0)
 p.add_argument("--out", type=Path, required=True)
 a = p.parse_args()
 if a.natural and a.audit:
     p.error("natural preview and estimation audit are separate stages")
-report = natural(a.count) if a.natural else probe(a.count, a.audit)
+report = natural(a.count) if a.natural else probe(a.count, a.audit, a.seed_start)
 a.out.parent.mkdir(parents=True, exist_ok=True)
 a.out.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
 print(json.dumps({"deals": report["deals"], "reasons": report["reasons"], "out": str(a.out)} if a.natural else

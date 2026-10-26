@@ -18,7 +18,52 @@ int tc_dan_config_valid(const TcDanConfig *c) {
     isfinite(c->second_loss) && c->second_loss >= 0 && c->second_loss <= c->lead_loss &&
     isfinite(c->deal_loss) && c->deal_loss >= 0 && c->deal_loss <= 1 &&
     isfinite(c->uncertainty) && c->uncertainty >= 0 && c->uncertainty <= 10 &&
-    isfinite(c->epsilon) && c->epsilon >= 0 && c->epsilon <= 1e-6;
+    isfinite(c->epsilon) && c->epsilon >= 0 && c->epsilon <= 1e-6 &&
+    isfinite(c->rami_margin) && c->rami_margin >= 0 && c->rami_margin <= 20;
+}
+
+int tc_dan_bid_select(const int32_t *ids, int k, const float *scores, double margin, TcDanBidResult *r) {
+  if (!r) return -1;
+  memset(r, 0, sizeof *r);
+  r->action = r->nelli_action = r->nolo_action = r->rami_action = -1;
+  r->margin = margin;
+  if (!ids || !scores || k < 1 || k > 26 || !isfinite(margin) || margin < 0 || margin > 20) return -1;
+  int best = -1;
+  for (int i = 0; i < k; i++) {
+    int a = ids[i];
+    if (a < 52 || a >= 156 || !isfinite(scores[a])) return -1;
+    for (int j = 0; j < i; j++) if (ids[j] == a) return -1;
+    if (best < 0 || scores[a] > scores[best] || (scores[a] == scores[best] && a < best)) best = a;
+    int *slot = a < 104 ? &r->nolo_action : &r->rami_action;
+    if (*slot < 0 || scores[a] > scores[*slot] || (scores[a] == scores[*slot] && a < *slot)) *slot = a;
+  }
+  r->action = r->nelli_action = best;
+  if (r->nolo_action >= 0) r->nolo_score = scores[r->nolo_action];
+  if (r->rami_action >= 0) r->rami_score = scores[r->rami_action];
+  if (r->nolo_action < 0 || r->rami_action < 0) { r->reason = TC_DAN_BID_FORCED; return 0; }
+  r->gap = r->rami_score - r->nolo_score;
+  if (best < 104) r->reason = TC_DAN_BID_NELLI_NOLO;
+  else if (r->gap < margin) { r->action = r->nolo_action; r->reason = TC_DAN_BID_VETO; }
+  else r->reason = TC_DAN_BID_RAMI_KEPT;
+  return 0;
+}
+
+int tc_dan_bid(const TcMlp *model, const TcObs *o, const int32_t *ids, int k,
+                double margin, TcDanBidResult *out) {
+  if (!model || !o || !ids || !out || o->ruleset != 3 || o->phase != TC_PH_SHOW ||
+      o->seat > 3 || o->n_shows > 3 || (o->hand >> 52) || k < 1 || k > 26) return -1;
+  int canonical[TC_NUM_ACTIONS_V2], n = tc_legal_obs(o, canonical);
+  if (n != k) return -1;
+  for (int i = 0; i < k; i++) {
+    int found = 0;
+    for (int j = 0; j < n; j++) found += canonical[j] == ids[i];
+    for (int j = 0; j < i; j++) if (ids[i] == ids[j]) return -1;
+    if (found != 1) return -1;
+  }
+  uint8_t features[2048]; float scores[TC_NUM_ACTIONS];
+  tc_encode_v(o, features, tc_mlp_encoder(model));
+  tc_mlp_forward(model, features, 1, scores);
+  return tc_dan_bid_select(ids, k, scores, margin, out);
 }
 double tc_dan_allowance(const TcObs *o, const TcDanConfig *c) {
   if (!o || !tc_dan_config_valid(c) || o->ruleset != 3 || o->phase != TC_PH_PLAY ||

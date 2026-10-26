@@ -1,4 +1,4 @@
-"""Dan: transactional, EV-limited early NOLO high-card preference; no Torch.
+"""Dan 1.1: visible EV-limited NOLO habit and conservative Nelli 1.1 bids.
 
 Use propose_action -> authoritative apply -> commit_action in cancellable callers.
 choose_action is a synchronous serial-loop convenience with idempotent polling.
@@ -18,10 +18,11 @@ import numpy as np
 
 from . import native
 from .bridge import action_id, obs_from_player_observation
-from .lite import LiteAgent, MODEL, ROOT, initial_cursor, shared_equity
+from .lite import LiteAgent, MODEL, MODEL_V4, ROOT, initial_cursor, shared_equity, shared_mlp
 
-PROFILE_SCHEMA = "tuppi.personality.dan.v1"
-CHECKPOINT_SCHEMA = "tuppi.controller.dan.v1"
+BOT_NAME = "Dan 1.1"
+PROFILE_SCHEMA = "tuppi.personality.dan11.v1"
+CHECKPOINT_SCHEMA = "tuppi.controller.dan11.v1"
 REASONS = ("outside", "forced", "no_high_card", "base_high_card", "allowance_exhausted",
            "loss_rejected", "accepted", "sampling_failed", "invalid_values")
 
@@ -33,26 +34,32 @@ def _hash(value) -> str:
 @dataclass(frozen=True)
 class DanConfig:
     worlds: int = 64
-    lead_loss: float = .002
-    second_loss: float = .001
-    deal_loss: float = .004
+    lead_loss: float = .03
+    second_loss: float = .02
+    deal_loss: float = .05
     uncertainty: float = 2.0
     epsilon: float = 1e-12
+    rami_margin: float = 2.0
 
     def __post_init__(self):
         if type(self.worlds) is not int or not 2 <= self.worlds <= 64:
             raise ValueError("Dan supports 2..64 fixed worlds")
-        values = (self.lead_loss, self.second_loss, self.deal_loss, self.uncertainty, self.epsilon)
+        values = (self.lead_loss, self.second_loss, self.deal_loss, self.uncertainty, self.epsilon, self.rami_margin)
         if any(type(x) not in (float, int) or not math.isfinite(x) for x in values):
             raise ValueError("Dan configuration must be finite numbers")
         if not (0 <= self.second_loss <= self.lead_loss <= 1 and 0 <= self.deal_loss <= 1
-                and 0 <= self.uncertainty <= 10 and 0 <= self.epsilon <= 1e-6):
+                and 0 <= self.uncertainty <= 10 and 0 <= self.epsilon <= 1e-6 and 0 <= self.rami_margin <= 20):
             raise ValueError("Invalid Dan loss configuration")
 
 
 class NativeConfig(C.Structure):
     _fields_ = [("worlds", C.c_int)] + [(k, C.c_double) for k in
-        ("lead_loss", "second_loss", "deal_loss", "uncertainty", "epsilon")]
+        ("lead_loss", "second_loss", "deal_loss", "uncertainty", "epsilon", "rami_margin")]
+
+
+class NativeBidResult(C.Structure):
+    _fields_ = [(k, C.c_int) for k in ("action", "nelli_action", "nolo_action", "rami_action", "reason")] + [
+        (k, C.c_double) for k in ("nolo_score", "rami_score", "gap", "margin")]
 
 
 class NativeContext(C.Structure):
@@ -73,6 +80,11 @@ native._sym("tc_dan_select").restype = C.c_int
 native._sym("tc_dan_choose").argtypes = [C.c_void_p, C.c_void_p, C.POINTER(native.TcObs), C.c_void_p,
     C.c_int, C.c_int, C.POINTER(NativeConfig), C.POINTER(NativeContext), C.POINTER(NativeResult)]
 native._sym("tc_dan_choose").restype = C.c_int
+native._sym("tc_dan_bid_select").argtypes = [C.c_void_p, C.c_int, C.c_void_p, C.c_double, C.POINTER(NativeBidResult)]
+native._sym("tc_dan_bid_select").restype = C.c_int
+native._sym("tc_dan_bid").argtypes = [C.c_void_p, C.POINTER(native.TcObs), C.c_void_p, C.c_int,
+    C.c_double, C.POINTER(NativeBidResult)]
+native._sym("tc_dan_bid").restype = C.c_int
 
 
 def native_config(config: DanConfig) -> NativeConfig:
@@ -90,7 +102,7 @@ def diagnostic(result: NativeResult, ids) -> dict:
 
 @lru_cache(maxsize=1)
 def identities():
-    files = {"model": MODEL, "equity": ROOT / "models/equity_incumbent.json"}
+    files = {"model": MODEL, "bid_model": MODEL_V4, "equity": ROOT / "models/equity_incumbent.json"}
     hashes = {k: hashlib.sha256(v.read_bytes()).hexdigest() for k, v in files.items()}
     # Behaviour and binary identities are separate; saved controllers fail closed
     # across a different build or model rather than pretending replay equivalence.
@@ -109,15 +121,17 @@ class DanDecision:
 
 class DanAgent:
     handles_sooli = True
+    name = BOT_NAME
 
     def __init__(self, seat: int, config: DanConfig | None = None):
         if type(seat) is not int or seat not in range(4):
             raise ValueError("seat must be in 0..3")
         self.seat, self.config = seat, config or DanConfig()
         hashes, self.runtime = identities()
-        self.profile = _hash({"schema": PROFILE_SCHEMA, "config": asdict(self.config), **hashes,
+        self.profile = _hash({"schema": PROFILE_SCHEMA, "name": BOT_NAME, "config": asdict(self.config), **hashes,
                               "continuation": "plain-vrpo3", "dd_left": 0, "belief": "hard-feasible-uniform"})
         self._base = LiteAgent(seat)
+        self._bid_mlp = shared_mlp(MODEL_V4)
         self._env = None
         self._state = {"deal_ref": None, "remaining": float(self.config.deal_loss),
                        "eval_rng": 0xDAA00000 + seat, "base_rng": initial_cursor(seat), "revision": 0}
@@ -153,9 +167,21 @@ class DanAgent:
             next_state["remaining"] = float(self.config.deal_loss)
         # The base agent's sole mutable policy cursor is restored before every
         # proposal, then rolled back until the caller accepts the action.
+        bidding = None
         self._base.rng.value = next_state["base_rng"]
         try:
-            base = action_id(self._base.choose_action(observation))
+            if obs.phase == native.PH_SHOW:
+                bid = NativeBidResult()
+                rc = native.lib.tc_dan_bid(self._bid_mlp._h, C.byref(obs), ids.ctypes.data, len(ids),
+                    self.config.rami_margin, C.byref(bid))
+                if rc:
+                    raise ValueError(f"Invalid Dan 1.1 bidding input ({rc})")
+                base = bid.action
+                bidding = {k: getattr(bid, k) for k in ("action", "nelli_action", "nolo_action", "rami_action",
+                    "nolo_score", "rami_score", "gap", "margin")}
+                bidding["reason"] = ("nelli_nolo", "rami_kept", "rami_margin_veto", "forced_contract")[bid.reason]
+            else:
+                base = action_id(self._base.choose_action(observation))
             next_state["base_rng"] = self._base.rng.value
         finally:
             self._base.rng.value = self._state["base_rng"]
@@ -172,6 +198,8 @@ class DanAgent:
         next_state.update(eval_rng=context.rng, remaining=context.remaining, revision=next_state["revision"]+1)
         payload = {"observation": key, "before": _hash(self._state), "next": next_state,
                    "action": result.action, "diagnostics": diagnostic(result, ids)}
+        if bidding is not None:
+            payload["diagnostics"]["bidding"] = bidding
         payload["token"] = _hash(payload)
         self._pending = payload
         return self._decision(payload, legal)
@@ -199,7 +227,7 @@ class DanAgent:
         return d.action
 
     def checkpoint(self) -> dict:
-        return copy.deepcopy({"schema": CHECKPOINT_SCHEMA, "seat": self.seat, "config": asdict(self.config),
+        return copy.deepcopy({"schema": CHECKPOINT_SCHEMA, "name": BOT_NAME, "seat": self.seat, "config": asdict(self.config),
             "profile": self.profile, "runtime": self.runtime, "state": self._state,
             "pending": self._pending, "receipt": self._receipt})
 
@@ -218,8 +246,8 @@ class DanAgent:
 
     @classmethod
     def from_checkpoint(cls, record: dict):
-        required = {"schema", "seat", "config", "profile", "runtime", "state", "pending", "receipt"}
-        if not isinstance(record, dict) or set(record) != required or record["schema"] != CHECKPOINT_SCHEMA:
+        required = {"schema", "name", "seat", "config", "profile", "runtime", "state", "pending", "receipt"}
+        if not isinstance(record, dict) or set(record) != required or record["schema"] != CHECKPOINT_SCHEMA or record["name"] != BOT_NAME:
             raise ValueError("Invalid Dan checkpoint")
         obj = cls(record["seat"], DanConfig(**record["config"]))
         if record["profile"] != obj.profile or record["runtime"] != obj.runtime:

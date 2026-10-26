@@ -475,7 +475,14 @@ int tb_dan_choose_observation(const TcObs *obs, const int32_t *ids, int k,
   }
   uint64_t next_base = *base_rng;
   int base = ids[0];
-  if (k > 1 && obs->phase >= TC_PH_SOOLI_OFFER) base = tc_sooli_policy(obs, &next_base);
+  if (obs->phase == TC_PH_SHOW) {
+    /* Dan 1.1 uses the actual Nelli 1.1 bidding network, with a one-way RAMI
+     * veto; card play and rollouts continue on plain VRPO3. */
+    TcDanBidResult bid;
+    if (!models[2] || tc_dan_bid(models[2], obs, ids, k, config->rami_margin, &bid)) return -5;
+    base = bid.action;
+  }
+  else if (k > 1 && obs->phase >= TC_PH_SOOLI_OFFER) base = tc_sooli_policy(obs, &next_base);
   else if (k > 1) {
     uint8_t features[2048]; float q[TC_NUM_ACTIONS];
     tc_encode_v(obs, features, tc_mlp_encoder(models[1]));

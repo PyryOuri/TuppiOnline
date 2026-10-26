@@ -7,7 +7,7 @@ from tuppi_rules import MatchScore, RulesetId
 from tuppi_rules.cards import FULL_DECK
 from tuppi_ai import native
 from tuppi_ai.bridge import action_id
-from tuppi_ai.dan import DanAgent
+from tuppi_ai.dan import BOT_NAME, DanAgent
 from tuppi_ai.lite import LiteAgent
 
 def label(action):
@@ -34,6 +34,7 @@ def main():
     match = create_match(initial_score=MatchScore(0, 0), initial_dealer=3,
                          match_ref="dan-local-preview", ruleset_id=RulesetId.PROJECT_TARGET_V3)
     print("You are seat 0; partner 2. Card suits: H hearts, D diamonds, C clubs, S spades.")
+    print(f"{BOT_NAME} plays in seats {sorted(dan_seats)}.")
     for deal in range(a.deals):
         cards = list(FULL_DECK)
         random.Random(f"{a.seed}|{deal}").shuffle(cards)
@@ -58,7 +59,7 @@ def main():
                 action = agents[seat].choose_action(obs)
             next_match = apply_match_action(match, action)
             if seat in dan_seats: agents[seat].commit_action(decision)
-            print(f"{'You' if seat == 0 else 'Dan' if seat in dan_seats else 'Bot'} ({seat}): {label(action)}")
+            print(f"{'You' if seat == 0 else BOT_NAME if seat in dan_seats else 'Bot'} ({seat}): {label(action)}")
             match = next_match
         print(f"Score: {match.score}")
         if match.terminal: break

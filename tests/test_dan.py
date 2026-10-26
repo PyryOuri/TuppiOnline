@@ -9,7 +9,7 @@ import pytest
 
 from tuppi_ai import native
 from tuppi_ai.bridge import action_id, obs_from_player_observation
-from tuppi_ai.dan import DanAgent, DanConfig, NativeConfig, NativeContext, NativeResult, native_config
+from tuppi_ai.dan import BOT_NAME, DanAgent, DanConfig, NativeConfig, NativeContext, NativeResult, NativeBidResult, native_config
 from tuppi_ai.dan_preview import fixed_roots, root
 from tuppi_ai.lite import LiteAgent, shared_equity
 from tuppi_engine import apply_match_action, match_observation_for
@@ -32,7 +32,7 @@ def test_context_is_relative_to_the_current_trick(trick, position):
     obs.ruleset, obs.phase, obs.contract, obs.trick_size, obs.soolaaja = 3, 1, 0, 4, -1
     obs.n_played = (trick-1)*4 + position-1
     cfg = native_config(DanConfig())
-    expected = .002 if trick <= 3 and position == 1 else .001 if trick <= 2 and position == 2 else 0
+    expected = .03 if trick <= 3 and position == 1 else .02 if trick <= 2 and position == 2 else 0
     for seat in range(4):
         obs.seat = seat
         assert native.lib.tc_dan_allowance(C.byref(obs), C.byref(cfg)) == expected
@@ -125,7 +125,7 @@ def test_pending_replay_abort_commit_and_reload_do_not_double_spend(eligible):
 
 def test_an_actual_native_override_debits_only_after_acceptance(eligible):
     # A deliberately permissive test profile exercises the positive path. The
-    # shipped/default .002/.001 profile remains unchanged.
+    # Default allowances are not changed by this positive-path test.
     _, _, state = eligible[0]
     obs = match_observation_for(state, state.current_actor)
     dan = DanAgent(state.current_actor, DanConfig(lead_loss=1, second_loss=.5, deal_loss=1))
@@ -158,7 +158,7 @@ def test_stale_proposal_is_rejected_and_each_new_deal_resets_once(eligible):
     saved["receipt"] = None
     restored = DanAgent.from_checkpoint(saved)
     reset = restored.propose_action(obs)
-    assert reset.diagnostics["before"] == .004
+    assert reset.diagnostics["before"] == DanConfig().deal_loss
     restored.commit_action(reset)
     post = restored.checkpoint()
     restored.propose_action(obs)
@@ -209,19 +209,35 @@ def test_native_browser_entry_matches_python_transaction(eligible):
         C.POINTER(NativeConfig), C.POINTER(C.c_uint64), C.POINTER(NativeContext), C.POINTER(NativeResult)]
     manifest = json.loads((ROOT / "models/compact/models.json").read_text())
     for record in manifest["models"]:
-        if record["role"] not in (0, 1): continue
+        if record["role"] not in (0, 1, 2): continue
         data = np.fromfile(ROOT / "models/compact" / record["file"], dtype=np.float32)
         cfg = record["config"]
         assert lib.tb_load_model(record["role"], record["in_dim"], cfg["width"], cfg["blocks"], cfg["encoder"],
                                   len(data), data.ctypes.data) == 0
     eq = np.ascontiguousarray(shared_equity())
     assert lib.tb_configure(128, eq.ctypes.data) == 0
+    from tuppi_ai.dan11_bidding import observations
+    for _, _, observation in observations(4):
+        dan = DanAgent(observation.observing_seat)
+        decision = dan.propose_action(observation)
+        raw = obs_from_player_observation(observation)
+        ids = np.ascontiguousarray([action_id(a) for a in observation.legal_actions], dtype=np.int32)
+        saved = dan.checkpoint()["state"]
+        cfg, result = native_config(DanConfig()), NativeResult()
+        context = NativeContext(saved["eval_rng"], DanConfig().deal_loss)
+        brng = C.c_uint64(saved["base_rng"])
+        chosen = lib.tb_dan_choose_observation(C.byref(raw), ids.ctypes.data, len(ids), C.byref(cfg),
+            C.byref(brng), C.byref(context), C.byref(result))
+        assert chosen == action_id(decision.action)
+        assert context.rng == saved["eval_rng"] and brng.value == saved["base_rng"]
+        assert context.remaining == DanConfig().deal_loss
+        dan.close()
     for _, _, state in eligible:
         obs = match_observation_for(state, state.current_actor)
         dan = DanAgent(state.current_actor)
         d = dan.propose_action(obs)
         before = dan.checkpoint()["state"]
-        context = NativeContext(before["eval_rng"], .004)
+        context = NativeContext(before["eval_rng"], DanConfig().deal_loss)
         base_rng = C.c_uint64(before["base_rng"])
         cfg, result = native_config(DanConfig()), NativeResult()
         raw = obs_from_player_observation(obs)
@@ -245,7 +261,7 @@ def test_native_browser_entry_matches_python_transaction(eligible):
     base = action_id(dan._base.choose_action(observation))
     env = native.Env(64*13, 0, equity=altered, single_deal=True, encoder=dan._base.mlp.encoder)
     cfg = native_config(DanConfig())
-    left, right = NativeContext(999, .004), NativeContext(999, .004)
+    left, right = NativeContext(999, DanConfig().deal_loss), NativeContext(999, DanConfig().deal_loss)
     expected, actual = NativeResult(), NativeResult()
     assert lib.tc_dan_choose(env._h, dan._base.mlp._h, C.byref(raw), ids.ctypes.data, len(ids), base,
         C.byref(cfg), C.byref(left), C.byref(expected)) == 0
@@ -265,3 +281,51 @@ def test_terminal_preview_starts_and_accepts_quit():
         capture_output=True, text=True, cwd=Path(__file__).resolve().parents[1], timeout=15)
     assert result.returncode == 0, result.stderr
     assert "You are seat 0" in result.stdout and "Your action" in result.stdout
+    assert BOT_NAME in result.stdout
+
+
+@pytest.mark.parametrize("nolo,rami,expected", [(0, .25, 52), (0, .5, 104), (0, 1, 104), (.5, 0, 52), (0, 0, 52)])
+def test_bidding_margin_only_vetoes_borderline_nelli_rami(nolo, rami, expected):
+    ids = np.array([52, 104], dtype=np.int32)
+    scores = np.zeros(156, dtype=np.float32)
+    scores[52], scores[104] = nolo, rami
+    result = NativeBidResult()
+    assert native.lib.tc_dan_bid_select(ids.ctypes.data, 2, scores.ctypes.data, .5, C.byref(result)) == 0
+    assert result.action == expected
+    if result.nelli_action < 104:
+        assert result.action == result.nelli_action
+
+
+def test_bidding_never_forces_an_illegal_nolo_when_only_rami_is_available():
+    ids = np.array([104, 105], dtype=np.int32)
+    scores = np.zeros(156, dtype=np.float32)
+    scores[105] = 1
+    result = NativeBidResult()
+    assert native.lib.tc_dan_bid_select(ids.ctypes.data, 2, scores.ctypes.data, 20, C.byref(result)) == 0
+    assert result.action == result.nelli_action == 105 and result.reason == 3
+
+
+def test_name_and_new_version_are_in_checkpoint():
+    dan = DanAgent(1)
+    record = dan.checkpoint()
+    assert dan.name == record["name"] == "Dan 1.1"
+    legacy = copy.deepcopy(record)
+    legacy["schema"] = "tuppi.controller.dan.v1"
+    with pytest.raises(ValueError): DanAgent.from_checkpoint(legacy)
+
+
+def test_real_bidding_matches_nelli11_or_changes_rami_to_nolo():
+    from tuppi_ai.dan11_bidding import observations
+    from tuppi_ai.lite import C1H, MODEL_V4
+    agents = {s:DanAgent(s) for s in range(4)}
+    nellis = {s:LiteAgent(s, options=C1H, model=MODEL_V4) for s in range(4)}
+    for _, _, obs in observations(16):
+        decision = agents[obs.observing_seat].propose_action(obs)
+        nelli = action_id(nellis[obs.observing_seat].choose_action(obs))
+        actual = action_id(decision.action)
+        assert decision.diagnostics["bidding"]["nelli_action"] == nelli
+        assert actual in {action_id(a) for a in obs.legal_actions}
+        if actual != nelli:
+            assert nelli >= 104 and actual < 104
+        assert decision.diagnostics["worlds"] == 0
+    for dan in agents.values(): dan.close()
