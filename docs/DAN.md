@@ -9,11 +9,16 @@ allowance is .05. These larger allowances replace the previous nearly inactive
 .002/.001/.004 prototype settings; the uncertainty multiplier remains 2.
 
 His bids use Nelli 1.1's actual VRPO4 network. When NOLO is legal, a Nelli RAMI
-bid must beat the best NOLO bid by at least 2.0 actor-score units or Dan 1.1
+bid must beat the best NOLO bid by at least 14.0 actor-score units or Dan 1.1
 chooses NOLO instead. A Nelli NOLO is never promoted to RAMI. This is a policy
 score margin, not an EV estimate or a calibrated probability. A hand with no
 legal NOLO option retains its legal RAMI choice. Nelli 1.1's bidding policy is
 greedy VRPO4; its C1H safety net does not apply during showing.
+
+The margin was increased from 2.0 at the owner's request for quite conservative
+RAMI bidding. It was chosen from existing development bid scores to target
+roughly 10% RAMI bids on that benchmark; it is not a forced frequency or a claim
+about every table. The NOLO card-play allowances and guard remain unchanged.
 
 The native guard compares every legal card on the same 64 hard-feasible hidden
 layouts, continued by VRPO3 with no solver tail or recursive personality. It
@@ -80,7 +85,7 @@ values. `--seed-start 512` selects the separately frozen fresh roster.
 `--natural --count 64` runs a short ordinary-play legality/exposure
 sample. CPU allocations must be registered before executing these tools.
 
-`tools/dan11_bidding.py --deals 1024 --seed-start 1024 --out <file>` compares
+`tools/dan11_bidding.py --deals 1024 --seed-start 2048 --out <file>` compares
 Dan 1.1 with Nelli 1.1 on fresh identical shadow-bid observations. Earlier seats
 are legally forced NOLO to expose later positions; these are conditional bid
 rates, not human bidding rates or match-strength results.
