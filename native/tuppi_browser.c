@@ -8,6 +8,7 @@
 #include "tuppi_core.h"
 #include "tuppi_mlp.h"
 #include "tuppi_parallel.h"
+#include "tuppi_dan.h"
 
 typedef struct TcEnv TcEnv;
 TcEnv *tc_env_new(int n, uint64_t seed);
@@ -65,6 +66,10 @@ static int mode_ready(int mode) { return models[0] && anchor_for(mode) && likeli
 static int bid_mode;
 static uint64_t gate_rngs[4], belief_rngs[4];
 static double match_equity[50];
+/* Dan is an additive explicit entry point; modes 0-4 and their context
+ * formats remain unchanged. The caller owns proposal/commit of Dan state. */
+static TcEnv *dan_envs[4];
+static int dan_env_worlds[4];
 
 int tb_api_version(void) { return 1; }
 
@@ -96,6 +101,8 @@ int tb_configure(int n_worlds, const double *equity) {
   tc_set_dedup_worlds(1);
 #endif
   for (int s = 0; s < 4; ++s) {
+    if (dan_envs[s]) tc_env_free(dan_envs[s]);
+    dan_envs[s] = NULL; dan_env_worlds[s] = 0;
     if (envs[s]) tc_env_free(envs[s]);
     envs[s] = tc_env_new(worlds * 26, (uint64_t)(2 * s));
     if (!envs[s]) return -2;
@@ -185,6 +192,10 @@ int tb_belief_profile(double *out, int reset) {
 int tb_belief_counters(double *out, int reset) { return out ? tc_belief_counters(out, reset) : -1; }
 
 void tb_dispose(void) {
+  for (int s = 0; s < 4; s++) {
+    if (dan_envs[s]) tc_env_free(dan_envs[s]);
+    dan_envs[s] = NULL; dan_env_worlds[s] = 0;
+  }
   tc_parallel_stop();
   for (int s = 0; s < 4; s++) { if (envs[s]) tc_env_free(envs[s]); envs[s] = NULL; }
   for (int role = 0; role < 3; role++) { tc_mlp_free(models[role]); models[role] = NULL; }
@@ -444,6 +455,56 @@ int tb_choose_observation(const TcObs *obs, const int32_t *ids, int k) {
 int tb_values(int32_t *ids, double *values) {
   memcpy(ids, last_ids, sizeof(int) * last_count); memcpy(values, last_values, sizeof(double) * last_count);
   return last_count;
+}
+
+/* Uses only the acting seat's legal observation. Context pointers must be
+ * copies until the chosen action is accepted; no live cursors are mutated. */
+int tb_dan_choose_observation(const TcObs *obs, const int32_t *ids, int k,
+    const TcDanConfig *config, uint64_t *base_rng, TcDanContext *proposal, TcDanResult *result) {
+  if (!obs || !ids || !base_rng || !proposal || !result || !tc_dan_config_valid(config) ||
+      !models[1] || !envs[0] || obs->seat > 3 || obs->dealer > 3 || k < 1 || k > TC_NUM_ACTIONS_V2 ||
+      obs->phase == TC_PH_DONE || obs->phase > TC_PH_SOOLI_PLAY || obs->n_played > 52 ||
+      obs->n_shows > 4 || obs->n_decisions > 2 || obs->ruleset != 3 || (obs->hand >> 52)) return -1;
+  int canonical[TC_NUM_ACTIONS_V2], n = tc_legal_obs(obs, canonical);
+  if (n != k) return -2;
+  for (int i = 0; i < k; i++) {
+    int found = 0;
+    for (int j = 0; j < n; j++) found += ids[i] == canonical[j];
+    for (int j = 0; j < i; j++) if (ids[i] == ids[j]) return -2;
+    if (found != 1) return -2;
+  }
+  uint64_t next_base = *base_rng;
+  int base = ids[0];
+  if (k > 1 && obs->phase >= TC_PH_SOOLI_OFFER) base = tc_sooli_policy(obs, &next_base);
+  else if (k > 1) {
+    uint8_t features[2048]; float q[TC_NUM_ACTIONS];
+    tc_encode_v(obs, features, tc_mlp_encoder(models[1]));
+    tc_mlp_forward(models[1], features, 1, q);
+    for (int i = 1; i < k; i++)
+      if (q[ids[i]] > q[base] || (q[ids[i]] == q[base] && ids[i] < base)) base = ids[i];
+  }
+  int seat = obs->seat;
+  int need = tc_dan_allowance(obs, config) > 0 && k > 1 && base < 52 && base % 13 < 11 &&
+             proposal->remaining > config->epsilon;
+  if (need && (!dan_envs[seat] || dan_env_worlds[seat] != config->worlds)) {
+    if (dan_envs[seat]) tc_env_free(dan_envs[seat]);
+    dan_envs[seat] = tc_env_new(config->worlds * 13, 0);
+    dan_env_worlds[seat] = config->worlds;
+    if (!dan_envs[seat]) return -3;
+    tc_env_set_equity(dan_envs[seat], match_equity);
+    tc_env_set_options(dan_envs[seat], 0, 1);
+  }
+  if (tc_dan_choose(dan_envs[seat], models[1], obs, ids, k, base, config, proposal, result)) return -4;
+  *base_rng = next_base;
+  return result->action;
+}
+
+int tb_dan_choose(int seat, const TcDanConfig *config, uint64_t *base_rng,
+                  TcDanContext *proposal, TcDanResult *result) {
+  if (seat < 0 || seat > 3 || game.cur != seat || game.phase == TC_PH_DONE) return -1;
+  TcObs obs; tc_observe(&game, seat, &obs);
+  int32_t ids[TC_NUM_ACTIONS_V2]; int k = tb_legal(seat, ids);
+  return tb_dan_choose_observation(&obs, ids, k, config, base_rng, proposal, result);
 }
 
 int tb_observation_size(void) { return sizeof(TcObs); }

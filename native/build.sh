@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 portable=0
 blas=0
 case "${1:-}" in --portable) portable=1 ;; --blas) portable=1; blas=1 ;; "") ;; *) echo "usage: build.sh [--portable|--blas]" >&2; exit 2 ;; esac
-sources="tuppi_core.c tuppi_env.c tuppi_search.c tuppi_dd.c tuppi_mlp.c tuppi_sooli.c tuppi_sooli_policy.c tuppi_dd_wr.c tuppi_lite_net.c tuppi_browser.c tuppi_parallel.c"
+sources="tuppi_core.c tuppi_env.c tuppi_search.c tuppi_dd.c tuppi_mlp.c tuppi_sooli.c tuppi_sooli_policy.c tuppi_dd_wr.c tuppi_lite_net.c tuppi_browser.c tuppi_parallel.c tuppi_dan.c"
 case "$(uname -s)" in
   Linux)
     target=libtuppi.so
