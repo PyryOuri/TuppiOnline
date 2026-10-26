@@ -29,7 +29,6 @@ services:
       # for it when the Blueprint is created; it is never stored in the repo.
       - key: TUPPI_ROOM_PASSCODE
         sync: false
-      # Owner-only Heidi table controls at /v1/admin/heidi.
-      # Add a long random secret under Environment on an existing service.
+      # Separate owner credential for /v1/admin/heidi (16-256 characters).
       - key: TUPPI_ADMIN_KEY
         sync: false

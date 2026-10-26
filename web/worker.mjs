@@ -41,7 +41,7 @@ async function runTimeline(data) {
 // runtime per profile follows every move, and the actor's team runtime chooses.
 // One game at a time; `delay` paces the moves and can change while it plays.
 const botProfiles = {fast: {worlds: 128, bot: 'legacy'}, full: {worlds: 1024, bot: 'legacy'},
-  heidi05: {worlds: 128, bot: 'heidi05'}, nelli11: {worlds: 128, bot: 'nelli11'},
+  heidi05: {worlds: 128, bot: 'heidi05'}, nelli11: {worlds: 128, bot: 'nelli11'}, dan11: {worlds: 64, bot: 'dan11'},
   heidi10: {worlds: 1024, bot: 'heidi10'}, heidi11: {worlds: 1024, bot: 'heidi11'}, heidi12: {worlds: 1024, bot: 'heidi12'}};
 // Profile -> runtime being created or ready. Each holds its own models and
 // WASM memory, so only the current game's (at most two) stay loaded, and

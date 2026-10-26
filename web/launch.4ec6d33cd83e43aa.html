@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="fi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#e6ede3">
+  <meta name="description" content="Tuppi ystävien kanssa tai omalla laitteellasi. Yksityiset huoneet, botit ja offline-peli.">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icon-180.png">
+  <link rel="stylesheet" href="./styles.b96c2ef05282cff4.css">
+  <title>Tuppi</title>
+</head>
+<body>
+  <header class="masthead"><button id="home-toggle" class="brand" aria-label="Tuppi · etusivu"><span class="brand-mark" aria-hidden="true">♣</span><span>Tuppi <span class="muted" id="mode-label"></span></span></button><nav class="controls" aria-label="Pelin valikko"><button id="viewer-toggle" hidden aria-label="Kelaa ottelua taaksepäin katsomossa">Kelaa</button><button id="help-toggle" aria-haspopup="dialog">Ohjeet</button><button id="network-toggle" aria-haspopup="dialog" hidden disabled>Huone</button><button id="chat-toggle" aria-haspopup="dialog" hidden>Viestit</button><button id="settings-toggle" aria-controls="settings" aria-expanded="false" aria-haspopup="dialog">Asetukset</button></nav></header>
+  <main>
+    <section id="home" class="home" aria-labelledby="home-title">
+      <div class="home-intro"><p class="eyebrow">TUPPI</p><h1 id="home-title">Pelataanko?</h1><p>Ystävien kanssa tai botteja vastaan.</p></div>
+      <p id="home-status" class="entry-status" role="status">Avataan peliä…</p>
+      <div class="home-options"><section id="home-friends" class="home-option" aria-labelledby="home-friends-title"><h2 id="home-friends-title">Ystävien kanssa</h2><p>Liity ystävän huoneeseen tai kutsu oma porukka.</p><button id="home-online" class="primary" disabled>Pelaa verkossa</button><button id="home-online-other" class="text-button" hidden>Liity toiseen huoneeseen tai luo uusi</button></section>
+      <section class="home-option" aria-labelledby="home-local-title"><h2 id="home-local-title">Botteja vastaan</h2><p id="home-local-copy">Pelaa omaan tahtiin. Ottelu tallentuu tälle laitteelle.</p><button id="home-local" disabled>Pelaa botteja vastaan</button></section>
+      <section class="home-option" aria-labelledby="home-viewer-title"><h2 id="home-viewer-title">Katsomo</h2><p id="home-viewer-copy">Katso pelattuja otteluita siirto siirrolta, kaikkien kädet näkyvissä.</p><div class="viewer-teams"><label>Etelä ja Pohjoinen <select id="home-viewer-team0"><option value="fast" selected>TuppiAI nopea</option><option value="full">TuppiAI täysi haku (hidas)</option><option value="nelli11">Nelli 1.1</option><option value="dan11">Dan 1.1</option><option value="heidi12">Heidi 1.2 (hidas)</option><option value="heidi05">Nelli 1.0</option><option value="heidi11">Heidi 1.1 (hidas)</option></select></label><label>Länsi ja Itä <select id="home-viewer-team1"><option value="fast" selected>TuppiAI nopea</option><option value="full">TuppiAI täysi haku (hidas)</option><option value="nelli11">Nelli 1.1</option><option value="dan11">Dan 1.1</option><option value="heidi12">Heidi 1.2 (hidas)</option><option value="heidi05">Nelli 1.0</option><option value="heidi11">Heidi 1.1 (hidas)</option></select></label></div><button id="home-viewer-bots">Katso bottien ottelu</button><button id="home-viewer-own" disabled>Toista oma ottelusi</button><label class="file-label">Avaa toistotiedosto<input id="home-viewer-file" type="file" accept=".json,.jsonl,.gz,application/json,application/gzip"></label><p id="home-viewer-status" class="selection-info" role="status"></p></section></div>
+      <div id="home-recovery" class="controls" hidden><button id="home-retry">Yritä uudelleen</button><a id="home-repair" href="./recover.html">Päivitä pelitiedostot</a></div>
+    </section>
+    <div id="chat-toast" class="chat-toast" role="status" hidden><button id="chat-toast-open" type="button">Uusi viesti</button></div>
+    <dialog id="chat" aria-labelledby="chat-title" hidden>
+      <div class="dialog-heading"><div><p class="eyebrow">HUONE</p><h2 id="chat-title">Viestit</h2></div><button id="close-chat">Sulje</button></div>
+      <p id="chat-empty" class="muted">Ei vielä viestejä. Viesti näkyy kaikille huoneessa oleville.</p>
+      <ol id="chat-list" class="chat-list" aria-label="Huoneen viestit"></ol>
+      <form id="chat-form" class="chat-form" novalidate><input id="chat-input" maxlength="200" autocomplete="off" enterkeyhint="send" aria-label="Viesti kaikille" placeholder="Kirjoita viesti kaikille"><button id="chat-send" class="primary" type="submit">Lähetä</button></form>
+      <p id="chat-status" class="selection-info" role="status"></p>
+    </dialog>
+    <dialog id="settings" aria-labelledby="settings-title" hidden>
+      <div class="dialog-heading"><div><p class="eyebrow">OMA LAITE</p><h2 id="settings-title">Asetukset</h2></div><button id="close-settings">Sulje</button></div>
+      <p id="settings-status" class="error" role="status"></p>
+      <section class="settings-group" aria-labelledby="settings-play"><h3 id="settings-play">Paikallinen peli</h3>
+        <div class="settings-fields"><label>Botti <select id="worlds"><option value="128" selected>Nopea</option><option value="1024">Täysi haku (hitaampi)</option><option value="nelli11">Nelli 1.1</option><option value="dan11">Dan 1.1</option><option value="heidi12">Heidi 1.2</option><option value="heidi05" hidden>Nelli 1.0</option><option value="heidi11" hidden>Heidi 1.1</option><option value="heidi10" hidden>Heidi 1.0</option></select></label>
+        <label>Pelin rytmi <select id="pacing"><option value="350">Rauhallinen</option><option value="0">Nopea</option><option value="1000">Hidas</option></select></label></div>
+        <p>Bottiasetuksen vaihto aloittaa uuden paikallisen ottelun. Verkkopelin botti valitaan huonetta luodessa.</p>
+        <button id="new-game">Uusi ottelu</button>
+      </section>
+      <section class="settings-group" aria-labelledby="settings-cards"><h3 id="settings-cards">Kortit</h3>
+        <p id="suit-order-copy">Maiden järjestys kädessä vasemmalta oikealle. Ylin maa on käden vasemmassa reunassa. Muuta järjestystä nuolilla.</p>
+        <ol id="suit-order" class="suit-order" aria-describedby="suit-order-copy"></ol>
+        <button id="suit-order-reset">Palauta ♥ ♦ ♣ ♠</button>
+      </section>
+      <details class="settings-group offline-guide"><summary>Pelaa ilman verkkoyhteyttä</summary><p id="offline-status" role="status">Lataa pelitiedostot tälle laitteelle, kun haluat pelata ilman verkkoa.</p><button id="offline-prepare">Lataa peli tälle laitteelle</button><div id="offline-download" hidden><progress id="offline-progress" max="1" value="0" aria-label="Pelitiedostojen lataus"></progress><button id="offline-retry" hidden>Jatka latausta</button></div><p>Kun peli on valmis offline-käyttöön, voit katkaista verkkoyhteyden. iPhonella avaa Safarin jakovalikko ja valitse Lisää Koti-valikkoon. Avaa peli kuvakkeesta ja tarkista offline-valmius myös siellä.</p></details>
+      <section class="settings-group" aria-labelledby="settings-research"><h3 id="settings-research">Tutkimus</h3><label class="toggle"><input id="share-results" type="checkbox"> Lähetä offline-ottelut nimettömästi botin kehittämiseen</label><p>Palvelimelle tallentuvat päivä, bottitaso ja tulos sekä jokaisen jaon kortit ja kaikki siirrot: ei nimiä eikä muita tunnisteita. Myös verkko-otteluiden kortit ja siirrot tallentuvat nimettöminä. Tiedoilla kehitetään bottia ja tutkitaan sen tasoa ihmisiä vastaan.</p></section>
+      <section class="settings-group" aria-labelledby="settings-audio"><h3 id="settings-audio">Äänet</h3><label class="toggle"><input id="turn-sound" type="checkbox"> Äänimerkki, kun on vuorosi</label><p>Lyhyt merkki auttaa huomaamaan oman vuoron paikallisessa pelissä ja verkkopelissä.</p></section>
+      <details class="settings-group"><summary id="settings-saves">Tallennukset ja varmuuskopiot</summary><p>Paikallinen ottelu säilyy tässä selaimessa. Lataa varmuuskopio, kun haluat siirtää sen toiselle laitteelle.</p>
+        <div class="controls"><button id="export">Lataa tallennus</button><label class="file-label">Avaa tallennus<input id="import" type="file" accept="application/json,.json"></label></div>
+        <button id="persist-storage">Säilytä pelitiedot</button><p id="storage-status" role="status"></p>
+      </details>
+      <details class="settings-group"><summary id="settings-recovery">Peliversio ja palautus</summary><p>Jatka aiemmalla peliversiolla, palauta edellinen ottelu tai korjaa offline-pelin tiedostot.</p><button id="local-manage" aria-haspopup="dialog">Avaa palautusvalinnat</button></details>
+    </dialog>
+    <div id="game" hidden><section class="table-shell" aria-label="Tuppipöytä">
+      <div id="network-connection" class="connection-strip" hidden><span id="connection-label" role="status"></span><button id="network-retry" hidden>Yhdistä uudelleen</button><button id="network-reauth" hidden>Vahvista kirjautuminen</button></div>
+      <div class="score-rail">
+        <div class="phase-heading"><span class="eyebrow">TUPPI</span><h1 id="phase-title">Tarjoukset (lukitut)</h1><span id="deal-label" class="muted">Jako 1</span></div>
+        <div class="scoreboard" aria-label="Ottelun pisteet"><div class="score-team"><span id="our-score-label" class="eyebrow">SINÄ + PARI</span><strong id="our-score">0</strong></div><span class="score-separator" aria-hidden="true">–</span><div class="score-team"><span id="their-score-label" class="eyebrow">VASTUSTAJAT</span><strong id="their-score">0</strong></div></div>
+        <span id="contract" class="contract">TARJOUS</span>
+      </div>
+      <div id="table" class="table">
+        <div class="seat north" id="seat-2"><button class="seat-name" type="button" aria-haspopup="dialog">Pari</button><span class="seat-subtitle">Yläpaikka · joukkueesi</span><span class="seat-cards">13 korttia</span><span class="seat-shown"></span><span class="seat-role"></span></div>
+        <div class="seat west" id="seat-1"><button class="seat-name" type="button" aria-haspopup="dialog">Vasen vastustaja</button><span class="seat-subtitle">Vastustajajoukkue</span><span class="seat-cards">13 korttia</span><span class="seat-shown"></span><span class="seat-role"></span></div>
+        <div class="seat east" id="seat-3"><button class="seat-name" type="button" aria-haspopup="dialog">Oikea vastustaja</button><span class="seat-subtitle">Vastustajajoukkue</span><span class="seat-cards">13 korttia</span><span class="seat-shown"></span><span class="seat-role"></span></div>
+        <div id="their-tricks" class="trick-stair opponents" aria-label="Vastustajien tikit"></div>
+        <div id="our-tricks" class="trick-stair ours" aria-label="Oman joukkueen tikit"></div>
+        <div class="center">
+          <p id="bidding-banner" class="table-banner">Tarjoukset lukitaan näkemättä muiden tarjouksia; ne paljastetaan järjestyksessä.</p>
+          <section id="trick-panel" class="trick-panel" hidden><div class="trick-heading"><span id="trick-title" class="eyebrow">NYKYINEN TIKKI</span><button id="previous-trick" hidden>Näytä viimeisin tikki</button></div><div id="trick" class="trick"></div></section>
+          <p id="table-status" class="table-status">Ladataan paikallinen botti…</p>
+        </div>
+        <div id="bid-reveal" class="bid-reveal" aria-label="Paljastetut tarjoukset" aria-live="polite"></div>
+        <div class="seat south" id="seat-0"><button class="seat-name" type="button" aria-haspopup="dialog">Sinä</button><span class="seat-subtitle">Alapaikka · joukkueesi</span><span class="seat-cards">13 korttia</span><span class="seat-shown"></span><span class="seat-role"></span></div>
+      </div>
+      <section class="play-panel" aria-label="Oma käsi ja siirto">
+        <div class="hand-heading"><span class="eyebrow hand-label">KÄSI</span><button id="own-seat-details" class="own-seat-details" aria-haspopup="dialog" disabled>Sinä</button><button id="hand-details" aria-haspopup="dialog" disabled>Käden tiedot</button><span id="starting-hand" class="starting-hand" hidden></span><span id="hand-count" class="muted">13 korttia</span></div>
+        <p id="own-seat-meta" class="own-seat-meta"></p><div class="hand-scroll"><div id="hand" class="hand" aria-label="Omat kortit"></div></div>
+        <div id="action-row" class="action-row">
+          <div class="action-copy"><h2 id="prompt" aria-live="polite">Ladataan paikallinen botti…</h2><p id="selection-info" class="selection-info"></p><p id="network-rematch-note" class="selection-info" hidden>Huoneen luoja voi aloittaa uuden ottelun samalla porukalla.</p></div>
+          <div id="bid-controls" class="controls" hidden><div class="segmented" role="group" aria-label="Sopimus"><button data-contract="0" class="choice selected" aria-pressed="true">NOLO</button><button data-contract="1" class="choice" aria-pressed="false">RAMI</button></div><button id="lock-bid" class="primary" disabled>Lukitse NOLO</button></div>
+          <div id="card-controls" class="controls" hidden><button id="play-card" class="primary" disabled>Pelaa kortti</button></div>
+          <div id="concede-controls" class="controls" hidden><button id="concede" aria-describedby="concede-note">Luovuta jako</button><p id="concede-note" class="selection-info">Jako päättyy joka tapauksessa tulokseen 0–0. Loput kortit pelataan heti.</p></div>
+          <div id="sooli-controls" class="controls" hidden><button data-action="156">Ei soolia</button><button data-action="157" class="primary">Pelaa sooli</button></div>
+          <div id="next-controls" class="controls" hidden><button id="analyse-deal">Analysoi jako</button><button id="next-deal" class="primary">Seuraava jako</button></div>
+          <div id="network-controls" class="controls" hidden><button id="network-pause">Tauko</button><button id="network-unpause" class="primary">Jatka peliä</button><button id="network-rematch" class="primary">Pelaa uudelleen samalla porukalla</button><div id="network-standins" class="controls"></div></div>
+        </div>
+        <p id="keyboard-prompt" class="keyboard-prompt"></p>
+        <p id="status" role="status" class="status">Ensimmäisellä kerralla botti ladataan laitteellesi.</p>
+        <button id="retry" hidden>Jatka tallennetusta tilanteesta</button>
+      <a id="startup-recovery" href="./recover.html" hidden>Päivitä pelitiedostot</a>
+      </section>
+    </section>
+    <section id="history-section" class="history-section" aria-label="Ottelun tulokset" hidden><section id="match-summary" class="match-summary" hidden aria-labelledby="match-summary-title"><h3 id="match-summary-title"></h3><ul id="match-summary-lines"></ul><div id="summary-leaderboard" class="leaderboard" hidden><h4>Tulostaulu</h4><ol id="summary-leaderboard-list"></ol></div></section><details class="deal-history"><summary><span>Pelatut jaot</span><span id="history-count" class="muted">0 jakoa</span></summary><div id="history"><p class="muted">Valmiit jaot ja niiden toisto ilmestyvät tähän.</p></div></details></section>
+    </div>
+    <section id="viewer" class="viewer" aria-labelledby="viewer-title" hidden>
+      <div class="viewer-heading"><div><p class="eyebrow">KATSOMO</p><h1 id="viewer-title">Toisto</h1><span id="viewer-deal-label" class="muted"></span></div><button id="viewer-close">Sulje</button></div>
+      <label id="viewer-match-row" hidden>Ottelu <select id="viewer-match"></select></label>
+      <p id="viewer-status" role="status" class="selection-info"></p>
+      <div class="viewer-rail"><span id="viewer-score"></span><span id="viewer-contract" class="contract"></span><span id="viewer-tricks" class="muted"></span></div>
+      <div id="viewer-table" class="viewer-table">
+        <div id="viewer-seat-2" class="viewer-seat north"></div>
+        <div id="viewer-seat-1" class="viewer-seat west"></div>
+        <div id="viewer-trick" class="viewer-trick" aria-label="Pöydällä olevat kortit"></div>
+        <div id="viewer-seat-3" class="viewer-seat east"></div>
+        <div id="viewer-seat-0" class="viewer-seat south"></div>
+      </div>
+      <p id="viewer-narration" class="viewer-narration" aria-live="polite"></p>
+      <div class="viewer-controls controls" role="group" aria-label="Toiston ohjaus">
+        <button id="viewer-deal-prev" aria-label="Edellinen jako">⏮</button><button id="viewer-trick-prev" aria-label="Edellinen tikki">⏪</button><button id="viewer-step-prev" aria-label="Edellinen siirto">◀</button>
+        <button id="viewer-play" class="primary" aria-pressed="false">Toista</button>
+        <button id="viewer-step-next" aria-label="Seuraava siirto">▶</button><button id="viewer-trick-next" aria-label="Seuraava tikki">⏩</button><button id="viewer-deal-next" aria-label="Seuraava jako">⏭</button>
+        <button id="viewer-live" class="primary" hidden>Takaisin peliin</button>
+      </div>
+      <input id="viewer-position" type="range" min="0" max="0" value="0" aria-label="Siirto jaossa">
+      <div class="viewer-options">
+        <label>Jako <select id="viewer-deal"></select></label>
+        <label>Näkökulma <select id="viewer-viewpoint"></select></label>
+        <label>Nopeus <select id="viewer-speed"><option value="slow">Hidas</option><option value="normal" selected>Normaali</option><option value="fast">Nopea</option></select></label>
+        <label class="toggle"><input id="viewer-only" type="checkbox"> Näytä vain tämän pelaajan kortit</label>
+      </div>
+      <details class="viewer-list"><summary>Jaon tikit</summary><ol id="viewer-trick-list"></ol></details>
+      <div class="controls"><button id="viewer-export">Lataa toistotiedosto</button></div>
+      <p class="muted">Nuolet: ← → siirto, ↑ ↓ tikki, PgUp/PgDn jako, välilyönti toistaa.</p>
+    </section>
+  </main>
+  <footer id="game-footer" hidden><span id="saved">Pelisi tallentuu paikallisesti.</span><span>Ottelu 52 pisteeseen</span></footer>
+  <dialog id="seat-details" aria-labelledby="seat-detail-title"><button id="close-seat-details" class="dialog-close">Sulje</button><h2 id="seat-detail-title">Pelaaja</h2><p id="seat-detail-copy"></p></dialog>
+  <dialog id="hand-detail" aria-labelledby="hand-detail-title"><button id="close-hand-detail" class="dialog-close">Sulje</button><h2 id="hand-detail-title">Käden tiedot</h2><p id="hand-detail-copy"></p><button id="hand-layout" aria-pressed="false">Levitä kortit</button><p>Levitetyssä kädessä kortit eivät peitä toisiaan. Valitse kortti ja vahvista siirto erikseen pelipöydällä.</p></dialog>
+  <dialog id="local-games" aria-labelledby="local-title">
+    <button id="close-local-games">Sulje</button><h2 id="local-title">Peliversio ja palautus</h2>
+    <p id="local-version"></p><p id="local-save-version"></p><p id="local-update" role="status"></p><p id="local-status" role="status"></p>
+    <div class="controls"><button id="local-continue" class="primary">Jatka tallennettua ottelua</button><button id="local-new">Uusi ottelu nykyversiolla</button></div>
+    <div class="controls"><button id="local-export">Lataa nykyinen tallennus</button><button id="local-load">Lue tallennus uudelleen</button><button id="local-repair">Palauta pelitiedostot</button></div>
+    <p>Pelitiedostojen palautus tarvitsee verkkoyhteyden, jos tiedostoja puuttuu. Tallennuksen peliversio ja bottiasetus säilyvät.</p>
+    <h3>Aiempi ottelu</h3><p id="previous-status"></p>
+    <div class="controls"><button id="previous-restore">Palauta aiempi ottelu</button><button id="previous-export">Lataa palautuskopio</button></div>
+    <p>Uusi ottelu ja tallennuksen avaaminen säilyttävät yhden aiemman ottelun palautuskopiona. Se on samalla laitteella: lataa tärkeät tallennukset myös tiedostoksi. Jos selain poistaa kaikki pelitiedot, avaa oma varmuuskopiosi asetuksista.</p>
+  </dialog>
+  <dialog id="help" aria-labelledby="help-title"><button id="close-help" class="dialog-close">Sulje</button><h2 id="help-title">Säännöt ja ohjeet</h2>
+    <h3>Tavoite</h3><p>Pelaat yhdessä vastapäätä istuvan parisi kanssa. Ottelu päättyy, kun nousussa oleva pari saavuttaa vähintään 52 pistettä. Jokainen jako pelataan 13 tikkiin.</p>
+    <h3>Tarjoukset</h3><p>Jokainen valitsee kädestään kortin ja pelimuodon: RAMI, jossa tavoitellaan tikkejä, tai NOLO, jossa niitä vältetään. Tarjoukset lukitaan näkemättä muiden tarjouksia. Ne paljastetaan etukädestä alkaen, ja ensimmäinen RAMI ratkaisee: sen tarjoaja on ramaaja. Jos kaikki tarjoavat NOLO, pelataan noloa. Ensimmäisen RAMIn jälkeisiä tarjouksia ei paljasteta.</p>
+    <p>Näyttöön kelpaavat arvot 3–9. Jos kädessä on pelimuodon värinen kelpaava kortti (RAMI punainen, NOLO musta), on näytettävä sellainen. Peli tarjoaa vain sallitut vaihtoehdot.</p>
+    <h3>Tikkipeli</h3><p>Maata on tunnustettava, jos pystyy. Aloitetun maan suurin kortti voittaa, eikä valttia ole. Tikin voittaja aloittaa seuraavan. Nolossa etukäsi aloittaa ensimmäisen tikin, ramissa ramaajaa edeltävä pelaaja.</p>
+    <h3>Pisteet</h3><p>NOLO: vähemmän tikkejä saanut pari voittaa 4 × (7 − voittajan tikit) pistettä. RAMI: ramaajan pari voittaa seitsemällä tai useammalla tikillä 4 × (tikit − 6) pistettä. Jos se saa enintään kuusi tikkiä, vastustajat voittavat ramin ryöstöllä 8 × (omat tikit − 6) pistettä.</p>
+    <p>Pisteitä on kerrallaan vain toisella parilla. Ylhäällä olevan parin voitto kasvattaa sen pisteitä; alhaalla olevan parin voitto palauttaa tilanteen 0–0.</p>
+    <h3>Sooli</h3><p>Ramijaossa puolustajilta kysytään vuorollaan, pelaavatko he soolin. Soolaaja antaa parilleen yhden kortin ja saa yhden takaisin, eikä pari sen jälkeen pelaa. Soolissa ässä on pienin. Jos soolaaja saa yhdenkin tikin, ramipari saa 24 pistettä; muuten soolipari saa 24 pistettä.</p>
+    <h3>Ohjaus</h3><p>Valitse kortti napauttamalla ja vahvista painikkeella. Näppäimistöllä H, D, C ja S valitsevat maan, arvo kortin, nuolet vaihtavat valintaa ja Enter vahvistaa; tarjotessa N valitsee NOLOn ja R RAMIn.</p>
+    <h3>Verkkopeli</h3><p>Huoneen luoja voi lisätä botteja, pitää tauon ja aloittaa ottelun jälkeen uuden samalla porukalla. Yhteyden katketessa paikkasi säilyy, ja lukittu tarjous säilyy myös palvelimen uudelleenkäynnistyksessä.</p>
+  </dialog>
+  <dialog id="analysis" aria-labelledby="analysis-title"><button id="close-analysis">Sulje</button><h2 id="analysis-title">Jaon analyysi</h2><p id="analysis-status" role="status"></p><progress id="analysis-progress" max="1" value="0" aria-label="Analyysin eteneminen" hidden></progress><button id="analysis-show-hands" aria-expanded="false" aria-controls="analysis-hands">Näytä kaikkien kädet</button><div id="analysis-hands" class="analysis-hands" hidden></div><p id="analysis-summary" class="analysis-summary"></p><ol id="analysis-list" class="analysis-list"></ol><p class="analysis-note">Arvio on botin täysi haku (1024 maailmaa) sinun näkökulmastasi: vain se, minkä tiesit siirron hetkellä. Ero on ottelun odotusarvoa (−1…+1); alle 0,01 eroja haku ei erota. Analyysi tehdään tällä laitteella.</p></dialog>
+  <dialog id="replay" aria-labelledby="replay-title"><button id="close-replay">Sulje</button><h2 id="replay-title">Jaon toisto</h2><div id="replay-trick" class="trick replay-trick"></div><p id="replay-info"></p><div class="controls"><button id="replay-prev">Edellinen tikki</button><button id="replay-next">Seuraava tikki</button></div></dialog>
+  <dialog id="network-dialog" aria-labelledby="network-title"><button id="close-network">Sulje</button><h2 id="network-title">Pelaa ystävien kanssa</h2>
+    <p id="network-status" role="status">Verkkopeliä valmistellaan.</p>
+    <button id="network-reload" hidden>Yritä yhteyttä uudelleen</button>
+    <div class="controls"><button id="network-retry-lobby" hidden>Yhdistä uudelleen</button><button id="network-reauth-lobby" hidden>Vahvista kirjautuminen</button></div>
+    <div id="network-entry"><button id="network-resume" hidden>Jatka verkkopeliä</button>
+      <form id="network-form" novalidate><p id="network-entry-copy">Kirjoita nimimerkkisi ja huoneen koodi.</p><label>Nimimerkki<input id="network-name" maxlength="40" autocomplete="nickname" value="Pelaaja" enterkeyhint="go"></label>
+      <label id="network-code-row">Huonekoodi tai kutsulinkki<input id="network-code" maxlength="2048" autocapitalize="characters" spellcheck="false" autocomplete="off" placeholder="ABC123" enterkeyhint="go"></label>
+      <label id="network-passcode-row" hidden>Huoneen luontikoodi<input id="network-passcode" type="password" maxlength="128" autocomplete="off" spellcheck="false" enterkeyhint="go"></label>
+      <label id="network-bot-row" hidden>Botti<select id="network-bot"><option value="" selected>TuppiAI</option><option id="network-nelli11-option" value="tuppi_ai_lite_c1h_v2" disabled hidden>Nelli 1.1</option><option id="network-dan11-option" value="tuppi_ai_dan11_v1" disabled hidden>Dan 1.1</option><option id="network-heidi12-option" value="tuppi_ai_heidi12_pib8_v1" disabled hidden>Heidi 1.2</option></select></label>
+      <button id="network-submit" class="primary" type="submit" disabled>Liity huoneeseen</button><button id="network-watch" type="button" hidden>Katso peliä</button><fieldset id="network-seat-choice" class="seat-choice" hidden><legend>Valitse paikkasi</legend><div id="network-seat-options" class="controls"></div></fieldset></form>
+      <button id="network-switch" type="button" class="text-button">Luo oma huone</button></div>
+    <div id="network-lobby" hidden><div class="lobby-heading"><h3 id="network-room"></h3><span id="network-summary" class="muted"></span></div>
+      <p id="network-seat-guide">Haluatko ystävän pariksesi? Lisää botit ensin vasemmalle ja oikealle, ja lähetä kutsu vasta sitten.</p>
+      <div id="network-seats" class="network-team-grid"><section aria-labelledby="network-our-label"><h3 id="network-our-label">Sinä ja parisi</h3><ul id="network-our-team"></ul></section><section aria-labelledby="network-their-label"><h3 id="network-their-label">Vastustajat</h3><ul id="network-their-team"></ul></section></div>
+      <p id="network-watchers" class="muted" hidden></p>
+      <label id="network-viewpoint-row" hidden>Näkökulma<select id="network-viewpoint"></select></label>
+      <p id="network-previous" class="muted" hidden></p><p id="network-changed" role="status"></p><p id="network-readiness" role="status"></p>
+      <div class="controls lobby-actions"><button id="network-ready" class="primary">Olen valmis</button><button id="network-copy">Kopioi kutsulinkki</button><button id="network-chat" hidden>Viestit</button><button id="network-take-seat" hidden>Liity peliin</button><button id="network-fill">Täytä tyhjät paikat boteilla</button><button id="network-open">Avaa bottipaikat ystäville</button></div>
+      <label id="network-invite-fallback" hidden>Kutsulinkki<input id="network-invite" type="text" readonly autocomplete="off"></label>
+      <p class="lobby-note">Kaikki pelaajat vahvistavat valmiutensa ennen aloitusta. Yhteyden katketessa paikkasi säilyy; avaa Tuppi uudelleen samalla selaimella.</p>
+      <details id="network-leaderboard" class="leaderboard" hidden><summary id="network-leaderboard-title">Tulostaulu</summary><ol id="network-leaderboard-list"></ol><p class="muted">Voitot ja tappiot nimimerkin mukaan tämän palvelimen verkko-otteluista. Nimimerkkejä ei varmenneta.</p></details></div>
+    <div class="controls network-exits"><button id="network-leave" class="text-button" hidden>Poistu huoneesta</button><button id="network-local" class="text-button" hidden>Pelaa botteja vastaan</button></div>
+  </dialog>
+  <script type="module" src="./bootstrap.f5875093032bc7f8.mjs"></script>
+</body>
+</html>

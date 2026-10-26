@@ -112,3 +112,18 @@ mode. On restart, saved room modification times initialize the activity timer.
 This patch changes server lifecycle and owner controls only. Bot budgets,
 models, native sources, browser files, historical runtimes and hosting resource
 settings are unchanged. Deployment remains owner-run; auto-deploy stays off.
+
+## Dan 1.1 (26 October 2026)
+
+New rooms can also choose Dan 1.1 (profile `tuppi_ai_dan11_v1`), and the browser offers
+him locally (bot id `dan11`, runtime `ab2b37c6...`). Dan plays VRPO3 cards with a small
+guarded preference for high cards in early NOLO tricks and bids with the Nelli 1.1 network,
+declaring RAMI only when its actor-score advantage reaches 14 (conservative). The image sets
+`TUPPI_HOSTED_DAN11=1`; `0` stops offering him. A separate single-process worker serves Dan
+rooms one decision at a time (30 s deadline, no PyTorch); Dan rooms do not use the Heidi
+reservation. Checkpoints are `tuppi.hosted.controller.dan11.v1`; a server older than this
+release refuses Dan rooms, so finish or close them before a rollback. Defaults, the other
+bots and the reservation behaviour above are unchanged; earlier browser runtimes stay served
+byte-identical. Details: engine docs `DAN11_SERVER.md` (TuppiProject 68fbd4b).
+The Linux image was not built locally for this release; the Docker build runs
+`qualify_dan.py` in the final filesystem, so a mismatch there fails the build before deploy.

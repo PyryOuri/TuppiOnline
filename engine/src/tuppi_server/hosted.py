@@ -144,11 +144,12 @@ def verify_bot_identity(level: str = "full") -> dict:
     root = Path(spec.origin).resolve().parents[1]
     manifest = _verified_model_manifest(root, level)
     from tuppi_ai import native
-    from .hosted_bot import lite_options, heidi_enabled, heidi_identity
+    from .hosted_bot import lite_options, heidi_enabled, heidi_identity, dan_enabled
     options = lite_options() if level == "lite" else "off"
     bot = ({"profile": "tuppi_ai_lite_v1" if options == "off" else f"tuppi_ai_lite_{options}_v1", "level": "lite",
             "search": None} if level == "lite" else {"profile": "tuppi_ai_search_v1", "level": "full", "worlds": 1024})
     return {**bot,
+        **({"dan11": {"worlds": 64}} if level == "lite" and dan_enabled() else {}),
         **({"heidi10": {"worlds": 1024, "inference": 8, "max_active_tables": 1,
                         "models_sha256": heidi_identity()}} if level == "lite" and heidi_enabled() else {}),
         "models_sha256": hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest(),
@@ -160,12 +161,14 @@ def bot_options(identity: dict) -> list[dict]:
     offered; rooms that chose them keep them (match_runner.py). Heidi 1.2
     needs the hosted compact worker (TUPPI_HOSTED_HEIDI10=1, the identity's
     ``heidi10`` entry), which serves both search profiles one table at a time."""
-    from .match_runner import BOT_DISPLAY_NAMES, HEIDI12_PROFILE_KEY, NELLI11_PROFILE_KEY, TUPPI_AI_PROFILE_KEY
+    from .match_runner import BOT_DISPLAY_NAMES, HEIDI12_PROFILE_KEY, NELLI11_PROFILE_KEY, TUPPI_AI_PROFILE_KEY, DAN11_PROFILE_KEY
     if identity.get("level") != "lite":
         return []
     return ([{"profile": key, "name": BOT_DISPLAY_NAMES[key]} for key in (TUPPI_AI_PROFILE_KEY, NELLI11_PROFILE_KEY)] +
             ([{"profile": HEIDI12_PROFILE_KEY, "name": BOT_DISPLAY_NAMES[HEIDI12_PROFILE_KEY], "max_active_tables": 1}]
-             if identity.get("heidi10") else []))
+             if identity.get("heidi10") else []) +
+            ([{"profile": DAN11_PROFILE_KEY, "name": BOT_DISPLAY_NAMES[DAN11_PROFILE_KEY]}]
+             if identity.get("dan11") else []))
 
 
 def bot_room_limit(level: str, max_rooms: int) -> int:

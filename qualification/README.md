@@ -11,3 +11,4 @@
   Dockerfile runs (see the Dockerfile for the exact commands).
 - `heidi11-browser.json`, `browser-speed.json`, `hosted-heidi.json`: records of earlier releases.
 - `heidi12-release.json`: this release's checks (browser, server, Linux image).
+- `dan-reference.json`, `qualify_dan.py`: Dan 1.1 fixed NOLO roots (hosted worker, accepted-action checkpoints and restore), run in the final image.

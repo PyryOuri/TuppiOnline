@@ -26,7 +26,7 @@ MAX_RESULT_BYTES = 16 * 2**20
 OFFLINE_BOTS = {128: "w128", 1024: "w1024"}
 #: Bots a browser names in its report, with their worlds: heidi05 is Nelli 1.0,
 #: nelli11 Nelli 1.1, heidi10/heidi11 Heidi 1.0/1.1 and heidi12 Heidi 1.2.
-OFFLINE_NAMED_BOTS = {"heidi05": 128, "nelli11": 128, "heidi10": 1024, "heidi11": 1024, "heidi12": 1024}
+OFFLINE_NAMED_BOTS = {"heidi05": 128, "nelli11": 128, "heidi10": 1024, "heidi11": 1024, "heidi12": 1024, "dan11": 64}
 _ID = re.compile(r"[A-Za-z0-9-]{16,64}")
 
 
@@ -51,7 +51,7 @@ def offline_row(payload: object, *, day: str) -> dict[str, object]:
     if bot is not None and worlds != OFFLINE_NAMED_BOTS[bot]:
         raise ResultRejected("invalid_result")
     score, deals, conceded = payload["final_score"], payload["deals"], payload["conceded"]
-    if (not isinstance(match_id, str) or not _ID.fullmatch(match_id) or worlds not in OFFLINE_BOTS
+    if (not isinstance(match_id, str) or not _ID.fullmatch(match_id) or (worlds not in OFFLINE_BOTS and bot != "dan11")
             or type(worlds) is not int or winner not in (0, 1) or type(winner) is not int
             or type(score) is not list or len(score) != 2 or any(type(v) is not int for v in score)
             or not 52 <= score[winner] <= 200 or score[1 - winner] != 0

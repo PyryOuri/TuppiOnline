@@ -33,6 +33,8 @@ from __future__ import annotations
 
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
+import copy
+from dataclasses import asdict
 from functools import lru_cache
 import hashlib
 import json
@@ -58,6 +60,74 @@ HEIDI_PROFILE = "tuppi_ai_heidi10_pib8_v1"
 _heidi_pool: ProcessPoolExecutor | None = None
 _heidi_pool_lock = threading.Lock()
 _heidi_controller = None
+_dan_pool: ProcessPoolExecutor | None = None
+_dan_pool_lock = threading.Lock()
+
+
+def dan_enabled() -> bool:
+    value = os.environ.get("TUPPI_HOSTED_DAN11", "0")
+    if value not in ("0", "1"):
+        raise ValueError("TUPPI_HOSTED_DAN11 must be 0 or 1")
+    return value == "1" and level() == "lite"
+
+
+def _initialise_dan() -> None:
+    from tuppi_ai import native
+    native.set_parallel(False)
+
+
+def _warm_dan():
+    from tuppi_ai.dan import DanAgent
+    if "torch" in sys.modules:
+        raise RuntimeError("Dan worker must not import PyTorch")
+    agent = DanAgent(0)
+    try:
+        return agent.profile
+    finally:
+        agent.close()
+
+
+def dan_pool() -> ProcessPoolExecutor:
+    global _dan_pool
+    with _dan_pool_lock:
+        if _dan_pool is None:
+            _dan_pool = ProcessPoolExecutor(max_workers=1,
+                mp_context=multiprocessing.get_context("spawn"), initializer=_initialise_dan)
+        return _dan_pool
+
+
+def _stop_dan_pool(expected=None) -> None:
+    global _dan_pool
+    with _dan_pool_lock:
+        current = _dan_pool
+        if current is None or (expected is not None and current is not expected):
+            return
+        _dan_pool = None
+        if hasattr(current, "terminate_workers"):
+            current.terminate_workers()
+        else:
+            processes = list((current._processes or {}).values())
+            for process in processes:
+                process.terminate()
+            current.shutdown(wait=False, cancel_futures=True)
+            for process in processes:
+                process.join(timeout=2)
+
+
+def _dan_decision(observation, checkpoint):
+    from tuppi_ai.dan import DanAgent
+    started, cpu = time.perf_counter(), time.process_time()
+    agent = DanAgent(observation.observing_seat) if checkpoint is None else DanAgent.from_checkpoint(checkpoint)
+    try:
+        decision = agent.propose_action(observation)
+        agent.commit_action(decision)
+        peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        return decision.action, agent.checkpoint(), {
+            "decision_seconds": time.perf_counter() - started,
+            "decision_cpu_seconds": time.process_time() - cpu,
+            "process_peak_rss_bytes": peak if sys.platform == "darwin" else peak * 1024}
+    finally:
+        agent.close()
 
 
 def heidi_enabled() -> bool:
@@ -207,6 +277,8 @@ def warm() -> None:
         shared_mlp(MODEL_V4)  # Nelli 1.1: a missing or damaged network fails at startup
         if heidi_enabled() and heidi_pool().submit(_warm_heidi).result(timeout=90) != heidi_identity():
             raise RuntimeError("compact Heidi model identity mismatch")
+        if dan_enabled():
+            dan_pool().submit(_warm_dan).result(timeout=30)
         return
     if not pool().submit(_warm).result(timeout=120):
         raise RuntimeError("hosted bot did not initialise")
@@ -218,6 +290,60 @@ def shutdown() -> None:
         _pool.shutdown(wait=True, cancel_futures=True)
         _pool = None
     _stop_heidi_pool()
+    _stop_dan_pool()
+
+
+class HostedDanAgent:
+    """One serial Dan worker; accept its proposed cursor only after engine apply."""
+    handles_sooli = True
+    schema = "tuppi.hosted.controller.dan11.v1"
+
+    def __init__(self, seat: int) -> None:
+        if type(seat) is not int or seat not in range(4) or not dan_enabled():
+            raise ValueError("hosted Dan 1.1 is unavailable")
+        self.seat = seat
+        self._committed = None
+        self._pending = None
+
+    def choose_action(self, observation):
+        if observation.observing_seat != self.seat:
+            raise ValueError("bot observation seat mismatch")
+        if self._pending is not None and self._pending[0] == observation:
+            return self._pending[1]
+        worker = dan_pool()
+        try:
+            action, checkpoint, self.last_stats = worker.submit(
+                _dan_decision, observation, self._committed).result(timeout=30)
+        except (TimeoutError, BrokenProcessPool):
+            _stop_dan_pool(worker)
+            raise
+        if action not in observation.legal_actions:
+            raise RuntimeError("hosted Dan returned an illegal action")
+        self._pending = (observation, action, checkpoint)
+        return action
+
+    def commit_accepted_action(self, action):
+        if self._pending is not None and action == self._pending[1]:
+            self._committed = self._pending[2]
+        self._pending = None
+
+    def checkpoint(self):
+        return {"schema": self.schema, "seat": self.seat, "controller": copy.deepcopy(self._committed)}
+
+    def restore(self, record):
+        if (type(record) is not dict or set(record) != {"schema", "seat", "controller"}
+                or record["schema"] != self.schema or type(record["seat"]) is not int or record["seat"] != self.seat):
+            raise ValueError("invalid hosted Dan checkpoint")
+        controller = record["controller"]
+        if controller is not None:
+            from tuppi_ai.dan import DanAgent, DanConfig
+            agent = DanAgent.from_checkpoint(controller)
+            try:
+                if agent.seat != self.seat or asdict(agent.config) != asdict(DanConfig()):
+                    raise ValueError("hosted Dan profile mismatch")
+            finally:
+                agent.close()
+        self._committed, self._pending = copy.deepcopy(controller), None
 
 
 class HostedHeidiAgent:

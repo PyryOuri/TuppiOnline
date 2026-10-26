@@ -170,7 +170,7 @@ def _offline_record(payload: object, *, day: str) -> dict[str, object]:
     if bot is not None and worlds != OFFLINE_NAMED_BOTS[bot]:
         raise RecordRejected("invalid_record")
     if (not isinstance(match_id, str) or not _ID.fullmatch(match_id) or type(worlds) is not int
-            or worlds not in OFFLINE_BOTS or not isinstance(runtime, str) or not _VERSION.fullmatch(runtime)
+            or (worlds not in OFFLINE_BOTS and bot != "dan11") or not isinstance(runtime, str) or not _VERSION.fullmatch(runtime)
             or type(saved) is not list or not 1 <= len(saved) <= 500):
         raise RecordRejected("invalid_record")
     entries: list[dict[str, object]] = []

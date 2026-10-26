@@ -142,7 +142,8 @@
             "tuppi_ai_lite_c1h_v1",
             "tuppi_ai_heidi10_pib8_v1",
             "tuppi_ai_lite_c1h_v2",
-            "tuppi_ai_heidi12_pib8_v1"
+            "tuppi_ai_heidi12_pib8_v1",
+            "tuppi_ai_dan11_v1"
           ]
         },
         "connected": {
@@ -276,7 +277,8 @@
             "tuppi_ai_lite_c1h_v1",
             "tuppi_ai_heidi10_pib8_v1",
             "tuppi_ai_lite_c1h_v2",
-            "tuppi_ai_heidi12_pib8_v1"
+            "tuppi_ai_heidi12_pib8_v1",
+            "tuppi_ai_dan11_v1"
           ]
         }
       }
@@ -379,7 +381,8 @@
             "tuppi_ai_lite_c1h_v1",
             "tuppi_ai_heidi10_pib8_v1",
             "tuppi_ai_lite_c1h_v2",
-            "tuppi_ai_heidi12_pib8_v1"
+            "tuppi_ai_heidi12_pib8_v1",
+            "tuppi_ai_dan11_v1"
           ]
         }
       }
@@ -648,6 +651,7 @@
         },
         "worlds": {
           "enum": [
+            64,
             128,
             1024
           ]
@@ -684,11 +688,55 @@
             "heidi10",
             "heidi11",
             "nelli11",
-            "heidi12"
+            "heidi12",
+            "dan11"
           ]
         }
       },
-      "$comment": "POST /v1/results (feature results): an anonymous finished offline match, from the person's team's view (team 0). No names, cards or hands."
+      "$comment": "POST /v1/results (feature results): an anonymous finished offline match, from the person's team's view (team 0). No names, cards or hands.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "worlds": {
+                "const": 64
+              }
+            },
+            "required": [
+              "worlds"
+            ]
+          },
+          "then": {
+            "properties": {
+              "bot": {
+                "const": "dan11"
+              }
+            },
+            "required": [
+              "bot"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "bot": {
+                "const": "dan11"
+              }
+            },
+            "required": [
+              "bot"
+            ]
+          },
+          "then": {
+            "properties": {
+              "worlds": {
+                "const": 64
+              }
+            }
+          }
+        }
+      ]
     },
     "seatPreview": {
       "type": "object",
@@ -841,6 +889,7 @@
         },
         "worlds": {
           "enum": [
+            64,
             128,
             1024
           ]
@@ -921,11 +970,55 @@
             "heidi10",
             "heidi11",
             "nelli11",
-            "heidi12"
+            "heidi12",
+            "dan11"
           ]
         }
       },
-      "$comment": "POST /v1/research/matches (round 15): a browser's finished offline match with every card, sent under the research setting. Accepted only if it replays legally; answered {recorded}. GET /v1/research/matches?key=<TUPPI_RESEARCH_KEY> downloads every record (research_match_v1) as one gzip file of JSON lines."
+      "$comment": "POST /v1/research/matches (round 15): a browser's finished offline match with every card, sent under the research setting. Accepted only if it replays legally; answered {recorded}. GET /v1/research/matches?key=<TUPPI_RESEARCH_KEY> downloads every record (research_match_v1) as one gzip file of JSON lines.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "worlds": {
+                "const": 64
+              }
+            },
+            "required": [
+              "worlds"
+            ]
+          },
+          "then": {
+            "properties": {
+              "bot": {
+                "const": "dan11"
+              }
+            },
+            "required": [
+              "bot"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "bot": {
+                "const": "dan11"
+              }
+            },
+            "required": [
+              "bot"
+            ]
+          },
+          "then": {
+            "properties": {
+              "worlds": {
+                "const": 64
+              }
+            }
+          }
+        }
+      ]
     },
     "dealRecordsResponse": {
       "type": "object",

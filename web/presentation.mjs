@@ -27,7 +27,7 @@ export async function offlineResultReport(save) {
 }
 async function offlineMatchId(save) {
   const deals = save?.completed ?? [], last = deals.at(-1)?.result;
-  if (!last?.terminal || ![128, 1024].includes(save.worlds) || !deals[0]?.cards) return null;
+  if (!last?.terminal || !(save.bot === 'dan11' ? save.worlds === 64 : [128, 1024].includes(save.worlds)) || !deals[0]?.cards) return null;
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([deals[0].cards, deals[0].dealer])));
   return [...new Uint8Array(digest)].slice(0, 16).map(byte => byte.toString(16).padStart(2, '0')).join('');
 }

@@ -97,6 +97,7 @@ NELLI11_PROFILE_KEY = "tuppi_ai_lite_c1h_v2"
 #: Heidi 1.2: Heidi 1.1 with the new base network as anchor and likelihood
 #: (compact controller mode 4); shares the one search-table slot with Heidi 1.1.
 HEIDI12_PROFILE_KEY = "tuppi_ai_heidi12_pib8_v1"
+DAN11_PROFILE_KEY = "tuppi_ai_dan11_v1"
 #: The hosted lite C1H profiles and the hosted search profiles. A room record
 #: of each family keeps its own schema version (rooms.py, persistence.py).
 HEIDI_LITE_PROFILE_KEYS = frozenset({HEIDI_LITE_PROFILE_KEY, NELLI11_PROFILE_KEY})
@@ -111,6 +112,7 @@ BOT_DISPLAY_NAMES = {
     NELLI11_PROFILE_KEY: "Nelli 1.1",
     HEIDI_SEARCH_PROFILE_KEY: "Heidi 1.1",
     HEIDI12_PROFILE_KEY: "Heidi 1.2",
+    DAN11_PROFILE_KEY: "Dan 1.1",
 }
 TUPPI_AI_WORLDS = 1024
 
@@ -178,6 +180,9 @@ def _construct_ai_agents(
 ) -> dict[int, object]:
     if profile_key == TEST_AI_PROFILE_KEY:
         return {seat: FirstLegalActionAgent() for seat in seats}
+    if profile_key == DAN11_PROFILE_KEY:
+        from .hosted_bot import HostedDanAgent
+        return {seat: HostedDanAgent(seat) for seat in seats}
     if profile_key in HEIDI_SEARCH_PROFILE_KEYS:
         if os.environ.get("TUPPI_HOSTED_BOT") != "1":
             raise ValueError(f"{BOT_DISPLAY_NAMES[profile_key]} online requires the hosted compact worker")
@@ -1294,6 +1299,9 @@ class LiveMatchRunner:
         before_event_count = len(self.state.public_events)
         expected_event_index = self.event_cursor
         self.state = apply_match_action(self.state, action)
+        commit = getattr(self._ai_agents.get(actor), "commit_accepted_action", None)
+        if commit is not None:
+            commit(action)
         event_batch = tuple(
             project_event_batch(
                 self.state.public_events,

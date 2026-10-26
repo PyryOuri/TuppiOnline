@@ -37,6 +37,7 @@ from .match_runner import (
     HEIDI_SEARCH_PROFILE_KEYS,
     HEIDI12_PROFILE_KEY,
     NELLI11_PROFILE_KEY,
+    DAN11_PROFILE_KEY,
     LiveMatchRunner,
     tuppi_ai_available,
 )
@@ -117,11 +118,12 @@ MAX_SPECTATORS = 8
 MAX_PREVIOUS_MATCHES = 10
 _PREVIOUS_MATCH_FIELDS = frozenset({"deals", "final_score", "match_ref", "winner_team"})
 #: Profiles a room records and shows by key (room records v6 and v7).
-HEIDI_PROFILE_KEYS = HEIDI_LITE_PROFILE_KEYS | HEIDI_SEARCH_PROFILE_KEYS
+LITE_ROOM_PROFILE_KEYS = HEIDI_LITE_PROFILE_KEYS | {DAN11_PROFILE_KEY}
+HEIDI_PROFILE_KEYS = LITE_ROOM_PROFILE_KEYS | HEIDI_SEARCH_PROFILE_KEYS
 #: The bot named in research results and match records (the browser's bot ids;
 #: the online Nelli 1.0 and Heidi 1.1 keep their earlier ids heidi05 and heidi10).
 RESEARCH_BOT_IDS = {HEIDI_LITE_PROFILE_KEY: "heidi05", HEIDI_SEARCH_PROFILE_KEY: "heidi10",
-                    NELLI11_PROFILE_KEY: "nelli11", HEIDI12_PROFILE_KEY: "heidi12"}
+                    NELLI11_PROFILE_KEY: "nelli11", HEIDI12_PROFILE_KEY: "heidi12", DAN11_PROFILE_KEY: "dan11"}
 
 
 @dataclass(slots=True)
@@ -276,7 +278,7 @@ class Room:
         if self.ai_profile_key in HEIDI_PROFILE_KEYS:
             # v6 binds a lite C1H profile (Nelli 1.0 or 1.1), v7 a search profile
             # (Heidi 1.1 or 1.2); the fields are the same for both keys of each.
-            schema = HEIDI_ROOM_RECORD_SCHEMA_VERSION if self.ai_profile_key in HEIDI_LITE_PROFILE_KEYS else HEIDI_SEARCH_ROOM_RECORD_SCHEMA_VERSION
+            schema = HEIDI_ROOM_RECORD_SCHEMA_VERSION if self.ai_profile_key in LITE_ROOM_PROFILE_KEYS else HEIDI_SEARCH_ROOM_RECORD_SCHEMA_VERSION
             record.update(schema_version=schema, ai_profile_key=self.ai_profile_key,
                 ruleset_id=self.ruleset_id.value, match_index=self.match_index, paused=self.paused,
                 previous_matches=deepcopy(self.previous_matches), open_seats=sorted(self.open_seats),
@@ -387,6 +389,10 @@ class RoomManager:
         if bot_profile in HEIDI_SEARCH_PROFILE_KEYS:
             from .hosted_bot import heidi_enabled
             if not heidi_enabled():
+                raise RoomError("invalid_bot_profile")
+        if bot_profile == DAN11_PROFILE_KEY:
+            from .hosted_bot import dan_enabled
+            if not dan_enabled() or self._ruleset_id is not RulesetId.PROJECT_TARGET_V3:
                 raise RoomError("invalid_bot_profile")
         code = self._new_code()
         host_token = self._new_token()
@@ -1268,7 +1274,7 @@ class RoomManager:
         schema_version = record.get("schema_version")
         ruleset_id = RulesetId.PROJECT_TARGET_V1
         heidi_record = schema_version in (HEIDI_ROOM_RECORD_SCHEMA_VERSION, HEIDI_SEARCH_ROOM_RECORD_SCHEMA_VERSION)
-        heidi_profiles = HEIDI_SEARCH_PROFILE_KEYS if schema_version == HEIDI_SEARCH_ROOM_RECORD_SCHEMA_VERSION else HEIDI_LITE_PROFILE_KEYS
+        heidi_profiles = HEIDI_SEARCH_PROFILE_KEYS if schema_version == HEIDI_SEARCH_ROOM_RECORD_SCHEMA_VERSION else LITE_ROOM_PROFILE_KEYS
         heidi_profile = record.get("ai_profile_key")
         multi_match = schema_version in (MULTI_MATCH_ROOM_RECORD_SCHEMA_VERSION, OPEN_SEATS_ROOM_RECORD_SCHEMA_VERSION,
                                         HEIDI_ROOM_RECORD_SCHEMA_VERSION, HEIDI_SEARCH_ROOM_RECORD_SCHEMA_VERSION)

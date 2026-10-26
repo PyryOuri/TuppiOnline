@@ -18,19 +18,20 @@ const $ = id => document.getElementById(id);
 // the earlier engine keep the name Heidi 1.0. Nelli 1.0 is the lite bot once
 // called Heidi 0.5 (id heidi05, profile tuppi_ai_lite_c1h_v1): only the name changed.
 // Heidi 1.2 and Nelli 1.1 are Heidi 1.1 and Nelli 1.0 with the new base network.
-// New games offer only those two; the older ids stay selectable for their saves.
-const heidiNames = {heidi05: 'Nelli 1.0', nelli11: 'Nelli 1.1', heidi10: 'Heidi 1.0', heidi11: 'Heidi 1.1', heidi12: 'Heidi 1.2'};
+// Dan 1.1 adds his guarded NOLO habit and conservative bidding beside those two.
+// The older ids stay selectable for their saves.
+const heidiNames = {heidi05: 'Nelli 1.0', nelli11: 'Nelli 1.1', heidi10: 'Heidi 1.0', heidi11: 'Heidi 1.1', heidi12: 'Heidi 1.2', dan11: 'Dan 1.1'};
 const onlineHeidiNames = {tuppi_ai_lite_c1h_v1: 'Nelli 1.0', tuppi_ai_lite_c1h_v2: 'Nelli 1.1',
-  tuppi_ai_heidi10_pib8_v1: 'Heidi 1.1', tuppi_ai_heidi12_pib8_v1: 'Heidi 1.2'};
+  tuppi_ai_heidi10_pib8_v1: 'Heidi 1.1', tuppi_ai_heidi12_pib8_v1: 'Heidi 1.2', tuppi_ai_dan11_v1: 'Dan 1.1'};
 // A new game started from an older bot's selection plays that bot's current version.
 const currentLocalBots = {heidi05: 'nelli11', heidi10: 'heidi12', heidi11: 'heidi12'};
 const liteLocalBots = ['heidi05', 'nelli11'];  // W128; the Heidi search bots are W1024
 // The online bots new rooms may choose, shown when the server lists them in bot_options.
-const onlineBotChoices = [['network-nelli11-option', 'tuppi_ai_lite_c1h_v2'], ['network-heidi12-option', 'tuppi_ai_heidi12_pib8_v1']];
+const onlineBotChoices = [['network-nelli11-option', 'tuppi_ai_lite_c1h_v2'], ['network-heidi12-option', 'tuppi_ai_heidi12_pib8_v1'], ['network-dan11-option', 'tuppi_ai_dan11_v1']];
 function botSelection(save = null) {
   let value = save ? (save.bot ?? String(save.worlds)) : $('worlds').value;
-  if (!save) value = currentLocalBots[value] ?? value;  // a new game is always Heidi 1.2 or Nelli 1.1
-  return value in heidiNames ? {bot: value, worlds: liteLocalBots.includes(value) ? 128 : 1024} :
+  if (!save) value = currentLocalBots[value] ?? value;
+  return value in heidiNames ? {bot: value, worlds: value === 'dan11' ? 64 : liteLocalBots.includes(value) ? 128 : 1024} :
     {bot: 'legacy', worlds: save?.worlds ?? Number(value)};
 }
 function botSelectionValue(save) { return save?.bot ?? String(save?.worlds ?? 128); }

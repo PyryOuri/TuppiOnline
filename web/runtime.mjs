@@ -29,9 +29,9 @@ export const liteNetBots = ['heidi05', 'nelli11'];
 // Controller mode (tb_configure_bot) and the model roles each bot loads: 0 rollouts,
 // 1 VRPO3 (anchor and likelihood of the older bots, likelihood of Heidi 1.2), 2 the new
 // network. Legacy keeps tb_configure's mode 0.
-export const runtimeBotModes = {legacy: 0, heidi05: 1, heidi10: 2, heidi11: 2, nelli11: 3, heidi12: 4};
+export const runtimeBotModes = {legacy: 0, heidi05: 1, heidi10: 2, heidi11: 2, nelli11: 3, heidi12: 4, dan11: 0};
 const modeRoles = {3: [0, 2], 4: [0, 1, 2]};
-export const runtimeBotRoles = bot => modeRoles[runtimeBotModes[bot]] ?? [0, 1];
+export const runtimeBotRoles = bot => bot === 'dan11' ? [0, 1, 2] : modeRoles[runtimeBotModes[bot]] ?? [0, 1];
 
 export function inferenceLanes() {
   if (globalThis.crossOriginIsolated !== true || typeof SharedArrayBuffer !== 'function') return 1;
@@ -45,7 +45,7 @@ export class Runtime {
   static async create({worlds = 1024, bot = 'legacy', humanSeats = [0], inference = 8,
       backend = 'auto', lanes = inferenceLanes(), read = readAsset, progress = () => {},
       bids = 0, singleInference = null} = {}) {
-    if (![128, 1024].includes(worlds)) throw new Error('Bottiasetus ei ole tuettu.');
+    if (!(bot === 'dan11' ? worlds === 64 : [128, 1024].includes(worlds))) throw new Error('Bottiasetus ei ole tuettu.');
     if (!Object.hasOwn(runtimeBotModes, bot) ||
         !Array.isArray(humanSeats) || humanSeats.some(seat => !Number.isInteger(seat) || seat < 0 || seat > 3) ||
         (heidiSearch(bot) && ![4, 8].includes(inference)) || !['auto', 'single', 'threads'].includes(backend) ||
@@ -139,6 +139,13 @@ export class Runtime {
         if (bids && (!module._tb_configure_bids || module._tb_configure_bids(bids) !== 0))
           throw new Error('Tämä peliversio ei tue valittua bottia.');
       }
+      if (bot === 'dan11') {
+        if (module._tb_dan_context_words?.() !== 8) throw new Error('Dan 1.1 ei ole tuettu tässä peliversiossa.');
+        runtime.danContexts = Array.from({length: 4}, (_, seat) => runtime.buffer(8, (p, read) => {
+          if (module._tb_dan_initial_context(seat, p)) throw new Error('Danin tallennustila ei ole tuettu.');
+          return Array.from(read(), n => n >>> 0);
+        }));
+      }
       return runtime;
     } catch (error) { runtime.close(); throw error; }
   }
@@ -189,6 +196,14 @@ export class Runtime {
     try {
       if (this.m._tb_init(pointer, dealer, ...score) !== 0) throw new Error('Jaon tiedot ovat virheelliset.');
     } finally { this.m._free(pointer); }
+    this.danPending = null; this.danRevision = 0;
+    if (this.bot === 'dan11') this.danContexts = this.danContexts.map(row => {
+      const p = this.alloc(Int32Array.from(row));
+      try {
+        if (this.m._tb_dan_reset_deal(p)) throw new Error('Danin tallennustila on virheellinen.');
+        return Array.from(this.m.HEAP32.subarray(p / 4, p / 4 + 8), n => n >>> 0);
+      } finally { this.m._free(p); }
+    });
   }
 
   legalActions(seat) {
@@ -200,6 +215,11 @@ export class Runtime {
 
   apply(action) {
     if (!Number.isInteger(action) || this.m._tb_apply(action) !== 0) throw new Error('Siirto ei ole sallittu.');
+    if (this.bot === 'dan11') {
+      if (this.danPending && this.danPending.revision === this.danRevision && this.danPending.action === action)
+        this.danContexts[this.danPending.seat] = [...this.danPending.context];
+      this.danPending = null; this.danRevision++;
+    }
   }
 
   state() { return Object.fromEntries(fields.map((field, i) => [field, this.m._tb_state(i)])); }
@@ -226,9 +246,21 @@ export class Runtime {
       })));
   }
 
-  context() { return Array.from({length: 4}, (_, seat) =>
+  context() { if (this.bot === 'dan11') return this.danContexts.map(row => [...row]);
+    return Array.from({length: 4}, (_, seat) =>
     Array.from({length: liteNetBots.includes(this.bot) ? 7 : 3}, (_, field) => this.m._tb_context(seat, field) >>> 0)); }
   restoreContext(context) {
+    if (this.bot === 'dan11') {
+      if (!Array.isArray(context) || context.length !== 4 || context.some(row => !Array.isArray(row) || row.length !== 8 ||
+          row.some(v => !Number.isInteger(v) || v < 0 || v > 0xffffffff))) throw new Error('Danin tallennustila on virheellinen.');
+      for (const row of context) {
+        const p = this.alloc(Int32Array.from(row));
+        try { if (this.m._tb_dan_validate_context(p)) throw new Error('Danin tallennustila ei ole tuettu.'); }
+        finally { this.m._free(p); }
+      }
+      this.danContexts = context.map(row => [...row]); this.danPending = null;
+      return;
+    }
     const lite = liteNetBots.includes(this.bot);
     if (!Array.isArray(context) || context.length !== 4 || context.some(row =>
       !Array.isArray(row) || row.length !== (lite ? 7 : 3) || row.some(v => !Number.isInteger(v) || v < 0 || v > 0xffffffff)))
@@ -241,12 +273,24 @@ export class Runtime {
   }
 
   choose(seat) {
-    const start = performance.now(), action = this.m._tb_choose(seat);
+    if (this.bot === 'dan11' && this.danPending?.seat === seat && this.danPending.revision === this.danRevision)
+      return {action: this.danPending.action, values: {...this.danPending.values}, milliseconds: 0};
+    const start = performance.now(); let action, proposed = null;
+    if (this.bot === 'dan11') {
+      if (!Number.isInteger(seat) || seat < 0 || seat > 3) throw new Error('Bottipaikka on virheellinen.');
+      const before = this.alloc(Int32Array.from(this.danContexts[seat]));
+      try { action = this.buffer(8, (after, read) => {
+        const a = this.m._tb_dan_choose_context(seat, before, after);
+        if (a >= 0) proposed = Array.from(read(), n => n >>> 0);
+        return a;
+      }); } finally { this.m._free(before); }
+    } else action = this.m._tb_choose(seat);
     if (action < 0 || !this.legalActions(seat).includes(action)) throw new Error(`Botin siirto epäonnistui (${action}).`);
     const values = this.buffer(210, (ids, readIds) => this.buffer(210, (values, readValues) => {
       const count = this.m._tb_values(ids, values), actions = readIds(), prices = readValues();
       return Object.fromEntries(Array.from({length: count}, (_, i) => [actions[i], prices[i]]));
     }, 'HEAPF64'));
+    if (proposed) this.danPending = {seat, revision: this.danRevision, action, context: proposed, values: {...values}};
     return {action, values, milliseconds: performance.now() - start};
   }
 

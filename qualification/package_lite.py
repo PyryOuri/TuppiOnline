@@ -19,10 +19,12 @@ for name in models:
     assert hashlib.sha256((ai / 'models' / name).read_bytes()).hexdigest() == manifest[name], name
 out.mkdir(exist_ok=False)
 (out / 'tuppi_ai').mkdir()
-for name in ('__init__.py', 'native.py', 'bridge.py', 'lite.py', 'compact.py'):
+for name in ('__init__.py', 'native.py', 'bridge.py', 'lite.py', 'compact.py', 'dan.py'):
     shutil.copyfile(ai / 'tuppi_ai' / name, out / 'tuppi_ai' / name)
 (out / 'native').mkdir()
 shutil.copyfile(ai / 'native/libtuppi.so', out / 'native/libtuppi.so')
+for name in ('tuppi_dan.c', 'tuppi_dan.h'):
+    shutil.copyfile(ai / 'native' / name, out / 'native' / name)
 (out / 'models').mkdir()
 for name in models:
     shutil.copyfile(ai / 'models' / name, out / 'models' / name)
