@@ -7,7 +7,7 @@ export function validSuitOrder(order) {
 function cleanPreferences(value) {
   return {nickname: typeof value?.nickname === 'string' && value.nickname.trim() ? value.nickname.trim().slice(0, 40) : defaults.nickname,
     expandedHand: value?.expandedHand === true, turnSound: value?.turnSound === true,
-    // Anonymous offline match results for research (opt-out).
+    // Offline development records exclude names; sharing is on unless disabled.
     shareResults: value?.shareResults !== false,
     suitOrder: validSuitOrder(value?.suitOrder) ? [...value.suitOrder] : [...defaults.suitOrder]};
 }

@@ -482,7 +482,7 @@ function render() {
   }
   announceTurn();
 }
-// Anonymous offline results and match records (Settings › Tutkimus, on unless
+// Offline results and match records without names (Settings › Botin kehittäminen, on unless
 // turned off): queued on this device and sent to this site's server when it
 // accepts them. A record holds every card and move (about 3 KB a deal), so
 // fewer wait at a time.

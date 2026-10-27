@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="description" content="Tietoa Tuppi-harrastepelin pelitallenteista, nimimerkeistä ja botin kehittämiseen kerättävistä tiedoista.">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./privacy.css">
+  <title>Tietosuoja · Tuppi</title>
+</head>
+<body>
+  <header><a href="./">Tuppi · etusivu</a></header>
+  <main>
+    <h1>Tietosuoja</h1>
+    <p class="updated">Päivitetty 27.10.2026</p>
+    <p>Tuppi on yksityishenkilön ylläpitämä maksuton harrastepeli, joka on tarkoitettu ystäväporukan käyttöön. Pelitietoja käytetään pelin toimintaan, tuloksiin ja bottien kehittämiseen.</p>
+
+    <h2>Mitä tietoja käsitellään?</h2>
+    <ul>
+      <li><strong>Omalla laitteella:</strong> selain tallentaa pelitilanteen, asetukset ja verkkohuoneeseen palaamiseen tarvittavat tunnukset. Botin kehittämiseen lähetettävät paikalliset ottelut voivat odottaa yhteyttä selaimen lähetysjonossa.</li>
+      <li><strong>Verkkopelissä:</strong> palvelin tallentaa nimimerkit, paikat, huonekoodin, istuntotunnukset sekä pelin kortit, siirrot ja tulokset, jotta peli toimii ja sitä voi jatkaa. Tulostauluun kertyy voittoja ja tappioita nimimerkeittäin. Nimimerkkejä ei varmenneta henkilöllisyyteen.</li>
+      <li><strong>Botin kehittämiseen:</strong> erilliseen aineistoon tallentuvat ottelun tunniste, päivä, bottiversio, kortit, siirrot ja tulos. Siihen ei lisätä nimimerkkejä, huonekoodeja, istuntotunnuksia, chat-viestejä eikä IP-osoitteita. Sama peli voi silti olla yhdistettävissä huonetallenteeseen tai pelaajan omaan tallennukseen, joten aineistoa ei luvata täysin anonyymiksi.</li>
+      <li><strong>Viestit ja tekniset tiedot:</strong> chat näkyy huoneessa oleville ja sen lyhyt historia säilyy palvelimen muistissa. IP-osoitetta käsitellään tilapäisesti väärinkäytön rajoittamiseen. Palveluntarjoaja voi lisäksi käsitellä teknisiä yhteys- ja lokitietoja.</li>
+    </ul>
+
+    <h2>Miksi tietoja kerätään?</h2>
+    <p>Käsittelyn perusteena on ylläpitäjän oikeutettu etu ylläpitää toimivaa ja turvallista ystäväporukan peliä, näyttää pelituloksia sekä arvioida ja parantaa bottien pelitaitoa. Kehittämiseen tarvitaan kortit ja siirrot, mutta ei pelaajien nimiä tai yhteystietoja. Pelitietoja ei käytetä mainontaan.</p>
+    <p>Paikallisten eli offline-otteluiden lähetys on oletuksena käytössä. Sen voi poistaa käytöstä kohdasta <strong>Asetukset → Botin kehittäminen</strong>. Tämä pysäyttää paikallisten otteluiden lähettämisen; se ei poista jo lähetettyjä tietoja. Verkko-ottelut tallentuvat asetuksesta riippumatta. Asetus on lähetysvalinta, ei suostumus kaiken henkilötietojen käsittelyyn.</p>
+
+    <h2>Kuka näkee tiedot?</h2>
+    <p>Nimimerkit, viestit ja pelinäkymä näkyvät huoneessa oleville. Huonekoodin saanut henkilö voi liittyä katselijaksi ja nähdä kaikkien kortit sekä chatin. Päättyneiden jakojen kaikki kortit voi katsoa toistosta. Tulostaulu näkyy myös muiden huoneiden pelaajille. Käytä nimimerkkiä ja jaa huonekoodi vain oman porukkasi kesken.</p>
+    <p>Ylläpitäjä voi käsitellä palvelimen tallenteita ja ladata kehitysaineistoa botin kehittämiseen. Palvelinta ylläpitää Render alihankkijoineen. Palveluntarjoajan teknistä käsittelyä voi tapahtua myös ETA-alueen ulkopuolella. Render kuvaa tietojen käsittelyn ja siirtojen suojat <a href="https://render.com/dpa" rel="noreferrer">tietojenkäsittelyehdoissaan</a>; lisätietoa on sen <a href="https://render.com/security" rel="noreferrer">alihankkijalistassa</a> ja <a href="https://render.com/privacy" rel="noreferrer">tietosuojaselosteessa</a>.</p>
+
+    <h2>Kuinka kauan tiedot säilyvät?</h2>
+    <p>Käyttämättömät huoneet siirtyvät arkistoon palvelimen aikarajojen mukaan. Huonearkistoa siivotaan iän ja koon perusteella; sovelluksen oletus on enintään 30 päivää arkistoinnista. Kehitysotteluille, tulosyhteenvedoille ja nimimerkkituloksille ei ole kiinteää poistopäivää. Vanhimpia kehitysotteluita poistetaan tilarajan täyttyessä ja nimimerkkituloksia osallistujamäärärajan täyttyessä. Ylläpitäjän lataamille kehitysaineiston kopioille ei ole automaattista poistoaikaa. Selaintiedot säilyvät laitteella, kunnes ne poistetaan tai selain poistaa ne.</p>
+
+    <h2>Omat oikeutesi</h2>
+    <p>Sinulla on soveltuvin osin oikeus saada pääsy henkilötietoihisi, pyytää niiden oikaisua tai poistamista ja käsittelyn rajoittamista sekä vastustaa oikeutettuun etuun perustuvaa käsittelyä omaan tilanteeseesi liittyvällä perusteella. Voit myös tehdä kantelun <a href="https://tietosuoja.fi" rel="noreferrer">Tietosuojavaltuutetun toimistolle</a>.</p>
+    <p>Ylläpitäjän henkilöllisyyttä ja tietosuojapyyntöjen yhteydenottokanavaa ei ole julkaistu tällä sivulla.</p>
+  </main>
+</body>
+</html>

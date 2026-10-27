@@ -15,7 +15,7 @@ export function seatPresentation(view, seat, nickname = seatNames[seat]) {
     active: view.phase !== 2 && view.actor === seat};
 }
 
-// An anonymous report of a finished offline match for the server's research
+// A report without names of a finished offline match for the server's research
 // results (no names, cards or hands): the bot level, the winner and final
 // score from the player's team's view, deal and concession counts. Its id is
 // a hash of the first deal's shuffled deck, so a match is reported once.
