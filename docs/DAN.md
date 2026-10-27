@@ -9,7 +9,7 @@ allowance is .05. These larger allowances replace the previous nearly inactive
 .002/.001/.004 prototype settings; the uncertainty multiplier remains 2.
 
 His bids use Nelli 1.1's actual VRPO4 network. When NOLO is legal, a Nelli RAMI
-bid must beat the best NOLO bid by at least 14.0 actor-score units or Dan 1.1
+bid must beat the best NOLO bid by at least 12.0 actor-score units or Dan 1.1
 chooses NOLO instead. A Nelli NOLO is never promoted to RAMI. This is a policy
 score margin, not an EV estimate or a calibrated probability. A hand with no
 legal NOLO option retains its legal RAMI choice. Nelli 1.1's bidding policy is
@@ -18,7 +18,10 @@ greedy VRPO4; its C1H safety net does not apply during showing.
 The margin was increased from 2.0 at the owner's request for quite conservative
 RAMI bidding. It was chosen from existing development bid scores to target
 roughly 10% RAMI bids on that benchmark; it is not a forced frequency or a claim
-about every table. The NOLO card-play allowances and guard remain unchanged.
+about every table. On 27 October 2026 the owner lowered it to 12.0 after a
+replay in which margin 14 vetoed a 21-HCP RAMI at 0-0: on the 4,096 fresh shadow
+bids, 12.0 gives 14.0% RAMI (Nelli 27.2%) and vetoes 45 of Nelli's 175 RAMIs
+with 18+ HCP, against 69 at 14.0. The NOLO card-play allowances and guard remain unchanged.
 
 The native guard compares every legal card on the same 64 hard-feasible hidden
 layouts, continued by VRPO3 with no solver tail or recursive personality. It
