@@ -1,0 +1,283 @@
+{
+  "schema": "tuppi.browser.build.v1",
+  "compiler": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.12 (5488e0871d46d19a3209988190fa6a653126256f)",
+  "variants": {
+    "single": {
+      "compiler": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.12 (5488e0871d46d19a3209988190fa6a653126256f)",
+      "command": [
+        "/Users/pyryouri/.venvs/tuppi-v2/bin/python",
+        "/Users/pyryouri/Developer/toolchains/emsdk/upstream/emscripten/emcc.py",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_core.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_env.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_search.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_dd.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_mlp.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_sooli.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_sooli_policy.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_dd_wr.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_lite_net.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_browser.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_parallel.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_dan.c",
+        "-O3",
+        "-msimd128",
+        "-ffp-contract=off",
+        "-DTC_PORTABLE=1",
+        "-I",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native",
+        "-sMODULARIZE=1",
+        "-sEXPORT_ES6=1",
+        "-sENVIRONMENT=web,worker,node",
+        "-sALLOW_MEMORY_GROWTH=1",
+        "-sINITIAL_MEMORY=67108864",
+        "-sMAXIMUM_MEMORY=268435456",
+        "-sSTACK_SIZE=4194304",
+        "-sEXPORTED_FUNCTIONS=[\"_malloc\", \"_free\", \"_tb_api_version\", \"_tb_load_model\", \"_tb_configure\", \"_tb_init\", \"_tb_legal\", \"_tb_apply\", \"_tb_state\", \"_tb_hand\", \"_tb_history\", \"_tb_bids\", \"_tb_choose\", \"_tb_values\", \"_tb_context\", \"_tb_restore_context\", \"_tb_configure_bot\", \"_tb_restore_net_context\", \"_tb_observation_size\", \"_tb_observation\", \"_tb_features\", \"_tb_inference\", \"_tb_configure_inference\", \"_tb_belief_profile\", \"_tb_dispose\", \"_tb_belief_counters\", \"_tb_configure_bids\", \"_tb_dan_context_words\", \"_tb_dan_validate_context\", \"_tb_dan_reset_deal\", \"_tb_dan_initial_context\", \"_tb_dan_choose_context\"]",
+        "-sEXPORTED_RUNTIME_METHODS=[\"HEAPU8\", \"HEAP32\", \"HEAPF32\", \"HEAPF64\"]",
+        "-o",
+        "/Users/pyryouri/Developer/TuppiBrowser-dan11-20261026/web/assets/tuppi.mjs"
+      ],
+      "sources": [
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_core.c",
+          "sha256": "2c3f0a539f6569d0927aea0d08fc8911304a88108e84667826b5c8a0c810ecbf"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_env.c",
+          "sha256": "8952fbcdfdb9f9ab02866e1391de0cb662519c64cdf3ed2fe6431caff6c521f9"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_search.c",
+          "sha256": "2aa5ca9dde01a861723791e520c3d7db693ca3fec271300b9c0a048e0329cfb5"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_dd.c",
+          "sha256": "3ea6ec6e8dd9faab1de4f69738ebeb20d2c244e4920fa6b10a2bfc148b6a38c1"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_mlp.c",
+          "sha256": "5bb6b4bb0484a0c787a973884e03b05d88ba3d7d216c8a7a716c86dc002d953c"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_sooli.c",
+          "sha256": "d88c6c7332216618d110120b92b3be6a699fcbe3dc6cf29928bc0bb340b2b38b"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_sooli_policy.c",
+          "sha256": "4952fd710386198206b0323acfa55b9f1a8da59c018f3ab3c4a8cddd7c360881"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_dd_wr.c",
+          "sha256": "beb856dee34a5e0da0484060035b6d53b438df3db7c68bca39a525a4e7b4249c"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_lite_net.c",
+          "sha256": "87c9557eec98457db23218f71801098ca99722c19372f8ffc7d6b4c4b3fb9ca6"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_browser.c",
+          "sha256": "d91b1a6135329bc8791c9d65d39c37014d18472a839510e3249eb2ebcaab6873"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_parallel.c",
+          "sha256": "4b617ed288ef0858d48849fd7eec2e97d6a22a6ceb2248291e1c16e8fbab5faf"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_dan.c",
+          "sha256": "8442de9c85eac8d3fa1d4d8bc285df1a06e79d430d4539011c908278aac9f296"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/showing_constraints.h",
+          "sha256": "f641aa73bfe8373c8b88329f842d268a12d64b87791a9c501c1f0a911975afea"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_core.h",
+          "sha256": "fc301b9484d6bc1e6af5dacd4937542ff429eab51ca3cbfe6380220f8571033b"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_dan.h",
+          "sha256": "cab691b49d49715c36d513d44ce6ab49a33d9b1b6f0e9f3d8553aa596fc7dda3"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_matrix.h",
+          "sha256": "b43a4012dbe18c575f70c019b2352014b5a105358882aaf4bcd6c94fda822969"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_mlp.h",
+          "sha256": "89f7b352ba52edfedc289f9e47dc134957907568c481500412714e368f92f372"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_parallel.h",
+          "sha256": "b5ba0046c642d3cc9004ad53d3fe0f7efb6a276e5f6918529dd06071bb86804b"
+        }
+      ],
+      "outputs": [
+        {
+          "file": "tuppi.mjs",
+          "bytes": 9912,
+          "sha256": "e7af7197bbb3926d8cd067faafdd6881df30aa0b2df7df65dac3665bab022327"
+        },
+        {
+          "file": "tuppi.wasm",
+          "bytes": 122660,
+          "sha256": "9f4153bbc7ef78bf86ae3c33c39c29266c0e66aa35662e926e5f270548246ade"
+        }
+      ]
+    },
+    "threads": {
+      "compiler": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.12 (5488e0871d46d19a3209988190fa6a653126256f)",
+      "command": [
+        "/Users/pyryouri/.venvs/tuppi-v2/bin/python",
+        "/Users/pyryouri/Developer/toolchains/emsdk/upstream/emscripten/emcc.py",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_core.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_env.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_search.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_dd.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_mlp.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_sooli.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_sooli_policy.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_dd_wr.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_lite_net.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_browser.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_parallel.c",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native/tuppi_dan.c",
+        "-O3",
+        "-msimd128",
+        "-ffp-contract=off",
+        "-DTC_PORTABLE=1",
+        "-I",
+        "/Users/pyryouri/Developer/TuppiAI-dan11-product-20261026/native",
+        "-sMODULARIZE=1",
+        "-sEXPORT_ES6=1",
+        "-sENVIRONMENT=web,worker,node",
+        "-sALLOW_MEMORY_GROWTH=1",
+        "-sINITIAL_MEMORY=67108864",
+        "-sMAXIMUM_MEMORY=268435456",
+        "-sSTACK_SIZE=4194304",
+        "-sEXPORTED_FUNCTIONS=[\"_malloc\", \"_free\", \"_tb_api_version\", \"_tb_load_model\", \"_tb_configure\", \"_tb_init\", \"_tb_legal\", \"_tb_apply\", \"_tb_state\", \"_tb_hand\", \"_tb_history\", \"_tb_bids\", \"_tb_choose\", \"_tb_values\", \"_tb_context\", \"_tb_restore_context\", \"_tb_configure_bot\", \"_tb_restore_net_context\", \"_tb_observation_size\", \"_tb_observation\", \"_tb_features\", \"_tb_inference\", \"_tb_configure_inference\", \"_tb_belief_profile\", \"_tb_dispose\", \"_tb_belief_counters\", \"_tb_configure_bids\", \"_tb_dan_context_words\", \"_tb_dan_validate_context\", \"_tb_dan_reset_deal\", \"_tb_dan_initial_context\", \"_tb_dan_choose_context\"]",
+        "-sEXPORTED_RUNTIME_METHODS=[\"HEAPU8\", \"HEAP32\", \"HEAPF32\", \"HEAPF64\", \"PThread\"]",
+        "-pthread",
+        "-sPTHREAD_POOL_SIZE=3",
+        "-sPTHREAD_POOL_SIZE_STRICT=2",
+        "-sPTHREAD_POOL_DELAY_LOAD=0",
+        "-sDEFAULT_PTHREAD_STACK_SIZE=2097152",
+        "--post-js",
+        "/Users/pyryouri/Developer/TuppiBrowser-dan11-20261026/tools/thread_runtime.js",
+        "-o",
+        "/Users/pyryouri/Developer/TuppiBrowser-dan11-20261026/web/assets/tuppi-thread.mjs"
+      ],
+      "sources": [
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_core.c",
+          "sha256": "2c3f0a539f6569d0927aea0d08fc8911304a88108e84667826b5c8a0c810ecbf"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_env.c",
+          "sha256": "8952fbcdfdb9f9ab02866e1391de0cb662519c64cdf3ed2fe6431caff6c521f9"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_search.c",
+          "sha256": "2aa5ca9dde01a861723791e520c3d7db693ca3fec271300b9c0a048e0329cfb5"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_dd.c",
+          "sha256": "3ea6ec6e8dd9faab1de4f69738ebeb20d2c244e4920fa6b10a2bfc148b6a38c1"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_mlp.c",
+          "sha256": "5bb6b4bb0484a0c787a973884e03b05d88ba3d7d216c8a7a716c86dc002d953c"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_sooli.c",
+          "sha256": "d88c6c7332216618d110120b92b3be6a699fcbe3dc6cf29928bc0bb340b2b38b"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_sooli_policy.c",
+          "sha256": "4952fd710386198206b0323acfa55b9f1a8da59c018f3ab3c4a8cddd7c360881"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_dd_wr.c",
+          "sha256": "beb856dee34a5e0da0484060035b6d53b438df3db7c68bca39a525a4e7b4249c"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_lite_net.c",
+          "sha256": "87c9557eec98457db23218f71801098ca99722c19372f8ffc7d6b4c4b3fb9ca6"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_browser.c",
+          "sha256": "d91b1a6135329bc8791c9d65d39c37014d18472a839510e3249eb2ebcaab6873"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_parallel.c",
+          "sha256": "4b617ed288ef0858d48849fd7eec2e97d6a22a6ceb2248291e1c16e8fbab5faf"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_dan.c",
+          "sha256": "8442de9c85eac8d3fa1d4d8bc285df1a06e79d430d4539011c908278aac9f296"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/showing_constraints.h",
+          "sha256": "f641aa73bfe8373c8b88329f842d268a12d64b87791a9c501c1f0a911975afea"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_core.h",
+          "sha256": "fc301b9484d6bc1e6af5dacd4937542ff429eab51ca3cbfe6380220f8571033b"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_dan.h",
+          "sha256": "cab691b49d49715c36d513d44ce6ab49a33d9b1b6f0e9f3d8553aa596fc7dda3"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_matrix.h",
+          "sha256": "b43a4012dbe18c575f70c019b2352014b5a105358882aaf4bcd6c94fda822969"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_mlp.h",
+          "sha256": "89f7b352ba52edfedc289f9e47dc134957907568c481500412714e368f92f372"
+        },
+        {
+          "path": "TuppiAI-dan11-product-20261026/native/tuppi_parallel.h",
+          "sha256": "b5ba0046c642d3cc9004ad53d3fe0f7efb6a276e5f6918529dd06071bb86804b"
+        },
+        {
+          "path": "TuppiBrowser-dan11-20261026/tools/thread_runtime.js",
+          "sha256": "ba365647c3022169c67b9bd7cece325ea564e5e2808788ec6a7ce79cc105d2b0"
+        }
+      ],
+      "outputs": [
+        {
+          "file": "tuppi-thread.mjs",
+          "bytes": 24262,
+          "sha256": "04169d643f53003829c158690b2afe7936c5c5e5cbb20b1a8f90026db2d2190f"
+        },
+        {
+          "file": "tuppi-thread.wasm",
+          "bytes": 136499,
+          "sha256": "9e0565fe382d6df181ab51d1731582c885e028962a5a3467d9069492324fe255"
+        }
+      ]
+    }
+  },
+  "outputs": [
+    {
+      "file": "tuppi.mjs",
+      "bytes": 9912,
+      "sha256": "e7af7197bbb3926d8cd067faafdd6881df30aa0b2df7df65dac3665bab022327"
+    },
+    {
+      "file": "tuppi.wasm",
+      "bytes": 122660,
+      "sha256": "9f4153bbc7ef78bf86ae3c33c39c29266c0e66aa35662e926e5f270548246ade"
+    },
+    {
+      "file": "tuppi-thread.mjs",
+      "bytes": 24262,
+      "sha256": "04169d643f53003829c158690b2afe7936c5c5e5cbb20b1a8f90026db2d2190f"
+    },
+    {
+      "file": "tuppi-thread.wasm",
+      "bytes": 136499,
+      "sha256": "9e0565fe382d6df181ab51d1731582c885e028962a5a3467d9069492324fe255"
+    }
+  ]
+}

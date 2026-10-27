@@ -13,7 +13,7 @@ int tc_search_world_values(TcEnv *, const TcMlp *, const TcObs *, const int32_t 
 
 static int high(int id) { return id >= 0 && id < 52 && id % 13 >= 11; }
 void tc_dan_default_config(TcDanConfig *out) {
-  if (out) *out = (TcDanConfig){64, .03, .02, .05, 2.0, 1e-12, 14.0};
+  if (out) *out = (TcDanConfig){64, .03, .02, .05, 2.0, 1e-12, 12.0};
 }
 int tc_dan_config_valid(const TcDanConfig *c) {
   return c && c->worlds >= 2 && c->worlds <= TC_DAN_MAX_WORLDS &&

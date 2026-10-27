@@ -130,6 +130,32 @@ def _dan_decision(observation, checkpoint):
         agent.close()
 
 
+def _current_dan_controller(controller):
+    """Rebind a Dan 1.1 checkpoint saved by an earlier build to this one.
+
+    Room records replay engine actions, not bot decisions, so a saved room only
+    needs the controller's cursors and remaining allowance. A different native
+    binary, guard source or RAMI margin (14.0 before 27 October 2026) must not
+    stop the server from loading its rooms; any other configuration still fails.
+    """
+    from tuppi_ai.dan import CHECKPOINT_SCHEMA, DanAgent
+    if (type(controller) is not dict or controller.get("schema") != CHECKPOINT_SCHEMA
+            or type(controller.get("seat")) is not int or controller["seat"] not in range(4)
+            or type(controller.get("config")) is not dict):
+        return controller
+    current = DanAgent(controller["seat"])
+    try:
+        if controller.get("profile") == current.profile and controller.get("runtime") == current.runtime:
+            return controller
+        config = asdict(current.config)
+        if {k: v for k, v in controller["config"].items() if k != "rami_margin"} != \
+                {k: v for k, v in config.items() if k != "rami_margin"}:
+            return controller
+        return {**controller, "config": config, "profile": current.profile, "runtime": current.runtime}
+    finally:
+        current.close()
+
+
 def heidi_enabled() -> bool:
     value = os.environ.get("TUPPI_HOSTED_HEIDI10", "0")
     if value not in ("0", "1"):
@@ -337,6 +363,7 @@ class HostedDanAgent:
         controller = record["controller"]
         if controller is not None:
             from tuppi_ai.dan import DanAgent, DanConfig
+            controller = _current_dan_controller(controller)
             agent = DanAgent.from_checkpoint(controller)
             try:
                 if agent.seat != self.seat or asdict(agent.config) != asdict(DanConfig()):

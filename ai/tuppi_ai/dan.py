@@ -39,7 +39,7 @@ class DanConfig:
     deal_loss: float = .05
     uncertainty: float = 2.0
     epsilon: float = 1e-12
-    rami_margin: float = 14.0
+    rami_margin: float = 12.0
 
     def __post_init__(self):
         if type(self.worlds) is not int or not 2 <= self.worlds <= 64:

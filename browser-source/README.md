@@ -16,6 +16,8 @@ snapshot. Each runtime's build.json records the compiler version, commands and o
 hashes. Rebuilding uses the pinned Emscripten 6.0.12 toolchain under toolchains/emsdk in
 the restored workspace layout.
 
-Dan 1.1 release (26 October 2026): the current runtime `ab2b37c6...` and the
-hosted `ai/` are built from TuppiAI 7c38db6 (TuppiAI-dan11-product-20261026) with the tools of
+Dan 1.1 release (26 October 2026): the current runtime `72bd855d...` and the
+hosted `ai/` are built from TuppiAI ac94273 (TuppiAI-dan11-product-20261026) with the tools of
 TuppiBrowser-dan11-20261026. The Heidi 1.2 runtime (d0ef4461...) stays retained with its snapshot above.
+The first Dan 1.1 runtime (ab2b37c6..., margin 14) used the same workspace paths; its
+compiler inputs are in this repository's history at 3b9b8ae.
