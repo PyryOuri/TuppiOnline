@@ -9,6 +9,9 @@ this is the plain lite bot's play. The result is the A pair's match-equity chang
 with a 95% interval. A fresh --seed gives fresh deals: use one the training run never saw
 (its monitoring seed is Config.eval_seed) to confirm a checkpoint picked on monitoring deals.
 `--sampled T` makes both sides sample at temperature T instead.
+
+A network name with the prefix "sym:" is played averaged over the four suit views
+(symmetry.Symmetric), e.g. `--a sym:vrpo4_final.pt --b vrpo4_final.pt`.
 """
 
 from __future__ import annotations
@@ -20,14 +23,12 @@ import time
 
 import numpy as np
 
-from . import device, lockstep, offer, tn  # noqa: F401
-from .vrpo_gpu import resolve_model
-from tuppi_ai import model as qmodel
+from . import device, lockstep, offer, symmetry, tn  # noqa: F401
 from tuppi_ai import native
 
 
 def compare(net_a, net_b, dev, base: int, seed: int, sampled: float = 0.0, paired: bool = True, chunk: int = 4096,
-            ruleset: int = 3) -> np.ndarray:
+            ruleset: int = 3, amp=None) -> np.ndarray:
     """Per-base-deal values of net_a's pair against net_b's over `base` base deals."""
     from tuppi_ai.best import EQUITY
     from tuppi_ai.equity import Equity
@@ -37,8 +38,8 @@ def compare(net_a, net_b, dev, base: int, seed: int, sampled: float = 0.0, paire
 
     def chooser(net, k):
         if sampled > 0:
-            return lockstep.TorchSampler(net, dev, sampled, device.generator(dev, seed + k), net.encoder)
-        return lockstep.TorchGreedy(net, dev, net.encoder)
+            return lockstep.TorchSampler(net, dev, sampled, device.generator(dev, seed + k), net.encoder, amp=amp)
+        return lockstep.TorchGreedy(net, dev, net.encoder, amp=amp)
 
     rng, values = C.c_uint64(seed), []
     for done in range(0, base, chunk):
@@ -56,16 +57,17 @@ def main(argv=None) -> None:
     p.add_argument("--sampled", type=float, default=0.0)
     p.add_argument("--unpaired", action="store_true", help="the native function's seeds (noisier)")
     p.add_argument("--offer-model", default=None)
+    p.add_argument("--amp", default="off", choices=sorted(device.AMP), help="forward precision of both sides")
     p.add_argument("--device", default=None)
     a = p.parse_args(argv)
     dev = device.pick(a.device)
     device.setup(dev)
     native.set_offer_model(offer.load_native(a.offer_model) if a.offer_model else None)
-    net_a = qmodel.load(resolve_model(a.a), dev)
+    net_a = symmetry.load_net(a.a, dev)
     for name in a.b.split(","):
         t = time.perf_counter()
-        v = compare(net_a, qmodel.load(resolve_model(name.strip()), dev), dev, a.base, a.seed, a.sampled,
-                    not a.unpaired)
+        v = compare(net_a, symmetry.load_net(name.strip(), dev), dev, a.base, a.seed, a.sampled,
+                    not a.unpaired, amp=device.AMP[a.amp])
         mean, half = lockstep.interval(v)
         print(json.dumps({"a": a.a, "b": name.strip(), "base_deals": a.base, "seed": a.seed, "sampled": a.sampled,
                           "paired": not a.unpaired, "mean": mean, "ci95": half, "sd_per_base_deal": float(v.std(ddof=1)),
