@@ -13,7 +13,10 @@ checks that one update here equals one update there. What differs:
 - evaluation is rarer, on fixed deals, against a panel of shipped networks, in
   paired duplicate (lockstep.duplicate_eval); a guard stops a run that has
   fallen significantly below its starting network;
-- everything needed to continue is saved atomically every few minutes.
+- everything needed to continue is saved atomically every few minutes;
+- optional mixed precision (`--amp bf16` or `fp16`) and `torch.compile`: off by default,
+  because the default path is the one proven equal to `vrpo.py`. `bench --sweep` measures
+  what each buys on the machine at hand and how far it moves the advantages.
 
     python -m tuppi_train.vrpo_gpu --name run1 --hours 1.5
     python -m tuppi_train.vrpo_gpu --name run1 --hours 1.5          # continues run1
@@ -80,6 +83,12 @@ class Config:
     seed: int = 1
     compile: bool = False
     tf32: bool = True                # CUDA only (device.setup)
+    # Mixed precision for the network forward passes of the sampler and the learner: "off",
+    # "bf16" or "fp16" (fp16 with gradient scaling). Sums, softmax and losses stay in float32.
+    amp: str = "off"
+    # Behaviour log-probabilities recomputed by the learner (in its own arithmetic) instead of
+    # taken from the sampler, so that PPO's ratio starts at exactly 1. Always on with amp.
+    recompute_logp: bool = False
 
 
 def resolve_model(name: str) -> Path:
@@ -90,6 +99,7 @@ def resolve_model(name: str) -> Path:
 class Learner:
     def __init__(self, cfg: Config, out: Path, dev: torch.device | None = None, resume: bool = True):
         self.cfg, self.out = cfg, Path(out)
+        self.out.mkdir(parents=True, exist_ok=True)
         self.dev = dev or device.pick()
         device.setup(self.dev, cfg.tf32)
         torch.manual_seed(cfg.seed)
@@ -105,6 +115,11 @@ class Learner:
         self.opt_c = device.adamw(self.critic.parameters(), cfg.lr_critic, 1e-5, self.dev)
         self.a_fwd = torch.compile(self.actor) if cfg.compile else self.actor
         self.c_fwd = torch.compile(self.critic) if cfg.compile else self.critic
+        if cfg.amp not in device.AMP:
+            raise ValueError(f"amp must be one of {sorted(device.AMP)}")
+        self.amp = device.AMP[cfg.amp]
+        self.scale_a = torch.amp.GradScaler(self.dev.type, enabled=cfg.amp == "fp16")
+        self.scale_c = torch.amp.GradScaler(self.dev.type, enabled=cfg.amp == "fp16")
         if cfg.offer_model:
             from tuppi_ai.offer_screen import load as load_offer
             om, _ = load_offer(cfg.offer_model)
@@ -155,12 +170,34 @@ class Learner:
         if cfg.collector == "native":
             return native.ppo_rollouts(self.env, native.Mlp(self._actor_cpu()), cfg.games_per_iter, cfg.ruleset,
                                        self.rng, cfg.temperature)
-        sampler = lockstep.TorchSampler(self.actor, self.dev, cfg.temperature, self.gen, self.encoder)
+        sampler = lockstep.TorchSampler(self.actor, self.dev, cfg.temperature, self.gen, self.encoder,
+                                        amp=self.amp)
         return lockstep.rollouts(self.env, sampler, cfg.games_per_iter, cfg.ruleset, self.rng, self.encoder,
                                  timing=timing)
 
+    def _run(self, module, x):
+        """A network forward in the run's precision; float32 out. With amp off this is module(x)."""
+        if self.amp is None:
+            return module(x)
+        with torch.autocast(self.dev.type, dtype=self.amp):
+            return module(x).float()
+
     def _logits(self, x, mask):
-        return self.a_fwd(x).masked_fill(~mask, -1e9) / self.cfg.temperature
+        return self._run(self.a_fwd, x).masked_fill(~mask, -1e9) / self.cfg.temperature
+
+    def _apply(self, loss, opt, scaler, net) -> None:
+        """zero_grad, backward, clip to norm 1, step (through the gradient scaler under fp16)."""
+        opt.zero_grad(set_to_none=True)
+        if scaler.is_enabled():
+            scaler.scale(loss).backward()
+            scaler.unscale_(opt)
+            nn.utils.clip_grad_norm_(net.parameters(), 1.0)
+            scaler.step(opt)
+            scaler.update()
+        else:
+            loss.backward()
+            nn.utils.clip_grad_norm_(net.parameters(), 1.0)
+            opt.step()
 
     # ---------------------------------------------------------------- update
     def update(self, d: dict) -> dict:
@@ -191,11 +228,16 @@ class Learner:
         with torch.no_grad():
             qa, v = torch.zeros(n, device=dev), torch.zeros(n, device=dev)
             ent_sum = 0.0
+            recompute = cfg.recompute_logp or self.amp is not None
+            logp_l = torch.zeros(n, device=dev) if recompute else None
             for i in range(0, n, 65536):
                 sl = torch.arange(i, min(i + 65536, n), device=dev)
                 x, xc, m = batch(sl)
-                q = self.critic(xc)
-                pi = torch.softmax(self.actor(x).masked_fill(~m, -1e9) / cfg.temperature, 1)
+                q = self._run(self.critic, xc)
+                a_logits = self._run(self.actor, x).masked_fill(~m, -1e9) / cfg.temperature
+                pi = torch.softmax(a_logits, 1)
+                if recompute:
+                    logp_l[sl] = torch.log_softmax(a_logits, 1).gather(1, action[sl, None])[:, 0]
                 qa[sl] = q.gather(1, action[sl, None])[:, 0]
                 v[sl] = (pi * q.masked_fill(~m, 0.0)).sum(1)
                 ent_sum += float(-(pi * torch.log(pi.clamp(min=1e-12))).sum())
@@ -212,6 +254,11 @@ class Learner:
             mc = torch.where(team == 0, reward[deal], -reward[deal])
             mc_mse = float(((qa - mc) ** 2).mean()) / SCALE ** 2
             mc_ev = float(1.0 - ((qa - mc) ** 2).mean() / mc.var().clamp(min=1e-12))
+            logp_shift = None
+            if recompute:  # how far the sampler's own figures were from the learner's
+                logp_shift = float((logp_l - logp_b).abs().mean())
+                logp_b = logp_l
+        self.last = {"adv": adv, "q_target": q_target, "logp_b": logp_b}  # for bench and check
         train_actor = self._warmup_step(mc_mse)
         # critic
         closs = []
@@ -220,12 +267,9 @@ class Learner:
             for i in range(0, n, cfg.minibatch):
                 idx = perm[i:i + cfg.minibatch]
                 _, xc, _ = batch(idx)
-                pred = self.c_fwd(xc).gather(1, action[idx, None])[:, 0]
+                pred = self._run(self.c_fwd, xc).gather(1, action[idx, None])[:, 0]
                 loss = 0.5 * ((pred - q_target[idx]) ** 2).mean()
-                self.opt_c.zero_grad(set_to_none=True)
-                loss.backward()
-                nn.utils.clip_grad_norm_(self.critic.parameters(), 1.0)
-                self.opt_c.step()
+                self._apply(loss, self.opt_c, self.scale_c, self.critic)
                 closs.append(float(loss.detach()))
         # actor (after the critic warm-up)
         stats = {"kl": None, "clip_frac": None, "epochs": 0, "lr_actor": None}
@@ -250,10 +294,7 @@ class Learner:
                     p = torch.exp(logp_all)
                     ent = -(p * logp_all.masked_fill(~m, 0.0)).sum(1).mean()
                     loss = pg - cfg.ent_coef * ent
-                    self.opt_a.zero_grad(set_to_none=True)
-                    loss.backward()
-                    nn.utils.clip_grad_norm_(self.actor.parameters(), 1.0)
-                    self.opt_a.step()
+                    self._apply(loss, self.opt_a, self.scale_a, self.actor)
                     kls.append(float((logp_b[idx] - logp).mean().detach()))
                     clips.append(float(((ratio - 1).abs() > cfg.clip).float().mean().detach()))
                 stats = {"kl": float(np.mean(kls)), "clip_frac": float(np.mean(clips)), "epochs": epoch + 1,
@@ -266,7 +307,8 @@ class Learner:
                 "critic_loss": float(np.mean(closs[-10:])) / SCALE ** 2,
                 "mean_abs_delta": float(delta.abs().mean()) / SCALE, "adv_std": float(adv.std()) / SCALE,
                 "critic_ev": ev, "critic_mc_mse": mc_mse, "critic_mc_ev": mc_ev,
-                "choice_share": float(choice.float().mean()), "entropy": ent_sum / n, "warmup": self.warm, **stats}
+                "choice_share": float(choice.float().mean()), "entropy": ent_sum / n, "warmup": self.warm,
+                "logp_shift": logp_shift, **stats}
 
     def _warmup_step(self, mc_mse: float) -> bool:
         """Records the critic's error on this batch; True if the actor trains in this iteration."""
@@ -368,6 +410,7 @@ class Learner:
             "actor_config": self.actor.config, "actor": cpu(self.actor.state_dict()),
             "critic_config": self.critic.config, "critic": cpu(self.critic.state_dict()),
             "opt_a": self.opt_a.state_dict(), "opt_c": self.opt_c.state_dict(),
+            "scale_a": self.scale_a.state_dict(), "scale_c": self.scale_c.state_dict(),
             "rng": int(self.rng.value), "torch_rng": torch.get_rng_state(),
             "cuda_rng": torch.cuda.get_rng_state_all() if self.dev.type == "cuda" else None,
             "gen": self.gen.get_state() if self.gen is not None else None,
@@ -390,6 +433,9 @@ class Learner:
         self.critic.load_state_dict(s["critic"])
         self.opt_a.load_state_dict(s["opt_a"])
         self.opt_c.load_state_dict(s["opt_c"])
+        if s.get("scale_a") and self.scale_a.is_enabled():  # absent when the run was not fp16 before
+            self.scale_a.load_state_dict(s["scale_a"])
+            self.scale_c.load_state_dict(s["scale_c"])
         self.rng = C.c_uint64(s["rng"])
         torch.set_rng_state(s["torch_rng"])
         if self.dev.type == "cuda" and s.get("cuda_rng") is not None:

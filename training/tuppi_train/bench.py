@@ -11,6 +11,18 @@ Prints one JSON object. The numbers that matter:
   update_rows_s       the learner's update (4 critic + 4 actor epochs)
   iteration_s         projected seconds per iteration of `--games-per-iter` deals, for the lockstep
                       collector and for the native one; iterations_per_hour likewise
+
+`--sweep` adds what the training options buy on this machine, all on the same rollouts and
+the same trained weights:
+
+  sweep.precision     for float32, float32 with TF32, bf16, fp16 and the best of them compiled:
+                      update speed, and how far the option moves what the learner computes
+                      (correlation and relative error of the advantages against plain float32,
+                      share of decisions where the greedy action stays the same)
+  sweep.recommended   the fastest option that leaves those essentially unchanged
+  sweep.shape         projected iteration time and deals per hour for batch sizes and epoch
+                      counts, from a measured fixed cost and cost per epoch. Speed only: whether
+                      fewer epochs on more deals learns better is a training experiment.
 """
 
 from __future__ import annotations
@@ -39,7 +51,128 @@ def _env(n, encoder):
     return env
 
 
-def run(policy: str, games: int, games_per_iter: int, offer_model: str | None, dev: torch.device) -> dict:
+def _sync(dev) -> None:
+    if dev.type == "cuda":
+        torch.cuda.synchronize()
+
+
+def _timed_update(learner, d, dev) -> tuple[dict, float]:
+    _sync(dev)
+    t = time.perf_counter()
+    row = learner.update({k: v.copy() for k, v in d.items()})
+    _sync(dev)
+    return row, time.perf_counter() - t
+
+
+def sweep(policy: str, d: dict, games: int, dev: torch.device, tmp: str, offer=None) -> dict:
+    """Precision, compilation, batch size and epochs on the rollouts `d` (see the module docstring)."""
+    enc = 2
+    n = len(d["action"])
+
+    def learner(name, **extra):
+        cfg = vrpo_gpu.Config(**{**dict(init=policy, panel="", games_per_iter=games, warmup_max=0, actor_ramp=0,
+                                        eval_base=8, milestone_every=0, max_kl=1e9), **extra})
+        return vrpo_gpu.Learner(cfg, f"{tmp}/{name}", dev, resume=False)
+
+    # weights to compare on: one plain float32 update, so that the critic is not at its zero start
+    base = learner("base", tf32=False)
+    base.update({k: v.copy() for k, v in d.items()})
+    weights = [{k: v.detach().clone() for k, v in net.state_dict().items()} for net in (base.actor, base.critic)]
+    del base
+
+    variants = [("float32", dict(tf32=False))]
+    if dev.type == "cuda":
+        variants.append(("float32+tf32", dict(tf32=True)))
+    variants += [("bf16", dict(amp="bf16")), ("fp16", dict(amp="fp16"))]
+    sample = slice(0, min(n, 131072))
+    out, ref_adv, ref_greedy = [], None, None
+    for name, extra in variants:
+        row = {"name": name, **extra}
+        try:
+            L = learner(name, **extra)
+            L.actor.load_state_dict(weights[0])
+            L.critic.load_state_dict(weights[1])
+            chooser = lockstep.TorchGreedy(L.actor, dev, enc, amp=L.amp)
+            greedy = chooser(d["feat"][sample], d["mask"][sample], None, None)[0]
+            stats, dt = _timed_update(L, d, dev)
+            adv = L.last["adv"].detach().float().cpu()
+            if ref_adv is None:
+                ref_adv, ref_greedy = adv, greedy
+            row.update(update_rows_s=round(n / dt), update_s=round(dt, 2),
+                       adv_correlation=float(torch.corrcoef(torch.stack([adv, ref_adv]))[0, 1]),
+                       adv_relative_error=float((adv - ref_adv).abs().mean() / ref_adv.std()),
+                       greedy_agreement=float((greedy == ref_greedy).mean()),
+                       logp_shift=stats["logp_shift"], kl=stats["kl"])
+            del L
+        except Exception as error:  # an option this GPU or this torch does not support
+            row["error"] = f"{type(error).__name__}: {str(error)[:200]}"
+        out.append(row)
+        if dev.type == "cuda":
+            torch.cuda.empty_cache()
+    usable = [r for r in out if "error" not in r and r["adv_correlation"] >= 0.999 and r["greedy_agreement"] >= 0.998]
+    best = max(usable, key=lambda r: r["update_rows_s"])
+    best_extra = {k: best[k] for k in ("tf32", "amp") if k in best}
+
+    # compilation on the best precision: the first update pays for compiling, the second shows the gain
+    comp = {"name": best["name"] + "+compile", **best_extra, "compile": True}
+    try:
+        L = learner("compiled", compile=True, **best_extra)
+        L.actor.load_state_dict(weights[0])
+        L.critic.load_state_dict(weights[1])
+        _, first = _timed_update(L, d, dev)
+        _, steady = _timed_update(L, d, dev)
+        comp.update(update_rows_s=round(n / steady), update_s=round(steady, 2), first_update_s=round(first, 1))
+        del L
+    except Exception as error:
+        comp["error"] = f"{type(error).__name__}: {str(error)[:200]}"
+    out.append(comp)
+    use_compile = "error" not in comp and comp["update_rows_s"] > 1.1 * best["update_rows_s"]
+    chosen = comp if use_compile else best
+
+    # epochs: one more timing with a single epoch each gives the fixed cost and the cost per epoch
+    L = learner("one", actor_epochs=1, critic_epochs=1, compile=use_compile, **best_extra)
+    if use_compile:
+        _timed_update(L, d, dev)
+    _, t1 = _timed_update(L, d, dev)
+    del L
+    t4 = chosen["update_s"]
+    per_epoch = max(1e-9, (t4 - t1) / 3)          # seconds per (critic + actor) epoch on n rows
+    fixed = max(0.0, t1 - per_epoch)               # targets, transfers
+    rows_per_deal = n / games
+    # self-play in the chosen precision, at this batch size and at four times it: each lockstep
+    # step has a fixed cost that a larger batch spreads over more rows
+    sampler = lockstep.TorchSampler(qmodel.load(policy, dev), dev, 1.0, device.generator(dev, 1), enc,
+                                    amp=device.AMP[best_extra.get("amp", "off")])
+    native.set_offer_model(offer)
+    play = {}
+    for g in (games, 4 * games):
+        tm: dict = {}
+        lockstep.rollouts(_env(g, enc), sampler, g, RULESET, C.c_uint64(8), enc, timing=tm)
+        play[g] = tm["rows"] / tm["total"]
+    native.set_offer_model(None)
+    shape = []
+    for g in (games, 4 * games):
+        for epochs in (4, 2, 1):
+            rows = g * rows_per_deal
+            sec = rows / play[g] + (fixed + epochs * per_epoch) * rows / n
+            shape.append({"games_per_iter": g, "epochs": epochs, "iteration_s": round(sec, 1),
+                          "deals_per_hour": round(3600 / sec * g), "rows_trained_per_hour": round(3600 / sec * rows * epochs),
+                          "learner_share": round(1 - (rows / play[g]) / sec, 2)})
+    args = []
+    if best_extra.get("amp"):
+        args += ["--amp", best_extra["amp"]]
+    if best_extra.get("tf32") is False:
+        args += ["--tf32", "false"]
+    if use_compile:
+        args += ["--compile", "true"]
+    return {"precision": out, "recommended": {"name": chosen["name"], "args": " ".join(args),
+                                              "update_rows_s": chosen["update_rows_s"]},
+            "lockstep_rows_s_in_that_precision": {str(g): round(v) for g, v in play.items()},
+            "update_fixed_s": round(fixed, 2), "update_s_per_epoch": round(per_epoch, 2), "shape": shape}
+
+
+def run(policy: str, games: int, games_per_iter: int, offer_model: str | None, dev: torch.device,
+        do_sweep: bool = False) -> dict:
     device.setup(dev)
     torch.manual_seed(0)
     net = qmodel.load(policy, dev)
@@ -98,13 +231,8 @@ def run(policy: str, games: int, games_per_iter: int, offer_model: str | None, d
         cfg = vrpo_gpu.Config(init=policy, panel="", games_per_iter=games, warmup_max=0, actor_ramp=0,
                               eval_base=8, milestone_every=0)
         learner = vrpo_gpu.Learner(cfg, tmp, dev, resume=False)
-        if dev.type == "cuda":
-            torch.cuda.synchronize()
-        t = time.perf_counter()
-        row = learner.update(d)
-        if dev.type == "cuda":
-            torch.cuda.synchronize()
-        dt = time.perf_counter() - t
+        row, dt = _timed_update(learner, d, dev)
+        del learner
         out["update_rows_s"] = round(row["rows"] / dt)
         out["update_epochs"] = {"critic": cfg.critic_epochs, "actor": row["epochs"]}
         if dev.type == "cuda":
@@ -124,6 +252,9 @@ def run(policy: str, games: int, games_per_iter: int, offer_model: str | None, d
     out["iteration_s"] = {k: round(v, 1) for k, v in proj.items()}
     out["iterations_per_hour"] = {k: round(3600 / v) for k, v in proj.items()}
     out["deals_per_hour"] = {k: round(3600 / v * games_per_iter) for k, v in proj.items()}
+    if do_sweep:
+        with tempfile.TemporaryDirectory() as tmp:
+            out["sweep"] = sweep(policy, d, games, dev, tmp, om)
     return out
 
 
@@ -134,10 +265,11 @@ def main(argv=None) -> None:
     p.add_argument("--games-per-iter", type=int, default=16384)
     p.add_argument("--offer-model", default=None)
     p.add_argument("--device", default=None)
+    p.add_argument("--sweep", action="store_true", help="also measure precision, compilation, batch size, epochs")
     a = p.parse_args(argv)
     dev = device.pick(a.device)
     games = a.games or (16384 if dev.type == "cuda" else 1024)
-    print(json.dumps(run(a.policy, games, a.games_per_iter, a.offer_model, dev), indent=1), flush=True)
+    print(json.dumps(run(a.policy, games, a.games_per_iter, a.offer_model, dev, a.sweep), indent=1), flush=True)
 
 
 if __name__ == "__main__":

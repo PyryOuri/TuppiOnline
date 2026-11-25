@@ -196,13 +196,20 @@ class Replay:
 
 
 class _TorchChooser:
-    def __init__(self, net, device, encoder: int = 2, chunk: int = 65536):
+    def __init__(self, net, device, encoder: int = 2, chunk: int = 65536, amp=None):
         import torch
 
         from tuppi_ai.value import _unpack
         self.torch, self.unpack = torch, _unpack
         self.net, self.device, self.chunk = net, torch.device(device), chunk
         self.dim = native.feature_dim(encoder)
+        self.amp = amp   # autocast dtype of the forward pass, or None for float32
+
+    def _forward(self, x):
+        if self.amp is None:
+            return self.net(x)
+        with self.torch.autocast(self.device.type, dtype=self.amp):
+            return self.net(x).float()
 
     def _logits(self, feat, mask):
         """Masked logits for packed rows, in chunks, on the device."""
@@ -212,7 +219,7 @@ class _TorchChooser:
             f = torch.from_numpy(np.ascontiguousarray(feat[i:i + self.chunk])).to(self.device, non_blocking=True)
             m = torch.from_numpy(np.ascontiguousarray(mask[i:i + self.chunk])).to(self.device, non_blocking=True)
             legal = self.unpack(m, native.NUM_ACTIONS).bool()
-            out.append(self.net(self.unpack(f, self.dim)).masked_fill(~legal, -1e9))
+            out.append(self._forward(self.unpack(f, self.dim)).masked_fill(~legal, -1e9))
         return out[0] if len(out) == 1 else torch.cat(out)
 
 
@@ -229,8 +236,8 @@ class TorchSampler(_TorchChooser):
     log-probabilities, computed exactly as the learner recomputes them (vrpo `_logits`)."""
 
     def __init__(self, net, device, temperature: float = 1.0, generator=None, encoder: int = 2,
-                 chunk: int = 65536):
-        super().__init__(net, device, encoder, chunk)
+                 chunk: int = 65536, amp=None):
+        super().__init__(net, device, encoder, chunk, amp)
         self.temperature, self.generator = temperature, generator
 
     def __call__(self, feat, mask, idx, team):

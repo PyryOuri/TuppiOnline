@@ -47,6 +47,30 @@ A run directory holds `log.jsonl` (one row per iteration), `ckpt/` (two rotating
 `actors/` (milestones), `best_actor.pt` and `config.json`. On resume the saved configuration is
 used; options given on the command line override it.
 
+## Speed options
+
+The default run is plain float32 (with TF32 on CUDA), four critic and four actor epochs on
+16,384 deals: the configuration whose update is proven equal to `vrpo.py`. These options trade
+that for speed; `python -m tuppi_train.bench --sweep` measures each on the machine at hand.
+
+| Option | Effect | Cost |
+|---|---|---|
+| `--amp bf16` / `--amp fp16` | Network forward passes in half precision in the sampler and the learner; sums, softmax and losses stay float32; fp16 uses gradient scaling | The learner recomputes the behaviour log-probabilities in its own arithmetic (free: it needs that forward pass anyway), so PPO's ratio still starts at exactly 1. The trained policy is optimised in half precision but evaluated, and deployed, in float32; the sweep reports how often the greedy action differs |
+| `--compile true` | `torch.compile` on both networks | Tens of seconds of compilation at the start of every session |
+| `--tf32 false` | Exact float32 products on CUDA | Slower on recent GPUs |
+| `--games-per-iter N` | Larger batches spread the fixed cost of each lockstep step | More memory; fewer updates per hour |
+| `--actor-epochs K --critic-epochs K` | Fewer passes over each batch, more fresh deals per hour | Changes the algorithm: see below |
+
+The sweep recommends the fastest precision that leaves the advantages (correlation at least
+0.999 against float32) and the greedy action (at least 99.8% the same) essentially unchanged,
+and adds compilation only if it gains more than 10%. Run `python -m tuppi_train.check --amp <x>`
+on the device before training with a half-precision option.
+
+Epochs and batch size are a different kind of choice. With the network on a GPU, playing a deal
+costs far less than training on it, which argues for fewer epochs on more deals; but that is a
+claim about learning, not about speed, and the sweep only reports speed. Settle it by running
+two short runs from the same start and comparing their evaluations at equal training time.
+
 ## What a run does
 
 1. **Warm-up.** The actor starts as `vrpo4_final` and stays frozen while a new critic learns.
@@ -90,7 +114,7 @@ reference files, browser runtime), which is not part of this directory.
 |---|---|
 | `test_native.py` | The training library on 8 threads equals the serial loops and an unmodified build of the hosted sources, bit for bit. The lockstep engine fed a native rollout's actions reproduces its rows and rewards exactly. Lockstep duplicate evaluation equals `native.duplicate_eval`. A policy against itself scores exactly 0 in paired mode |
 | `test_torch.py` | PyTorch and C forward agree. Sampling follows the softmax (chi-square), never draws an illegal action, returns the right log-probabilities. Sampled lockstep rollouts and native rollouts agree statistically |
-| `test_learner.py` | Two updates here equal two updates of `ai/tuppi_ai/vrpo.py`: same losses, bit-identical actor and critic. Warm-up keeps the actor frozen |
+| `test_learner.py` | Two updates here equal two updates of `ai/tuppi_ai/vrpo.py`: same losses, bit-identical actor and critic. Warm-up keeps the actor frozen. Half precision trains, stays finite and resumes; recomputed log-probabilities equal the sampler's in float32 |
 | `test_checkpoint.py` | 2 iterations + resume + 1 equals 3 straight, bit for bit. Rows of lost iterations leave the log. A write cut off half-way, or a damaged newest state, falls back to the previous one |
 | `test_offer.py` | Offer recording and a small model build; the recorder reports the engine's actual answers |
 | `test_hosted.py` | Every hosted file matches `SOURCE.json`; nothing was added to the image's directories |

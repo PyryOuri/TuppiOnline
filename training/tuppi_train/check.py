@@ -32,15 +32,17 @@ from tuppi_ai import native
 from tuppi_ai.value import _unpack
 
 
-def run(dev: torch.device, games: int = 1024) -> dict:
+def run(dev: torch.device, games: int = 1024, amp: str = "off") -> dict:
     device.setup(dev)
     policy = str(MODELS / "vrpo1_actor_0504.pt")
     cfg = vrpo_gpu.Config(init=policy, panel="vrpo1_actor_0504.pt", games_per_iter=games, minibatch=10**9,
                           critic_width=128, critic_blocks=1, warmup_max=0, actor_ramp=0, eval_base=64,
                           milestone_every=0, max_kl=1e9)
+    from dataclasses import replace
+    dev_cfg = replace(cfg, amp=amp)   # the device runs the option under test, the CPU plain float32
     with tempfile.TemporaryDirectory() as tmp:
         torch.manual_seed(3)
-        on_dev = vrpo_gpu.Learner(cfg, tmp + "/a", dev, resume=False)
+        on_dev = vrpo_gpu.Learner(dev_cfg, tmp + "/a", dev, resume=False)
         on_cpu = vrpo_gpu.Learner(cfg, tmp + "/b", torch.device("cpu"), resume=False)
         on_cpu.critic.load_state_dict({k: v.cpu() for k, v in on_dev.critic.state_dict().items()})
         d = on_dev.collect()   # sampled on the device
@@ -60,7 +62,7 @@ def run(dev: torch.device, games: int = 1024) -> dict:
             return out
 
         order = np.random.default_rng(0).permutation(n)
-        same_device = float(np.abs(recompute(on_dev.actor, dev, order) - d["logp"]).max())
+        same_device = float(np.abs(recompute(lambda x: on_dev._run(on_dev.actor, x), dev, order) - d["logp"]).max())
         against_cpu = float(np.abs(recompute(qmodel.load(policy, "cpu"), "cpu", order) - d["logp"]).max())
         zero = on_dev.evaluate()["vrpo1_actor_0504"]
         start = [torch.cat([p.detach().cpu().flatten() for p in net.parameters()])
@@ -75,7 +77,7 @@ def run(dev: torch.device, games: int = 1024) -> dict:
 
         stats = ("critic_loss", "kl", "clip_frac", "adv_std", "mean_abs_delta", "entropy", "critic_mc_mse")
         out = {
-            "device": str(dev), "rows": n,
+            "device": str(dev), "amp": amp, "rows": n,
             "logp_recomputed_on_device_max_abs_diff": same_device,
             "logp_against_cpu_float32_max_abs_diff": against_cpu,
             "self_eval": zero,
@@ -85,7 +87,12 @@ def run(dev: torch.device, games: int = 1024) -> dict:
         }
     worst = max(abs(a - b) / (abs(b) + 1e-12) for a, b in out["stats_device_cpu"].values())
     out["stats_max_relative_diff"] = worst
-    out["ok"] = bool(same_device < 2e-3 and against_cpu < 5e-2 and zero == [0.0, 0.0] and worst < 0.03)
+    # Under mixed precision the learner recomputes the behaviour log-probabilities itself, so
+    # only gross disagreement is an error there; in float32 the sampler's figures are used as
+    # they are and must match closely.
+    limits = (2e-3, 5e-2, 0.03) if amp == "off" else (0.5, 0.5, 0.15)
+    out["ok"] = bool(same_device < limits[0] and against_cpu < limits[1] and zero == [0.0, 0.0]
+                     and worst < limits[2])
     return out
 
 
@@ -93,8 +100,9 @@ def main(argv=None) -> None:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     p.add_argument("--device", default=None)
     p.add_argument("--games", type=int, default=1024)
+    p.add_argument("--amp", default="off", choices=sorted(device.AMP))
     a = p.parse_args(argv)
-    result = run(device.pick(a.device), a.games)
+    result = run(device.pick(a.device), a.games, a.amp)
     print(json.dumps(result, indent=1), flush=True)
     if not result["ok"]:
         raise SystemExit("device check failed: do not train on this device before this is understood")

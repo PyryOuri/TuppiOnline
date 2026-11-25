@@ -98,3 +98,19 @@ def test_sampled_rollouts_look_like_native_ones(make_env, net1):
         assert kn.sum() > 0 and z_mean(kn, kl) < 4, (lo, kn.mean(), kl.mean())
     # log-probability of the chosen actions, summed per deal: sensitive to temperature and masking
     assert z_mean(per_deal(dn, dn["logp"].astype(float)), per_deal(dl, dl["logp"].astype(float))) < 4
+
+
+def test_half_precision_sampler_picks_nearly_the_same_actions(make_env, net1):
+    """The sampler's optional half-precision forward: legal actions only, and the greedy choice
+    agrees with float32 on almost every decision."""
+    games = 256
+    d = lockstep.rollouts(make_env(games), lockstep.RandomLegal(4), games, RULESET, rng(8))
+    legal = lockstep.unpack_mask(d["mask"])
+    full = lockstep.TorchGreedy(net1, "cpu")(d["feat"], d["mask"], None, None)[0]
+    for amp in (torch.bfloat16, torch.float16):
+        half = lockstep.TorchGreedy(net1, "cpu", amp=amp)(d["feat"], d["mask"], None, None)[0]
+        assert legal[np.arange(len(half)), half].all()
+        assert (half == full).mean() > 0.98
+        actions, logp = lockstep.TorchSampler(net1, "cpu", 1.0, torch.Generator().manual_seed(3), amp=amp)(
+            d["feat"], d["mask"], None, None)
+        assert legal[np.arange(len(actions)), actions].all() and np.isfinite(logp).all() and (logp <= 0).all()

@@ -7,6 +7,10 @@ import os
 import torch
 
 
+#: Config.amp -> the autocast dtype of the network forward passes (None = plain float32).
+AMP = {"off": None, "bf16": torch.bfloat16, "fp16": torch.float16}
+
+
 def pick(name: str | None = None) -> torch.device:
     name = name or os.environ.get("TUPPI_DEVICE")
     if name:
