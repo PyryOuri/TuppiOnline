@@ -112,6 +112,44 @@ Stopping the notebook's training cell (or `kill -TERM`, or Ctrl-C) lets the curr
 finish, saves, and exits: nothing is lost. A second stop kills it at once; the last 5-minute
 checkpoint is then what remains.
 
+## Suit symmetry (the result that matters so far)
+
+By the rules the two red suits are interchangeable and so are the two black ones: a red card
+shows RAMI and a black one NOLO, tricks compare ranks within the led suit, there are no trumps.
+A perfect policy therefore chooses the corresponding action in all four relabellings. The trained
+networks do not: VRPO4's greedy action differs in about 40% of unforced decisions when two
+same-coloured suits are swapped. `symmetry.Symmetric(net)` averages the network's logits over the
+four views. Paired duplicate on CPU, the averaged network against its plain self:
+
+| Network | Averaged against plain, per deal | Base deals |
+|---|---|---|
+| `vrpo4_final` | +0.00263 +/- 0.00026 | 8,192 |
+| `vrpo3_final` | +0.00196 +/- 0.00053 | 2,048 |
+| `vrpo1` | +0.00143 +/- 0.00051 | 2,048 |
+
+No training is involved, and the gain is about twice the step from VRPO3 to VRPO4.
+
+```sh
+python -m tuppi_train.evaluate --a sym:vrpo4_final.pt --b vrpo4_final.pt,vrpo3_final.pt --base 32768
+python -m tuppi_train.bake --name sym4 --hours 1 --offer-model <offer_model.pt>
+python -m tuppi_train.evaluate --a training/runs/sym4/best_student.pt --b vrpo4_final.pt,sym:vrpo4_final.pt
+```
+
+Two ways to use it:
+
+- **At play time**: four forward passes per decision instead of one. Negligible for the bots that
+  play the network directly, but it needs the suit relabelling (a fixed permutation of feature
+  columns and action ids, `symmetry.feature_perm` / `action_perm`) in the hosted bot code.
+- **Baked in** (`bake.py`, `colab/tuppi_symmetry.ipynb`): a plain network, the student, is trained
+  to give the averaged network's policy from one pass. Deals are played alternately by the teacher
+  and by the student, every unforced decision is labelled with the teacher's policy, and the
+  student sees each minibatch through a random suit view, so it is taught to be symmetric too.
+  The result is an ordinary network file. How much of the gain a network of the same size can
+  hold is what the run measures; the student can also be averaged itself (`sym:<student>`).
+
+`tests/test_symmetry.py` checks the permutations against the engine (relabel a full state, let the
+engine encode it, compare); `tests/test_bake.py` checks that the loop learns and resumes exactly.
+
 ## The label-based attempt (stage 1: the verdict run)
 
 Continuing VRPO from `vrpo4_final` did not improve on it (run1: 185 iterations, every evaluation
@@ -213,6 +251,7 @@ reference files, browser runtime), which is not part of this directory.
 | `test_offer.py` | Offer recording and a small model build; the recorder reports the engine's actual answers |
 | `test_improve.py` | Lockstep labels equal `native.branch_values` exactly (own play and solver tail, sharing on and off, sooli always and never accepted) and do not depend on the slots. Teacher fitting, held-out gain and the composite equal `selfplay.py` on the same data. The composite chooser plays its definition, ties included |
 | `test_verdict.py` | The verdict run at toy size: reaches a verdict, a rerun changes nothing, a lost step is redone, other settings are refused |
+| `test_symmetry.py`, `test_bake.py` | The suit relabelling maps equal the engine's encoding of relabelled states; the averaged network is invariant and equals relabel-encode-forward-map-back; baking learns, resumes exactly and keeps its best |
 | `test_hosted.py` | Every hosted file matches `SOURCE.json`; nothing was added to the image's directories |
 
 Not covered by tests here: anything specific to CUDA (the container the suite was written in has
