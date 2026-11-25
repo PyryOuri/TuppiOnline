@@ -29,6 +29,11 @@ lib.tc_ls_observe.restype = C.c_int
 lib.tc_ls_step.argtypes = [C.c_void_p, C.c_void_p, C.c_void_p, C.c_int, C.c_void_p, C.c_int]
 lib.tc_ls_step.restype = C.c_int
 lib.tc_ls_summary.argtypes = [C.c_void_p, C.c_int, C.c_void_p]
+lib.tc_ls_copy_states.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_void_p]
+lib.tc_ls_classes.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_void_p, C.c_void_p]
+lib.tc_ls_branch_begin.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int] + [C.c_void_p] * 5
+lib.tc_ls_branch_begin.restype = C.c_int
+lib.tc_ls_resolve.argtypes = [C.c_void_p, C.c_int, C.c_int, C.c_void_p, C.c_void_p, C.c_void_p]
 
 lib.tc_train_init()
 

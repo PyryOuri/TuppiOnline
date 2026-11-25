@@ -112,6 +112,54 @@ Stopping the notebook's training cell (or `kill -TERM`, or Ctrl-C) lets the curr
 finish, saves, and exits: nothing is lost. A second stop kills it at once; the last 5-minute
 checkpoint is then what remains.
 
+## The label-based attempt (stage 1: the verdict run)
+
+Continuing VRPO from `vrpo4_final` did not improve on it (run1: 185 iterations, every evaluation
+against the parent slightly negative). The other method in this repository,
+`ai/tuppi_ai/selfplay.py`, learns from exact counterfactual labels: at a recorded decision every
+legal action is played out to the end of the deal from the same full state. On the Mac it was
+limited by CPU time for the play-outs; here they run in lockstep with the policy on the GPU.
+
+| Piece | File |
+|---|---|
+| Engine functions: copy states, load every (state, action) into play-out slots with one seed per state, solver tail | `native/tuppi_train.c` (`tc_ls_copy_states`, `tc_ls_branch_begin`, `tc_ls_resolve`) |
+| Recording during self-play and labelling | `tuppi_train/labels.py` |
+| Teacher fitting, held-out gain, the composite and its chooser | `tuppi_train/improve.py` |
+| Stage 1 as one resumable command | `tuppi_train/verdict.py`, `colab/tuppi_improve.ipynb` |
+
+Two label kinds are produced from the same states and seeds: `q0`, the policy's own play to the
+end, and `q6`, the same with the deal finished by the perfect-information solver once 6 tricks
+remain (what Heidi's search does). They are different teachers: on VRPO4 their best action agrees
+in about 80% of decisions.
+
+```sh
+python -m tuppi_train.check --labels --amp fp16      # the device reproduces the CPU's labels
+python -m tuppi_train.verdict --out <dir> --hours 1.5 --offer-model <offer_model.pt>
+```
+
+Run the second command until it prints `VERDICT`. It fits teachers of the policy's own shape
+(started from its weights, at four data sizes: the learning curve) and a larger one from scratch,
+chooses correction margins for showing and for card play on held-out clean states, and plays each
+composite against the policy; the best one is confirmed on fresh deals, in full and with
+corrections only while more than 6 tricks remain. The identical pipeline runs on `vrpo3_final`
+as a positive control. `GO` names the label kind to continue with; `STOP` means the method lifts
+the control but not VRPO4; `INCONCLUSIVE` means it does not lift the control either.
+
+Choices that differ from `selfplay.py`, and why:
+
+- **No label sharing.** One play-out for a run of rank-equivalent cards is documented as giving
+  identical labels 95.7% of the time; with VRPO4 it is about 73%. `native.set_branch_share` stays
+  off.
+- **One seed per state.** All play-outs of a state share an explicitly set random stream, so
+  labels are paired and do not depend on what the slots held before (tests check both).
+- **Exploration** is at most one random move per deal (probability 0.01 per decision), and every
+  state records whether one preceded it; gains are measured on the clean states.
+- **Judged by play.** A composite is played directly in lockstep games against the policy; the
+  held-out one-step gain is used only to choose margins.
+- **Ties** in every greedy choice go to the lowest action id on float32 values, as in the C code.
+
+The improvement loop (stage 2) is not written yet; it follows only if the verdict is `GO`.
+
 ## Judging a result
 
 `best_actor.pt` was picked on the monitoring deals, so its monitoring score flatters it. Confirm
@@ -145,6 +193,8 @@ reference files, browser runtime), which is not part of this directory.
 | `test_learner.py` | Two updates here equal two updates of `ai/tuppi_ai/vrpo.py`: same losses, bit-identical actor and critic. Warm-up keeps the actor frozen. Half precision trains, stays finite and resumes; recomputed log-probabilities equal the sampler's in float32 |
 | `test_checkpoint.py` | 2 iterations + resume + 1 equals 3 straight, bit for bit. Rows of lost iterations leave the log. A write cut off half-way, or a damaged newest state, falls back to the previous one |
 | `test_offer.py` | Offer recording and a small model build; the recorder reports the engine's actual answers |
+| `test_improve.py` | Lockstep labels equal `native.branch_values` exactly (own play and solver tail, sharing on and off, sooli always and never accepted) and do not depend on the slots. Teacher fitting, held-out gain and the composite equal `selfplay.py` on the same data. The composite chooser plays its definition, ties included |
+| `test_verdict.py` | The verdict run at toy size: reaches a verdict, a rerun changes nothing, a lost step is redone, other settings are refused |
 | `test_hosted.py` | Every hosted file matches `SOURCE.json`; nothing was added to the image's directories |
 
 Not covered by tests here: anything specific to CUDA (the container the suite was written in has

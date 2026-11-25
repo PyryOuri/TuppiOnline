@@ -96,12 +96,58 @@ def run(dev: torch.device, games: int = 1024, amp: str = "off") -> dict:
     return out
 
 
+def labels_check(dev: torch.device, amp: str = "off", games: int = 512) -> dict:
+    """Counterfactual labels computed with the policy on the device against the same labels with
+    the exact CPU forward: the same states, seeds and engine, so every difference comes from the
+    forward pass (precision, ties). Greedy play-outs amplify a changed card into a changed label,
+    so a few per cent may differ; many more would mean the device plays another policy."""
+    from . import labels
+    from tuppi_ai.best import EQUITY
+    from tuppi_ai.equity import Equity
+    device.setup(dev)
+    native.set_offer_model(None)
+    native.set_branch_share(False)
+    table = Equity.load(EQUITY).table
+
+    def env(n):
+        e = native.Env(n, 1, table, single_deal=True, encoder=2)
+        e.set_sooli(0, False, False, 0.0)
+        return e
+
+    cpu_net = qmodel.load(MODELS / "vrpo1_actor_0504.pt", "cpu")
+    exact = lockstep.NativeGreedy(native.Mlp(cpu_net))
+    on_dev = lockstep.TorchGreedy(qmodel.load(MODELS / "vrpo1_actor_0504.pt", dev), dev, amp=device.AMP[amp])
+    d = labels.collect(env(games), exact, games, C.c_uint64(5), p_record=0.08, p_explore=0.01, seed=1)
+    seeds = labels.state_seeds(len(d["states"]), 2)
+    counts = np.unpackbits(d["mask"], axis=1).sum(1)
+    out = {"device": str(dev), "amp": amp, "states": int(len(d["states"]))}
+    for name, dd in (("own_play", 0), ("solver_tail", 6)):
+        want = labels.branch_labels(env(40000), d["states"], exact, seeds, dd, counts=counts)
+        got = labels.branch_labels(env(40000), d["states"], on_dev, seeds, dd, counts=counts)
+        valid = want[0] != labels.PAD
+        same = (want[1] == got[1])[valid]
+        best_w = np.where(valid, want[1].astype(np.float32), -9).argmax(1)
+        best_g = np.where(valid, got[1].astype(np.float32), -9).argmax(1)
+        out[name] = {"ids_equal": bool(np.array_equal(want[0], got[0])), "labels_identical": float(same.mean()),
+                     "best_action_identical": float((best_w == best_g).mean()),
+                     "mean_abs_diff": float(np.abs(want[1].astype(np.float32) - got[1].astype(np.float32))[valid].mean())}
+    out["ok"] = all(out[k]["ids_equal"] and out[k]["labels_identical"] > 0.95 for k in ("own_play", "solver_tail"))
+    return out
+
+
 def main(argv=None) -> None:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     p.add_argument("--device", default=None)
     p.add_argument("--games", type=int, default=1024)
     p.add_argument("--amp", default="off", choices=sorted(device.AMP))
+    p.add_argument("--labels", action="store_true", help="check the label path instead of the update")
     a = p.parse_args(argv)
+    if a.labels:
+        result = labels_check(device.pick(a.device), a.amp)
+        print(json.dumps(result, indent=1), flush=True)
+        if not result["ok"]:
+            raise SystemExit("label check failed: the device does not reproduce the CPU's labels")
+        return
     result = run(device.pick(a.device), a.games, a.amp)
     print(json.dumps(result, indent=1), flush=True)
     if not result["ok"]:

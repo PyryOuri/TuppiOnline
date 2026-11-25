@@ -223,12 +223,23 @@ class _TorchChooser:
         return out[0] if len(out) == 1 else torch.cat(out)
 
 
+def greedy(values):
+    """argmax over the last dimension of a float tensor (illegal = -inf or very negative), on
+    float32 values, ties to the lowest index: the C code's choice, on every device and whatever
+    precision the forward pass used."""
+    import torch
+    values = values.float()
+    best = values.max(1, keepdim=True).values
+    ids = torch.arange(values.shape[1], device=values.device)
+    return torch.where(values == best, ids, values.shape[1]).min(1).values
+
+
 class TorchGreedy(_TorchChooser):
     """Greedy play from a torch network on any device."""
 
     def __call__(self, feat, mask, idx, team):
         with self.torch.no_grad():
-            return self._logits(feat, mask).argmax(1).to(self.torch.uint8).cpu().numpy(), None
+            return greedy(self._logits(feat, mask)).to(self.torch.uint8).cpu().numpy(), None
 
 
 class TorchSampler(_TorchChooser):

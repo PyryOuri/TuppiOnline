@@ -246,3 +246,96 @@ void tc_ls_summary(const TcEnv *e, int n, int32_t *out) {
     out[3] += d->winner_team == 0;
   }
 }
+
+// ------------------------------------------------------------ branch labels
+// Counterfactual labels (ai/tuppi_ai/selfplay.py; tc_branch_values) with the
+// network outside the engine: record full states during lockstep self-play,
+// load every (state, legal action) into play-out slots, play them out with the
+// lockstep calls, read each action's result from total[].
+
+// The full states of games idx[0..k), before their next action.
+void tc_ls_copy_states(const TcEnv *e, const int32_t *idx, int k, TcDeal *out) {
+  for (int r = 0; r < k; r++) out[r] = e->g[idx[r]].d;
+}
+
+// Position class (tc_record_class) and cards played so far, per game.
+void tc_ls_classes(const TcEnv *e, const int32_t *idx, int k, int8_t *cls, uint8_t *n_played) {
+  for (int r = 0; r < k; r++) {
+    const TcDeal *d = &e->g[idx[r]].d;
+    if (cls) cls[r] = (int8_t)record_class(d);
+    if (n_played) n_played[r] = d->n_played;
+  }
+}
+
+// As the first half of tc_branch_values: for each state its legal network
+// actions (at most max_k) in actions/k, and one play-out game per action (one
+// per run of rank-equivalent cards while tc_set_branch_share is on) with the
+// action applied; slot[s * max_k + j] is the game of state s's j-th action. A
+// deal the action ends is added to total[] at once; total[0..games) must be
+// zero on entry. Every game of state s gets the stream seeds[s], so the
+// heuristics' draws are common to its actions and nothing depends on what the
+// slots held before. Returns the number of games, or -2 if e is too small.
+int tc_ls_branch_begin(TcEnv *e, const TcDeal *states, int n_states, int max_k, const uint64_t *seeds,
+                       int32_t *actions, int32_t *k, int32_t *slot, double *total) {
+  int total_games = 0, legal[TC_NUM_ACTIONS_V2];
+  for (int s = 0; s < n_states; s++) {
+    int nl = tc_legal(&states[s], legal), kk = 0;
+    for (int j = 0; j < nl && kk < max_k; j++) if (legal[j] < TC_NUM_ACTIONS) actions[s * max_k + kk++] = legal[j];
+    k[s] = kk;
+    for (int j = 0; j < kk; j++) total_games += share_rep(&states[s], actions[s * max_k + j]) == actions[s * max_k + j];
+  }
+  if (total_games > e->n) return -2;
+  int g = 0;
+  for (int s = 0; s < n_states; s++)
+    for (int j = 0; j < k[s]; j++) {
+      int a = actions[s * max_k + j];
+      if (share_rep(&states[s], a) != a) continue;
+      slot[s * max_k + j] = g;
+      e->g[g].d = states[s];
+      e->g[g].live = 1;
+      e->g[g].rng = seeds[s] | 1;
+      tc_apply(&e->g[g].d, a);
+      record_if_done(e, g, total);
+      g++;
+    }
+  for (int s = 0; s < n_states; s++)  // copies point at their representative's play-out
+    for (int j = 0; j < k[s]; j++) {
+      int a = actions[s * max_k + j], rep = share_rep(&states[s], a);
+      if (rep == a) continue;
+      for (int r = 0; r < k[s]; r++) if (actions[s * max_k + r] == rep) { slot[s * max_k + j] = slot[s * max_k + r]; break; }
+    }
+  return total_games;
+}
+
+// What play_out does before each network step, for games 0..n-1: sooli phases
+// by the heuristics (each game's own stream), then, if dd_left > 0, every game
+// in trick play with at most dd_left tricks left (plus tc_set_dd_extra_nolo in
+// NOLO) is finished with its perfect-information result. Finished deals are
+// added to total[]. Call it before tc_ls_observe in a play-out with a solver
+// tail. seconds (may be NULL): [0] += sooli time, [1] += solver time.
+void tc_ls_resolve(TcEnv *e, int n, int dd_left, double *total, int32_t *scratch, double *seconds) {
+  const double t0 = omp_get_wtime();
+  int ns = 0;
+  for (int i = 0; i < n; i++)
+    if (e->g[i].d.phase >= TC_PH_SOOLI_OFFER) scratch[ns++] = i;
+  if (ns) TC_PARALLEL_BEGIN((size_t)ns, j) resolve_sooli(e, scratch[j], &e->g[scratch[j]].rng, total); TC_PARALLEL_END
+  const double t1 = omp_get_wtime();
+  if (dd_left > 0) {
+    int todo = 0;
+    for (int i = 0; i < n; i++) {
+      const TcDeal *d = &e->g[i].d;
+      if (d->phase == TC_PH_PLAY && 13 - (d->n_played >> 2) <= dd_left + (d->contract == TC_NOLO ? dd_extra_nolo : 0))
+        scratch[todo++] = i;
+    }
+    if (todo)
+      TC_PARALLEL_BEGIN((size_t)(todo + 31) / 32, c)
+        const int lo = (int)c * 32, hi = lo + 32 < todo ? lo + 32 : todo;
+        for (int j = lo; j < hi; j++) {
+          TcDeal *d = &e->g[scratch[j]].d;
+          tc_finish_with_tricks(d, tc_dd_team0_tricks(d));
+          record_if_done(e, scratch[j], total);
+        }
+      TC_PARALLEL_END
+  }
+  if (seconds) { seconds[0] += t1 - t0; seconds[1] += omp_get_wtime() - t1; }
+}

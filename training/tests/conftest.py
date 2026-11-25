@@ -65,6 +65,9 @@ def native_defaults():
     native.set_parallel(True)
     native.set_offer_model(None)
     native.set_rollout_chunk(32)
+    native.set_branch_share(False)
+    native.set_showing_fix(False)
+    native.lib.tc_set_dd_extra_nolo(0)
     tn.set_threads(max(1, len(__import__("os").sched_getaffinity(0))))
 
 
