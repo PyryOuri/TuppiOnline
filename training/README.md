@@ -137,13 +137,31 @@ python -m tuppi_train.check --labels --amp fp16      # the device reproduces the
 python -m tuppi_train.verdict --out <dir> --hours 1.5 --offer-model <offer_model.pt>
 ```
 
-Run the second command until it prints `VERDICT`. It fits teachers of the policy's own shape
-(started from its weights, at four data sizes: the learning curve) and a larger one from scratch,
-chooses correction margins for showing and for card play on held-out clean states, and plays each
-composite against the policy; the best one is confirmed on fresh deals, in full and with
-corrections only while more than 6 tricks remain. The identical pipeline runs on `vrpo3_final`
-as a positive control. `GO` names the label kind to continue with; `STOP` means the method lifts
-the control but not VRPO4; `INCONCLUSIVE` means it does not lift the control either.
+Run the second command until it prints `VERDICT`. For each label kind it produces two sorts of
+candidate:
+
+- **composites**: a teacher Q network (of the policy's own shape, started from its weights, and a
+  larger one from scratch) corrects the policy where it prefers another action by more than a
+  margin; three cautious margin settings per teacher;
+- **directly improved networks**: a copy of the policy trained by small steps to maximise the
+  expected label of its own choice (`improve.fit_policy`), kept at six step counts. No teacher,
+  no argmax over noisy estimates.
+
+Every candidate plays the policy on the same 16,384 base deals; the best is confirmed on 32,768
+fresh ones, in full and with changes only while more than 6 tricks remain. The identical pipeline
+runs on `vrpo3_final` as a positive control. `GO` names the candidate and label kind to continue
+with; `STOP` means the method lifts the control but not VRPO4; `INCONCLUSIVE` means it does not
+lift the control either.
+
+**Why candidates are chosen by play and not by held-out gain.** `selfplay.py` gates on the
+held-out one-step gain, which worked when policies were weak. For a strong policy the gains
+that matter are about 0.00001 per decision (+0.0005 per deal over about 41 decisions); a few
+hundred thousand held-out states have a standard error several times that, so such a gate
+rejects real improvements and noise alike. A CPU trial on VRPO1 with 142,000 decisions showed
+exactly this: every held-out gain within noise, and teachers' composites at small margins
+clearly worse in play (-0.005 per deal), because an argmax over noisy estimates changes many
+decisions for the worse. Play resolves about +/-0.0002 per deal on 16,384 base deals. The
+held-out figures are still printed for every candidate.
 
 Choices that differ from `selfplay.py`, and why:
 

@@ -306,14 +306,20 @@ def greedy_gain(policy, candidate, H: dict, label: str = "q", clean_only: bool =
 
 
 def fit_policy(policy, D: dict, H: dict, label: str = "q", steps: int = 4000, batch: int = 16384, lr: float = 2e-5,
-               temperature: float = 1.0, amp=None, check_every: int = 250, patience: int = 6) -> tuple:
+               temperature: float = 1.0, amp=None, check_every: int = 250, patience: int = 6,
+               snapshots: tuple = ()) -> tuple:
     """A copy of `policy` trained to choose better on the labels directly: it maximises the
     expected label of its own (softmax) choice, E_s sum_a pi(a | obs_s) * label(s, a), by small
     steps from the policy's weights. With exact labels this is the gradient of the one-step
     improvement itself; nothing is maximised over noisy estimates, so there is no winner's curse
     as with a teacher's argmax. The copy is left at the weights with the best held-out greedy
     gain over the policy (clean states), checked every `check_every` steps; if no check is
-    positive it is the policy unchanged. Returns (network, info)."""
+    positive it is the policy unchanged. Returns (network, info).
+
+    snapshots: step counts at which the weights are kept as they are (info["snapshots"]: step ->
+    state dict on the CPU). With snapshots there is no early stopping. Held-out gain cannot see
+    improvements of the size that matter for a strong policy (it would need millions of held-out
+    states), so candidates at several step counts are better chosen by playing them."""
     dev = D["feat"].device
     dim = native.feature_dim(policy.encoder)
     net = qmodel.QNet(**policy.config)
@@ -323,7 +329,7 @@ def fit_policy(policy, D: dict, H: dict, label: str = "q", steps: int = 4000, ba
     scaler = torch.amp.GradScaler(dev.type, enabled=amp is torch.float16)
     n = len(D["feat"])
     best = (0.0, 0, {k: v.detach().clone() for k, v in net.state_dict().items()}, None)
-    history, stale, t0 = [[0, 0.0, 0.0]], 0, time.perf_counter()
+    history, stale, t0, kept = [[0, 0.0, 0.0]], 0, time.perf_counter(), {}
     for step in range(steps):
         idx = torch.randint(0, n, (batch,), device=dev)
         x, mask, tgt, w = _batch(D, idx, dim, label)
@@ -342,6 +348,8 @@ def fit_policy(policy, D: dict, H: dict, label: str = "q", steps: int = 4000, ba
             loss.backward()
             torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
             opt.step()
+        if step + 1 in snapshots:
+            kept[step + 1] = {k: v.detach().cpu().clone() for k, v in net.state_dict().items()}
         if (step + 1) % check_every == 0:
             g = greedy_gain(policy, net, H, label, True, amp=amp)
             history.append([step + 1, g["gain"], g["z"]])
@@ -349,11 +357,11 @@ def fit_policy(policy, D: dict, H: dict, label: str = "q", steps: int = 4000, ba
                 best, stale = (g["gain"], step + 1, {k: v.detach().clone() for k, v in net.state_dict().items()}, g), 0
             else:
                 stale += 1
-                if stale >= patience:
+                if stale >= patience and not snapshots:
                     break
     net.load_state_dict(best[2])
     net.eval()
-    return net, {"best_step": best[1], "steps": history[-1][0], "history": history,
+    return net, {"best_step": best[1], "steps": step + 1 if steps else 0, "history": history, "snapshots": kept,
                  "seconds": round(time.perf_counter() - t0, 1)}
 
 

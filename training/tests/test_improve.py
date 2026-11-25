@@ -280,6 +280,13 @@ def test_direct_improvement_follows_the_labels(sp_data, net1):
     early = improve.greedy_gain(net1, better, D, min_tricks_left=6)
     assert 0 < early["changed"] < g["changed"]
     assert not torch.equal(better.state_dict()["out.weight"], net1.state_dict()["out.weight"])
+    # snapshots: the weights at the given step counts, no early stopping
+    torch.manual_seed(3)
+    _, snap = improve.fit_policy(net1, D, D, steps=60, batch=1024, lr=1e-4, check_every=30, patience=1,
+                                 snapshots=(30, 60))
+    assert set(snap["snapshots"]) == {30, 60} and snap["steps"] == 60
+    assert not torch.equal(snap["snapshots"][30]["out.weight"], snap["snapshots"][60]["out.weight"])
+    assert not torch.equal(snap["snapshots"][30]["out.weight"], net1.state_dict()["out.weight"])
     assert torch.equal(net1.state_dict()["out.weight"], qm_load_v1()["out.weight"])   # the policy itself is untouched
 
 
