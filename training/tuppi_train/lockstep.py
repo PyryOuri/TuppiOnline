@@ -215,6 +215,8 @@ class _TorchChooser:
         """Masked logits for packed rows, in chunks, on the device."""
         torch = self.torch
         out = []
+        if len(feat) == 0:
+            return torch.zeros((0, native.NUM_ACTIONS), device=self.device)
         for i in range(0, len(feat), self.chunk):
             f = torch.from_numpy(np.ascontiguousarray(feat[i:i + self.chunk])).to(self.device, non_blocking=True)
             m = torch.from_numpy(np.ascontiguousarray(mask[i:i + self.chunk])).to(self.device, non_blocking=True)

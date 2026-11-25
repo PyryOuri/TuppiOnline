@@ -260,3 +260,55 @@ def test_composite_chooser_plays_the_composite(make_env, net1, sp_data):
         lockstep.rollouts(env, choose, games, RULESET, rng(3))
         assert chooser.rows > 4000 and chooser.changed > 0
     assert seen["diff"] > 0
+
+
+def test_direct_improvement_follows_the_labels(sp_data, net1):
+    """fit_policy raises the expected label of the net's own choice: fitted and judged on the
+    same rows its greedy gain becomes positive; with no steps it is the policy unchanged; a
+    restricted gain ignores the last tricks."""
+    data, _ = sp_data
+    D = improve.to_device(data, "cpu")
+    same, info0 = improve.fit_policy(net1, D, D, steps=0)
+    assert info0["best_step"] == 0
+    assert all(torch.equal(v, net1.state_dict()[k]) for k, v in same.state_dict().items())
+    assert improve.greedy_gain(net1, same, D)["changed"] == 0
+    torch.manual_seed(3)
+    better, info = improve.fit_policy(net1, D, D, steps=120, batch=1024, lr=1e-4, check_every=30, patience=10)
+    g = improve.greedy_gain(net1, better, D)
+    assert info["best_step"] > 0 and g["gain"] > 0 and g["z"] > 2 and 0 < g["changed"] < 0.5
+    assert g["states"] == int(D["clean"].sum())
+    early = improve.greedy_gain(net1, better, D, min_tricks_left=6)
+    assert 0 < early["changed"] < g["changed"]
+    assert not torch.equal(better.state_dict()["out.weight"], net1.state_dict()["out.weight"])
+    assert torch.equal(net1.state_dict()["out.weight"], qm_load_v1()["out.weight"])   # the policy itself is untouched
+
+
+def qm_load_v1():
+    return torch.load(V1, weights_only=False)["state"]
+
+
+def test_mixed_chooser(make_env, net1, mlp3):
+    """Mixed plays the first chooser, except in the last tricks, where it plays the second."""
+    games = 96
+    env = make_env(games)
+    a, b = lockstep.TorchGreedy(net1, "cpu"), lockstep.NativeGreedy(mlp3)
+    mixed = improve.Mixed(a, b, env, 6)
+    seen = {"tail": 0, "other": 0}
+
+    def choose(feat, mask, idx, team):
+        actions, _ = mixed(feat, mask, idx, team)
+        cls = np.zeros(len(idx), np.int8)
+        improve.lib.tc_ls_classes(env._h, np.ascontiguousarray(idx, np.int32).ctypes.data, len(idx), cls.ctypes.data, None)
+        tail = improve.tail_rows(torch.from_numpy(cls), 6).numpy()
+        assert np.array_equal(actions[tail], b(feat[tail], mask[tail], idx[tail], None)[0])
+        assert np.array_equal(actions[~tail], a(feat[~tail], mask[~tail], idx[~tail], None)[0])
+        seen["tail"] += int(tail.sum())
+        seen["other"] += int((~tail).sum())
+        return actions, None
+
+    lockstep.rollouts(env, choose, games, RULESET, rng(2))
+    assert seen["tail"] > 1000 and seen["other"] > 1000 and 0 < mixed.changed < mixed.rows
+    everywhere = improve.Mixed(a, b, env, 0)
+    d1 = lockstep.rollouts(make_env(games), everywhere, games, RULESET, rng(2))
+    d2 = lockstep.rollouts(make_env(games), a, games, RULESET, rng(2))
+    assert np.array_equal(d1["action"], d2["action"])

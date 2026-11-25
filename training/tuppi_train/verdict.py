@@ -13,10 +13,14 @@ which is known to be improvable, since VRPO4 exists):
              shape started from its weights (and, for the main network, at
              four data sizes: the learning curve), one larger from scratch;
 3. margins   per teacher, the correction thresholds for showing and for card
-             play with the best held-out one-step gain on clean states;
-4. select    each teacher's composite ("policy corrected by teacher") plays the
-             policy itself; the best composite of the main network is then
-5. confirm   played on fresh deals: in full, restricted to decisions with more
+             play with the best held-out one-step gain on clean states. A
+             phase is corrected only if that gain is significantly positive;
+4. direct    without a teacher: a copy of the policy trained by small steps
+             to choose better on the labels themselves (improve.fit_policy);
+5. select    every candidate (a teacher's composite, or a directly improved
+             network) plays the policy itself; the best one of the main
+             network is then
+6. confirm   played on fresh deals: in full, restricted to decisions with more
              than 6 tricks to go, and against the other shipped networks.
 
 The verdict is GO (with the label kind to use), STOP (the method lifts the
@@ -43,9 +47,10 @@ from tuppi_ai import model as qmodel
 from tuppi_ai import native
 
 KINDS = {"q0": 0, "q6": 6}                       # label column -> solver tail (tricks)
-SHOW_MARGINS = (0.003, 0.006, 0.012, 0.03)       # equity; Heidi keeps a bid unless search beats it by 0.03
-PLAY_MARGINS = (0.001, 0.003, 0.006, 0.012)      # ... and a card unless by 0.003
+SHOW_MARGINS = (0.006, 0.012, 0.03, 0.06, 0.12)  # equity; Heidi keeps a bid unless search beats it by 0.03
+PLAY_MARGINS = (0.003, 0.006, 0.012, 0.03, 0.06)  # ... and a card unless by 0.003
 OFF = 1e6                                         # a margin no teacher overcomes: that phase is left alone
+GATE_Z = 2.0                                      # a correction must gain this many standard errors (selfplay.py)
 RULESET = 3
 
 
@@ -93,7 +98,7 @@ class Run:
         self.table = Equity.load(EQUITY).table
         # process-wide engine settings of this run, set and recorded on every start
         self.settings = {"offer_model": bool(a.offer_model), "branch_share": False, "dd_extra_nolo": 0,
-                         "ruleset": RULESET, "amp": a.amp}
+                         "ruleset": RULESET, "amp": a.amp, "gate_z": a.gate_z}
         self.offer = offer.load_native(a.offer_model) if a.offer_model else None
         native.set_offer_model(self.offer)
         native.set_branch_share(False)
@@ -225,12 +230,17 @@ class Run:
             gains["show"][str(m)] = improve.heldout_gain(policy, teacher, H, m, OFF, kind, True, amp=self.amp)
         for m in PLAY_MARGINS:
             gains["play"][str(m)] = improve.heldout_gain(policy, teacher, H, OFF, m, kind, True, amp=self.amp)
-        best = {ph: max(g, key=lambda m: g[m]["gain"]) for ph, g in gains.items()}
-        ms, mp = float(best["show"]), float(best["play"])
+        # ... and corrected only if its best margin gains significantly on held-out states. A
+        # teacher's argmax over noisy estimates otherwise changes many decisions for the worse.
+        chosen = {}
+        for phase, g in gains.items():
+            ok = [m for m in g if g[m]["z"] >= self.a.gate_z]
+            chosen[phase] = float(max(ok, key=lambda m: g[m]["gain"])) if ok else OFF
+        ms, mp = chosen["show"], chosen["play"]
         info = {"kind": kind, "arch": arch, "train_states": int(len(T["feat"])), "held_out_states": int(len(H["feat"])),
                 "shape": [teacher.config["width"], teacher.config["blocks"]],
                 **{k: fit[k] for k in ("adv_r2", "best_step", "steps", "seconds")},
-                "margins": [ms, mp], "gains": gains,
+                "margins": [ms, mp], "usable": ms != OFF or mp != OFF, "gains": gains,
                 "gain": improve.heldout_gain(policy, teacher, H, ms, mp, kind, True, amp=self.amp),
                 "gain_early": improve.heldout_gain(policy, teacher, H, ms, mp, kind, True, 6, amp=self.amp)}
         if kind != "q0":   # the solver-tail teacher judged by the policy's own continuations
@@ -243,41 +253,73 @@ class Run:
         self.results.setdefault("teachers", {})[key] = info
         self.save()
         g = info["gain"]
+        show = lambda m: "off" if m == OFF else m   # noqa: E731
         self.log(f"teacher {key}: R2 {fit['adv_r2']:.4f} at step {fit['best_step']} ({fit['seconds']:.0f}s); margins "
-                 f"show {ms} play {mp}; held-out gain {g['gain']:+.6f} +/- {g['se']:.6f} per decision, "
+                 f"show {show(ms)} play {show(mp)}; held-out gain {g['gain']:+.6f} +/- {g['se']:.6f} per decision, "
                  f"changes {g['changed']:.2%} of decisions, RAMI bids {g['rami_old']:.3f} -> {g['rami_new']:.3f}")
 
+    # ---------------------------------------------------------------- direct
+    def policy_path(self, key: str) -> Path:
+        return self.out / "policies" / f"{key}.pt"
+
+    def fit_direct(self, key: str, policy, D: dict, H: dict, kind: str) -> None:
+        a = self.a
+        torch.manual_seed(stable_seed(a.seed, key))
+        net, fit = improve.fit_policy(policy, D, H, kind, steps=a.direct_steps, batch=min(a.batch, len(D["feat"])),
+                                      lr=a.direct_lr, amp=self.amp, check_every=a.check_every, patience=a.patience)
+        info = {"kind": kind, "train_states": int(len(D["feat"])), "held_out_states": int(len(H["feat"])),
+                "usable": fit["best_step"] > 0, **{k: fit[k] for k in ("best_step", "steps", "seconds", "history")},
+                "gain": improve.greedy_gain(policy, net, H, kind, True, amp=self.amp),
+                "gain_early": improve.greedy_gain(policy, net, H, kind, True, 6, amp=self.amp)}
+        if kind != "q0":
+            info["gain_on_q0"] = improve.greedy_gain(policy, net, H, "q0", True, amp=self.amp)
+        path = self.policy_path(key)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_name(path.name + ".tmp")
+        qmodel.save(net, tmp, verdict=info)
+        os.replace(tmp, path)
+        self.results.setdefault("policies", {})[key] = info
+        self.save()
+        g = info["gain"]
+        self.log(f"direct {key}: best at step {fit['best_step']} of {fit['steps']} ({fit['seconds']:.0f}s); held-out gain "
+                 f"{g['gain']:+.6f} +/- {g['se']:.6f} per decision, changes {g['changed']:.2%} of decisions, "
+                 f"RAMI bids {g['rami_old']:.3f} -> {g['rami_new']:.3f}")
+
     # ------------------------------------------------------------- matches
-    def match(self, key: str, policy_name: str, teacher_key: str | None, opponent: str, base: int, seed: int,
-              margins=(0.0, 0.0), min_left: int = 0) -> dict:
-        """Paired duplicate over `base` base deals: the composite of `policy_name` and the teacher
-        (or the plain policy if teacher_key is None) against `opponent`. Cached under `key`."""
+    def side(self, spec: dict, env):
+        """The chooser of a candidate: {"type": "plain", "model"}, {"type": "composite", "policy",
+        "teacher", "margins", "min_left"} or {"type": "direct", "policy", "net", "min_left"}."""
+        if spec["type"] == "plain":
+            return self.greedy(self.net(spec["model"]))
+        policy = self.net(spec["policy"])
+        if spec["type"] == "composite":
+            ms, mp = spec["margins"]
+            return improve.Composite(policy, self.load_teacher(spec["teacher"]), self.dev, env, ms, mp,
+                                     spec.get("min_left", 0), self.amp)
+        new = qmodel.load(self.policy_path(spec["net"]), self.dev)
+        return improve.Mixed(self.greedy(new), self.greedy(policy), env, spec.get("min_left", 0))
+
+    def match(self, key: str, spec: dict, opponent: str, base: int, seed: int) -> dict:
+        """Paired duplicate over `base` base deals: the candidate against `opponent`. Cached under `key`."""
         done = self.results.setdefault("matches", {})
         if key in done:
             return done[key]
-        policy, opp = self.net(policy_name), self.net(opponent)
+        opp = self.net(opponent)
         chunk = min(self.a.eval_chunk, base)
         env = self.env(8 * chunk)
-        teacher = self.load_teacher(teacher_key) if teacher_key else None
         rng, values, changed, rows, t0 = C.c_uint64(seed), [], 0, 0, time.perf_counter()
         for start in range(0, base, chunk):
-            if teacher is None:
-                side_a = self.greedy(policy)
-            else:
-                side_a = improve.Composite(policy, teacher, self.dev, env, margins[0], margins[1], min_left, self.amp)
-            values.append(lockstep.duplicate_eval(env, side_a, self.greedy(opp), min(chunk, base - start), RULESET,
-                                                  rng, policy.encoder))
-            if teacher is not None:
-                changed, rows = changed + side_a.changed, rows + side_a.rows
+            side_a = self.side(spec, env)
+            values.append(lockstep.duplicate_eval(env, side_a, self.greedy(opp), min(chunk, base - start), RULESET, rng))
+            changed, rows = changed + getattr(side_a, "changed", 0), rows + getattr(side_a, "rows", 0)
         v = np.concatenate(values)
         mean, half = lockstep.interval(v)
-        res = {"policy": policy_name, "teacher": teacher_key, "opponent": opponent, "base_deals": base, "seed": seed,
-               "margins": list(margins), "min_tricks_left": min_left, "mean": mean, "ci95": half,
+        res = {"candidate": spec, "opponent": opponent, "base_deals": base, "seed": seed, "mean": mean, "ci95": half,
                "changed": changed / rows if rows else 0.0, "seconds": round(time.perf_counter() - t0, 1)}
         done[key] = res
         self.save()
         self.log(f"match {key}: {mean:+.5f} +/- {half:.5f} per deal over {base:,} base deals"
-                 + (f" (composite differs from the policy in {res['changed']:.2%} of its decisions)" if rows else ""))
+                 + (f" (differs from the policy in {res['changed']:.2%} of its decisions)" if rows else ""))
         return res
 
     # ---------------------------------------------------------------- plan
@@ -306,66 +348,93 @@ class Run:
                 cache[tag] = self.load_data(tag)
             self.fit(key, self.net(model), *cache[tag], kind, arch, rows)
 
-        for f in fits:
+        def do_direct(key, tag, model, kind):
+            if tag not in cache:
+                cache.clear()
+                cache[tag] = self.load_data(tag)
+            self.fit_direct(key, self.net(model), *cache[tag], kind)
+
+        for f in fits[:-2]:
+            S.append((f"teacher {f[0]}", lambda k=f[0]: self.teacher_path(k).exists(), lambda f=f: do_fit(*f)))
+        for tag, model in tags:
+            for kind in KINDS:
+                key = f"{tag}_{kind}_direct"
+                S.append((f"direct {key}", lambda k=key: self.policy_path(k).exists(),
+                          lambda k=key, t=tag, m=model, kind=kind: do_direct(k, t, m, kind)))
+        for f in fits[-2:]:
             S.append((f"teacher {f[0]}", lambda k=f[0]: self.teacher_path(k).exists(), lambda f=f: do_fit(*f)))
         S.append(("matches", lambda: "verdict" in self.results, lambda: (cache.clear(), self.matches())))
         return S
 
-    def candidates(self, tag: str) -> list[str]:
-        return [k for k in self.results.get("teachers", {}) if k.startswith(tag + "_") and k.endswith("_all")]
+    def candidates(self, tag: str, model: str) -> list[tuple[str, dict]]:
+        """(name, spec) of everything worth playing for `tag`: each usable teacher's composite at its
+        chosen margins and at twice them (more cautious), and each directly improved network."""
+        out = []
+        for key, t in self.results.get("teachers", {}).items():
+            if key.startswith(tag + "_") and key.endswith("_all") and t["usable"]:
+                for label, f in (("", 1.0), ("_x2", 2.0)):
+                    margins = [m if m == OFF else f * m for m in t["margins"]]
+                    out.append((f"{key}{label}", {"type": "composite", "policy": model, "teacher": key, "margins": margins}))
+        for key, t in self.results.get("policies", {}).items():
+            if key.startswith(tag + "_") and t["usable"]:
+                out.append((key, {"type": "direct", "policy": model, "net": key}))
+        return out
 
     def matches(self) -> None:
         a, R = self.a, self.results
         seed_select, seed_confirm = stable_seed(a.seed, "select"), stable_seed(a.seed, "confirm")
         summary = {}
         for tag, model in (("main", a.main), ("control", a.control)):
-            self.match(f"{tag}_self", model, None, model, min(a.select_base, 1024), seed_select)   # must be exactly 0
+            self.match(f"{tag}_self", {"type": "plain", "model": model}, model, min(a.select_base, 1024), seed_select)
+            cands = self.candidates(tag, model)
+            if not cands:   # nothing passed its held-out gate: the policy stays as it is
+                summary[tag] = {"candidate": None, "kind": None, "confirm": [0.0, 0.0], "confirm_early_only": [0.0, 0.0],
+                                "note": "no teacher correction and no direct step gained on held-out states"}
+                continue
             best = None
-            for key in self.candidates(tag):
-                ms, mp = R["teachers"][key]["margins"]
-                for label, margins in (("", (ms, mp)), ("_x2", (2 * ms, 2 * mp))):   # as chosen, and more cautious
-                    if not self.time_left():
-                        return
-                    r = self.match(f"select_{key}{label}", model, key, model, a.select_base, seed_select, margins)
-                    if best is None or r["mean"] > best[1]["mean"]:
-                        best = (key, r)
-            key, sel = best
-            margins = tuple(sel["margins"])
+            for name, spec in cands:
+                if not self.time_left():
+                    return
+                r = self.match(f"select_{name}", spec, model, a.select_base, seed_select)
+                if best is None or r["mean"] > best[2]["mean"]:
+                    best = (name, spec, r)
+            name, spec, sel = best
             if not self.time_left():
                 return
-            full = self.match(f"confirm_{tag}", model, key, model, a.confirm_base, seed_confirm, margins)
-            early = self.match(f"confirm_{tag}_early_only", model, key, model, a.confirm_base, seed_confirm, margins, 6)
-            summary[tag] = {"teacher": key, "kind": R["teachers"][key]["kind"], "arch": R["teachers"][key]["arch"],
-                            "margins": list(margins), "select": [sel["mean"], sel["ci95"]],
+            full = self.match(f"confirm_{tag}", spec, model, a.confirm_base, seed_confirm)
+            early = self.match(f"confirm_{tag}_early_only", {**spec, "min_left": 6}, model, a.confirm_base, seed_confirm)
+            source = R["teachers"][spec["teacher"]] if spec["type"] == "composite" else R["policies"][spec["net"]]
+            summary[tag] = {"candidate": name, "spec": spec, "kind": source["kind"], "select": [sel["mean"], sel["ci95"]],
                             "confirm": [full["mean"], full["ci95"]], "confirm_early_only": [early["mean"], early["ci95"]]}
         if not self.time_left():
             return
         m = summary["main"]
         others = {}
-        for opp in a.panel.split(","):
-            opp = opp.strip()
-            if opp and opp != a.main:
-                plain = self.match(f"plain_vs_{Path(opp).stem}", a.main, None, opp, a.panel_base, seed_confirm)
-                comp = self.match(f"composite_vs_{Path(opp).stem}", a.main, m["teacher"], opp, a.panel_base, seed_confirm,
-                                  tuple(m["margins"]))
-                others[Path(opp).stem] = {"plain": [plain["mean"], plain["ci95"]], "composite": [comp["mean"], comp["ci95"]]}
+        if m["candidate"]:
+            for opp in a.panel.split(","):
+                opp = opp.strip()
+                if opp and opp != a.main:
+                    stem = Path(opp).stem
+                    plain = self.match(f"plain_vs_{stem}", {"type": "plain", "model": a.main}, opp, a.panel_base, seed_confirm)
+                    cand = self.match(f"candidate_vs_{stem}", m["spec"], opp, a.panel_base, seed_confirm)
+                    others[stem] = {"plain": [plain["mean"], plain["ci95"]], "candidate": [cand["mean"], cand["ci95"]]}
         m["against_others"] = others
         won = lambda s: s["confirm"][0] - s["confirm"][1] > 0   # noqa: E731
+        ctl = summary["control"]
         if won(m):
             verdict = "GO"
-            reason = (f"{m['teacher']} lifts {a.main} by {m['confirm'][0]:+.5f} +/- {m['confirm'][1]:.5f} per deal on fresh "
-                      f"deals; with corrections only before the last 6 tricks: {m['confirm_early_only'][0]:+.5f} "
+            reason = (f"{m['candidate']} lifts {a.main} by {m['confirm'][0]:+.5f} +/- {m['confirm'][1]:.5f} per deal on "
+                      f"fresh deals; with changes only before the last 6 tricks: {m['confirm_early_only'][0]:+.5f} "
                       f"+/- {m['confirm_early_only'][1]:.5f}.")
-        elif won(summary["control"]):
+        elif won(ctl):
             verdict = "STOP"
-            reason = (f"the method lifts the control {a.control} ({summary['control']['confirm'][0]:+.5f} +/- "
-                      f"{summary['control']['confirm'][1]:.5f}) but not {a.main} ({m['confirm'][0]:+.5f} +/- "
-                      f"{m['confirm'][1]:.5f}).")
+            reason = (f"the method lifts the control {a.control} ({ctl['confirm'][0]:+.5f} +/- {ctl['confirm'][1]:.5f}, "
+                      f"{ctl['candidate']}) but not {a.main} ({m['confirm'][0]:+.5f} +/- {m['confirm'][1]:.5f}).")
         else:
             verdict = "INCONCLUSIVE"
             reason = (f"no gain on {a.main} ({m['confirm'][0]:+.5f} +/- {m['confirm'][1]:.5f}), but none on the control "
-                      f"{a.control} either ({summary['control']['confirm'][0]:+.5f} +/- "
-                      f"{summary['control']['confirm'][1]:.5f}), so the method itself is in doubt.")
+                      f"{a.control} either ({ctl['confirm'][0]:+.5f} +/- {ctl['confirm'][1]:.5f}), so the method "
+                      "itself is in doubt.")
         R["verdict"] = {"verdict": verdict, "reason": reason, **summary}
         self.save()
 
@@ -380,10 +449,21 @@ class Run:
                 self.log(f"data {tag}: {n:,} states in {len(shards)}/{self.n_shards(tag)} shards")
         T = R.get("teachers", {})
         if T:
-            self.log("\nteacher                       train states   adv R2   gain/decision (z)   early-only gain   changed   RAMI old>new")
+            self.log("\nteacher                       train states   adv R2   margins show/play   gain/decision (z)   early-only gain   changed   RAMI old>new")
+            off = lambda m: "off" if m == OFF else f"{m:g}"   # noqa: E731
             for key, t in T.items():
                 g, e = t["gain"], t["gain_early"]
-                self.log(f"  {key:<28}{t['train_states']:>12,}  {t['adv_r2']:>7.4f}   {g['gain']:+.6f} ({g['z']:+5.1f})   "
+                self.log(f"  {key:<28}{t['train_states']:>12,}  {t['adv_r2']:>7.4f}   {off(t['margins'][0]):>7}/{off(t['margins'][1]):<7}   "
+                         f"{g['gain']:+.6f} ({g['z']:+5.1f})   "
+                         f"{e['gain']:+.6f} ({e['z']:+5.1f})   {g['changed']:>6.2%}   {g['rami_old']:.3f}>{g['rami_new']:.3f}"
+                         + (f"   on own-play labels {t['gain_on_q0']['gain']:+.6f} ({t['gain_on_q0']['z']:+.1f})"
+                            if "gain_on_q0" in t else ""))
+        P = R.get("policies", {})
+        if P:
+            self.log("\ndirect                        train states   best step   gain/decision (z)   early-only gain   changed   RAMI old>new")
+            for key, t in P.items():
+                g, e = t["gain"], t["gain_early"]
+                self.log(f"  {key:<28}{t['train_states']:>12,}  {t['best_step']:>9}   {g['gain']:+.6f} ({g['z']:+5.1f})   "
                          f"{e['gain']:+.6f} ({e['z']:+5.1f})   {g['changed']:>6.2%}   {g['rami_old']:.3f}>{g['rami_new']:.3f}"
                          + (f"   on own-play labels {t['gain_on_q0']['gain']:+.6f} ({t['gain_on_q0']['z']:+.1f})"
                             if "gain_on_q0" in t else ""))
@@ -419,6 +499,10 @@ def main(argv=None) -> None:
     p.add_argument("--big-steps", type=int, default=8000)
     p.add_argument("--big-width", type=int, default=1536)
     p.add_argument("--big-blocks", type=int, default=6)
+    p.add_argument("--gate-z", type=float, default=GATE_Z,
+                   help="a teacher's correction of a phase is used only if its held-out gain is this many standard errors")
+    p.add_argument("--direct-steps", type=int, default=4000)
+    p.add_argument("--direct-lr", type=float, default=2e-5)
     p.add_argument("--batch", type=int, default=16384)
     p.add_argument("--check-every", type=int, default=250)
     p.add_argument("--patience", type=int, default=6)

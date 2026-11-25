@@ -13,7 +13,12 @@ the functions here against that module on the same data. What is added:
 - `Composite`, a chooser that plays the composite directly in lockstep games,
   so a teacher can be judged by play without distilling it first;
 - every greedy choice is made on float32 values with ties to the lowest action
-  id, as the C code breaks them, whatever the forward precision was.
+  id, as the C code breaks them, whatever the forward precision was;
+- `fit_policy`: improvement without a teacher. A copy of the policy is trained
+  to maximise the expected label of its own choice. A teacher's argmax over
+  noisy estimates changes many decisions for the worse when the policy is
+  already good (winner's curse); small gradient steps on exact labels average
+  the noise instead.
 
 This module is the shared core. The verdict run (verdict.py) uses it for one
 round from a fixed network; the improvement loop builds on the same functions.
@@ -257,3 +262,115 @@ def new_teacher(width: int, blocks: int, encoder: int, dev, warm_from=None) -> q
         net.out.weight.zero_()
         net.out.bias.zero_()
     return net.to(dev).train()
+
+
+# ------------------------------------------------------- direct improvement
+def greedy_gain(policy, candidate, H: dict, label: str = "q", clean_only: bool = True, min_tricks_left: int = 0,
+                amp=None) -> dict:
+    """One-step gain of playing `candidate`'s greedy action instead of `policy`'s on held-out
+    states, judged on the labels (continuations by `policy`): importance-weighted mean of
+    label[candidate action] - label[policy action], in equity."""
+    dev = H["feat"].device
+    dim = native.feature_dim(policy.encoder)
+    was = (policy.training, candidate.training)
+    policy.eval(), candidate.eval()
+    gains, ws, changed, rows, show_n, rami_old, rami_new = [], [], 0, 0, 0, 0, 0
+    with torch.no_grad():
+        for i in range(0, len(H["feat"]), 65536):
+            sl = torch.arange(i, min(i + 65536, len(H["feat"])), device=dev)
+            if clean_only:
+                sl = sl[H["clean"][sl]]
+                if not len(sl):
+                    continue
+            x, m, tgt, w = _batch(H, sl, dim, label)
+            old = greedy(forward(policy, x, amp).float().masked_fill(~m, float("-inf")))
+            new = greedy(forward(candidate, x, amp).float().masked_fill(~m, float("-inf")))
+            cls = H["cls"][sl]
+            if min_tricks_left > 0:
+                new = torch.where(tail_rows(cls, min_tricks_left), old, new)
+            r = torch.arange(len(sl), device=dev)
+            gains.append(((tgt[r, new] - tgt[r, old]) / SCALE).cpu().numpy())
+            ws.append(w.cpu().numpy())
+            changed += int((new != old).sum())
+            show = cls == 0
+            show_n += int(show.sum())
+            rami_old += int((show & (old >= 104)).sum())
+            rami_new += int((show & (new >= 104)).sum())
+            rows += len(sl)
+    policy.train(was[0]), candidate.train(was[1])
+    g, w = np.concatenate(gains).astype(np.float64), np.concatenate(ws).astype(np.float64)
+    mean = float((g * w).sum() / w.sum())
+    se = float(np.sqrt(((w * (g - mean)) ** 2).sum()) / w.sum())
+    return {"gain": mean, "se": se, "z": mean / se if se > 0 else 0.0, "changed": changed / max(rows, 1),
+            "states": rows, "rami_old": rami_old / max(show_n, 1), "rami_new": rami_new / max(show_n, 1)}
+
+
+def fit_policy(policy, D: dict, H: dict, label: str = "q", steps: int = 4000, batch: int = 16384, lr: float = 2e-5,
+               temperature: float = 1.0, amp=None, check_every: int = 250, patience: int = 6) -> tuple:
+    """A copy of `policy` trained to choose better on the labels directly: it maximises the
+    expected label of its own (softmax) choice, E_s sum_a pi(a | obs_s) * label(s, a), by small
+    steps from the policy's weights. With exact labels this is the gradient of the one-step
+    improvement itself; nothing is maximised over noisy estimates, so there is no winner's curse
+    as with a teacher's argmax. The copy is left at the weights with the best held-out greedy
+    gain over the policy (clean states), checked every `check_every` steps; if no check is
+    positive it is the policy unchanged. Returns (network, info)."""
+    dev = D["feat"].device
+    dim = native.feature_dim(policy.encoder)
+    net = qmodel.QNet(**policy.config)
+    net.load_state_dict({k: v.detach().cpu().clone() for k, v in policy.state_dict().items()})
+    net = net.to(dev).train()
+    opt = torch.optim.AdamW(net.parameters(), lr=lr, weight_decay=0.0, fused=dev.type in ("cuda", "mps"))
+    scaler = torch.amp.GradScaler(dev.type, enabled=amp is torch.float16)
+    n = len(D["feat"])
+    best = (0.0, 0, {k: v.detach().clone() for k, v in net.state_dict().items()}, None)
+    history, stale, t0 = [[0, 0.0, 0.0]], 0, time.perf_counter()
+    for step in range(steps):
+        idx = torch.randint(0, n, (batch,), device=dev)
+        x, mask, tgt, w = _batch(D, idx, dim, label)
+        logits = forward(net, x, amp).float().masked_fill(~mask, -1e9) / temperature
+        pi = torch.softmax(logits, 1)
+        value = (pi * tgt).sum(1)                       # expected label of the net's choice
+        loss = -(value * w).sum() / w.sum()
+        opt.zero_grad(set_to_none=True)
+        if scaler.is_enabled():
+            scaler.scale(loss).backward()
+            scaler.unscale_(opt)
+            torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
+            scaler.step(opt)
+            scaler.update()
+        else:
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
+            opt.step()
+        if (step + 1) % check_every == 0:
+            g = greedy_gain(policy, net, H, label, True, amp=amp)
+            history.append([step + 1, g["gain"], g["z"]])
+            if g["gain"] > best[0]:
+                best, stale = (g["gain"], step + 1, {k: v.detach().clone() for k, v in net.state_dict().items()}, g), 0
+            else:
+                stale += 1
+                if stale >= patience:
+                    break
+    net.load_state_dict(best[2])
+    net.eval()
+    return net, {"best_step": best[1], "steps": history[-1][0], "history": history,
+                 "seconds": round(time.perf_counter() - t0, 1)}
+
+
+class Mixed:
+    """Plays `late` in card play with at most `min_tricks_left` tricks to go and `early` otherwise
+    (to see where in the deal a candidate's gain comes from)."""
+
+    def __init__(self, early, late, env: "native.Env", min_tricks_left: int):
+        self.early, self.late, self.env, self.min_left = early, late, env, min_tricks_left
+        self.changed = self.rows = 0
+
+    def __call__(self, feat, mask, idx, team):
+        k = len(idx)
+        cls = np.zeros(k, np.int8)
+        lib.tc_ls_classes(self.env._h, np.ascontiguousarray(idx, np.int32).ctypes.data, k, cls.ctypes.data, None)
+        tail = tail_rows(torch.from_numpy(cls), self.min_left).numpy()
+        a, b = self.early(feat, mask, idx, team)[0], self.late(feat, mask, idx, team)[0]
+        self.changed += int(((a != b) & ~tail).sum())
+        self.rows += k
+        return np.where(tail, b, a).astype(np.uint8), None
