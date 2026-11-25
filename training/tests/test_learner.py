@@ -1,0 +1,73 @@
+"""T7: one update of the new learner equals one update of ai/tuppi_ai/vrpo.py."""
+
+from __future__ import annotations
+
+import copy
+
+import numpy as np
+import torch
+from conftest import RULESET, rng
+
+import tuppi_train
+from tuppi_train import vrpo_gpu
+from tuppi_ai import native, vrpo
+
+GAMES = 384
+V1 = str(tuppi_train.MODELS / "vrpo1_actor_0504.pt")
+
+
+def test_update_equals_the_original(make_env, net1, tmp_path, monkeypatch):
+    torch.set_num_threads(1)
+    d = native.ppo_rollouts(make_env(GAMES), native.Mlp(net1), GAMES, RULESET, rng(55))
+    shared = dict(ruleset=RULESET, games_per_iter=GAMES, minibatch=4096, critic_width=96, critic_blocks=1,
+                  compile=False, seed=1)
+
+    old_cfg = vrpo.Config(init=V1, baseline=V1, reference=V1, offer_model="", warmup_iters=0,
+                          eval_every=10**9, eval_base=8, **shared)
+    old = vrpo.VRPO(old_cfg, tmp_path)
+    new_cfg = vrpo_gpu.Config(init=V1, panel="", warmup_max=0, actor_ramp=0, eval_every=10**9, eval_base=8,
+                              milestone_every=0, **shared)
+    new = vrpo_gpu.Learner(new_cfg, tmp_path / "new", torch.device("cpu"), resume=False)
+    new.critic.load_state_dict(copy.deepcopy(old.critic.state_dict()))
+
+    monkeypatch.setattr(native, "ppo_rollouts", lambda *a, **k: {key: v.copy() for key, v in d.items()})
+    rows_old, rows_new = [], []
+    torch.manual_seed(1234)
+    for _ in range(2):
+        rows_old.append(old.iterate())
+    torch.manual_seed(1234)
+    for _ in range(2):
+        # The original builds a CPU copy of the actor for its native rollouts before every
+        # update; initialising that copy draws from the global generator. Same draws here,
+        # so that both updates shuffle their minibatches identically.
+        new._actor_cpu()
+        rows_new.append(new.update({key: v.copy() for key, v in d.items()}))
+
+    for a, b in zip(rows_old, rows_new):
+        for key in ("rows", "critic_loss", "mean_abs_delta", "adv_std", "critic_ev", "choice_share", "entropy",
+                    "kl", "clip_frac", "epochs"):
+            assert a[key] == b[key], key
+        assert b["epochs"] > 0   # the actor really was updated
+    for name, net_old, net_new in (("actor", old.actor, new.actor), ("critic", old.critic, new.critic)):
+        so, sn = net_old.state_dict(), net_new.state_dict()
+        for key in so:
+            assert torch.equal(so[key], sn[key]), f"{name}.{key}"
+    # and it moved away from the initial network
+    assert not torch.equal(new.actor.state_dict()["out.weight"], net1.state_dict()["out.weight"])
+
+
+def test_warmup_keeps_the_actor_frozen(make_env, net1, tmp_path):
+    cfg = vrpo_gpu.Config(init=V1, panel="", games_per_iter=128, minibatch=4096, critic_width=64, critic_blocks=1,
+                          warmup_min=3, warmup_max=4, warmup_patience=1, warmup_tol=0.0, eval_every=10**9,
+                          eval_base=8, milestone_every=0)
+    learner = vrpo_gpu.Learner(cfg, tmp_path, torch.device("cpu"), resume=False)
+    before = copy.deepcopy(learner.actor.state_dict())
+    rows = [learner.iterate() for _ in range(6)]
+    trained = [r["epochs"] > 0 for r in rows]
+    assert trained[:3] == [False, False, False]     # never before warmup_min
+    assert trained[4] and trained[5]                # always after warmup_max
+    first = trained.index(True)
+    assert abs(rows[first]["lr_actor"] - cfg.lr_actor / 3) < 1e-12   # starts at a third of the rate
+    assert rows[5]["lr_actor"] > rows[first]["lr_actor"]
+    assert not torch.equal(before["out.weight"], learner.actor.state_dict()["out.weight"])
+    assert all(np.isfinite(r["critic_mc_mse"]) for r in rows)
