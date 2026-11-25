@@ -75,14 +75,42 @@ two short runs from the same start and comparing their evaluations at equal trai
 
 1. **Warm-up.** The actor starts as `vrpo4_final` and stays frozen while a new critic learns.
    The critic's error against the deals' actual outcomes is measured on each fresh batch before
-   it trains on it (`critic_mc_mse`); when that stops improving (or after `warmup_max`
-   iterations) the actor starts, at a third of its learning rate, rising over `actor_ramp`
-   iterations.
+   it trains on it (`critic_mc_mse`). The actor starts after at least `warmup_min` (20)
+   iterations, once the mean error of the last 5 batches is less than 1% below the mean of the 5
+   before, or after `warmup_max` (120). The actor's learning rate then rises from a third of
+   `lr_actor` over `actor_ramp` iterations. (The first version compared single batches, whose
+   noise ended run1's warm-up at iteration 20 while the critic was still improving.)
 2. **Training.** The update of `vrpo.py`, unchanged.
 3. **Monitoring.** Every `eval_every` iterations: paired duplicate, greedy, on the same 2,048
    base deals each time, against `vrpo4_final` (the parent), `vrpo3_final` and `vrpo1`. The
    actor with the best result against the parent is kept as `best_actor.pt`.
 4. **Stop rule.** Three consecutive evaluations significantly below the parent end the run.
+
+## Starting again from VRPO4 with a trained critic
+
+A run that has trained its critic but whose actor drifted can hand its critic to a new run. The
+new run's actor starts from `init` (VRPO4) again; the critic and its optimizer state come from the
+old run's latest checkpoint, so no warm-up is needed:
+
+```sh
+python -m tuppi_train.vrpo_gpu --name run2 --hours 3 --offer-model training/runs/offer/offer_model.pt \
+    --critic-init training/runs/run1 --warmup-max 0 \
+    --games-per-iter 65536 --minibatch 65536 --max-kl 0.01 --lr-actor 1e-5 --actor-ramp 10 --eval-every 10
+```
+
+These are gentler settings for fine-tuning a network that is already near its optimum: four times
+the deals per update, so each gradient step averages four times as many decisions (half the
+noise), with the same number of steps per iteration, a third of the learning rate and half the
+permitted policy change per iteration. Each iteration takes about four times as long.
+
+`--critic-init` also accepts one of a run's `ckpt/state_*.pt` files, or a critic saved by
+`ai/tuppi_ai/vrpo.py` (`critic_latest.pt`; then without optimizer state).
+
+## Stopping a run
+
+Stopping the notebook's training cell (or `kill -TERM`, or Ctrl-C) lets the current iteration
+finish, saves, and exits: nothing is lost. A second stop kills it at once; the last 5-minute
+checkpoint is then what remains.
 
 ## Judging a result
 

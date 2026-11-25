@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import ctypes as C
 import json
+import signal
 import time
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
@@ -49,7 +50,10 @@ class Config:
     init: str = str(MODELS / "vrpo4_final.pt")
     panel: str = PANEL               # evaluation opponents (files in ai/models or paths); the first is the parent
     offer_model: str = ""            # fast sooli-offer model (offer.py); "" = the exact heuristic
-    critic_init: str = ""            # a critic checkpoint of the same shape; "" = a new critic
+    # Where the critic starts: "" = a new critic; a run directory (or one of its ckpt/state_*.pt
+    # files) = that run's critic and its optimizer state; a critic file {"config", "state"} as
+    # tuppi_ai/vrpo.py writes them. The actor always starts from `init`.
+    critic_init: str = ""
     ruleset: int = 3
     games_per_iter: int = 16384
     temperature: float = 1.0
@@ -65,10 +69,11 @@ class Config:
     critic_blocks: int = 4
     max_kl: float = 0.02             # stop the actor epochs early above this mean KL
     # Critic warm-up: the actor is frozen for at least warmup_min iterations and until the critic's
-    # error against Monte-Carlo returns of fresh rollouts has improved by less than warmup_tol
-    # (relative) over warmup_patience iterations; at the latest after warmup_max.
-    warmup_min: int = 8
-    warmup_max: int = 80
+    # mean error against Monte-Carlo returns over the last warmup_patience batches is less than
+    # warmup_tol (relative) below its mean over the warmup_patience batches before; at the latest
+    # after warmup_max. 0 = no warm-up (for a critic that was trained already: critic_init).
+    warmup_min: int = 20
+    warmup_max: int = 120
     warmup_patience: int = 5
     warmup_tol: float = 0.01
     actor_ramp: int = 30             # iterations over which the actor's rate rises from a third to lr_actor
@@ -106,13 +111,13 @@ class Learner:
         self.actor = qmodel.load(cfg.init, self.dev).train()
         self.encoder, self.dim = self.actor.encoder, native.feature_dim(self.actor.encoder)
         self.critic = Critic(self.dim + HIDDEN_BITS, cfg.critic_width, cfg.critic_blocks).to(self.dev)
-        if cfg.critic_init:
-            ck = torch.load(cfg.critic_init, map_location="cpu")
-            if ck["config"] != self.critic.config:
-                raise ValueError(f"critic shape {ck['config']} != {self.critic.config}")
-            self.critic.load_state_dict(ck["state"])
+        critic_opt = self._load_critic(cfg.critic_init) if cfg.critic_init else None
         self.opt_a = device.adamw(self.actor.parameters(), cfg.lr_actor, 0.0, self.dev)
         self.opt_c = device.adamw(self.critic.parameters(), cfg.lr_critic, 1e-5, self.dev)
+        if critic_opt is not None:
+            self.opt_c.load_state_dict(critic_opt)
+            for group in self.opt_c.param_groups:   # this run's settings, the other run's moments
+                group["lr"], group["weight_decay"] = cfg.lr_critic, 1e-5
         self.a_fwd = torch.compile(self.actor) if cfg.compile else self.actor
         self.c_fwd = torch.compile(self.critic) if cfg.compile else self.critic
         if cfg.amp not in device.AMP:
@@ -157,6 +162,27 @@ class Learner:
         self._last_save = time.time()
         if resume:
             self._restore()
+
+    def _load_critic(self, source: str):
+        """Loads the critic from `source` (see Config.critic_init); returns the optimizer state
+        that came with it, or None."""
+        path = Path(source)
+        if path.is_dir():
+            state = checkpoint.Rotating(path / "ckpt" if (path / "ckpt").is_dir() else path).load()
+            if state is None:
+                raise FileNotFoundError(f"no readable checkpoint in {path}")
+        else:
+            state = torch.load(path, map_location="cpu", weights_only=False)
+        if "critic" in state:   # a training state of this module
+            config, weights, opt = state["critic_config"], state["critic"], state["opt_c"]
+            self.critic_source = {"from": str(path), "iteration": state["iteration"]}
+        else:                   # a critic file of tuppi_ai/vrpo.py
+            config, weights, opt = state["config"], state["state"], None
+            self.critic_source = {"from": str(path)}
+        if config != self.critic.config:
+            raise ValueError(f"critic shape {config} != {self.critic.config}")
+        self.critic.load_state_dict(weights)
+        return opt
 
     # ------------------------------------------------------------- self-play
     def _actor_cpu(self) -> qmodel.QNet:
@@ -318,8 +344,11 @@ class Learner:
             k, p = len(self.mc_hist) - 1, cfg.warmup_patience  # k = iterations the critic has trained
             if k >= cfg.warmup_max:
                 self.warm = False
-            elif k >= max(cfg.warmup_min, p + 1):
-                before, recent = min(self.mc_hist[:-p]), min(self.mc_hist[-p:])
+            elif k >= max(cfg.warmup_min, 2 * p - 1):
+                # window means, not single batches: each batch's error is noisy, and the minimum
+                # of many noisy values is biased low, which ended the warm-up too early
+                before = float(np.mean(self.mc_hist[-2 * p:-p]))
+                recent = float(np.mean(self.mc_hist[-p:]))
                 if recent > (1.0 - cfg.warmup_tol) * before:
                     self.warm = False
         return not self.warm
@@ -491,15 +520,31 @@ def main(argv=None) -> None:
     print(json.dumps({"run": a.name, "out": str(out), "resumed_from": saved["iteration"] if saved else None,
                       "threads": tn.threads(), **device.describe(dev)}), flush=True)
     learner = Learner(cfg, out, dev)
+    if getattr(learner, "critic_source", None) and not saved:
+        print(json.dumps({"critic_from": learner.critic_source}), flush=True)
+    # SIGTERM or Ctrl-C: finish the current iteration, save, exit (the notebook sends SIGTERM when
+    # its cell is interrupted). A second signal stops at once.
+    stop = {"asked": False}
+
+    def ask_stop(signum, frame):
+        if stop["asked"]:
+            raise KeyboardInterrupt
+        stop["asked"] = True
+        print(f"signal {signum}: stopping after this iteration and saving", flush=True)
+
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        signal.signal(sig, ask_stop)
     t_end = time.time() + 3600 * a.hours
-    while time.time() < t_end and learner.iteration < a.iterations and not learner.stopped:
+    while (time.time() < t_end and learner.iteration < a.iterations and not learner.stopped
+           and not stop["asked"]):
         row = learner.iterate()
         if a.show == "json":
             print(json.dumps(row), flush=True)
         elif "eval" in row or "stopped" in row or row["iteration"] % a.print_every == 0:
             print(brief(row), flush=True)
     learner.save()
-    print(json.dumps({"finished": learner.stopped or "time or iteration limit", "iteration": learner.iteration,
+    reason = learner.stopped or ("stopped by a signal" if stop["asked"] else "time or iteration limit")
+    print(json.dumps({"finished": reason, "iteration": learner.iteration,
                       "hours": round(learner.seconds / 3600, 3), "best": learner.best}), flush=True)
 
 
