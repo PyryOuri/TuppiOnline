@@ -274,6 +274,18 @@ against the plain network.
 | VRPO4 | VRPO4 | no | **+0.00146 +/- 0.00060** |
 | VRPO4 | VRPO1 | no | **+0.00174 +/- 0.00068** |
 | VRPO4 | VRPO1 | 6 tricks | **+0.00140 +/- 0.00068** |
+| VRPO4 | VRPO1, deals resampled by likelihood (`--belief 4`) | 6 tricks | +0.00063 +/- 0.00054 |
+
+Thresholds, on the fourth line's setting: `--z 1` +0.00175 +/- 0.00098 (changes 14% of the searched
+decisions instead of 4%), `--z 0` +0.00084 +/- 0.00105, `--z 1 --keep 0.01` +0.00081 +/- 0.00088.
+None is distinguishable from the default at this size; the default has the smallest spread.
+
+Between different anchors (same settings, both searching sides with VRPO1 play-outs, bid margin
+0.03): the search around VRPO3 beats plain VRPO4 by +0.00183 +/- 0.00125, and the search around
+VRPO4 against the search around VRPO3 is undecided at -0.00044 +/- 0.00125. Matches between
+different networks spread about 0.0125 per base deal, so these need thousands of base deals;
+`ai/tuppi_ai/best.py` records the same pattern for Heidi (a better anchor was neutral at 1,024
+worlds).
 
 The look-ahead helps the strong network as much as the weak one, and the small network does the
 play-outs as well as the large one, at this precision. VRPO4 spreads its probability over more
