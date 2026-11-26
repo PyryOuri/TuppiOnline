@@ -124,31 +124,59 @@ four views. Paired duplicate on CPU, the averaged network against its plain self
 | Network | Averaged against plain, per deal | Base deals |
 |---|---|---|
 | `vrpo4_final` | +0.00263 +/- 0.00026 | 8,192 |
+| `vrpo4_final`, sooli tricks played by the live bots' rules | +0.00314 +/- 0.00050 | 2,048 |
 | `vrpo3_final` | +0.00196 +/- 0.00053 | 2,048 |
 | `vrpo1` | +0.00143 +/- 0.00051 | 2,048 |
 
 No training is involved, and the gain is about twice the step from VRPO3 to VRPO4.
 
+**All 24 arrangements in card play.** Only those four are symmetries of the rules, because a show
+depends on the card's colour. In card play the other twenty are nearly equivalent (only the shown
+cards keep a trace of colour), and averaging card-play decisions over all 24 while showing
+decisions keep the exact four (`Symmetric(net, play_views=range(24))`, prefix `sym24:`) gained a
+further +0.00081 +/- 0.00064 (1,024 base deals) and +0.00044 +/- 0.00038 (3,072 fresh ones) over
+the exact four: about +0.0005 pooled. This is an empirical gain, not a symmetry.
+
 ```sh
-python -m tuppi_train.evaluate --a sym:vrpo4_final.pt --b vrpo4_final.pt,vrpo3_final.pt --base 32768
-python -m tuppi_train.bake --name sym4 --hours 1 --offer-model <offer_model.pt>
-python -m tuppi_train.evaluate --a training/runs/sym4/best_student.pt --b vrpo4_final.pt,sym:vrpo4_final.pt
+python -m tuppi_train.evaluate --a sym24:vrpo4_final.pt --b vrpo4_final.pt,sym:vrpo4_final.pt --base 32768
+python -m tuppi_train.bake --name sym4 --hours 1.5 --teacher sym24:vrpo4_final.pt --student-share 0.75 \
+    --offer-model <offer_model.pt>
+python -m tuppi_train.evaluate --a training/runs/sym4/best_student.pt --b vrpo4_final.pt,sym24:vrpo4_final.pt
 ```
 
 Two ways to use it:
 
-- **At play time**: four forward passes per decision instead of one. Negligible for the bots that
-  play the network directly, but it needs the suit relabelling (a fixed permutation of feature
-  columns and action ids, `symmetry.feature_perm` / `action_perm`) in the hosted bot code.
+- **At play time**: 4 forward passes per show and up to 24 per card instead of one. Negligible for
+  the bots that play the network directly, but it needs the suit relabelling (a fixed permutation
+  of feature columns and action ids, `symmetry.feature_perm` / `action_perm`) in the hosted bot
+  code. This keeps the whole gain.
 - **Baked in** (`bake.py`, `colab/tuppi_symmetry.ipynb`): a plain network, the student, is trained
-  to give the averaged network's policy from one pass. Deals are played alternately by the teacher
-  and by the student, every unforced decision is labelled with the teacher's policy, and the
-  student sees each minibatch through a random suit view, so it is taught to be symmetric too.
-  The result is an ordinary network file. How much of the gain a network of the same size can
-  hold is what the run measures; the student can also be averaged itself (`sym:<student>`).
+  to give the averaged network's policy from one pass. Deals are played by the teacher and by the
+  student in turn, every unforced decision is labelled with the teacher's policy, and the student
+  sees each minibatch through a random exact suit view, so it is taught to be symmetric too. The
+  result is an ordinary network file. A CPU trial on VRPO1 (256x2, 150 iterations of 2,048 deals,
+  exact-four teacher) baked in +0.00056 +/- 0.00033 of the teacher's +0.0014, about 40%, and was
+  still improving slowly; how much a 768x4 student holds after a real run is what the notebook
+  measures.
 
 `tests/test_symmetry.py` checks the permutations against the engine (relabel a full state, let the
-engine encode it, compare); `tests/test_bake.py` checks that the loop learns and resumes exactly.
+engine encode it, compare) and the averaged networks against their definitions;
+`tests/test_bake.py` checks that the loop learns and resumes exactly.
+
+### What else was checked while looking for flaws of the same kind
+
+Measured on CPU with scratch scripts (paired duplicate unless stated), VRPO4:
+
+| Question | Result | Conclusion |
+|---|---|---|
+| Are votes split between equivalent cards of one hand (touching cards with nothing live between them), so that the greedy choice misses the preferred group? | Summing them changes 0.3% of decisions: +0.00007 +/- 0.00017; on the averaged network -0.00000 +/- 0.00018 | No |
+| Does averaging with VRPO3 help (each suit-averaged, 70/30)? | -0.00005 +/- 0.00049 | No |
+| Mean of probabilities instead of mean of logits over the views? | -0.00075 +/- 0.00055 | Worse; logits stay |
+| Is the match-equity table (fitted to the heuristic incumbent's deals) still right for VRPO4's deals? | Dealer's side wins 51.3% (table 49.6%), mean 12.6 points a deal (11.3), deals of 24 points or more about twice as frequent; the table rebuilt from 32,768 VRPO4 deals differs by 0.0095 on average, 0.0146 at most | Mildly out of date; matters only through retraining |
+| Is 4 of 8 surviving layouts the right threshold for accepting a sooli? For 16,998 first offers both answers were played out from the same deal | With sooli tricks finished by the solver (training, evaluation): accepting at 4 loses 0.051 +/- 0.031 against declining, and pays from about 7. With sooli tricks played by the heuristics (the live lite bots): accepting pays from 2 (+0.027 +/- 0.017 at 2, +0.050 +/- 0.033 at 4); about +0.0003 per deal for a side that accepts from 2, read from the play-outs | The existing option `sooli_need=2` is right for the live bots' sooli play; `lite.py` records it as tested |
+| Do training and evaluation value a sooli as live play does? | No: the solver finishes sooli tricks with open cards, and a soolaaja survives far less often than against the heuristics | A mismatch between the training world and the deployed one; a design decision, not a quick fix |
+
+Every evaluation above starts from 0-0 with dealer 0; other match scores have not been checked.
 
 ## The label-based attempt (stage 1: the verdict run)
 

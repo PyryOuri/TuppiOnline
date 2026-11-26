@@ -123,3 +123,64 @@ def test_load_net_prefix():
     assert not isinstance(plain, symmetry.Symmetric) and isinstance(sym, symmetry.Symmetric)
     assert not sym.training and torch.equal(sym.net.state_dict()["out.weight"], plain.state_dict()["out.weight"])
     assert symmetry.load_net(str(tuppi_train.MODELS / "vrpo1_actor_0504.pt"), "cpu").config["width"] == 256
+
+
+def test_showing_rows_are_recognised(recorded):
+    """is_showing reads the phase from the feature row itself."""
+    feat, _ = engine_encode(recorded["states"])
+    show = symmetry.is_showing(torch.from_numpy(feat)).numpy()
+    assert np.array_equal(show, recorded["states"]["phase"] == native.PH_SHOW)
+    assert 0.02 < show.mean() < 0.5
+
+
+def test_all_arrangements():
+    assert len(symmetry.ALL_PERMS) == len(set(symmetry.ALL_PERMS)) == 24
+    assert symmetry.ALL_PERMS[:4] == symmetry.SUIT_PERMS
+    for p in symmetry.ALL_PERMS:   # every arrangement is a permutation of columns and of actions
+        assert sorted(symmetry.feature_perm(p)) == list(range(DIM))
+        assert sorted(symmetry.action_perm(p)) == list(range(156))
+    # outside the exact four, a colour changes: such a view is not a symmetry of the rules
+    for i, p in enumerate(symmetry.ALL_PERMS):
+        keeps = all((s < 2) == (p[s] < 2) for s in range(4))
+        assert keeps == (i < 4)
+
+
+def test_card_play_over_24_arrangements(recorded, net1):
+    """Symmetric(net, play_views=range(24)): card-play rows are the mean over all 24 relabelled
+    feature rows, showing rows the mean over the exact four; it is invariant under the exact
+    views; the result does not depend on how many views share a forward pass."""
+    feat, mask = engine_encode(recorded["states"][:2500])
+    x = torch.from_numpy(feat)
+    show = recorded["states"]["phase"][:2500] == native.PH_SHOW
+    assert show.any() and (~show).any()
+    sym24 = symmetry.Symmetric(net1, play_views=range(24)).eval()
+    sym4 = symmetry.Symmetric(net1).eval()
+    with torch.no_grad():
+        got = sym24(x)
+        assert torch.equal(got[torch.from_numpy(show)], sym4(x)[torch.from_numpy(show)])
+        want = torch.zeros_like(got)
+        for p in symmetry.ALL_PERMS:
+            src, ap = torch.from_numpy(symmetry.feature_perm(p)), torch.from_numpy(symmetry.action_perm(p))
+            want += net1(x[:, src])[:, ap] / 24
+        play = torch.from_numpy(~show)
+        assert (got[play] - want[play]).abs().max() < 1e-4
+        assert (got[play] - sym4(x)[play]).abs().max() > 0.05          # it is another function than the exact four
+        for view in (1, 2, 3):
+            xv, _, tv = symmetry.view_of(x, torch.from_numpy(mask.astype(bool)), got, view)
+            assert (sym24(xv) - tv).abs().max() < 1e-4
+        one_at_a_time = symmetry.Symmetric(net1, play_views=range(24), group=1).eval()(x)
+        many = symmetry.Symmetric(net1, play_views=range(24), group=24).eval()(x)
+        assert (one_at_a_time - got).abs().max() < 1e-4 and (many - got).abs().max() < 1e-4
+    assert sym24.config["symmetric"] == [0, 1, 2, 3] and sym24.config["symmetric_play"] == list(range(24))
+    assert "symmetric_play" not in sym4.config
+    assert symmetry.Symmetric(net1, play_views=(0, 1, 2, 3)).play_views is None   # the same as the default
+
+
+def test_sym24_prefix_and_play(make_env, net1):
+    net = symmetry.load_net("sym24:vrpo1_actor_0504.pt", "cpu")
+    assert isinstance(net, symmetry.Symmetric) and net.play_views == tuple(range(24)) and not net.training
+    a = lockstep.TorchGreedy(net, "cpu")
+    v = lockstep.duplicate_eval(make_env(8 * 16), a, a, 16, 3, rng(9))
+    assert np.array_equal(v, np.zeros(16))
+    b = lockstep.TorchGreedy(symmetry.load_net("sym:vrpo1_actor_0504.pt", "cpu"), "cpu")
+    assert np.abs(lockstep.duplicate_eval(make_env(8 * 16), a, b, 16, 3, rng(9))).max() > 0

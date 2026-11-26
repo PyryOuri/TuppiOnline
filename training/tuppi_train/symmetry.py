@@ -12,6 +12,14 @@ network's logits over the four views removes much of it: measured on CPU, the
 averaged VRPO4 beats plain VRPO4 by +0.0026 +/- 0.0003 per deal (8,192 base
 deals), VRPO3 by +0.0020 and VRPO1 by +0.0014 over their plain selves.
 
+In card play the other suit arrangements are nearly equivalent too: only the
+shown cards keep a trace of colour (a red card shown for RAMI becomes a black
+one, which could not have been shown that way). `Symmetric(net,
+play_views=range(24))` averages card-play decisions over all 24 arrangements
+and showing decisions over the exact 4; on CPU that gained a further +0.0005
++/- 0.0003 per deal over the exact 4 (4,096 base deals in two samples). It is
+an empirical gain, not a symmetry of the rules.
+
 `Symmetric(net)` is that averaged network as a module with the interface of a
 QNet (features in, 156 logits out), so every chooser and evaluation takes it.
 The views are computed from the feature row itself: a suit relabelling is a
@@ -21,6 +29,8 @@ re-encoding permuted full states.
 """
 
 from __future__ import annotations
+
+import itertools
 
 import numpy as np
 import torch
@@ -32,11 +42,15 @@ from tuppi_ai import native
 
 #: new suit of each old suit, for the four colour-preserving relabellings (the first is the identity)
 SUIT_PERMS = ((0, 1, 2, 3), (1, 0, 2, 3), (0, 1, 3, 2), (1, 0, 3, 2))
+#: all 24 arrangements; the first four are SUIT_PERMS (the exact symmetries)
+ALL_PERMS = SUIT_PERMS + tuple(p for p in itertools.permutations(range(4)) if p not in SUIT_PERMS)
+EXACT = (0, 1, 2, 3)
 A = native.NUM_ACTIONS
 
 # encoder layout (ai/native/tuppi_core.c, the F_* enum and encoder v2)
 _CARD_BLOCKS_V1 = ((0, 1), (52, 4), (260, 4), (468, 4), (676, 3))   # hand; played, led, discard x4; trick x3
 _F_LED_SUIT, _F_VOID, _F_SHOW, _F_SHOWN_HELD, _F_UNSEEN, _F_DIM = 832, 836, 848, 1072, 1076, 1223
+_F_SHOW_POS = 1215   # 4 columns, one of them set exactly in the showing phase
 _F2_TRICK_OF, _F2_WON, _F2_DIM = 1223, 1223 + 52 * 13, 1223 + 52 * 13 + 52
 
 
@@ -99,46 +113,79 @@ def permute_states(states: np.ndarray, suits) -> np.ndarray:
     return out
 
 
-class Symmetric(nn.Module):
-    """A network averaged over the four suit views: mean over views of net(view of x), each
-    mapped back to the original action ids. Logits in, logits out, so greedy play, sampling and
-    every evaluation work unchanged. (For a greedy choice, averaging logits and averaging
-    log-probabilities over the legal actions are the same thing: each view's log-probabilities
-    are its logits minus a constant.)"""
+def is_showing(x: torch.Tensor) -> torch.Tensor:
+    """Rows whose decision is a show (bid): the encoder sets one of the F_SHOW_POS columns
+    exactly in the showing phase."""
+    return x[:, _F_SHOW_POS:_F_SHOW_POS + 4].bool().any(1)
 
-    def __init__(self, net, views=(0, 1, 2, 3)):
+
+class Symmetric(nn.Module):
+    """A network averaged over suit views: the mean over views of net(view of x), each mapped
+    back to the original action ids. Logits in, logits out, so greedy play, sampling and every
+    evaluation work unchanged. (For a greedy choice, averaging logits and averaging
+    log-probabilities over the legal actions are the same thing: each view's log-probabilities
+    are its logits minus a constant.)
+
+    views: indices into ALL_PERMS used for every decision (default: the four exact symmetries).
+    play_views: if given, the views used for card-play decisions instead, e.g. range(24);
+    showing decisions keep `views`, because a show depends on the card's colour."""
+
+    def __init__(self, net, views=EXACT, play_views=None, group: int = 4):
         super().__init__()
         self.net = net
         self.encoder = net.encoder
-        self.config = {**net.config, "symmetric": list(views)}
         self.views = tuple(views)
-        self.register_buffer("src", torch.from_numpy(np.stack([feature_perm(SUIT_PERMS[v], net.encoder) for v in views])),
+        self.play_views = tuple(play_views) if play_views is not None and tuple(play_views) != self.views else None
+        self.group = group   # views per forward pass (memory: group x rows x features)
+        self.config = {**net.config, "symmetric": list(self.views)}
+        if self.play_views is not None:
+            self.config["symmetric_play"] = list(self.play_views)
+        used = sorted(set(self.views) | set(self.play_views or ()))
+        self.slot = {v: i for i, v in enumerate(used)}
+        self.register_buffer("src", torch.from_numpy(np.stack([feature_perm(ALL_PERMS[v], net.encoder) for v in used])),
                              persistent=False)
-        self.register_buffer("back", torch.from_numpy(np.stack([action_perm(SUIT_PERMS[v]) for v in views])),
+        self.register_buffer("back", torch.from_numpy(np.stack([action_perm(ALL_PERMS[v]) for v in used])),
                              persistent=False)
 
-    def view_logits(self, x: torch.Tensor) -> torch.Tensor:
+    def view_logits(self, x: torch.Tensor, views=None) -> torch.Tensor:
         """[views, rows, 156]: each view's logits, indexed by the original action ids."""
-        n, v = len(x), len(self.views)
-        stacked = torch.cat([x[:, self.src[i]] for i in range(v)])
-        out = self.net(stacked).float().reshape(v, n, A)
-        return torch.stack([out[i][:, self.back[i]] for i in range(v)])
+        views = self.views if views is None else views
+        n, out = len(x), []
+        for i in range(0, len(views), self.group):
+            part = [self.slot[v] for v in views[i:i + self.group]]
+            y = self.net(torch.cat([x[:, self.src[j]] for j in part])).float().reshape(len(part), n, A)
+            out += [y[k][:, self.back[j]] for k, j in enumerate(part)]
+        return torch.stack(out)
+
+    def _mean(self, x: torch.Tensor, views) -> torch.Tensor:
+        total = torch.zeros((len(x), A), device=x.device)
+        for i in range(0, len(views), self.group):
+            total += self.view_logits(x, views[i:i + self.group]).sum(0)
+        return total / len(views)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.view_logits(x).mean(0)
+        if self.play_views is None:
+            return self._mean(x, self.views)
+        show = is_showing(x)
+        out = torch.empty((len(x), A), device=x.device)
+        if show.any():
+            out[show] = self._mean(x[show], self.views)
+        if not show.all():
+            out[~show] = self._mean(x[~show], self.play_views)
+        return out
 
 
 def view_of(x: torch.Tensor, legal: torch.Tensor, target: torch.Tensor, view: int, encoder: int = 2,
             cache: dict | None = None):
-    """A training row seen through suit view `view`: features, legal mask and per-action target
-    (all [rows, ...]) of the relabelled position. For augmentation: the relabelled position's
-    correct target is the relabelled target."""
+    """A training row seen through suit view `view` (an index into ALL_PERMS; 0..3 are the exact
+    symmetries): features, legal mask and per-action target (all [rows, ...]) of the relabelled
+    position. For augmentation: the relabelled position's correct target is the relabelled target."""
     if view == 0:
         return x, legal, target
     key = (view, encoder, x.device)
     if cache is None or key not in cache:
-        src = torch.from_numpy(feature_perm(SUIT_PERMS[view], encoder)).to(x.device)
-        ap = action_perm(SUIT_PERMS[view])
+        src = torch.from_numpy(feature_perm(ALL_PERMS[view], encoder)).to(x.device)
+        ap = action_perm(ALL_PERMS[view])
         inv = np.empty_like(ap)
         inv[ap] = np.arange(A)
         entry = (src, torch.from_numpy(inv).to(x.device))
@@ -151,11 +198,16 @@ def view_of(x: torch.Tensor, legal: torch.Tensor, target: torch.Tensor, view: in
 
 
 def load_net(name: str, dev):
-    """A network by file name or path; the prefix "sym:" wraps it in `Symmetric`
-    (e.g. "sym:vrpo4_final.pt")."""
+    """A network by file name or path. The prefix "sym:" wraps it in `Symmetric` over the four
+    exact views (e.g. "sym:vrpo4_final.pt"); "sym24:" also averages card play over all 24."""
     from pathlib import Path
-    symmetric = name.startswith("sym:")
-    name = name[4:] if symmetric else name
+    kind = None
+    for prefix in ("sym24:", "sym:"):
+        if name.startswith(prefix):
+            kind, name = prefix, name[len(prefix):]
+            break
     path = Path(name)
     net = qmodel.load(path if path.exists() else MODELS / name, dev)
-    return Symmetric(net).to(dev).eval() if symmetric else net
+    if kind is None:
+        return net
+    return Symmetric(net, play_views=range(24) if kind == "sym24:" else None).to(dev).eval()
