@@ -265,8 +265,10 @@ Checked against the engine, exactly: the sampled deals are those of `tc_search_w
 without play inference; every deal's value of every action equals `tc_search_world_values`, with
 and without the solver tail.
 
-First result, on the CPU with the small network: VRPO1 with this look-ahead (32 deals, no solver
-tail, no play inference) beats plain VRPO1 by **+0.00134 +/- 0.00049 per deal** (384 base deals).
+First results, on the CPU (32 deals per decision, no solver tail, no play inference, 384 base
+deals each): VRPO1 with this look-ahead beats plain VRPO1 by **+0.00134 +/- 0.00049 per deal**,
+and VRPO4 with it beats plain VRPO4 by **+0.00146 +/- 0.00060**. VRPO4 spreads its probability
+over more moves: 58% of its free decisions have a second candidate, against 27% for VRPO1.
 The per-base-deal spread of such a match is about 0.005, so 1,024 base deals resolve about
 +/-0.0003. The run prints its own estimate of the gain too; that figure is inflated by selection
 (it counts only the switches it chose to make) and is no substitute for the match result.
