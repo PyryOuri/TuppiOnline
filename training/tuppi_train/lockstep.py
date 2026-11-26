@@ -109,13 +109,18 @@ def rollouts(env: "native.Env", choose, games: int, ruleset: int, rng_state: C.c
 
 
 def duplicate_eval(env: "native.Env", choose_a, choose_b, base_deals: int, ruleset: int, rng_state: C.c_uint64,
-                   encoder: int = 2, score=(0, 0), paired: bool = True, timing: dict | None = None) -> np.ndarray:
+                   encoder: int = 2, score=(0, 0), paired: bool = True, timing: dict | None = None,
+                   details: dict | None = None) -> np.ndarray:
     """Per-base-deal mean equity change of the pair playing `choose_a` against `choose_b`
     over the 8 games of each base deal (the design of `native.duplicate_eval`).
 
     paired=True gives both team assignments of a rotation the same seed for the sooli
     heuristics' draws, so those draws cancel between the two and a policy against itself
-    scores exactly 0. paired=False uses the native function's seeds (for comparing with it)."""
+    scores exactly 0. paired=False uses the native function's seeds (for comparing with it).
+
+    details (a dict to fill): per game, `value` (A's equity change), `a_team`, and from the
+    finished deal `sooli` (one was played), `contract`, `declarer`, `winner`, `points`. The mean
+    of `value` over a base deal's 8 games is that deal's return value."""
     n = 8 * base_deals
     if n > env.n:
         raise ValueError("environment too small")
@@ -145,6 +150,13 @@ def duplicate_eval(env: "native.Env", choose_a, choose_b, base_deals: int, rules
         timing.update(total=time.perf_counter() - t0, sooli=float(buf.seconds[0]), encode=float(buf.seconds[1]),
                       rows=rows)
     signed = np.where(a_team == 0, buf.total[:n], -buf.total[:n])
+    if details is not None:
+        state = np.zeros(n, np.dtype(native.TcDeal))
+        games = np.arange(n, dtype=np.int32)
+        lib.tc_ls_copy_states(env._h, games.ctypes.data, n, state.ctypes.data)
+        details.update(value=signed.copy(), a_team=a_team.copy(), sooli=state["soolaaja"] >= 0,
+                       contract=state["contract"].copy(), declarer=state["declarer"].copy(),
+                       winner=state["winner_team"].copy(), points=state["points"].astype(np.int32))
     return signed.reshape(base_deals, 8).mean(1)
 
 

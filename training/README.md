@@ -178,6 +178,44 @@ Measured on CPU with scratch scripts (paired duplicate unless stated), VRPO4:
 
 Every evaluation above starts from 0-0 with dealer 0; other match scores have not been checked.
 
+## The exploiter test: a lower bound on how exploitable a bot is
+
+How far a bot is from optimal play cannot be computed. What can be measured is a lower bound:
+freeze the bot (the target) on one team, greedy as it is deployed, and train a pair sharing one
+network (the exploiter) for nothing but beating it. What the exploiter wins per deal bounds the
+target's exploitability from below, for this kind of attacker and this training budget.
+
+```sh
+python -m tuppi_train.exploit --name ex1 --target <best_student.pt> --others vrpo4_final.pt --hours 3 \
+    --offer-model <offer_model.pt> --critic-init <an earlier VRPO run> --warmup-min 5 --warmup-max 30
+python -m tuppi_train.exploit_report --run training/runs/ex1 --base 32768
+```
+
+`exploit.Exploiter` is `vrpo_gpu.Learner` with another collection step: deals are exploiter
+against target (in every second deal the exploiter is the other team), only the exploiter's
+decisions are kept and their steps renumbered per deal. The update is unchanged; the return
+calculation is exact for such one-team sequences (a test compares the learner's advantages on a
+real exploiter rollout with a plain deal-by-deal calculation). Design choices:
+
+- **The exploiter starts as a copy of the target**, so it scores exactly 0 at iteration 0, which
+  is logged and kept as the first best: the reported bound cannot be negative.
+- **Settings for a fixed opponent**: 65,536 deals per update, learning rate 1e-5, KL cap 0.01, no
+  entropy bonus.
+- **One game for monitoring and the final check**: every evaluation uses the exact sooli-offer
+  heuristic (training uses the offer model for speed) and the run's sooli trick play, by default
+  the observation-only heuristics the live bots use.
+- **The report** (`exploit_report.py`) confirms the run's last network on fresh deals (the
+  best-on-monitoring one is shown separately, since picking it flatters it) and says where a gain
+  comes from: deals with and without a sooli, each side's RAMI declarations, points per deal and
+  deals won (which do not depend on the equity table), the same match with the target sampling
+  its moves (a gain that vanishes there came from the target being predictable), and the match
+  over the match scores training uses.
+
+What the number is not: the distance to optimal play; a statement about Nelli's safety net or
+Heidi's search; or a guarantee that a longer or sharper attack would not find more. Run the
+control first (`colab/tuppi_exploit.ipynb`, `STAGE = "control"`: the attacker against VRPO1): if
+the method cannot exploit a weak bot, a null result on a strong one says nothing.
+
 ## The label-based attempt (stage 1: the verdict run)
 
 Continuing VRPO from `vrpo4_final` did not improve on it (run1: 185 iterations, every evaluation
@@ -280,6 +318,7 @@ reference files, browser runtime), which is not part of this directory.
 | `test_improve.py` | Lockstep labels equal `native.branch_values` exactly (own play and solver tail, sharing on and off, sooli always and never accepted) and do not depend on the slots. Teacher fitting, held-out gain and the composite equal `selfplay.py` on the same data. The composite chooser plays its definition, ties included |
 | `test_verdict.py` | The verdict run at toy size: reaches a verdict, a rerun changes nothing, a lost step is redone, other settings are refused |
 | `test_symmetry.py`, `test_bake.py` | The suit relabelling maps equal the engine's encoding of relabelled states; the averaged network is invariant and equals relabel-encode-forward-map-back; baking learns, resumes exactly and keeps its best |
+| `test_exploit.py` | The exploiter's rollout keeps exactly its own decisions, in order; its advantages equal a brute-force calculation; iteration 0 is exactly 0 and kept; resume is exact; evaluations use exact offers and the run's sooli play; with a planted reward for declaring RAMI its declaration rate rises, and falls with the sign flipped |
 | `test_hosted.py` | Every hosted file matches `SOURCE.json`; nothing was added to the image's directories |
 
 Not covered by tests here: anything specific to CUDA (the container the suite was written in has

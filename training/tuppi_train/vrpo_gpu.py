@@ -495,8 +495,12 @@ def brief(row: dict) -> str:
     return " | ".join(parts)
 
 
-def main(argv=None) -> None:
-    p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+def main(argv=None, config_cls=None, learner_cls=None, description: str | None = None, line=None) -> None:
+    """The command line of a run. Another learner (exploit.py) passes its own Config and Learner
+    classes and, optionally, `line(row) -> str` for the per-iteration output."""
+    Config_, Learner_ = config_cls or Config, learner_cls or Learner
+    line = line or brief
+    p = argparse.ArgumentParser(description=description or __doc__.split("\n")[0])
     p.add_argument("--name", required=True)
     p.add_argument("--print", dest="show", choices=("brief", "json"), default="brief")
     p.add_argument("--print-every", type=int, default=1, help="brief lines: every Nth iteration (evaluations always)")
@@ -504,22 +508,22 @@ def main(argv=None) -> None:
     p.add_argument("--hours", type=float, default=1.0)
     p.add_argument("--iterations", type=int, default=10**9)
     p.add_argument("--device", default=None)
-    for f in fields(Config):
+    for f in fields(Config_):
         kind = type(f.default)
         p.add_argument("--" + f.name.replace("_", "-"), default=None,
                        type=(lambda s: s.lower() in ("1", "true")) if kind is bool else kind)
     a = p.parse_args(argv)
     out = a.out or REPO / "training" / "runs" / a.name
-    given = {f.name: getattr(a, f.name) for f in fields(Config) if getattr(a, f.name) is not None}
+    given = {f.name: getattr(a, f.name) for f in fields(Config_) if getattr(a, f.name) is not None}
     saved = checkpoint.Rotating(out / "ckpt").load()
     base = saved["config"] if saved else {}
-    cfg = Config(**{**{k: v for k, v in base.items() if k in {f.name for f in fields(Config)}}, **given})
+    cfg = Config_(**{**{k: v for k, v in base.items() if k in {f.name for f in fields(Config_)}}, **given})
     out.mkdir(parents=True, exist_ok=True)
     (out / "config.json").write_text(json.dumps(asdict(cfg), indent=1))
     dev = device.pick(a.device)
     print(json.dumps({"run": a.name, "out": str(out), "resumed_from": saved["iteration"] if saved else None,
                       "threads": tn.threads(), **device.describe(dev)}), flush=True)
-    learner = Learner(cfg, out, dev)
+    learner = Learner_(cfg, out, dev)
     if getattr(learner, "critic_source", None) and not saved:
         print(json.dumps({"critic_from": learner.critic_source}), flush=True)
     # SIGTERM or Ctrl-C: finish the current iteration, save, exit (the notebook sends SIGTERM when
@@ -541,7 +545,7 @@ def main(argv=None) -> None:
         if a.show == "json":
             print(json.dumps(row), flush=True)
         elif "eval" in row or "stopped" in row or row["iteration"] % a.print_every == 0:
-            print(brief(row), flush=True)
+            print(line(row), flush=True)
     learner.save()
     reason = learner.stopped or ("stopped by a signal" if stop["asked"] else "time or iteration limit")
     print(json.dumps({"finished": reason, "iteration": learner.iteration,
