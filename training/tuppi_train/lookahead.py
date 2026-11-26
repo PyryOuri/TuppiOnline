@@ -12,7 +12,10 @@ at once, any network as the play-out policy, as many worlds as one likes.
 
 plays the look-ahead pair against the plain network by paired duplicate and
 prints the gain per deal with its 95% interval after every chunk; a run that is
-stopped continues from its last chunk.
+stopped continues from its last chunk. Either side can be plain or look ahead,
+with its own anchor and play-out network (--plain, --opponent,
+--opponent-rollout), e.g. a Heidi-style search around a new network against
+one around the old.
 
 Pieces:
 
@@ -372,22 +375,25 @@ def build(net, dev, settings: Settings, env: "native.Env", table: np.ndarray, ro
 def measure(out: Path, net_name: str, settings: Settings, base: int = 1024, chunk: int = 64, seed: int = 20261126,
             rollout_name: str = "", opponent_name: str = "", dev=None, amp_name: str = "", lanes: int = 2,
             lane_games: int = 65536, sooli_play: str = "heuristic", offer_model_path: str = "", hours: float = 0.0,
-            log=print) -> dict:
-    """The look-ahead pair (anchor `net_name`) against the plain network `opponent_name` (default:
-    the anchor itself), `base` base deals in chunks of `chunk`, resumable in `out`. Returns the
-    summary that is also written to out/summary.json."""
+            log=print, plain: bool = False, opponent_rollout_name: str = "") -> dict:
+    """Side A (anchor `net_name`, with the look-ahead unless `plain`) against side B (the network
+    `opponent_name`, default the anchor itself; with the same look-ahead settings and the play-out
+    network `opponent_rollout_name` if that is given, else plain). `base` base deals in chunks of
+    `chunk`, resumable in `out`. Returns the summary that is also written to out/summary.json."""
     from . import offer, symmetry
     from tuppi_ai.best import EQUITY
     from tuppi_ai.equity import Equity
 
+    if plain and not opponent_rollout_name:
+        raise SystemExit("two plain networks: use tuppi_train.evaluate")
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     dev = dev or device.pick()
     device.setup(dev)
     amp_name = amp_name or ("fp16" if dev.type == "cuda" else "off")
-    config = {"net": net_name, "rollout": rollout_name or net_name, "opponent": opponent_name or net_name,
-              "settings": asdict(settings), "chunk": chunk, "seed": seed, "amp": amp_name, "sooli_play": sooli_play,
-              "offer_model": bool(offer_model_path)}
+    config = {"net": net_name, "rollout": "" if plain else rollout_name or net_name, "opponent": opponent_name or net_name,
+              "opponent_rollout": opponent_rollout_name, "settings": asdict(settings), "chunk": chunk, "seed": seed,
+              "amp": amp_name, "sooli_play": sooli_play, "offer_model": bool(offer_model_path)}
     cfg_path, log_path = out / "config.json", out / "chunks.jsonl"
     if cfg_path.exists():
         old = json.loads(cfg_path.read_text())
@@ -400,27 +406,46 @@ def measure(out: Path, net_name: str, settings: Settings, base: int = 1024, chun
     native.set_offer_model(None)   # the match itself is played with the exact sooli-offer heuristic
     heur = sooli_play == "heuristic"
     table = Equity.load(EQUITY).table
-    net = symmetry.load_net(net_name, dev)
-    rollout_net = symmetry.load_net(rollout_name, dev) if rollout_name else None
-    opponent = symmetry.load_net(opponent_name, dev) if opponent_name else net
+    nets: dict = {}
+
+    def load(name):
+        if name not in nets:
+            nets[name] = symmetry.load_net(name, dev)
+        return nets[name]
+
+    net, opponent = load(net_name), load(opponent_name or net_name)
     env = native.Env(8 * chunk, 1, table, single_deal=True, encoder=net.encoder)
     env.set_sooli(0, False, heur, 0.0)
     offer_model = offer.load_native(offer_model_path) if offer_model_path else None
-    plain = lockstep.TorchGreedy(opponent, dev, opponent.encoder)
-    log(f"look-ahead of {net_name} against {config['opponent']}: {json.dumps(asdict(settings))}")
+
+    def side(anchor, rollout_name_, searching):
+        if not searching:
+            return lockstep.TorchGreedy(anchor, dev, anchor.encoder)
+        return build(anchor, dev, settings, env, table, load(rollout_name_) if rollout_name_ else None,
+                     device.AMP[amp_name], lanes, lane_games, heur, offer_model)
+
+    a, b = side(net, rollout_name, not plain), side(opponent, opponent_rollout_name, bool(opponent_rollout_name))
+    looks = [x for x in (a, b) if isinstance(x, LookAhead)]
+    describe = lambda name, roll, searching: (f"{name} with look-ahead (play-outs by {roll or name})" if searching  # noqa: E731
+                                              else f"plain {name}")
+    log(f"A: {describe(net_name, rollout_name, not plain)}")
+    log(f"B: {describe(config['opponent'], opponent_rollout_name, bool(opponent_rollout_name))}")
+    log(f"settings {json.dumps(asdict(settings))}")
     log(f"device {device.describe(dev)}, engine threads {tn.threads()}, play-outs in {amp_name}, {lanes} lanes of "
         f"{lane_games:,} games")
     t_start = time.perf_counter()
-    look = build(net, dev, settings, env, table, rollout_net, device.AMP[amp_name], lanes, lane_games, heur, offer_model)
     for c in range(len(done), (base + chunk - 1) // chunk):
         if hours > 0 and time.perf_counter() - t_start > hours * 3600:
             log("time is up; run the same command again to continue")
             break
-        look.reset(seed + 7919 * c)
+        for j, look in enumerate(looks):
+            look.reset(seed + 7919 * c + 104729 * j)
         t0 = time.perf_counter()
-        values = lockstep.duplicate_eval(env, look, plain, chunk, 3, C.c_uint64(seed + c), net.encoder)
+        values = lockstep.duplicate_eval(env, a, b, chunk, 3, C.c_uint64(seed + c), net.encoder)
+        counts = [look.searcher.counts() for look in looks]
         row = {"chunk": c, "values": [float(v) for v in values], "seconds": time.perf_counter() - t0,
-               **look.stats, **look.searcher.counts(), "parts": look.searcher.seconds}
+               **looks[0].stats, **{key: sum(x[key] for x in counts) for key in counts[0]},
+               "parts": looks[0].searcher.seconds}
         with open(log_path, "a") as f:
             f.write(json.dumps(row) + "\n")
         done.append(row)
@@ -446,7 +471,7 @@ def summary(chunks: list) -> dict:
 
 def brief(r: dict) -> str:
     choices = max(1, r["decisions"] - r["forced"])
-    return (f"{r['base_deals']:6d} base deals | look-ahead {r['mean']:+.5f} +/- {r['ci95']:.5f} per deal | "
+    return (f"{r['base_deals']:6d} base deals | A minus B {r['mean']:+.5f} +/- {r['ci95']:.5f} per deal | "
             f"searched {r['searched'] / choices:.0%} of free decisions, changed {r['switched'] / max(1, r['searched']):.1%} "
             f"of those | its own estimate {r['claimed_per_deal']:+.5f} | {r['seconds'] / 60:.1f} min, "
             f"{r['rows_per_s'] / 1e3:.0f}k play-out rows/s")
@@ -455,11 +480,11 @@ def brief(r: dict) -> str:
 def verdict(r: dict) -> str:
     lo, hi = r["mean"] - r["ci95"], r["mean"] + r["ci95"]
     if lo > 0:
-        return (f"VERDICT: the look-ahead beats the plain network by {r['mean']:+.5f} per deal "
-                f"(95% interval {lo:+.5f} to {hi:+.5f}).")
-    if hi < 0.001:
-        return (f"VERDICT: no gain worth having: {r['mean']:+.5f} per deal, and the interval "
-                f"({lo:+.5f} to {hi:+.5f}) excludes +0.001.")
+        return f"VERDICT: A beats B by {r['mean']:+.5f} per deal (95% interval {lo:+.5f} to {hi:+.5f})."
+    if hi < 0:
+        return f"VERDICT: B beats A by {-r['mean']:+.5f} per deal (95% interval {-hi:+.5f} to {-lo:+.5f})."
+    if hi < 0.001 and lo > -0.001:
+        return f"VERDICT: no difference worth having: {r['mean']:+.5f} per deal, interval {lo:+.5f} to {hi:+.5f}."
     return f"VERDICT: undecided: {r['mean']:+.5f} per deal, interval {lo:+.5f} to {hi:+.5f}. More base deals would settle it."
 
 
@@ -469,7 +494,9 @@ def main(argv=None) -> None:
     p.add_argument("--net", required=True, help="the network: the anchor, and the opponents")
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--rollout", default="", help="play-out network (default: --net)")
-    p.add_argument("--opponent", default="", help="the plain network on the other side (default: --net)")
+    p.add_argument("--opponent", default="", help="the network on the other side (default: --net)")
+    p.add_argument("--opponent-rollout", default="", help="the other side looks ahead too, with this play-out network")
+    p.add_argument("--plain", action="store_true", help="side A plays --net without the look-ahead")
     p.add_argument("--base", type=int, default=1024)
     p.add_argument("--chunk", type=int, default=64, help="base deals per match (8 games each)")
     p.add_argument("--seed", type=int, default=20261126)
@@ -499,7 +526,8 @@ def main(argv=None) -> None:
     settings = Settings(worlds=a.worlds, top=a.top, min_prob=a.min_prob, keep=a.keep, keep_show=a.keep_show, z=a.z,
                         show=not a.no_show, dd_left=a.dd, belief=a.belief)
     r = measure(a.out, a.net, settings, a.base, a.chunk, a.seed, a.rollout, a.opponent, device.pick(a.device), a.amp,
-                a.lanes, a.lane_games, a.sooli_play, a.offer_model, a.hours)
+                a.lanes, a.lane_games, a.sooli_play, a.offer_model, a.hours, plain=a.plain,
+                opponent_rollout_name=a.opponent_rollout)
     print(verdict(r) if r["base_deals"] > 1 else "nothing played")
 
 

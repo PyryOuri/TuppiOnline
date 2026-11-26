@@ -271,7 +271,7 @@ def test_measure_resumes(tmp_path, table):
     rows = [[json.loads(line)["values"] for line in (tmp_path / x / "chunks.jsonl").read_text().splitlines()] for x in "ab"]
     assert rows[0] == rows[1] and len(rows[0]) == 2
     assert whole["mean"] == resumed["mean"] and whole["base_deals"] == 8 and whole["searched"] == resumed["searched"]
-    assert "VERDICT" in lookahead.verdict(whole) and "look-ahead" in lookahead.brief(whole)
+    assert "VERDICT" in lookahead.verdict(whole) and "A minus B" in lookahead.brief(whole)
     with pytest.raises(SystemExit):
         lookahead.measure(tmp_path / "b", "vrpo1_actor_0504.pt", lookahead.Settings(worlds=3), base=8, **kw)
 
@@ -323,3 +323,21 @@ def test_focused_values_equal_branch_labels(recorded, table, make_env):
     for i in range(len(states)):
         assert np.array_equal(ids[i, :k[i]], cand[i, :k[i]])
         assert np.array_equal(q[i, :k[i]], mine[i, :k[i]].astype(np.float16))
+
+
+def test_measure_sides(tmp_path):
+    """Either side can look ahead or be plain: the same pair on both sides gives the mirrored
+    result when the sides are swapped (same deals, draws tied to the side's position aside), and a
+    look-ahead with an unreachable margin on both sides is exactly 0."""
+    never = lookahead.Settings(worlds=2, top=2, min_prob=0.05, keep=1e9, keep_show=1e9)
+    kw = dict(base=4, chunk=4, seed=5, dev=torch.device("cpu"), lanes=1, lane_games=2048, log=lambda s: None)
+    both = lookahead.measure(tmp_path / "both", "vrpo1_actor_0504.pt", never, opponent_rollout_name="vrpo1_actor_0504.pt", **kw)
+    assert both["mean"] == 0.0 and both["changed_base_deals"] == 0.0 and both["searched"] > 0
+    settings = lookahead.Settings(worlds=2, top=2, min_prob=0.05, z=0.5)
+    a = lookahead.measure(tmp_path / "a", "vrpo1_actor_0504.pt", settings, **kw)
+    b = lookahead.measure(tmp_path / "b", "vrpo1_actor_0504.pt", settings, plain=True,
+                          opponent_rollout_name="vrpo1_actor_0504.pt", **kw)
+    assert a["changed_base_deals"] > 0 and b["changed_base_deals"] > 0 and b["searched"] > 0
+    assert json.loads((tmp_path / "b" / "config.json").read_text())["rollout"] == ""
+    with pytest.raises(SystemExit):
+        lookahead.measure(tmp_path / "c", "vrpo1_actor_0504.pt", settings, plain=True, **kw)

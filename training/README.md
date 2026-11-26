@@ -273,6 +273,33 @@ The per-base-deal spread of such a match is about 0.005, so 1,024 base deals res
 +/-0.0003. The run prints its own estimate of the gain too; that figure is inflated by selection
 (it counts only the switches it chose to make) and is no substitute for the match result.
 
+### Can the gain be trained into the network? (not at this scale)
+
+`tuppi_train/focus.py` labels cheaply what the look-ahead estimates expensively: at self-play
+decisions where the network has at least two candidates, one play-out per candidate from the true
+state (an exact draw from what the seat should believe). On the CPU that gives 11 million labelled
+decisions an hour for VRPO1. A trial with 5.9 million of them, VRPO1 trained by
+`improve.fit_policy` for one pass and played against VRPO1 on 2,048 base deals at five points of
+the pass: between +0.00000 and +0.00010, all +/- 0.0003. Nothing.
+
+The labels say why. Over 3.3 million (decision, alternative) pairs:
+
+| | |
+|---|---|
+| The alternative gives the same result as the network's move in that deal | 75.0% |
+| better / worse | 12.3% / 12.7% |
+| Mean difference, alternative minus own move | -0.00038 +/- 0.00007 equity |
+| Standard deviation of the difference | 0.067 |
+
+The network is not systematically wrong about its candidates: on average they are worth the same
+to within 0.0004, in every phase and at every gap between their logits (even where the network
+prefers its move by 3 to 5 logits the alternative is only 0.0006 worse). What the look-ahead finds
+is specific to the deal at hand, and the noise of a single label (0.067) is about 170 times the
+average difference between candidates. So the look-ahead's gain is the gain of computing at the table,
+and the way to have it is to search at the table (as Heidi does), not to distil it into a network
+of the same size with a few million labels. A much larger network and far more labels might
+absorb part of it; that has not been tried.
+
 What it does not do: the deals are drawn uniformly unless `--belief` is set; sooli decisions are
 not searched; no value network cuts the play-outs short.
 
