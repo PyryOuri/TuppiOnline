@@ -197,6 +197,9 @@ def test_decide_is_its_definition():
     assert gain == pytest.approx([0.025, 0, 0, 0.055, 0])
     assert lookahead.decide(q, k, np.full(5, 0.03), 2.0)[0].tolist() == [0, 0, 0, 2, 0]
     assert lookahead.decide(q, k, np.full(5, 0.003), 0.0)[0].tolist() == [1, 0, 1, 2, 0]
+    # fewer independent worlds: larger standard errors (row 0: gain 0.025, sd 0.0058)
+    assert lookahead.decide(q, k, np.full(5, 0.003), 2.0, np.full(5, 0.2))[0].tolist() == [0, 0, 0, 2, 0]
+    assert lookahead.effective_worlds(np.array([[0, 1, 2, 3], [0, 0, 1, 1], [5, 5, 5, 5]])).tolist() == [4.0, 2.0, 1.0]
 
 
 def match(table, net, settings, base=4, lanes=2, lane_games=4096, seed=3, rollout=None, opponent=None):

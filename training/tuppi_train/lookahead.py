@@ -285,19 +285,30 @@ def candidates(anchor, feat, mask, top: int, min_prob: float):
     return a0.cpu().numpy().astype(np.uint8), cand, k.cpu().numpy().astype(np.int32), legal.cpu().numpy()
 
 
-def decide(q: np.ndarray, k: np.ndarray, keep: np.ndarray, z: float) -> tuple[np.ndarray, np.ndarray]:
+def decide(q: np.ndarray, k: np.ndarray, keep: np.ndarray, z: float, effective: np.ndarray | None = None
+           ) -> tuple[np.ndarray, np.ndarray]:
     """(choice [n], gain [n]): candidate 0 is the anchor. Another candidate is chosen if its mean
     gain over the worlds is above keep[s] and above z paired standard errors; of those, the one
-    with the largest mean gain. gain is that mean (0 where the anchor stays)."""
+    with the largest mean gain. gain is that mean (0 where the anchor stays). effective [n]: the
+    number of independent worlds behind each state's w (fewer after resampling, which repeats
+    worlds); default w."""
     n, w, max_k = q.shape
     d = q[:, :, 1:] - q[:, :, :1]
     mean = d.mean(1)
-    se = d.std(1, ddof=1) / np.sqrt(w) if w > 1 else np.zeros_like(mean)
+    size = np.full(n, float(w)) if effective is None else np.asarray(effective, np.float64)
+    se = d.std(1, ddof=1) / np.sqrt(size)[:, None] if w > 1 else np.zeros_like(mean)
     ok = (np.arange(1, max_k)[None, :] < k[:, None]) & (mean > keep[:, None]) & (mean > z * se)
     score = np.where(ok, mean, -np.inf)
     best = score.argmax(1)
     found = ok.any(1)
     return np.where(found, best + 1, 0), np.where(found, score[np.arange(n), best], 0.0)
+
+
+def effective_worlds(pick: np.ndarray) -> np.ndarray:
+    """For resampled worlds pick [n, w] (the candidate each came from): w^2 / sum of squared
+    multiplicities, the number of independent worlds a mean over them is worth."""
+    same = (pick[:, :, None] == pick[:, None, :]).sum((1, 2))
+    return pick.shape[1] ** 2 / same
 
 
 class LookAhead:
@@ -343,14 +354,17 @@ class LookAhead:
             world_seeds = self.rng.integers(1, 2**63, len(rows) * s.worlds, dtype=np.uint64)
             inferred = ~showing[rows] & (states["soolaaja"] < 0) if s.belief > 1 else np.zeros(len(rows), bool)
             worlds, bad = np.zeros(len(rows) * s.worlds, STATE), np.zeros(len(rows), np.uint8)
+            effective = np.full(len(rows), float(s.worlds))
             for part, draw in ((np.flatnonzero(~inferred), self.searcher.sample), (np.flatnonzero(inferred), self._belief)):
                 if len(part):
-                    wp, bad[part], _ = draw(states[part], s.worlds, state_seeds[part])
+                    wp, bad[part], extra = draw(states[part], s.worlds, state_seeds[part])
                     worlds.reshape(len(rows), s.worlds)[part] = wp.reshape(len(part), s.worlds)
+                    if draw == self._belief:   # resampling repeats worlds: fewer independent ones
+                        effective[part] = effective_worlds(extra)
             kc = np.where(bad > 0, 1, k[rows]).astype(np.int32)   # no consistent world: the anchor stays
             q = self.searcher.play(worlds, s.worlds, cand[rows], kc, world_seeds)
             keep = np.where(showing[rows], s.keep_show, s.keep)
-            choice, gain = decide(q, kc, keep, s.z)
+            choice, gain = decide(q, kc, keep, s.z, effective)
             actions[rows] = cand[rows, choice]
             st["searched"] += len(rows)
             st["candidates"] += int(kc.sum())
