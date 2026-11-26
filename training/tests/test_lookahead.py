@@ -274,3 +274,52 @@ def test_measure_resumes(tmp_path, table):
     assert "VERDICT" in lookahead.verdict(whole) and "look-ahead" in lookahead.brief(whole)
     with pytest.raises(SystemExit):
         lookahead.measure(tmp_path / "b", "vrpo1_actor_0504.pt", lookahead.Settings(worlds=3), base=8, **kw)
+
+
+def test_focused_labels(table, net1, make_env):
+    """Focused labels (focus.py) are `labels.branch_labels` restricted to the candidates: the same
+    value for the same state, action and seed. Only decisions with at least two candidates are
+    labelled, the network's own move is the first, and the rows do not depend on the lanes."""
+    from tuppi_train import focus
+
+    def run(lanes, lane_games):
+        env = make_env(96)
+        anchor = lockstep.TorchGreedy(net1, "cpu", 2)
+        s = lookahead.Searcher(table, lockstep.TorchGreedy(net1, "cpu", 2), 2, lanes, lane_games, heuristic_sooli=False)
+        timing = {}
+        return focus.collect(env, anchor, s, 96, rng(4), top=3, min_prob=0.02, p_explore=0.05, seed=6, timing=timing), timing
+
+    d, timing = run(1, 4096)
+    again, _ = run(3, 300)
+    for key in d:
+        assert np.array_equal(d[key], again[key]), key
+    n = len(d["feat"])
+    assert n == timing["labelled"] and 0 < n < timing["unforced"] < timing["decisions"] and timing["dropped"] == 0
+    k = (d["ids"] != focus.PAD).sum(1)
+    assert k.min() >= 2 and k.max() <= 3 and d["explored"].any() and not d["explored"].all()
+    assert not d["q"][d["ids"] == focus.PAD].any() and np.abs(d["q"]).max() > 0
+    # the first candidate is the network's greedy move on that row
+    choice = lockstep.TorchGreedy(net1, "cpu", 2)
+    mask = np.zeros((n, tn.MASK_BYTES), np.uint8)
+    for j in range(3):
+        rows = np.flatnonzero(d["ids"][:, j] != focus.PAD)
+        np.bitwise_or.at(mask, (rows, d["ids"][rows, j] >> 3), (0x80 >> (d["ids"][rows, j] & 7)).astype(np.uint8))
+    restricted = choice(d["feat"], mask, None, None)[0]
+    assert np.array_equal(restricted, d["ids"][:, 0])
+
+
+def test_focused_values_equal_branch_labels(recorded, table, make_env):
+    """One play-out per candidate from the true state is the label of labels.branch_labels for that
+    action, with the same seed (sooli tricks by the solver in both)."""
+    mlp, d = recorded
+    states = np.ascontiguousarray(d["states"][::4][:80])
+    seeds = labels.state_seeds(len(states), 9)
+    choose = lockstep.NativeGreedy(mlp)
+    native.set_branch_share(False)
+    ids, q = labels.branch_labels(make_env(4096), states, choose, seeds)
+    s = lookahead.Searcher(table, choose, 2, 2, 600, heuristic_sooli=False)
+    cand, k = all_legal(d["mask"][::4][:80])
+    mine = s.play(states, 1, cand, k, seeds)[:, 0, :]
+    for i in range(len(states)):
+        assert np.array_equal(ids[i, :k[i]], cand[i, :k[i]])
+        assert np.array_equal(q[i, :k[i]], mine[i, :k[i]].astype(np.float16))

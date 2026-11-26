@@ -264,6 +264,24 @@ class Searcher:
             lane.rows = lane.net_rows = 0
 
 
+def candidates(anchor, feat, mask, top: int, min_prob: float):
+    """(anchor action [r], candidates int32 [r, MAX_K] with the anchor first, count [r], legal count [r]):
+    the network's greedy move, then its most probable other moves, at most `top` in all, each with
+    at least `min_prob` of its probability. `anchor`: a `lockstep.TorchGreedy`."""
+    torch = anchor.torch
+    with torch.no_grad():
+        logits = anchor._logits(feat, mask)
+        a0 = lockstep.greedy(logits)
+        p = torch.softmax(logits, 1).scatter(1, a0[:, None], 2.0)
+        top = min(top if top > 0 else MAX_K, MAX_K)
+        value, ids = p.topk(top, 1)
+        k = ((value >= min_prob) & (value > 0)).sum(1)
+        legal = (logits > -1e8).sum(1)
+    cand = np.zeros((len(feat), MAX_K), np.int32)
+    cand[:, :top] = ids.cpu().numpy()
+    return a0.cpu().numpy().astype(np.uint8), cand, k.cpu().numpy().astype(np.int32), legal.cpu().numpy()
+
+
 def decide(q: np.ndarray, k: np.ndarray, keep: np.ndarray, z: float) -> tuple[np.ndarray, np.ndarray]:
     """(choice [n], gain [n]): candidate 0 is the anchor. Another candidate is chosen if its mean
     gain over the worlds is above keep[s] and above z paired standard errors; of those, the one
@@ -299,20 +317,7 @@ class LookAhead:
         self.searcher.reset_counts()
 
     def candidates(self, feat, mask):
-        """(anchor action [r], candidates int32 [r, MAX_K] with the anchor first, count [r], legal count [r])."""
-        torch = self.anchor.torch
-        s = self.s
-        with torch.no_grad():
-            logits = self.anchor._logits(feat, mask)
-            a0 = lockstep.greedy(logits)
-            p = torch.softmax(logits, 1).scatter(1, a0[:, None], 2.0)
-            top = min(s.top if s.top > 0 else MAX_K, MAX_K)
-            value, ids = p.topk(top, 1)
-            k = ((value >= s.min_prob) & (value > 0)).sum(1)
-            legal = (logits > -1e8).sum(1)
-        cand = np.zeros((len(feat), MAX_K), np.int32)
-        cand[:, :top] = ids.cpu().numpy()
-        return a0.cpu().numpy().astype(np.uint8), cand, k.cpu().numpy().astype(np.int32), legal.cpu().numpy()
+        return candidates(self.anchor, feat, mask, self.s.top, self.s.min_prob)
 
     def _belief(self, states, w, seeds):
         s = self.s
