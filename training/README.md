@@ -159,6 +159,22 @@ Two ways to use it:
   still improving slowly; how much a 768x4 student holds after a real run is what the notebook
   measures.
 
+**Result on the GPU (L4, 2026-11-26).** Baking `sym24:vrpo4_final.pt` into a 768x4 student that
+started as VRPO4 took 200 iterations of 16,384 deals (1.5 hours). On 32,768 fresh base deals with
+the live bots' sooli play the student, as an ordinary single-pass network, scored
+
+| against | per deal |
+|---|---|
+| `vrpo4_final` | +0.00301 +/- 0.00014 |
+| `vrpo3_final` | +0.00422 +/- 0.00015 |
+| `vrpo1` | +0.00738 +/- 0.00017 |
+| its teacher `sym24:vrpo4_final` | -0.00024 +/- 0.00010 |
+
+so about nine tenths of the averaging gain is in one network of VRPO4's shape. Averaging the
+student itself over the 24 arrangements adds nothing (+0.00000 +/- 0.00011 against the plain
+student, 16,384 base deals): the student is in effect symmetric, a second round of baking from
+its own average has nothing to teach it, and this lever is used up at about +0.003.
+
 `tests/test_symmetry.py` checks the permutations against the engine (relabel a full state, let the
 engine encode it, compare) and the averaged networks against their definitions;
 `tests/test_bake.py` checks that the loop learns and resumes exactly.
