@@ -24,7 +24,7 @@ lib.tc_ls_begin.restype = C.c_int
 lib.tc_ls_begin_duplicate.argtypes = [C.c_void_p, C.c_int, C.c_int, C.c_int, C.c_int, C.c_int, _u64p, C.c_void_p]
 lib.tc_ls_begin_duplicate.restype = C.c_int
 lib.tc_ls_observe.argtypes = [C.c_void_p, C.c_int, C.c_int] + [C.c_void_p] * 8 + [C.c_int, C.POINTER(C.c_int),
-                                                                                  C.c_void_p]
+                                                                                  C.c_void_p, C.c_void_p]
 lib.tc_ls_observe.restype = C.c_int
 lib.tc_ls_step.argtypes = [C.c_void_p, C.c_void_p, C.c_void_p, C.c_int, C.c_void_p, C.c_int]
 lib.tc_ls_step.restype = C.c_int
@@ -34,6 +34,12 @@ lib.tc_ls_classes.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_void_p, C.c_v
 lib.tc_ls_branch_begin.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int] + [C.c_void_p] * 5
 lib.tc_ls_branch_begin.restype = C.c_int
 lib.tc_ls_resolve.argtypes = [C.c_void_p, C.c_int, C.c_int, C.c_void_p, C.c_void_p, C.c_void_p]
+lib.tc_ls_sample_worlds.argtypes = [C.c_void_p, C.c_int, C.c_int, C.c_void_p, C.c_int, C.c_double] + [C.c_void_p] * 3
+lib.tc_ls_sample_worlds.restype = C.c_int
+lib.tc_ls_search_begin.argtypes = [C.c_void_p, C.c_void_p, C.c_int, C.c_int, C.c_int] + [C.c_void_p] * 4
+lib.tc_ls_search_begin.restype = C.c_int
+lib.tc_ls_history.argtypes = [C.c_void_p, C.c_int, C.c_int, C.c_int] + [C.c_void_p] * 4
+lib.tc_ls_history.restype = None
 
 lib.tc_train_init()
 
@@ -48,6 +54,16 @@ def threads() -> int:
 
 def set_threads(n: int) -> None:
     lib.tc_train_set_threads(int(n))
+
+
+def use_all_cpus() -> int:
+    """Engine threads = the CPUs this process may use. PyTorch shares the OpenMP runtime and sets
+    its thread count to the physical cores (6 of Colab's 12), which the engine then inherits; call
+    this after torch is imported. Returns the count."""
+    import os
+    n = len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else (os.cpu_count() or 1)
+    set_threads(n)
+    return n
 
 
 def summary(env: "native.Env", n: int) -> dict:

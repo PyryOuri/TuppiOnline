@@ -40,16 +40,18 @@ class Buffers:
         self.total = np.zeros(n, np.float64)
         self.seconds = np.zeros(2, np.float64)  # sooli, encoding (accumulated)
 
-    def observe(self, n, feat, mask, hidden=None, team=None, offers=None) -> int:
+    def observe(self, n, feat, mask, hidden=None, team=None, offers=None, forced=None) -> int:
         """Rows for the live games among 0..n-1, written to the given arrays. `offers`:
-        (feat, label, counter) to record the prefiltered sooli offers answered in this call."""
+        (feat, label, counter) to record the prefiltered sooli offers answered in this call.
+        `forced` (uint8, a row per game): the only legal action of a forced row, 255 otherwise."""
         of, ol, oc = offers if offers is not None else (None, None, None)
         k = lib.tc_ls_observe(
             self.env._h, n, self.encoder, self.total.ctypes.data, self.idx.ctypes.data, feat.ctypes.data,
             mask.ctypes.data, hidden.ctypes.data if hidden is not None else None,
             team.ctypes.data if team is not None else None, of.ctypes.data if of is not None else None,
             ol.ctypes.data if ol is not None else None, len(ol) if ol is not None else 0,
-            C.byref(oc) if oc is not None else None, self.seconds.ctypes.data)
+            C.byref(oc) if oc is not None else None, self.seconds.ctypes.data,
+            forced.ctypes.data if forced is not None else None)
         if k < 0:
             raise RuntimeError(f"lockstep observe failed ({k})")
         return k
@@ -251,9 +253,17 @@ def greedy(values):
 class TorchGreedy(_TorchChooser):
     """Greedy play from a torch network on any device."""
 
-    def __call__(self, feat, mask, idx, team):
+    def submit(self, feat, mask):
+        """The choices as a tensor on the device, without waiting for it: on a GPU the forward
+        pass runs while the caller does something else. `collect` fetches them."""
         with self.torch.no_grad():
-            return greedy(self._logits(feat, mask)).to(self.torch.uint8).cpu().numpy(), None
+            return greedy(self._logits(feat, mask)).to(self.torch.uint8)
+
+    def collect(self, handle) -> np.ndarray:
+        return handle.cpu().numpy()
+
+    def __call__(self, feat, mask, idx, team):
+        return self.collect(self.submit(feat, mask)), None
 
 
 class TorchSampler(_TorchChooser):

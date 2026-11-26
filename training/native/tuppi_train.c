@@ -165,14 +165,16 @@ static void resolve_sooli_rec(TcEnv *e, int i, uint64_t *rng, double *total, Off
 //   mask_packed  its legal network actions, packed bits
 //   hidden       the other three hands, relative seats 1..3 (may be NULL)
 //   team         the acting team (may be NULL)
-// Forced decisions (one legal action) are rows like any other. Returns the
+// Forced decisions (one legal action) are rows like any other; forced (may be
+// NULL) gets that action for them and 255 for the rest, so that a caller can
+// leave them out of the network's batch. Returns the
 // number of rows. offer_* (may be NULL / 0): the prefiltered offers answered
 // in this call are appended, *offer_rows counts them (it may exceed
 // offer_max; only offer_max are stored). seconds (may be NULL): [0] += time in
 // the sooli part, [1] += time in the encoding part.
 int tc_ls_observe(TcEnv *e, int n, int encoder, double *total, int32_t *idx, uint8_t *feat_packed,
                   uint8_t *mask_packed, uint64_t *hidden, int8_t *team, uint8_t *offer_feat, uint8_t *offer_label,
-                  int offer_max, int *offer_rows, double *seconds) {
+                  int offer_max, int *offer_rows, double *seconds, uint8_t *forced) {
   if (n > e->n) return -2;
   const double t0 = omp_get_wtime();
   int ns = 0;
@@ -209,6 +211,7 @@ int tc_ls_observe(TcEnv *e, int n, int encoder, double *total, int32_t *idx, uin
       for (int t = 0; t < nl; t++) mp[legal[t] >> 3] |= (uint8_t)(0x80 >> (legal[t] & 7));
       if (hidden) for (int k = 1; k < 4; k++) hidden[(size_t)r * 3 + k - 1] = d->hand[(d->cur + k) & 3];
       if (team) team[r] = (int8_t)(d->cur & 1);
+      if (forced) forced[r] = nl == 1 ? (uint8_t)legal[0] : 255;
     }
   TC_PARALLEL_END
   if (seconds) { seconds[0] += t1 - t0; seconds[1] += omp_get_wtime() - t1; }
@@ -338,4 +341,102 @@ void tc_ls_resolve(TcEnv *e, int n, int dd_left, double *total, int32_t *scratch
       TC_PARALLEL_END
   }
   if (seconds) { seconds[0] += t1 - t0; seconds[1] += omp_get_wtime() - t1; }
+}
+
+// --------------------------------------------------------------- look-ahead
+// The engine's own search (search_core in tuppi_env.c) with the network outside
+// the engine: sample worlds for many decisions at once, load every (world,
+// candidate action) as a play-out game, play them out with the lockstep calls.
+
+// W worlds for the acting seat of each of n states: what search_core draws
+// without play inference (tc_sample_world_sooli with the given sooli mode; mode
+// 0 is tc_sample_world), from the stream seeds[s], in order. out[s * W + w].
+// bad[s] = 1 if a draw failed; that state's remaining worlds are copies of the
+// state itself. u[s] (may be NULL): the stream's next uniform number, which is
+// the draw of the engine's systematic resampling (belief_worlds). Returns the
+// number of bad states.
+int tc_ls_sample_worlds(const TcDeal *states, int n, int W, const uint64_t *seeds, int sooli_mode, double lambda,
+                        TcDeal *out, uint8_t *bad, double *u) {
+  TC_PARALLEL_BEGIN((size_t)(n + 7) / 8, c)
+    const int lo = (int)c * 8, hi = lo + 8 < n ? lo + 8 : n;
+    for (int s = lo; s < hi; s++) {
+      TcObs ob;
+      tc_observe(&states[s], states[s].cur, &ob);
+      uint64_t rng = seeds[s];
+      bad[s] = 0;
+      for (int w = 0; w < W; w++) {
+        TcDeal *dst = &out[(size_t)s * W + w];
+        if (bad[s] || tc_sample_world_sooli(&ob, &rng, dst, sooli_mode, lambda) != 0) { bad[s] = 1; *dst = states[s]; }
+      }
+      if (u) u[s] = unit(&rng);
+    }
+  TC_PARALLEL_END
+  int failed = 0;
+  for (int s = 0; s < n; s++) failed += bad[s];
+  return failed;
+}
+
+// Play-out games for n decisions with W worlds each: game base[s] + w * k[s] + j
+// (base = the running sum of W * k) holds worlds[s * W + w] with the candidate
+// cand[s * max_k + j] applied, and every game of one world has the stream
+// seeds[s * W + w], so the heuristics' draws are common to its candidates. A
+// deal the action ends is added to total[] at once; total[0..games) is zeroed
+// here. Returns the number of games, -2 if e is too small, -3 if a candidate
+// is illegal in its world.
+int tc_ls_search_begin(TcEnv *e, const TcDeal *worlds, int n, int W, int max_k, const int32_t *cand,
+                       const int32_t *k, const uint64_t *seeds, double *total) {
+  long games = 0;
+  for (int s = 0; s < n; s++) games += (long)W * k[s];
+  if (games > e->n) return -2;
+  int *base = malloc(sizeof(int) * (size_t)(n + 1));
+  base[0] = 0;
+  for (int s = 0; s < n; s++) base[s + 1] = base[s] + W * k[s];
+  memset(total, 0, sizeof(double) * (size_t)games);
+  int illegal = 0;
+  TC_PARALLEL_BEGIN((size_t)(n + 7) / 8, c)
+    const int lo = (int)c * 8, hi = lo + 8 < n ? lo + 8 : n;
+    for (int s = lo; s < hi; s++)
+      for (int w = 0; w < W; w++)
+        for (int j = 0; j < k[s]; j++) {
+          const int g = base[s] + w * k[s] + j;
+          e->g[g].d = worlds[(size_t)s * W + w];
+          e->g[g].live = 1;
+          e->g[g].rng = seeds[(size_t)s * W + w] | 1;
+          if (tc_apply(&e->g[g].d, cand[s * max_k + j]) != 0) {
+            __atomic_store_n(&illegal, 1, __ATOMIC_RELAXED);
+            e->g[g].d.phase = TC_PH_DONE;
+            continue;
+          }
+          record_if_done(e, g, total);
+        }
+  TC_PARALLEL_END
+  free(base);
+  return illegal ? -3 : (int)games;
+}
+
+// Play inference (belief_score_lane in tuppi_env.c) with the network outside
+// the engine: for each world, the rows of tc_history_rows for the three seats
+// other than the one to act (their past unforced decisions, replayed in that
+// world), packed, at a fixed stride of `stride` rows per world: world i's rows
+// are i * stride .. i * stride + count[i]; count[i] = -1 if its history cannot
+// be replayed. action[] is the action taken at each row.
+void tc_ls_history(const TcDeal *worlds, int n, int encoder, int stride, uint8_t *feat_packed, uint8_t *mask_packed,
+                   uint8_t *action, int32_t *count) {
+  const int dim = tc_feature_dim_v(encoder), fb = (dim + 7) / 8, mb = (TC_NUM_ACTIONS + 7) / 8;
+  TC_PARALLEL_BEGIN((size_t)(n + 31) / 32, c)
+    const int lo = (int)c * 32, hi = lo + 32 < n ? lo + 32 : n;
+    uint8_t *feat = malloc((size_t)stride * dim), *mask = malloc((size_t)stride * TC_NUM_ACTIONS);
+    int32_t *act = malloc(sizeof(int32_t) * (size_t)stride);
+    for (int i = lo; i < hi; i++) {
+      const int rows = tc_history_rows(&worlds[i], 0xF & ~(1 << worlds[i].cur), encoder, stride, feat, mask, act);
+      count[i] = rows;
+      for (int r = 0; r < rows; r++) {
+        const size_t row = (size_t)i * stride + r;
+        pack_bits(feat + (size_t)r * dim, dim, feat_packed + row * fb);
+        pack_bits(mask + (size_t)r * TC_NUM_ACTIONS, TC_NUM_ACTIONS, mask_packed + row * mb);
+        action[row] = (uint8_t)act[r];
+      }
+    }
+    free(feat); free(mask); free(act);
+  TC_PARALLEL_END
 }

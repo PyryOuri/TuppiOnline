@@ -191,6 +191,7 @@ Measured on CPU with scratch scripts (paired duplicate unless stated), VRPO4:
 | Is the match-equity table (fitted to the heuristic incumbent's deals) still right for VRPO4's deals? | Dealer's side wins 51.3% (table 49.6%), mean 12.6 points a deal (11.3), deals of 24 points or more about twice as frequent; the table rebuilt from 32,768 VRPO4 deals differs by 0.0095 on average, 0.0146 at most | Mildly out of date; matters only through retraining |
 | Is 4 of 8 surviving layouts the right threshold for accepting a sooli? For 16,998 first offers both answers were played out from the same deal | With sooli tricks finished by the solver (training, evaluation): accepting at 4 loses 0.051 +/- 0.031 against declining, and pays from about 7. With sooli tricks played by the heuristics (the live lite bots): accepting pays from 2 (+0.027 +/- 0.017 at 2, +0.050 +/- 0.033 at 4); about +0.0003 per deal for a side that accepts from 2, read from the play-outs | The existing option `sooli_need=2` is right for the live bots' sooli play; `lite.py` records it as tested |
 | Do training and evaluation value a sooli as live play does? | No: the solver finishes sooli tricks with open cards, and a soolaaja survives far less often than against the heuristics | A mismatch between the training world and the deployed one; a design decision, not a quick fix |
+| Would learning the sooli play (now hand-written rules) be a large gain? | A sooli is played in 1.5% of deals (2,048 games, VRPO4 against itself), which carry 2.4% of the equity that changes hands | No: the ceiling is a few 0.0001 per deal |
 
 Every evaluation above starts from 0-0 with dealer 0; other match scores have not been checked.
 
@@ -231,6 +232,74 @@ What the number is not: the distance to optimal play; a statement about Nelli's 
 Heidi's search; or a guarantee that a longer or sharper attack would not find more. Run the
 control first (`colab/tuppi_exploit.ipynb`, `STAGE = "control"`: the attacker against VRPO1): if
 the method cannot exploit a weak bot, a null result on a strong one says nothing.
+
+## Look-ahead: is a search above the network worth anything?
+
+`tuppi_train/lookahead.py`, `colab/tuppi_lookahead.ipynb`. At a decision the look-ahead draws W
+deals that agree with everything the acting seat has seen, plays every candidate move to the end
+of the deal in each with a network on all four seats, and replaces the network's own move only if
+another is better by a margin. This is the engine's search (`search_core` in `tuppi_env.c`, the
+bot Heidi) with the play-outs in lockstep on the GPU, so the play-out policy can be the best
+network itself and W can be large.
+
+```sh
+python -m tuppi_train.lookahead --net <best_student.pt> --out <dir> --base 1024 --worlds 64
+```
+
+plays the look-ahead pair against the plain network by paired duplicate (live-style sooli play,
+exact sooli offers in the match) and prints the gain per deal after every chunk; a stopped run
+continues. Nothing is trained. The point of the measurement: if the look-ahead beats the network
+clearly, it is a teacher for the next baking run (the recipe that produced the suit-symmetry gain);
+if it does not, single-move look-ahead cannot improve this network.
+
+| Setting | Meaning |
+|---|---|
+| `--worlds` | Deals drawn per decision |
+| `--top`, `--min-prob` | Candidates: the network's most probable moves (at most `top`, each with at least `min-prob`). A decision with one candidate is not searched |
+| `--keep`, `--keep-show`, `--z` | A candidate replaces the network's move if its mean gain over the deals is above `keep` and above `z` paired standard errors |
+| `--belief 4` | Play inference as in the engine: 4 x W deals are drawn in card play and W resampled by the likelihood of the other seats' earlier moves |
+| `--dd 6` | The last 6 tricks of every play-out are finished with open cards (Heidi's shortcut: faster, biased) |
+| `--rollout`, `--opponent` | Another play-out network; another plain network on the other side |
+
+Checked against the engine, exactly: the sampled deals are those of `tc_search_worlds`, with and
+without play inference; every deal's value of every action equals `tc_search_world_values`, with
+and without the solver tail.
+
+First result, on the CPU with the small network: VRPO1 with this look-ahead (32 deals, no solver
+tail, no play inference) beats plain VRPO1 by **+0.00134 +/- 0.00049 per deal** (384 base deals).
+The per-base-deal spread of such a match is about 0.005, so 1,024 base deals resolve about
++/-0.0003. The run prints its own estimate of the gain too; that figure is inflated by selection
+(it counts only the switches it chose to make) and is no substitute for the match result.
+
+What it does not do: the deals are drawn uniformly unless `--belief` is set; sooli decisions are
+not searched; no value network cuts the play-outs short.
+
+### Speed of the play-outs
+
+Three findings of a performance review of the collector are built into the look-ahead's play-outs
+(`lookahead.Lane`, `Searcher.play`), where they change no result:
+
+- rows with one legal move (about 22% of all rows) never reach the network (`tc_ls_observe`
+  reports them);
+- the play-outs run in two or more lanes, each its own environment: while the engine steps one
+  lane the GPU evaluates another (`TorchGreedy.submit` / `collect`);
+- the engine uses every CPU the process may use (`tn.use_all_cpus`). PyTorch shares the OpenMP
+  runtime and sets it to the physical cores, 6 of Colab's 12.
+
+Reviewed and not done yet, with the reviewers' estimates (none measured on a GPU):
+
+| Where | Finding | Estimate |
+|---|---|---|
+| Self-play (`lockstep.rollouts`) | The same three changes for training self-play. Lanes and skipping forced rows change the sampler's random stream, so they need an option | 25 to 45% |
+| Self-play | About 95% of the sooli time is spent in the 1.5% of games that play a sooli, and every other game waits for them: finish those on a background thread | about 20% |
+| Baking | On iterations the teacher plays, its answers are computed twice (in play and again as targets): keep them | about 24% of a bake |
+| `symmetry.Symmetric` | Fold the suit relabelling into the first and last layer's weights instead of copying the input per view; verified equal to 3e-5 on the CPU | 1.2 to 1.35x; more with `torch.compile` |
+| Update | Bit unpacking by lookup table, fused with the gather (bit-exact); a vectorised `pack_hidden` (byte-identical, 5x faster) | 7 to 15% of an update |
+| Update | Start the next self-play batch while the update runs | 15 to 30% per iteration, changes the algorithm slightly |
+
+Looked at and rejected: sharing work between suit views (23.998 of 24 views differ), stopping the
+views early when the best move is already decided (never provable), a sparse first layer on the
+GPU, parallel `tc_ls_step` (1% of the time).
 
 ## The label-based attempt (stage 1: the verdict run)
 
@@ -335,6 +404,7 @@ reference files, browser runtime), which is not part of this directory.
 | `test_verdict.py` | The verdict run at toy size: reaches a verdict, a rerun changes nothing, a lost step is redone, other settings are refused |
 | `test_symmetry.py`, `test_bake.py` | The suit relabelling maps equal the engine's encoding of relabelled states; the averaged network is invariant and equals relabel-encode-forward-map-back; baking learns, resumes exactly and keeps its best |
 | `test_exploit.py` | The exploiter's rollout keeps exactly its own decisions, in order; its advantages equal a brute-force calculation; iteration 0 is exactly 0 and kept; resume is exact; evaluations use exact offers and the run's sooli play; with a planted reward for declaring RAMI its declaration rate rises, and falls with the sign flipped |
+| `test_lookahead.py` | Sampled deals equal the engine's search worlds (also with play inference, both scoring paths) and do not depend on the thread count; every deal's value of every action equals `tc_search_world_values`, own play and solver tail, one lane and several; forced rows are reported; the decision rule is its definition; the chooser is reproducible, independent of lanes, exactly neutral with an unreachable margin, and repairs an untrained anchor; a stopped measurement resumes exactly |
 | `test_hosted.py` | Every hosted file matches `SOURCE.json`; nothing was added to the image's directories |
 
 Not covered by tests here: anything specific to CUDA (the container the suite was written in has

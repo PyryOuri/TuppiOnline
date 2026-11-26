@@ -1,0 +1,276 @@
+"""The look-ahead (tuppi_train/lookahead.py) against the engine's own search, and its plumbing."""
+
+from __future__ import annotations
+
+import ctypes as C
+import json
+
+import numpy as np
+import pytest
+import torch
+
+from tuppi_train import labels, lockstep, lookahead, tn
+from tuppi_ai import model as qmodel
+from tuppi_ai import native
+
+lib = tn.lib
+
+
+def rng(seed: int) -> C.c_uint64:
+    return C.c_uint64(seed)
+
+
+def deal_of(state) -> "native.TcDeal":
+    return native.TcDeal.from_buffer_copy(state.tobytes())
+
+
+@pytest.fixture(autouse=True)
+def engine_settings():
+    """The look-ahead's process-wide engine settings, restored for the other test files."""
+    native.set_showing_fix(True)
+    native.set_offer_model(None)
+    yield
+    native.set_showing_fix(False)
+    native.set_offer_model(None)
+    native.set_belief_keys(True)
+
+
+@pytest.fixture(scope="module")
+def recorded(table, net1):
+    """States of greedy self-play with the live bots' sooli play, their masks, and the exact CPU network."""
+    env = native.Env(256, 1, table, single_deal=True, encoder=2)
+    env.set_sooli(0, False, True, 0.0)
+    mlp = native.Mlp(net1)
+    native.set_offer_model(None)
+    data = labels.collect(env, lockstep.NativeGreedy(mlp), 256, rng(5), p_record=0.05, p_explore=0.0, seed=1)
+    return mlp, data
+
+
+def searcher(table, mlp, lanes=1, lane_games=4096, dd=0):
+    return lookahead.Searcher(table, lockstep.NativeGreedy(mlp), 2, lanes, lane_games, heuristic_sooli=True, dd_left=dd)
+
+
+def all_legal(mask):
+    legal = lockstep.unpack_mask(mask)
+    cand, k = np.zeros((len(mask), native.MAX_K), np.int32), legal.sum(1).astype(np.int32)
+    for i in range(len(mask)):
+        cand[i, :k[i]] = np.flatnonzero(legal[i])
+    return cand, k
+
+
+def test_observe_reports_forced_moves(make_env, mlp3):
+    """`forced` is the only legal action where there is one, 255 elsewhere, at every step of a batch."""
+    env, n = make_env(128), 128
+    buf = lockstep.Buffers(env, 2)
+    assert lib.tc_ls_begin(env._h, n, 3, C.byref(rng(3))) == 0
+    feat, mask = np.zeros((n, buf.fb), np.uint8), np.zeros((n, buf.mb), np.uint8)
+    forced, choose, seen = np.zeros(n, np.uint8), lockstep.NativeGreedy(mlp3), 0
+    while True:
+        k = buf.observe(n, feat, mask, forced=forced)
+        if k == 0:
+            break
+        legal = lockstep.unpack_mask(mask[:k])
+        one = legal.sum(1) == 1
+        assert np.array_equal(forced[:k], np.where(one, legal.argmax(1), 255))
+        seen += int(one.sum())
+        buf.step(choose(feat[:k], mask[:k], buf.idx[:k], None)[0], k)
+    assert seen > n
+
+
+def test_worlds_are_the_engines(recorded, table, make_env):
+    """Sampled worlds equal the worlds of the engine's search from the same stream, whatever the
+    thread count; each keeps the actor's hand and the public record and deals every card once."""
+    mlp, d = recorded
+    states = np.ascontiguousarray(d["states"][::3][:120])
+    seeds = labels.state_seeds(len(states), 3) | np.uint64(1)
+    s, w = searcher(table, mlp), 5
+    worlds, bad, u = s.sample(states, w, seeds)
+    assert not bad.any() and len(worlds) == len(states) * w
+    threads = tn.threads()
+    try:
+        tn.set_threads(1)
+        again = s.sample(states, w, seeds)
+    finally:
+        tn.set_threads(threads)
+    assert worlds.tobytes() == again[0].tobytes() and np.array_equal(u, again[2])
+    env = make_env(8)
+    phases = set()
+    for i, st in enumerate(states):
+        ref = native.search_worlds(env, native.observe(deal_of(st), int(st["cur"])), w, rng(int(seeds[i])))
+        mine = worlds[i * w:(i + 1) * w]
+        assert b"".join(bytes(r) for r in ref) == mine.tobytes()
+        me = int(st["cur"])
+        phases.add(int(st["phase"]))
+        for world in mine:
+            assert world["hand"][me] == st["hand"][me] and world["n_played"] == st["n_played"]
+            assert np.array_equal(world["play_card"], st["play_card"]) and world["phase"] == st["phase"]
+            hands = [int(h) for h in world["hand"]]
+            assert sum(bin(h).count("1") for h in hands) == 52 - int(st["n_played"])
+            assert hands[0] & hands[1] == 0 and (hands[0] | hands[1]) & hands[2] == 0
+            assert (hands[0] | hands[1] | hands[2]) & hands[3] == 0
+    assert phases == {native.PH_SHOW, native.PH_PLAY}
+    assert 0.0 <= u.min() and u.max() < 1.0 and len(np.unique(u)) > len(u) // 2
+
+
+@pytest.mark.parametrize("dd", [0, 6])
+@pytest.mark.parametrize("lanes,lane_games", [(1, 4096), (3, 160)])
+def test_values_equal_the_engines_search(recorded, table, make_env, dd, lanes, lane_games):
+    """Every world's value of every legal action equals tc_search_world_values exactly: own play
+    and solver tail, one lane and several small ones (so the chunking and the lanes are covered,
+    and the forced rows that never reach the network)."""
+    mlp, d = recorded
+    sel = np.flatnonzero((d["states"]["phase"] == native.PH_PLAY) & (d["states"]["n_played"] >= 1))[::7][:40]
+    states = np.ascontiguousarray(d["states"][sel])
+    seeds = labels.state_seeds(len(states), 4) | np.uint64(1)
+    s, w = searcher(table, mlp, lanes, lane_games, dd), 6
+    worlds, bad, _ = s.sample(states, w, seeds)
+    cand, k = all_legal(d["mask"][sel])
+    q = s.play(worlds, w, cand, k, labels.state_seeds(len(states) * w, 9))
+    env = make_env(1024)
+    env.set_sooli(0, False, True, 0.0)
+    for i, st in enumerate(states):
+        ref = native.search_world_values(env, mlp, native.observe(deal_of(st), int(st["cur"])), cand[i, :k[i]], w, dd,
+                                         rng(int(seeds[i])))
+        assert np.array_equal(ref, q[i, :, :k[i]])
+        assert not q[i, :, k[i]:].any()
+    counts = s.counts()
+    assert counts["games"] == w * int(k.sum()) and 0 < counts["net_rows"] < counts["rows"]
+    assert np.abs(q).max() > 0
+
+
+def test_play_does_not_depend_on_lanes_with_soolis(recorded, table):
+    """From showing states (sooli offers, exchanges and sooli tricks lie ahead) the values are the
+    same for one lane and for several small ones: every world has its own stream."""
+    mlp, d = recorded
+    sel = np.flatnonzero(d["states"]["phase"] == native.PH_SHOW)[:24]
+    states = np.ascontiguousarray(d["states"][sel])
+    w = 8
+    cand, k = all_legal(d["mask"][sel])
+    k = np.minimum(k, 4)
+    out = []
+    for lanes, lane_games in ((1, 4096), (3, 96)):
+        s = searcher(table, mlp, lanes, lane_games)
+        worlds, _, _ = s.sample(states, w, labels.state_seeds(len(states), 4))
+        out.append(s.play(worlds, w, cand, k, labels.state_seeds(len(states) * w, 9)))
+    assert np.array_equal(out[0], out[1]) and np.abs(out[0]).max() > 0
+    with pytest.raises(ValueError):
+        searcher(table, mlp, 1, 16).play(worlds, w, cand, k, labels.state_seeds(len(states) * w, 9))
+
+
+@pytest.mark.parametrize("keys", [True, False])
+def test_belief_worlds_are_the_engines(recorded, table, make_env, keys):
+    """With play inference the resampled worlds equal those of the engine's search (both of its
+    scoring paths), and the resampling does concentrate on fewer candidates."""
+    mlp, d = recorded
+    sel = np.flatnonzero(d["states"]["phase"] == native.PH_PLAY)[::5][:60]
+    states = np.ascontiguousarray(d["states"][sel])
+    seeds = labels.state_seeds(len(states), 3) | np.uint64(1)
+    w, mult = 8, 4
+
+    def logits(feat, mask):
+        x = np.unpackbits(feat, axis=1)[:, :native.feature_dim(2)]
+        return torch.from_numpy(mlp.forward(x)).masked_fill(~torch.from_numpy(lockstep.unpack_mask(mask)), -1e9)
+
+    native.set_belief_keys(keys)
+    env = make_env(64)
+    native.set_belief(env, mlp, mult, 2.0, 0.5, True)
+    worlds, bad, pick = searcher(table, mlp).belief(states, w, mult, seeds, logits, 2.0, 0.5)
+    assert not bad.any()
+    for i, st in enumerate(states):
+        ref = native.search_worlds(env, native.observe(deal_of(st), int(st["cur"])), w, rng(int(seeds[i])))
+        assert b"".join(bytes(r) for r in ref) == worlds[i * w:(i + 1) * w].tobytes()
+    assert np.mean([len(set(p)) for p in pick]) < 0.9 * w
+    assert (np.diff(pick, axis=1) >= 0).all()
+
+
+def test_decide_is_its_definition():
+    q = np.zeros((5, 4, 4))
+    q[0, :, 1] = [0.02, 0.03, 0.02, 0.03]          # clearly better: chosen
+    q[1, :, 1] = [0.002, 0.002, 0.002, 0.002]      # better, but below keep
+    q[2, :, 1] = [0.2, -0.15, 0.1, -0.1]           # mean above keep, not above 2 standard errors
+    q[3, :, 1] = [0.02, 0.03, 0.02, 0.03]
+    q[3, :, 2] = [0.05, 0.06, 0.05, 0.06]          # two pass: the larger gain
+    q[4, :, 3] = [0.5, 0.5, 0.5, 0.5]              # beyond its candidate count: ignored
+    k = np.array([2, 2, 2, 3, 3], np.int32)
+    choice, gain = lookahead.decide(q, k, np.full(5, 0.003), 2.0)
+    assert choice.tolist() == [1, 0, 0, 2, 0]
+    assert gain == pytest.approx([0.025, 0, 0, 0.055, 0])
+    assert lookahead.decide(q, k, np.full(5, 0.03), 2.0)[0].tolist() == [0, 0, 0, 2, 0]
+    assert lookahead.decide(q, k, np.full(5, 0.003), 0.0)[0].tolist() == [1, 0, 1, 2, 0]
+
+
+def match(table, net, settings, base=4, lanes=2, lane_games=4096, seed=3, rollout=None, opponent=None):
+    env = native.Env(8 * base, 1, table, single_deal=True, encoder=2)
+    env.set_sooli(0, False, True, 0.0)
+    look = lookahead.build(net, torch.device("cpu"), settings, env, table, rollout_net=rollout, lanes=lanes,
+                           lane_games=lane_games, seed=seed)
+    plain = lockstep.TorchGreedy(opponent if opponent is not None else net, "cpu", 2)
+    return lockstep.duplicate_eval(env, look, plain, base, 3, rng(11), 2), look
+
+
+def test_chooser(table, net1):
+    """With an unreachable margin the look-ahead pair plays the network's own moves: exactly 0
+    against it. With the real margin the result is reproducible, does not depend on the lanes, and
+    the counters add up. Candidates start with the network's move and respect the limits."""
+    settings = lookahead.Settings(worlds=4, top=3, min_prob=0.02, z=1.0)
+    never, look = match(table, net1, lookahead.Settings(worlds=4, top=3, min_prob=0.02, keep=1e9, keep_show=1e9))
+    assert not never.any() and look.stats["searched"] > 0 and look.stats["switched"] == 0
+    a, look_a = match(table, net1, settings)
+    b, _ = match(table, net1, settings)
+    c, _ = match(table, net1, settings, lanes=3, lane_games=600)
+    assert np.array_equal(a, b) and np.array_equal(a, c)
+    st = look_a.stats
+    assert st["switched"] > 0 and a.any() and st["no_world"] == 0
+    assert st["forced"] < st["decisions"] and st["searched"] < st["decisions"] - st["forced"]
+    assert 2 * st["searched"] <= st["candidates"] <= 3 * st["searched"]
+    assert look_a.searcher.counts()["games"] == 4 * st["candidates"]
+    other, _ = match(table, net1, settings, seed=4)
+    assert not np.array_equal(a, other)
+    no_show, look_n = match(table, net1, lookahead.Settings(worlds=4, top=3, min_prob=0.02, z=1.0, show=False))
+    assert look_n.stats["searched"] < st["searched"]
+
+    d = lockstep.rollouts(native.Env(64, 1, table, single_deal=True, encoder=2), lockstep.TorchGreedy(net1, "cpu", 2),
+                          64, 3, rng(2))
+    anchor, cand, k, legal = look_a.candidates(d["feat"], d["mask"])
+    assert np.array_equal(anchor, d["action"]) and np.array_equal(cand[:, 0], anchor)
+    mask = lockstep.unpack_mask(d["mask"])
+    assert np.array_equal(legal, mask.sum(1)) and (k >= 1).all() and (k <= np.minimum(3, legal)).all()
+    for i in np.flatnonzero(k > 1)[:200]:
+        assert mask[i, cand[i, :k[i]]].all() and len(set(cand[i, :k[i]])) == k[i]
+    assert (k[legal == 1] == 1).all() and (k > 1).any()
+
+
+def test_belief_chooser_runs_and_differs(table, net1):
+    plain, _ = match(table, net1, lookahead.Settings(worlds=4, top=3, min_prob=0.02, z=1.0))
+    belief, look = match(table, net1, lookahead.Settings(worlds=4, top=3, min_prob=0.02, z=1.0, belief=3))
+    again, _ = match(table, net1, lookahead.Settings(worlds=4, top=3, min_prob=0.02, z=1.0, belief=3), lanes=1)
+    assert np.array_equal(belief, again) and not np.array_equal(belief, plain)
+    assert look.searcher.seconds["belief"] > 0
+
+
+def test_lookahead_repairs_a_bad_anchor(table, net1):
+    """An untrained network as the anchor and VRPO1 as the play-out policy: the look-ahead pair
+    beats the untrained network clearly (a fixed seed; the margin is many standard errors)."""
+    torch.manual_seed(0)
+    bad = qmodel.QNet(**net1.config).eval()
+    settings = lookahead.Settings(worlds=4, top=4, min_prob=0.0, z=1.0)
+    values, look = match(table, bad, settings, base=8, rollout=net1, lane_games=16384)
+    mean, half = lockstep.interval(values)
+    assert mean - 2 * half > 0.01, (mean, half)
+    assert look.stats["switched"] > 0.1 * look.stats["searched"]
+
+
+def test_measure_resumes(tmp_path, table):
+    """A run stopped after one chunk and continued gives the chunks of an uninterrupted run, and
+    refuses to continue with other settings."""
+    settings = lookahead.Settings(worlds=2, top=2, min_prob=0.05, z=1.0)
+    kw = dict(chunk=4, seed=5, dev=torch.device("cpu"), lanes=2, lane_games=2048, log=lambda s: None)
+    whole = lookahead.measure(tmp_path / "a", "vrpo1_actor_0504.pt", settings, base=8, **kw)
+    lookahead.measure(tmp_path / "b", "vrpo1_actor_0504.pt", settings, base=4, **kw)
+    resumed = lookahead.measure(tmp_path / "b", "vrpo1_actor_0504.pt", settings, base=8, **kw)
+    rows = [[json.loads(line)["values"] for line in (tmp_path / x / "chunks.jsonl").read_text().splitlines()] for x in "ab"]
+    assert rows[0] == rows[1] and len(rows[0]) == 2
+    assert whole["mean"] == resumed["mean"] and whole["base_deals"] == 8 and whole["searched"] == resumed["searched"]
+    assert "VERDICT" in lookahead.verdict(whole) and "look-ahead" in lookahead.brief(whole)
+    with pytest.raises(SystemExit):
+        lookahead.measure(tmp_path / "b", "vrpo1_actor_0504.pt", lookahead.Settings(worlds=3), base=8, **kw)
