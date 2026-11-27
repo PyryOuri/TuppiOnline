@@ -260,6 +260,9 @@ if it does not, single-move look-ahead cannot improve this network.
 | `--belief 4` | Play inference as in the engine: 4 x W deals are drawn in card play and W resampled by the likelihood of the other seats' earlier moves |
 | `--dd 6` | The last 6 tricks of every play-out are finished with open cards (Heidi's shortcut: faster, biased) |
 | `--rollout`, `--opponent` | Another play-out network; another plain network on the other side |
+| `--plain`, `--opponent-rollout` | Side A without the look-ahead; the other side with it |
+| `--likelihood`, `--opponent-likelihood` | With `--belief`: the network that scores the worlds (float32; default the play-out network) |
+| `--scores uniform` | Every base deal starts from a match score drawn as the release evaluator draws them (`lockstep.uniform_scores`: 0-0, or one side ahead by 4 to 48), instead of 0-0. Also in `tuppi_train.evaluate` |
 
 Checked against the engine, exactly: the sampled deals are those of `tc_search_worlds`, with and
 without play inference; every deal's value of every action equals `tc_search_world_values`, with
@@ -323,6 +326,17 @@ engine ran on 6 threads, because PyTorch's MKL build resets the shared OpenMP th
 first does parallel work (`tn.use_cpus` now tells PyTorch the count too). The old anchor of
 `new_vs_old` and `plain_vs_old` was VRPO3; Heidi 1.2's is VRPO4 with VRPO3 as the likelihood
 network (`--likelihood`, `--opponent-likelihood`), which the second run uses.
+
+**Match scores.** Everything above starts every deal at 0-0. The release evaluator's "uniform" mix
+gives larger figures per deal for the same lead, with a spread larger by about the same factor:
+on the CPU, 2,048 base deals, sooli tricks by the live rules, VRPO4 minus VRPO3 is +0.00114 +/-
+0.00058 at 0-0 and +0.00304 +/- 0.00153 at uniform scores; VRPO4 minus VRPO1 +0.00432 +/- 0.00065
+and +0.00775 +/- 0.00169. The Mac session measured the baked network against VRPO4 at +0.0032 and
++0.0074. A 0-0 figure and a uniform one are not comparable.
+
+The log of every chunk counts, per phase (bids, tricks 1-4, 5-9, 10-13), the decisions searched,
+the moves changed and the gain the look-ahead claimed for them (`phase_*`; where it changes moves,
+not what each change is worth).
 
 Either side of the match can look ahead, with its own anchor and play-out network (`--plain`,
 `--opponent`, `--opponent-rollout`): a Heidi-style search around a new network against one around

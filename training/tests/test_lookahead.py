@@ -396,3 +396,73 @@ def test_use_cpus_tells_torch_too():
         assert tn.use_cpus(0) == tn.threads() == torch.get_num_threads() >= 1
     finally:
         tn.use_cpus(before)
+
+
+def test_scores_per_base_deal(table, net1, make_env):
+    """`uniform_scores` is the release evaluator's mix; a score per base deal reaches every game of
+    that deal and changes nothing else; a constant array equals the constant score; a policy
+    against itself still scores exactly 0."""
+    scores = lockstep.uniform_scores(20000, 3)
+    assert scores.dtype == np.uint8 and np.array_equal(scores, lockstep.uniform_scores(20000, 3))
+    assert not np.array_equal(scores[:100], lockstep.uniform_scores(100, 4))
+    lead = scores.max(1)
+    assert (scores.min(1) == 0).all() and set(lead.tolist()) == set(range(0, 52, 4))
+    assert abs((lead == 0).mean() - 1 / 13) < 0.01 and abs((scores[lead > 0, 0] > 0).mean() - 0.5) < 0.02
+    counts = np.bincount(lead // 4, minlength=13)
+    assert counts.min() > 0.9 * 20000 / 13 and counts.max() < 1.1 * 20000 / 13
+
+    base, env = 6, make_env(48)
+    per_deal = lockstep.uniform_scores(base, 11)
+    per_deal[0] = (0, 0)
+    per_deal[1] = (36, 0)
+    per_deal[2] = (0, 12)
+    a_team, a_team2 = np.zeros(48, np.int8), np.zeros(48, np.int8)
+    state, state2 = np.zeros(48, lookahead.STATE), np.zeros(48, lookahead.STATE)
+    games = np.arange(48, dtype=np.int32)
+    assert lib.tc_ls_begin_duplicate_scores(env._h, base, 3, per_deal.ctypes.data, 1, C.byref(rng(5)), a_team.ctypes.data) == 0
+    lib.tc_ls_copy_states(env._h, games.ctypes.data, 48, state.ctypes.data)
+    assert lib.tc_ls_begin_duplicate(env._h, base, 3, 0, 0, 1, C.byref(rng(5)), a_team2.ctypes.data) == 0
+    lib.tc_ls_copy_states(env._h, games.ctypes.data, 48, state2.ctypes.data)
+    assert np.array_equal(state["score"], np.repeat(per_deal, 8, axis=0)) and np.array_equal(a_team, a_team2)
+    for name in lookahead.STATE.names:
+        if name != "score":
+            assert np.array_equal(state[name], state2[name]), name
+
+    a = lockstep.TorchGreedy(net1, "cpu", 2)
+    b = lockstep.RandomLegal(3)
+    const = lockstep.duplicate_eval(make_env(48), a, lockstep.RandomLegal(3), base, 3, rng(7), 2, score=(24, 0))
+    array = lockstep.duplicate_eval(make_env(48), a, b, base, 3, rng(7), 2, score=np.tile(np.uint8([24, 0]), (base, 1)))
+    assert np.array_equal(const, array)
+    assert not lockstep.duplicate_eval(make_env(48), a, a, base, 3, rng(7), 2, score=per_deal).any()
+    with pytest.raises(ValueError):
+        lockstep.duplicate_eval(make_env(48), a, a, base, 3, rng(7), 2, score=per_deal[:3])
+
+
+def test_uniform_scores_in_the_matches_and_phase_counters(tmp_path):
+    """--scores uniform plays other games than 0-0, resumes, and is refused in a 0-0 run's folder;
+    the phase counters add up to the totals; the plain evaluator has the same option."""
+    from tuppi_train import evaluate
+    s = lookahead.Settings(worlds=4, top=3, min_prob=0.02, z=0.5)
+    kw = dict(chunk=4, seed=5, dev=torch.device("cpu"), lanes=1, lane_games=4096, log=lambda s: None)
+    zero = lookahead.measure(tmp_path / "zero", "vrpo1_actor_0504.pt", s, base=8, **kw)
+    lookahead.measure(tmp_path / "uni", "vrpo1_actor_0504.pt", s, base=4, scores="uniform", **kw)
+    uni = lookahead.measure(tmp_path / "uni", "vrpo1_actor_0504.pt", s, base=8, scores="uniform", **kw)
+    whole = lookahead.measure(tmp_path / "uni2", "vrpo1_actor_0504.pt", s, base=8, scores="uniform", **kw)
+    assert uni["base_deals"] == 8 and uni["mean"] == whole["mean"] != zero["mean"]
+    assert json.loads((tmp_path / "uni" / "config.json").read_text())["scores"] == "uniform"
+    with pytest.raises(SystemExit):
+        lookahead.measure(tmp_path / "zero", "vrpo1_actor_0504.pt", s, base=8, scores="uniform", **kw)
+    for r in (zero, uni):
+        assert r["phases"] == list(lookahead.PHASES)
+        assert sum(r["phase_searched"]) == r["searched"] and sum(r["phase_switched"]) == r["switched"]
+        assert sum(r["phase_claimed"]) == pytest.approx(r["claimed_gain"]) and min(r["phase_searched"]) > 0
+    net1, net3 = (lockstep_net(n) for n in ("vrpo1_actor_0504.pt", "vrpo3_final.pt"))
+    v0 = evaluate.compare(net3, net1, torch.device("cpu"), 16, 3, chunk=8, sooli_play_heuristic=True)
+    v1 = evaluate.compare(net3, net1, torch.device("cpu"), 16, 3, chunk=8, sooli_play_heuristic=True, scores="uniform")
+    assert v0.shape == v1.shape == (16,) and not np.array_equal(v0, v1)
+    assert not evaluate.compare(net1, net1, torch.device("cpu"), 8, 3, scores="uniform").any()
+
+
+def lockstep_net(name):
+    from tuppi_train import symmetry
+    return symmetry.load_net(name, "cpu")

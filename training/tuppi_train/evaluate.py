@@ -11,6 +11,9 @@ match-equity change per deal with a 95% interval. A fresh --seed gives fresh dea
 (its monitoring seed is Config.eval_seed) to confirm a checkpoint picked on monitoring deals.
 `--sampled T` makes both sides sample at temperature T instead.
 
+`--scores uniform` gives every base deal a match score as the release evaluator does (0-0, or one
+side ahead by 4 to 48); results there are larger per deal than at 0-0 and not comparable with them.
+
 A network name with the prefix "sym:" is played averaged over the four suit views
 (symmetry.Symmetric), e.g. `--a sym:vrpo4_final.pt --b vrpo4_final.pt`.
 """
@@ -29,8 +32,12 @@ from tuppi_ai import native
 
 
 def compare(net_a, net_b, dev, base: int, seed: int, sampled: float = 0.0, paired: bool = True, chunk: int = 4096,
-            ruleset: int = 3, amp=None, *, sooli_play_heuristic: bool = False) -> np.ndarray:
-    """Per-base-deal values of net_a's pair against net_b's over `base` base deals."""
+            ruleset: int = 3, amp=None, *, sooli_play_heuristic: bool = False, scores: str = "zero") -> np.ndarray:
+    """Per-base-deal values of net_a's pair against net_b's over `base` base deals. scores:
+    "zero" (every deal from 0-0) or "uniform" (`lockstep.uniform_scores`, the release
+    evaluator's mix)."""
+    if scores not in ("zero", "uniform"):
+        raise ValueError("scores: zero or uniform")
     from tuppi_ai.best import EQUITY
     from tuppi_ai.equity import Equity
     chunk = min(chunk, base)
@@ -44,8 +51,10 @@ def compare(net_a, net_b, dev, base: int, seed: int, sampled: float = 0.0, paire
 
     rng, values = C.c_uint64(seed), []
     for done in range(0, base, chunk):
-        values.append(lockstep.duplicate_eval(env, chooser(net_a, 1), chooser(net_b, 2), min(chunk, base - done),
-                                              ruleset, rng, net_a.encoder, paired=paired))
+        m = min(chunk, base - done)
+        score = lockstep.uniform_scores(m, seed + 15485863 * (done + 1)) if scores == "uniform" else (0, 0)
+        values.append(lockstep.duplicate_eval(env, chooser(net_a, 1), chooser(net_b, 2), m, ruleset, rng,
+                                              net_a.encoder, score=score, paired=paired))
     return np.concatenate(values)
 
 
@@ -60,6 +69,8 @@ def main(argv=None) -> None:
     p.add_argument("--offer-model", default=None)
     p.add_argument("--sooli-play", choices=("solver", "heuristic"), default="solver",
                    help="how to play sooli tricks; solver reproduces the original benchmark")
+    p.add_argument("--scores", choices=("zero", "uniform"), default="zero",
+                   help="match score of each base deal: 0-0, or the release evaluator's uniform mix")
     p.add_argument("--amp", default="off", choices=sorted(device.AMP), help="forward precision of both sides")
     p.add_argument("--device", default=None)
     a = p.parse_args(argv)
@@ -70,10 +81,11 @@ def main(argv=None) -> None:
     for name in a.b.split(","):
         t = time.perf_counter()
         v = compare(net_a, symmetry.load_net(name.strip(), dev), dev, a.base, a.seed, a.sampled,
-                    not a.unpaired, amp=device.AMP[a.amp], sooli_play_heuristic=a.sooli_play == "heuristic")
+                    not a.unpaired, amp=device.AMP[a.amp], sooli_play_heuristic=a.sooli_play == "heuristic",
+                    scores=a.scores)
         mean, half = lockstep.interval(v)
         print(json.dumps({"a": a.a, "b": name.strip(), "base_deals": a.base, "seed": a.seed, "sampled": a.sampled,
-                          "paired": not a.unpaired, "sooli_play": a.sooli_play, "mean": mean, "ci95": half,
+                          "paired": not a.unpaired, "sooli_play": a.sooli_play, "scores": a.scores, "mean": mean, "ci95": half,
                           "sd_per_base_deal": float(v.std(ddof=1)),
                           "significant": abs(mean) > half, "seconds": round(time.perf_counter() - t, 1)}), flush=True)
 

@@ -306,6 +306,15 @@ def decide(q: np.ndarray, k: np.ndarray, keep: np.ndarray, z: float, effective: 
     return np.where(found, best + 1, 0), np.where(found, score[np.arange(n), best], 0.0)
 
 
+PHASES = ("bids", "tricks 1-4", "tricks 5-9", "tricks 10-13")
+
+
+def phase_of(states: np.ndarray) -> np.ndarray:
+    """Index into PHASES for full states at a network decision."""
+    trick = states["n_played"] // 4
+    return np.where(states["phase"] == native.PH_SHOW, 0, np.where(trick < 4, 1, np.where(trick < 9, 2, 3)))
+
+
 def effective_worlds(pick: np.ndarray) -> np.ndarray:
     """For resampled worlds pick [n, w] (the candidate each came from): w^2 / sum of squared
     multiplicities, the number of independent worlds a mean over them is worth."""
@@ -329,7 +338,10 @@ class LookAhead:
         """A fresh stream of draws and zeroed counters (one match of a resumable run)."""
         self.rng = np.random.default_rng(seed)
         self.stats = {"decisions": 0, "forced": 0, "searched": 0, "switched": 0, "claimed_gain": 0.0,
-                      "no_world": 0, "candidates": 0, "seconds": 0.0}
+                      "no_world": 0, "candidates": 0, "seconds": 0.0,
+                      # per phase (PHASES): decisions searched, moves changed, claimed gain of the changes
+                      "phase_searched": [0] * len(PHASES), "phase_switched": [0] * len(PHASES),
+                      "phase_claimed": [0.0] * len(PHASES)}
         self.searcher.reset_counts()
 
     def candidates(self, feat, mask):
@@ -368,6 +380,12 @@ class LookAhead:
             keep = np.where(showing[rows], s.keep_show, s.keep)
             choice, gain = decide(q, kc, keep, s.z, effective)
             actions[rows] = cand[rows, choice]
+            phase = phase_of(states)
+            for j in range(len(PHASES)):
+                here = phase == j
+                st["phase_searched"][j] += int(here.sum())
+                st["phase_switched"][j] += int((here & (choice > 0)).sum())
+                st["phase_claimed"][j] += float(gain[here].sum())
             st["searched"] += len(rows)
             st["candidates"] += int(kc.sum())
             st["switched"] += int((choice > 0).sum())
@@ -395,12 +413,14 @@ def measure(out: Path, net_name: str, settings: Settings, base: int = 1024, chun
             rollout_name: str = "", opponent_name: str = "", dev=None, amp_name: str = "", lanes: int = 2,
             lane_games: int = 65536, sooli_play: str = "heuristic", offer_model_path: str = "", hours: float = 0.0,
             log=print, plain: bool = False, opponent_rollout_name: str = "", likelihood_name: str = "",
-            opponent_likelihood_name: str = "") -> dict:
+            opponent_likelihood_name: str = "", scores: str = "zero") -> dict:
     """Side A (anchor `net_name`, with the look-ahead unless `plain`) against side B (the network
     `opponent_name`, default the anchor itself; with the same look-ahead settings and the play-out
     network `opponent_rollout_name` if that is given, else plain). `likelihood_name` /
     `opponent_likelihood_name`: the network that scores worlds for play inference on that side
-    (default: its play-out network). `base` base deals in chunks of `chunk`, resumable in `out`.
+    (default: its play-out network). scores: "zero" (every deal from 0-0) or "uniform"
+    (`lockstep.uniform_scores`, the release evaluator's mix; results there are larger per deal and
+    not comparable with 0-0). `base` base deals in chunks of `chunk`, resumable in `out`.
     Returns the summary that is also written to out/summary.json."""
     from . import offer, symmetry
     from tuppi_ai.best import EQUITY
@@ -408,6 +428,8 @@ def measure(out: Path, net_name: str, settings: Settings, base: int = 1024, chun
 
     if plain and not opponent_rollout_name:
         raise SystemExit("two plain networks: use tuppi_train.evaluate")
+    if scores not in ("zero", "uniform"):
+        raise SystemExit("scores: zero or uniform")
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     dev = dev or device.pick()
@@ -417,11 +439,12 @@ def measure(out: Path, net_name: str, settings: Settings, base: int = 1024, chun
               "opponent_rollout": opponent_rollout_name, "settings": asdict(settings), "chunk": chunk, "seed": seed,
               "amp": amp_name, "sooli_play": sooli_play, "offer_model": bool(offer_model_path),
               "likelihood": "" if plain else likelihood_name,
-              "opponent_likelihood": opponent_likelihood_name if opponent_rollout_name else ""}
+              "opponent_likelihood": opponent_likelihood_name if opponent_rollout_name else "", "scores": scores}
     cfg_path, log_path = out / "config.json", out / "chunks.jsonl"
     if cfg_path.exists():
         # a run started before an option existed had that option's default
-        old = {"opponent_rollout": "", "likelihood": "", "opponent_likelihood": "", **json.loads(cfg_path.read_text())}
+        old = {"opponent_rollout": "", "likelihood": "", "opponent_likelihood": "", "scores": "zero",
+               **json.loads(cfg_path.read_text())}
         if old != config:
             raise SystemExit(f"{out} holds a run with other settings; use another --out\n  there: {old}\n  now:   {config}")
     cfg_path.write_text(json.dumps(config, indent=1))
@@ -457,7 +480,7 @@ def measure(out: Path, net_name: str, settings: Settings, base: int = 1024, chun
                                               else f"plain {name}")
     log(f"A: {describe(net_name, rollout_name, not plain)}")
     log(f"B: {describe(config['opponent'], opponent_rollout_name, bool(opponent_rollout_name))}")
-    log(f"settings {json.dumps(asdict(settings))}")
+    log(f"settings {json.dumps(asdict(settings))}; match scores: {scores}")
     log(f"device {device.describe(dev)}, engine threads {tn.threads()}, play-outs in {amp_name}, {lanes} lanes of "
         f"{lane_games:,} games")
     t_start = time.perf_counter()
@@ -468,7 +491,8 @@ def measure(out: Path, net_name: str, settings: Settings, base: int = 1024, chun
         for j, look in enumerate(looks):
             look.reset(seed + 7919 * c + 104729 * j)
         t0 = time.perf_counter()
-        values = lockstep.duplicate_eval(env, a, b, chunk, 3, C.c_uint64(seed + c), net.encoder)
+        score = lockstep.uniform_scores(chunk, seed + 15485863 * (c + 1)) if scores == "uniform" else (0, 0)
+        values = lockstep.duplicate_eval(env, a, b, chunk, 3, C.c_uint64(seed + c), net.encoder, score=score)
         counts = [look.searcher.counts() for look in looks]
         wall = time.perf_counter() - t0
         # seconds: the whole match. search_seconds: inside the look-ahead of every searching side.
@@ -494,6 +518,9 @@ def summary(chunks: list) -> dict:
               "games", "rows", "net_rows")}
     mean, half = lockstep.interval(values) if len(values) > 1 else (float("nan"), float("nan"))
     games = 8 * len(values)
+    for key in ("phase_searched", "phase_switched", "phase_claimed"):   # absent in runs before the counters
+        total[key] = [sum(c[key][j] for c in chunks if key in c) for j in range(len(PHASES))]
+    total["phases"] = list(PHASES)
     return {"base_deals": int(len(values)), "mean": mean, "ci95": half, **total,
             "changed_base_deals": float((values != 0).mean()) if len(values) else 0.0,
             "claimed_per_deal": total["claimed_gain"] / games if games else 0.0,
@@ -544,6 +571,8 @@ def main(argv=None) -> None:
     p.add_argument("--no-show", action="store_true", help="no look-ahead at showing decisions")
     p.add_argument("--dd", type=int, default=d.dd_left)
     p.add_argument("--belief", type=int, default=d.belief)
+    p.add_argument("--scores", default="zero", choices=["zero", "uniform"],
+                   help="match score of each base deal: 0-0, or the release evaluator's uniform mix")
     p.add_argument("--lanes", type=int, default=2)
     p.add_argument("--lane-games", type=int, default=65536)
     p.add_argument("--amp", default="", choices=["", "off", "bf16", "fp16"])
@@ -558,7 +587,7 @@ def main(argv=None) -> None:
     r = measure(a.out, a.net, settings, a.base, a.chunk, a.seed, a.rollout, a.opponent, device.pick(a.device), a.amp,
                 a.lanes, a.lane_games, a.sooli_play, a.offer_model, a.hours, plain=a.plain,
                 opponent_rollout_name=a.opponent_rollout, likelihood_name=a.likelihood,
-                opponent_likelihood_name=a.opponent_likelihood)
+                opponent_likelihood_name=a.opponent_likelihood, scores=a.scores)
     print(verdict(r) if r["base_deals"] > 1 else "nothing played")
 
 

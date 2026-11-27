@@ -65,8 +65,10 @@ int tc_ls_begin(TcEnv *e, int n, int ruleset, uint64_t *rng) {
 // paired != 0: the two team assignments of a rotation share one seed, so the
 // heuristics' random draws (sooli offers) are common to both and a policy
 // against itself scores exactly zero. paired == 0 reproduces the native seeds.
-int tc_ls_begin_duplicate(TcEnv *e, int n_base, int ruleset, int score0, int score1, int paired, uint64_t *rng,
-                          int8_t *a_team) {
+// scores (may be NULL): 2 * n_base bytes, the score of base deal b's eight games
+// is (scores[2b], scores[2b + 1]) for teams 0 and 1; NULL = (score0, score1) for all.
+static int begin_duplicate(TcEnv *e, int n_base, int ruleset, int score0, int score1, const uint8_t *scores,
+                           int paired, uint64_t *rng, int8_t *a_team) {
   const int n = 8 * n_base;
   if (n > e->n) return -2;
   for (int b = 0; b < n_base; b++) {
@@ -75,12 +77,13 @@ int tc_ls_begin_duplicate(TcEnv *e, int n_base, int ruleset, int score0, int sco
     for (int c = 51; c > 0; c--) { int j = (int)(splitmix(rng) % (u64)(c + 1)); int t = deck[c]; deck[c] = deck[j]; deck[j] = t; }
     uint64_t base[4] = {0, 0, 0, 0};
     for (int c = 0; c < 52; c++) base[c / 13] |= 1ULL << deck[c];
+    const int s0 = scores ? scores[2 * b] : score0, s1 = scores ? scores[2 * b + 1] : score1;
     for (int r = 0; r < 4; r++)
       for (int t = 0; t < 2; t++) {
         int g = 8 * b + 2 * r + t;
         uint64_t hands[4];
         for (int s = 0; s < 4; s++) hands[s] = base[(s + r) & 3];
-        tc_deal_init_v(&e->g[g].d, hands, 0, score0, score1, ruleset);
+        tc_deal_init_v(&e->g[g].d, hands, 0, s0, s1, ruleset);
         e->g[g].live = 1;
         e->g[g].rng = splitmix(rng) | 1;
         if (paired && t == 1) e->g[g].rng = e->g[g - 1].rng;
@@ -88,6 +91,18 @@ int tc_ls_begin_duplicate(TcEnv *e, int n_base, int ruleset, int score0, int sco
       }
   }
   return 0;
+}
+
+int tc_ls_begin_duplicate(TcEnv *e, int n_base, int ruleset, int score0, int score1, int paired, uint64_t *rng,
+                          int8_t *a_team) {
+  return begin_duplicate(e, n_base, ruleset, score0, score1, NULL, paired, rng, a_team);
+}
+
+// As tc_ls_begin_duplicate with a score per base deal (the same deals from the
+// same rng state: the scores draw nothing).
+int tc_ls_begin_duplicate_scores(TcEnv *e, int n_base, int ruleset, const uint8_t *scores, int paired, uint64_t *rng,
+                                 int8_t *a_team) {
+  return begin_duplicate(e, n_base, ruleset, 0, 0, scores, paired, rng, a_team);
 }
 
 // Offer recording for the fast offer model's training data (tc_ls_observe).

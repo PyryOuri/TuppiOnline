@@ -116,6 +116,9 @@ def duplicate_eval(env: "native.Env", choose_a, choose_b, base_deals: int, rules
     """Per-base-deal mean equity change of the pair playing `choose_a` against `choose_b`
     over the 8 games of each base deal (the design of `native.duplicate_eval`).
 
+    score: the match score (team 0, team 1) every game starts from, or one such pair per base
+    deal (`uniform_scores`).
+
     paired=True gives both team assignments of a rotation the same seed for the sooli
     heuristics' draws, so those draws cancel between the two and a policy against itself
     scores exactly 0. paired=False uses the native function's seeds (for comparing with it).
@@ -128,8 +131,16 @@ def duplicate_eval(env: "native.Env", choose_a, choose_b, base_deals: int, rules
         raise ValueError("environment too small")
     buf = Buffers(env, encoder)
     a_team = np.zeros(n, np.int8)
-    if lib.tc_ls_begin_duplicate(env._h, base_deals, ruleset, score[0], score[1], int(paired), C.byref(rng_state),
-                                 a_team.ctypes.data) != 0:
+    if np.ndim(score) == 2:     # a score per base deal
+        per_deal = np.ascontiguousarray(score, np.uint8)
+        if per_deal.shape != (base_deals, 2):
+            raise ValueError("score: a pair, or one pair per base deal")
+        status = lib.tc_ls_begin_duplicate_scores(env._h, base_deals, ruleset, per_deal.ctypes.data, int(paired),
+                                                  C.byref(rng_state), a_team.ctypes.data)
+    else:
+        status = lib.tc_ls_begin_duplicate(env._h, base_deals, ruleset, score[0], score[1], int(paired),
+                                           C.byref(rng_state), a_team.ctypes.data)
+    if status != 0:
         raise RuntimeError("lockstep begin failed")
     feat, mask = np.zeros((n, buf.fb), np.uint8), np.zeros((n, buf.mb), np.uint8)
     team, actions = np.zeros(n, np.int8), np.zeros(n, np.uint8)
@@ -160,6 +171,20 @@ def duplicate_eval(env: "native.Env", choose_a, choose_b, base_deals: int, rules
                        contract=state["contract"].copy(), declarer=state["declarer"].copy(),
                        winner=state["winner_team"].copy(), points=state["points"].astype(np.int32))
     return signed.reshape(base_deals, 8).mean(1)
+
+
+def uniform_scores(base_deals: int, seed: int) -> np.ndarray:
+    """A score per base deal as the release evaluator draws them ("uniform" in
+    ai/tuppi_ai/evaluate.py `_score_for`): a level 0..12 uniformly; level 0 is 0-0, otherwise one
+    team, either with probability 1/2, leads by 4 x level to 0. uint8 [base_deals, 2]. In the
+    duplicate design each side is the leading team in half of a base deal's games."""
+    rng = np.random.default_rng(seed)
+    level = rng.integers(0, 13, base_deals)
+    lead0 = rng.random(base_deals) < 0.5
+    out = np.zeros((base_deals, 2), np.uint8)
+    out[:, 0] = np.where(lead0, 4 * level, 0)
+    out[:, 1] = np.where(lead0, 0, 4 * level)
+    return out
 
 
 def interval(values: np.ndarray) -> list[float]:
