@@ -347,6 +347,38 @@ The per-base-deal spread of such a match is about 0.005, so 1,024 base deals res
 +/-0.0003. The run prints its own estimate of the gain too; that figure is inflated by selection
 (it counts only the switches it chose to make) and is no substitute for the match result.
 
+### What the look-ahead's estimates are really worth
+
+`tuppi_train/calibrate.py` records, at the plain network's own decisions, the look-ahead's value of
+every candidate in every sampled world and what the candidate is really worth: one play-out from
+the true deal with the network on all seats, an unbiased sample of the value of deviating once.
+Rules are then scored offline by the real values of the moves they would choose.
+
+VRPO4, 64 uniform worlds, VRPO1 play-outs, solver tail of 6; 129,848 decisions in 10,240 games (CPU):
+
+| Where | Model's mean gain | Real mean gain | Real / model |
+|---|---|---|---|
+| Alternatives the model rates 0.5 to 1.5 standard errors better | +0.0025 | +0.0000 +/- 0.0003 | 0 |
+| 2 to 3 standard errors better | +0.0066 | +0.0010 +/- 0.0007 | 0.16 |
+| More than 4 standard errors better | +0.0143 | +0.0063 +/- 0.0012 | 0.44 |
+| Where the current rule acts: bids | +0.0087 | +0.0010 +/- 0.0030 | 0.12 |
+| ... tricks 1-4 | +0.0107 | +0.0014 +/- 0.0014 | 0.13 |
+| ... tricks 5-9 | +0.0103 | +0.0026 +/- 0.0009 | 0.25 |
+| ... tricks 10-13 | +0.0108 | +0.0059 +/- 0.0013 | 0.55 |
+
+Scored by reality, per game for the searching pair: the current rule (margin 0.003, 2 standard
+errors) +0.00167 +/- 0.00055, which agrees with the match result of the same setting (+0.0014);
+1.5 standard errors +0.00196, 1 standard error +0.00223, none at all +0.00217 (differences to the
+current rule not significant: +0.0005 +/- 0.0007 at 1); a margin of 0.01 loses 0.0008 +/- 0.0004.
+Not searching the last four tricks loses 0.0005 +/- 0.0001; not searching the bids changes nothing.
+
+Reading: within its own model the look-ahead could gain four times as much from the same worlds
+with a rule that trusts small differences (+0.007 per game, estimated by splitting the worlds). In
+reality those differences are artefacts of the model: uniform worlds that ignore what the play so
+far implies, a play-out policy that is not the one at the table, an open-card finish. The
+look-ahead is limited by the fidelity of its model, not by the number of worlds, and the threshold
+of 2 standard errors is about right. `LookAhead.trace` exposes the same data for other studies.
+
 ### Can the gain be trained into the network? (not at this scale)
 
 `tuppi_train/focus.py` labels cheaply what the look-ahead estimates expensively: at self-play
@@ -403,6 +435,29 @@ Reviewed and not done yet, with the reviewers' estimates (none measured on a GPU
 Looked at and rejected: sharing work between suit views (23.998 of 24 views differ), stopping the
 views early when the best move is already decided (never provable), a sparse first layer on the
 GPU, parallel `tc_ls_step` (1% of the time).
+
+## Matches: the measure that needs no table
+
+`tuppi_train/matches.py` plays complete matches in lockstep, in mirrored pairs (the same deals
+in the same order while the two matches stay in step, the sides swapped), and reports the share
+of matches won. It is cheap for plain networks; for a search it is too slow.
+
+```sh
+python -m tuppi_train.matches --a <net> --b <net> --pairs 20000 --weighted-base 8192
+```
+
+Why it matters: per-deal figures depend on where the deals start. A match between VRPO4 and VRPO1
+lasts 26.6 deals on average (the scoring table's own deal model says 36), 35% of them from 0-0 and
+10% with a lead of 32 or more; the "uniform" mix plays 8% from 0-0 and 31% with such a lead.
+
+Summed over a match, the equity changes of its deals are exactly the result minus the starting
+equity, whatever table defines the equity (checked to rounding). So the share of matches won minus
+one half is the number of deals per match times the mean equity change per deal at the scores a
+match visits (`matches.match_scores`). Check on the CPU, VRPO4 against VRPO1, sooli tricks by the
+live rules: 6,000 complete matches gave 65.6% +/- 1.1%; 4,096 duplicate base deals at the visited
+scores gave +0.00532 +/- 0.00079 per deal, which implies 64.2% +/- 2.1%. Per deal played the two
+are about equally precise, so plain networks are best judged by matches directly; the deal-level
+form is for bots too slow to play whole matches.
 
 ## The label-based attempt (stage 1: the verdict run)
 
@@ -508,6 +563,7 @@ reference files, browser runtime), which is not part of this directory.
 | `test_symmetry.py`, `test_bake.py` | The suit relabelling maps equal the engine's encoding of relabelled states; the averaged network is invariant and equals relabel-encode-forward-map-back; baking learns, resumes exactly and keeps its best |
 | `test_exploit.py` | The exploiter's rollout keeps exactly its own decisions, in order; its advantages equal a brute-force calculation; iteration 0 is exactly 0 and kept; resume is exact; evaluations use exact offers and the run's sooli play; with a planted reward for declaring RAMI its declaration rate rises, and falls with the sign flipped |
 | `test_lookahead.py` | Sampled deals equal the engine's search worlds (also with play inference, both scoring paths) and do not depend on the thread count; every deal's value of every action equals `tc_search_world_values`, own play and solver tail, one lane and several; forced rows are reported; the decision rule is its definition; the chooser is reproducible, independent of lanes, exactly neutral with an unreachable margin, and repairs an untrained anchor; a stopped measurement resumes exactly |
+| `test_matches.py` | The score update equals the engine's; games dealt from seeds; a network against itself splits every mirrored pair, the equity changes of a match sum to its result minus the starting equity; match-weighted scores follow the visits |
 | `test_hosted.py` | Every hosted file matches `SOURCE.json`; nothing was added to the image's directories |
 
 Not covered by tests here: anything specific to CUDA (the container the suite was written in has

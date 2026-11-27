@@ -466,3 +466,31 @@ def test_uniform_scores_in_the_matches_and_phase_counters(tmp_path):
 def lockstep_net(name):
     from tuppi_train import symmetry
     return symmetry.load_net(name, "cpu")
+
+
+def test_calibrate(tmp_path):
+    """The recording keeps the plain network's deals, resumes, and its report scores rules by the
+    real values: a rule that never changes a move scores exactly 0, and the pieces are consistent."""
+    from tuppi_train import calibrate
+    s = lookahead.Settings(worlds=6, top=3, min_prob=0.02, dd_left=6)
+    kw = dict(chunk=4, dev=torch.device("cpu"), lane_games=4096, rollout_name="vrpo1_actor_0504.pt", log=lambda s: None)
+    calibrate.record(tmp_path / "r", "vrpo3_final.pt", s, base=4, **kw)
+    first = (tmp_path / "r" / "part_0000.npz").read_bytes()
+    calibrate.record(tmp_path / "r", "vrpo3_final.pt", s, base=8, **kw)
+    assert (tmp_path / "r" / "part_0000.npz").read_bytes() == first and (tmp_path / "r" / "part_0001.npz").exists()
+    with pytest.raises(SystemExit):
+        calibrate.record(tmp_path / "r", "vrpo3_final.pt", lookahead.Settings(worlds=7), base=8, **kw)
+    d = calibrate.load(tmp_path / "r")
+    x = calibrate.quantities(d)
+    n = len(d["k"])
+    assert d["q"].shape == (n, 6, 3) and d["real"].shape == (n, 3) and (d["k"] >= 2).all() and d["games"].tolist() == [32, 32]
+    assert not x["r"][:, 0].any() and not x["m"][:, 0].any() and np.abs(x["r"]).max() > 0
+    assert not d["real"][~x["valid"]].any()
+    keep = calibrate.rule_value(d, x, np.zeros(n, np.int64))
+    assert keep["real"] == 0.0 and keep["claimed"] == 0.0 and keep["changed"] == 0.0
+    best = calibrate.choose(x["m"], x["m"] > 0, x["valid"])
+    assert ((best == 0) | (x["m"][np.arange(n), best] > 0)).all() and (best < d["k"]).all()
+    assert calibrate.rule_value(d, x, best)["claimed"] > 0
+    result = calibrate.report(tmp_path / "r", log=lambda s: None)
+    assert result["decisions"] == n and "z 2 (current)" in result["rules"]
+    assert calibrate.quantities(d, 4)["worlds"] == 4
