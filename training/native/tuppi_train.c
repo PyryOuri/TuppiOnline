@@ -105,6 +105,28 @@ int tc_ls_begin_duplicate_scores(TcEnv *e, int n_base, int ruleset, const uint8_
   return begin_duplicate(e, n_base, ruleset, 0, 0, scores, paired, rng, a_team);
 }
 
+// n games, each from its own score, dealer and seed: game g's hands are dealt
+// from seeds[g] alone (so two games with the same seed have the same deal, as
+// the two mirrored matches of a pair need), its score is (scores[2g],
+// scores[2g + 1]) for teams 0 and 1, its dealer dealers[g]; the stream of the
+// heuristics' draws comes from the same seed.
+int tc_ls_begin_games(TcEnv *e, int n, int ruleset, const uint8_t *scores, const uint8_t *dealers,
+                      const uint64_t *seeds) {
+  if (n > e->n) return -2;
+  for (int g = 0; g < n; g++) {
+    uint64_t local = seeds[g];
+    int deck[52];
+    for (int c = 0; c < 52; c++) deck[c] = c;
+    for (int c = 51; c > 0; c--) { int j = (int)(splitmix(&local) % (u64)(c + 1)); int t = deck[c]; deck[c] = deck[j]; deck[j] = t; }
+    uint64_t hands[4] = {0, 0, 0, 0};
+    for (int c = 0; c < 52; c++) hands[c / 13] |= 1ULL << deck[c];
+    tc_deal_init_v(&e->g[g].d, hands, dealers[g] & 3, scores[2 * g], scores[2 * g + 1], ruleset);
+    e->g[g].live = 1;
+    e->g[g].rng = splitmix(&local) | 1;
+  }
+  return 0;
+}
+
 // Offer recording for the fast offer model's training data (tc_ls_observe).
 typedef struct {
   uint8_t *feat;   // packed encoder-1 observations, (tc_feature_dim() + 7) / 8 bytes per row

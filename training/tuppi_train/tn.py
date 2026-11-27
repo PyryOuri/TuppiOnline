@@ -25,6 +25,8 @@ lib.tc_ls_begin_duplicate.argtypes = [C.c_void_p, C.c_int, C.c_int, C.c_int, C.c
 lib.tc_ls_begin_duplicate.restype = C.c_int
 lib.tc_ls_begin_duplicate_scores.argtypes = [C.c_void_p, C.c_int, C.c_int, C.c_void_p, C.c_int, _u64p, C.c_void_p]
 lib.tc_ls_begin_duplicate_scores.restype = C.c_int
+lib.tc_ls_begin_games.argtypes = [C.c_void_p, C.c_int, C.c_int, C.c_void_p, C.c_void_p, C.c_void_p]
+lib.tc_ls_begin_games.restype = C.c_int
 lib.tc_ls_observe.argtypes = [C.c_void_p, C.c_int, C.c_int] + [C.c_void_p] * 8 + [C.c_int, C.POINTER(C.c_int),
                                                                                   C.c_void_p, C.c_void_p]
 lib.tc_ls_observe.restype = C.c_int
