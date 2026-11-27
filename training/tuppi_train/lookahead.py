@@ -380,22 +380,28 @@ class LookAhead:
 # ------------------------------------------------------------------ the match
 def build(net, dev, settings: Settings, env: "native.Env", table: np.ndarray, rollout_net=None, amp=None,
           lanes: int = 2, lane_games: int = 65536, heuristic_sooli: bool = True, offer_model=None,
-          seed: int = 0) -> LookAhead:
+          seed: int = 0, likelihood_net=None) -> LookAhead:
     """The look-ahead chooser for matches in `env`: `net` is the anchor (float32); the play-outs
-    are played by `rollout_net` (default: the same network) under autocast `amp`."""
+    are played by `rollout_net` (default: the same network) under autocast `amp`. With play
+    inference the worlds are scored by `likelihood_net` in float32, or, if none is given, by the
+    play-out network as the play-outs run it."""
     rollout = lockstep.TorchGreedy(rollout_net if rollout_net is not None else net, dev, net.encoder, amp=amp)
     searcher = Searcher(table, rollout, net.encoder, lanes, lane_games, heuristic_sooli, settings.dd_left, offer_model)
-    return LookAhead(env, lockstep.TorchGreedy(net, dev, net.encoder), searcher, settings, seed, likelihood=rollout)
+    likelihood = lockstep.TorchGreedy(likelihood_net, dev, net.encoder) if likelihood_net is not None else rollout
+    return LookAhead(env, lockstep.TorchGreedy(net, dev, net.encoder), searcher, settings, seed, likelihood=likelihood)
 
 
 def measure(out: Path, net_name: str, settings: Settings, base: int = 1024, chunk: int = 64, seed: int = 20261126,
             rollout_name: str = "", opponent_name: str = "", dev=None, amp_name: str = "", lanes: int = 2,
             lane_games: int = 65536, sooli_play: str = "heuristic", offer_model_path: str = "", hours: float = 0.0,
-            log=print, plain: bool = False, opponent_rollout_name: str = "") -> dict:
+            log=print, plain: bool = False, opponent_rollout_name: str = "", likelihood_name: str = "",
+            opponent_likelihood_name: str = "") -> dict:
     """Side A (anchor `net_name`, with the look-ahead unless `plain`) against side B (the network
     `opponent_name`, default the anchor itself; with the same look-ahead settings and the play-out
-    network `opponent_rollout_name` if that is given, else plain). `base` base deals in chunks of
-    `chunk`, resumable in `out`. Returns the summary that is also written to out/summary.json."""
+    network `opponent_rollout_name` if that is given, else plain). `likelihood_name` /
+    `opponent_likelihood_name`: the network that scores worlds for play inference on that side
+    (default: its play-out network). `base` base deals in chunks of `chunk`, resumable in `out`.
+    Returns the summary that is also written to out/summary.json."""
     from . import offer, symmetry
     from tuppi_ai.best import EQUITY
     from tuppi_ai.equity import Equity
@@ -409,10 +415,13 @@ def measure(out: Path, net_name: str, settings: Settings, base: int = 1024, chun
     amp_name = amp_name or ("fp16" if dev.type == "cuda" else "off")
     config = {"net": net_name, "rollout": "" if plain else rollout_name or net_name, "opponent": opponent_name or net_name,
               "opponent_rollout": opponent_rollout_name, "settings": asdict(settings), "chunk": chunk, "seed": seed,
-              "amp": amp_name, "sooli_play": sooli_play, "offer_model": bool(offer_model_path)}
+              "amp": amp_name, "sooli_play": sooli_play, "offer_model": bool(offer_model_path),
+              "likelihood": "" if plain else likelihood_name,
+              "opponent_likelihood": opponent_likelihood_name if opponent_rollout_name else ""}
     cfg_path, log_path = out / "config.json", out / "chunks.jsonl"
     if cfg_path.exists():
-        old = json.loads(cfg_path.read_text())
+        # a run started before an option existed had that option's default
+        old = {"opponent_rollout": "", "likelihood": "", "opponent_likelihood": "", **json.loads(cfg_path.read_text())}
         if old != config:
             raise SystemExit(f"{out} holds a run with other settings; use another --out\n  there: {old}\n  now:   {config}")
     cfg_path.write_text(json.dumps(config, indent=1))
@@ -434,13 +443,15 @@ def measure(out: Path, net_name: str, settings: Settings, base: int = 1024, chun
     env.set_sooli(0, False, heur, 0.0)
     offer_model = offer.load_native(offer_model_path) if offer_model_path else None
 
-    def side(anchor, rollout_name_, searching):
+    def side(anchor, rollout_name_, searching, likelihood_name_):
         if not searching:
             return lockstep.TorchGreedy(anchor, dev, anchor.encoder)
         return build(anchor, dev, settings, env, table, load(rollout_name_) if rollout_name_ else None,
-                     device.AMP[amp_name], lanes, lane_games, heur, offer_model)
+                     device.AMP[amp_name], lanes, lane_games, heur, offer_model,
+                     likelihood_net=load(likelihood_name_) if likelihood_name_ else None)
 
-    a, b = side(net, rollout_name, not plain), side(opponent, opponent_rollout_name, bool(opponent_rollout_name))
+    a = side(net, rollout_name, not plain, likelihood_name)
+    b = side(opponent, opponent_rollout_name, bool(opponent_rollout_name), opponent_likelihood_name)
     looks = [x for x in (a, b) if isinstance(x, LookAhead)]
     describe = lambda name, roll, searching: (f"{name} with look-ahead (play-outs by {roll or name})" if searching  # noqa: E731
                                               else f"plain {name}")
@@ -459,9 +470,13 @@ def measure(out: Path, net_name: str, settings: Settings, base: int = 1024, chun
         t0 = time.perf_counter()
         values = lockstep.duplicate_eval(env, a, b, chunk, 3, C.c_uint64(seed + c), net.encoder)
         counts = [look.searcher.counts() for look in looks]
-        row = {"chunk": c, "values": [float(v) for v in values], "seconds": time.perf_counter() - t0,
-               **looks[0].stats, **{key: sum(x[key] for x in counts) for key in counts[0]},
-               "parts": looks[0].searcher.seconds}
+        wall = time.perf_counter() - t0
+        # seconds: the whole match. search_seconds: inside the look-ahead of every searching side.
+        row = {**looks[0].stats, **{key: sum(x[key] for x in counts) for key in counts[0]},
+               "chunk": c, "values": [float(v) for v in values], "seconds": wall,
+               "search_seconds": sum(look.stats["seconds"] for look in looks),
+               "parts": {key: sum(look.searcher.seconds[key] for look in looks) for key in looks[0].searcher.seconds},
+               "threads": tn.threads()}
         with open(log_path, "a") as f:
             f.write(json.dumps(row) + "\n")
         done.append(row)
@@ -513,6 +528,9 @@ def main(argv=None) -> None:
     p.add_argument("--opponent", default="", help="the network on the other side (default: --net)")
     p.add_argument("--opponent-rollout", default="", help="the other side looks ahead too, with this play-out network")
     p.add_argument("--plain", action="store_true", help="side A plays --net without the look-ahead")
+    p.add_argument("--likelihood", default="", help="with --belief: the network that scores side A's worlds "
+                   "(float32; default: its play-out network)")
+    p.add_argument("--opponent-likelihood", default="", help="the same for the other side's look-ahead")
     p.add_argument("--base", type=int, default=1024)
     p.add_argument("--chunk", type=int, default=64, help="base deals per match (8 games each)")
     p.add_argument("--seed", type=int, default=20261126)
@@ -534,16 +552,13 @@ def main(argv=None) -> None:
     p.add_argument("--threads", type=int, default=0, help="engine threads (0 = every CPU the process may use)")
     p.add_argument("--device", default=None)
     a = p.parse_args(argv)
-    import torch  # noqa: F401  (before the thread count: torch resets it on import)
-    if a.threads > 0:
-        tn.set_threads(a.threads)
-    else:
-        tn.use_all_cpus()
+    tn.use_cpus(a.threads)
     settings = Settings(worlds=a.worlds, top=a.top, min_prob=a.min_prob, keep=a.keep, keep_show=a.keep_show, z=a.z,
                         show=not a.no_show, dd_left=a.dd, belief=a.belief)
     r = measure(a.out, a.net, settings, a.base, a.chunk, a.seed, a.rollout, a.opponent, device.pick(a.device), a.amp,
                 a.lanes, a.lane_games, a.sooli_play, a.offer_model, a.hours, plain=a.plain,
-                opponent_rollout_name=a.opponent_rollout)
+                opponent_rollout_name=a.opponent_rollout, likelihood_name=a.likelihood,
+                opponent_likelihood_name=a.opponent_likelihood)
     print(verdict(r) if r["base_deals"] > 1 else "nothing played")
 
 

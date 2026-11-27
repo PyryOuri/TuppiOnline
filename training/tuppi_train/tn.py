@@ -56,14 +56,26 @@ def set_threads(n: int) -> None:
     lib.tc_train_set_threads(int(n))
 
 
-def use_all_cpus() -> int:
-    """Engine threads = the CPUs this process may use. PyTorch shares the OpenMP runtime and sets
-    its thread count to the physical cores (6 of Colab's 12), which the engine then inherits; call
-    this after torch is imported. Returns the count."""
+def use_cpus(n: int = 0) -> int:
+    """Engine threads = n, or every CPU this process may use (n = 0). Returns the count.
+
+    PyTorch shares the OpenMP runtime with the engine. Its MKL builds reset the runtime's thread
+    count to the physical cores (6 of Colab's 12) when PyTorch first does parallel work, whatever
+    was set before; telling PyTorch the count as well keeps it."""
     import os
-    n = len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else (os.cpu_count() or 1)
+    if n <= 0:
+        n = len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else (os.cpu_count() or 1)
+    try:
+        import torch
+        torch.set_num_threads(n)
+    except ImportError:
+        pass
     set_threads(n)
     return n
+
+
+def use_all_cpus() -> int:
+    return use_cpus(0)
 
 
 def summary(env: "native.Env", n: int) -> dict:

@@ -291,6 +291,39 @@ The look-ahead helps the strong network as much as the weak one, and the small n
 play-outs as well as the large one, at this precision. VRPO4 spreads its probability over more
 moves: 58% of its free decisions have a second candidate, against 27% for VRPO1.
 
+**On the L4, around the baked network** (run `look_v1`, 2026-11-27; 64 deals per decision, at 0-0,
+sooli tricks by the live rules, the offer model in the play-outs; "new" is `best_student.pt` of
+`sym_preflight_v1`):
+
+| Arm | A | B | Base deals | A minus B |
+|---|---|---|---|---|
+| `uniform64` | new with look-ahead, new in the play-outs, no tail | plain new | 1,024 | **+0.00127 +/- 0.00047** |
+| `small64` | new with look-ahead, VRPO1 play-outs, tail 6 | plain new | 1,024 | +0.00050 +/- 0.00050 |
+| `belief64` | as `small64` with play inference (`--belief 4`, scored by VRPO1) | plain new | 1,024 | **+0.00140 +/- 0.00036** |
+| `small256` | as `small64` with 256 deals | plain new | 512 | +0.00135 +/- 0.00090 |
+| `new_vs_old` | new with look-ahead (VRPO1 play-outs, tail 6, bid margin 0.03) | VRPO3 with the same look-ahead | 1,152 | **+0.00288 +/- 0.00067** |
+| `plain_vs_old` | plain new | VRPO3 with that look-ahead | 2,496 | **+0.00178 +/- 0.00050** |
+
+Contrasts on the same base deals: `belief64` minus `small64` +0.00090 +/- 0.00051 (play inference
+helps the cheap version); `uniform64` minus `small64` +0.00077 +/- 0.00055 (two things differ: the
+play-out network and the tail); `small256` minus `small64` +0.00045 +/- 0.00077 (undecided);
+`new_vs_old` minus `plain_vs_old` +0.00108 +/- 0.00055 (what the search adds to the new network
+against that opponent). Arms on the same deals correlate only 0.2 to 0.7.
+
+Speed on the L4 instance (with the engine on 6 threads, see below): 35,000 play-outs a second with
+the 768-wide network in the play-outs and no tail, 31,000 with VRPO1 and the tail: the solver tail
+saves no time there, the engine and the solver are the cost. Play inference at 4 candidates per
+world took 40% of `belief64`'s search time. A Heidi 1.2 card decision (1,024 worlds, about 5 legal
+moves, 8x candidates scored) would take about 5,200 play-outs, so a faithful Heidi would not be
+faster on this instance than on the owner's Mac (about 13 positions a second).
+
+Two faults of that run, fixed afterwards: its log counted only side A's search time in two-sided
+matches (`seconds` is now the whole match, `search_seconds` the look-ahead's share), and the
+engine ran on 6 threads, because PyTorch's MKL build resets the shared OpenMP thread count when it
+first does parallel work (`tn.use_cpus` now tells PyTorch the count too). The old anchor of
+`new_vs_old` and `plain_vs_old` was VRPO3; Heidi 1.2's is VRPO4 with VRPO3 as the likelihood
+network (`--likelihood`, `--opponent-likelihood`), which the second run uses.
+
 Either side of the match can look ahead, with its own anchor and play-out network (`--plain`,
 `--opponent`, `--opponent-rollout`): a Heidi-style search around a new network against one around
 the old, or a plain network against a searching one. After resampling by likelihood (`--belief`)
@@ -339,8 +372,8 @@ Three findings of a performance review of the collector are built into the look-
   reports them);
 - the play-outs run in two or more lanes, each its own environment: while the engine steps one
   lane the GPU evaluates another (`TorchGreedy.submit` / `collect`);
-- the engine uses every CPU the process may use (`tn.use_all_cpus`). PyTorch shares the OpenMP
-  runtime and sets it to the physical cores, 6 of Colab's 12.
+- the engine uses every CPU the process may use (`tn.use_cpus`). PyTorch shares the OpenMP
+  runtime and resets it to the physical cores, 6 of Colab's 12, unless it is told the count too.
 
 Reviewed and not done yet, with the reviewers' estimates (none measured on a GPU):
 

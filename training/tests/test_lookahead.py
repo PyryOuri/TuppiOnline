@@ -360,3 +360,39 @@ def test_measure_sides(tmp_path):
     assert json.loads((tmp_path / "b" / "config.json").read_text())["rollout"] == ""
     with pytest.raises(SystemExit):
         lookahead.measure(tmp_path / "c", "vrpo1_actor_0504.pt", settings, plain=True, **kw)
+
+
+def test_likelihood_network_timing_and_old_runs(tmp_path):
+    """A separate likelihood network that is the play-out network gives the same match as the
+    default; another one changes it. The log's seconds are the whole match, search_seconds the
+    look-ahead's share on every searching side. A run directory written before an option existed
+    continues."""
+    s = lookahead.Settings(worlds=4, top=2, min_prob=0.05, z=0.5, belief=3, dd_left=6)
+    kw = dict(base=4, chunk=4, seed=5, dev=torch.device("cpu"), lanes=1, lane_games=2048, log=lambda s: None,
+              rollout_name="vrpo1_actor_0504.pt")
+    rows = {}
+    for name, extra in (("default", {}), ("same", {"likelihood_name": "vrpo1_actor_0504.pt"}),
+                        ("other", {"likelihood_name": "vrpo3_final.pt"}),
+                        ("both", {"opponent_rollout_name": "vrpo1_actor_0504.pt", "opponent_likelihood_name": "vrpo3_final.pt"})):
+        lookahead.measure(tmp_path / name, "vrpo3_final.pt", s, **kw, **extra)
+        rows[name] = json.loads((tmp_path / name / "chunks.jsonl").read_text().splitlines()[0])
+    assert rows["default"]["values"] == rows["same"]["values"] != rows["other"]["values"]
+    for name, row in rows.items():
+        assert 0 < row["search_seconds"] <= row["seconds"] and row["parts"]["belief"] > 0 and row["threads"] == tn.threads()
+    assert rows["both"]["games"] > 1.5 * rows["default"]["games"]
+    cfg = tmp_path / "default" / "config.json"
+    old = {k: v for k, v in json.loads(cfg.read_text()).items() if k not in ("likelihood", "opponent_likelihood", "opponent_rollout")}
+    cfg.write_text(json.dumps(old))
+    again = lookahead.measure(tmp_path / "default", "vrpo3_final.pt", s, **{**kw, "base": 8})
+    assert again["base_deals"] == 8
+    with pytest.raises(SystemExit):
+        lookahead.measure(tmp_path / "default", "vrpo3_final.pt", s, **kw, likelihood_name="vrpo3_final.pt")
+
+
+def test_use_cpus_tells_torch_too():
+    before = tn.threads()
+    try:
+        assert tn.use_cpus(2) == 2 and tn.threads() == 2 and torch.get_num_threads() == 2
+        assert tn.use_cpus(0) == tn.threads() == torch.get_num_threads() >= 1
+    finally:
+        tn.use_cpus(before)
