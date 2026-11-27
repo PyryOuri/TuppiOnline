@@ -1,0 +1,71 @@
+[
+ {
+  "file": "plain_zero.json",
+  "title": "Network alone (greedy): student vs VRPO4, 0-0",
+  "base_deals": 4096,
+  "mean": 0.0031861658630244144,
+  "ci95": [
+   0.0027807712152006334,
+   0.0035915605108481955
+  ],
+  "no_change_deals": 194,
+  "won": 0.526153564453125,
+  "cand_declared": 0.39776611328125,
+  "opp_declared": 0.39862060546875,
+  "candidate": "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/models/vrpo4sym_v1.pt",
+  "opponent": "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/models/vrpo4_final.pt",
+  "seed": "sym-plain-zero-v1",
+  "scores": "zero",
+  "cpu_h": "1.09"
+ },
+ {
+  "file": "plain_uniform.json",
+  "title": "Network alone (greedy): student vs VRPO4, uniform scores",
+  "base_deals": 4096,
+  "mean": 0.007404582002697979,
+  "ci95": [
+   0.006262007948857974,
+   0.008547156056537983
+  ],
+  "no_change_deals": 822,
+  "won": 0.527801513671875,
+  "cand_declared": 0.424224853515625,
+  "opp_declared": 0.424896240234375,
+  "candidate": "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/models/vrpo4sym_v1.pt",
+  "opponent": "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/models/vrpo4_final.pt",
+  "seed": "sym-plain-uniform-v1",
+  "scores": "uniform",
+  "cpu_h": "1.13"
+ },
+ {
+  "file": "nelli_dup.json",
+  "title": "Nelli (lite C1H): student vs VRPO4 (Nelli 1.1), uniform scores",
+  "base_deals": 8192,
+  "mean": 0.0063749286736886155,
+  "ci95": [
+   0.005588438494305434,
+   0.007161418853071797
+  ],
+  "no_change_deals": 1641,
+  "won": 0.5228424072265625,
+  "cand_declared": 0.42779541015625,
+  "opp_declared": 0.42926025390625,
+  "candidate": "lite:/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/models/vrpo4sym_v1.lite.npz:c1h",
+  "opponent": "lite:/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/models/vrpo4_final.lite.npz:c1h",
+  "seed": "sym-nelli-dup-v1",
+  "scores": "uniform",
+  "cpu_h": "2.78"
+ },
+ {
+  "file": "nelli_pairs.json",
+  "title": "Nelli (lite C1H): complete matches from 0-0, student vs Nelli 1.1",
+  "pairs": 3500,
+  "win_rate": 0.6241428571428571,
+  "ci95": [
+   0.6143085485212717,
+   0.6339771657644425
+  ],
+  "unfinished": 0,
+  "cpu_h": "8.88"
+ }
+]

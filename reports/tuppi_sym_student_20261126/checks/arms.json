@@ -1,0 +1,98 @@
+[
+ {
+  "spec": "lite:/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/models/vrpo4_final.lite.npz:c1h",
+  "class": "LiteAgent",
+  "handles_sooli": true,
+  "network": "vrpo4=vrpo4_lite",
+  "options": {
+   "net": true,
+   "worlds": 16,
+   "tricks": 9,
+   "rami_tricks": 0,
+   "belief_mult": 4,
+   "sooli_need": 0,
+   "sooli_need_ahead": 0,
+   "sooli_need_behind": 0,
+   "human_aware": true,
+   "human_t": 4.0,
+   "human_eps": 0.8
+  }
+ },
+ {
+  "spec": "lite:/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/models/vrpo4sym_v1.lite.npz:c1h",
+  "class": "LiteAgent",
+  "handles_sooli": true,
+  "network": "student=student_lite",
+  "options": {
+   "net": true,
+   "worlds": 16,
+   "tricks": 9,
+   "rami_tricks": 0,
+   "belief_mult": 4,
+   "sooli_need": 0,
+   "sooli_need_ahead": 0,
+   "sooli_need_behind": 0,
+   "human_aware": true,
+   "human_t": 4.0,
+   "human_eps": 0.8
+  }
+ },
+ {
+  "spec": "best:w=1024:pib=8:rs=1:bp=/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/models/vrpo4_final.pt:pibp=/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/models/vrpo3_final.pt",
+  "class": "SearchAgent",
+  "handles_sooli": true,
+  "worlds": 1024,
+  "solver_tail": 6,
+  "search_showing": 1,
+  "keep": 0.003,
+  "keep_bids": 0.03,
+  "rami_bonus": -0.0,
+  "reseed": true,
+  "adaptive": {
+   "batch": 128,
+   "z": 2.5,
+   "delta": 0.005
+  },
+  "show_worlds": null,
+  "rollouts_opponents": "vrpo1",
+  "rollouts_team": "shared with opponents",
+  "anchor": "vrpo4=vrpo4_lite",
+  "likelihood": "vrpo3"
+ },
+ {
+  "spec": "best:w=1024:pib=8:rs=1:bp=/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/models/vrpo4sym_v1.pt:pibp=/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/models/vrpo3_final.pt",
+  "class": "SearchAgent",
+  "handles_sooli": true,
+  "worlds": 1024,
+  "solver_tail": 6,
+  "search_showing": 1,
+  "keep": 0.003,
+  "keep_bids": 0.03,
+  "rami_bonus": -0.0,
+  "reseed": true,
+  "adaptive": {
+   "batch": 128,
+   "z": 2.5,
+   "delta": 0.005
+  },
+  "show_worlds": null,
+  "rollouts_opponents": "vrpo1",
+  "rollouts_team": "shared with opponents",
+  "anchor": "student=student_lite",
+  "likelihood": "vrpo3"
+ },
+ {
+  "spec": "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/models/vrpo4_final.pt",
+  "class": "PolicyAgent",
+  "handles_sooli": false,
+  "policy": "Greedy",
+  "network": "vrpo4=vrpo4_lite"
+ },
+ {
+  "spec": "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/models/vrpo4sym_v1.pt",
+  "class": "PolicyAgent",
+  "handles_sooli": false,
+  "policy": "Greedy",
+  "network": "student=student_lite"
+ }
+]

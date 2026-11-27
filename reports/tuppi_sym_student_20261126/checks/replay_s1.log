@@ -1,0 +1,59 @@
+Exception ignored while calling deallocator <function Mlp.__del__ at 0x10c5d7320>:
+Traceback (most recent call last):
+  File "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/tuppi_ai/native.py", line 420, in __del__
+AttributeError: 'NoneType' object has no attribute 'tc_mlp_free'
+Exception ignored while calling deallocator <function Mlp.__del__ at 0x10c5d7320>:
+Traceback (most recent call last):
+  File "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/tuppi_ai/native.py", line 420, in __del__
+AttributeError: 'NoneType' object has no attribute 'tc_mlp_free'
+Exception ignored while calling deallocator <function Mlp.__del__ at 0x10ff33320>:
+Traceback (most recent call last):
+  File "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/tuppi_ai/native.py", line 420, in __del__
+AttributeError: 'NoneType' object has no attribute 'tc_mlp_free'
+Exception ignored while calling deallocator <function Mlp.__del__ at 0x10ff33320>:
+Traceback (most recent call last):
+  File "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/tuppi_ai/native.py", line 420, in __del__
+AttributeError: 'NoneType' object has no attribute 'tc_mlp_free'
+Exception ignored while calling deallocator <function Mlp.__del__ at 0x11085f320>:
+Traceback (most recent call last):
+  File "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/tuppi_ai/native.py", line 420, in __del__
+AttributeError: 'NoneType' object has no attribute 'tc_mlp_free'
+Exception ignored while calling deallocator <function Mlp.__del__ at 0x11085f320>:
+Traceback (most recent call last):
+  File "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/tuppi_ai/native.py", line 420, in __del__
+AttributeError: 'NoneType' object has no attribute 'tc_mlp_free'
+Exception ignored while calling deallocator <function Mlp.__del__ at 0x10cb9b320>:
+Traceback (most recent call last):
+  File "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/tuppi_ai/native.py", line 420, in __del__
+AttributeError: 'NoneType' object has no attribute 'tc_mlp_free'
+Exception ignored while calling deallocator <function Mlp.__del__ at 0x10cb9b320>:
+Traceback (most recent call last):
+  File "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/tuppi_ai/native.py", line 420, in __del__
+AttributeError: 'NoneType' object has no attribute 'tc_mlp_free'
+{
+ "base_deals": 32,
+ "equity_per_deal": 0.004504025149854178,
+ "sd": 0.0403639984618784,
+ "ci95": [
+  -0.009481386793962642,
+  0.018489437093671
+ ],
+ "won": 0.53125,
+ "points": 0.984375,
+ "tricks": 6.66796875,
+ "rami": 0.8359375,
+ "cand_declared": 0.4140625,
+ "opp_declared": 0.421875,
+ "stolen": 0.265625,
+ "cand_sooli": 0.0078125,
+ "opp_sooli": 0.0078125,
+ "cand_sooli_won": 0.0078125,
+ "opp_sooli_won": 0.0078125,
+ "candidate": "lite:/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/models/vrpo4_final.lite.npz:c1h",
+ "opponent": "lite:/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/models/vrpo3_final.lite.npz:c1h",
+ "seed": "base-s1-nelli-dup-v1",
+ "scores": "uniform",
+ "ruleset": "project_target_v3",
+ "seconds": 7.2,
+ "instrument": "tools/stage3_eval.py (tuppi_ai.evaluate measure/summarise)"
+}

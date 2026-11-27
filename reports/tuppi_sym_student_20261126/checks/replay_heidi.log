@@ -1,0 +1,75 @@
+Exception ignored while calling deallocator <function Env.__del__ at 0x11048ac40>:
+Traceback (most recent call last):
+  File "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/tuppi_ai/native.py", line 372, in __del__
+AttributeError: 'NoneType' object has no attribute 'tc_env_free'
+Exception ignored while calling deallocator <function Env.__del__ at 0x11048ac40>:
+Traceback (most recent call last):
+  File "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/tuppi_ai/native.py", line 372, in __del__
+AttributeError: 'NoneType' object has no attribute 'tc_env_free'
+Exception ignored while calling deallocator <function Env.__del__ at 0x11048ac40>:
+Traceback (most recent call last):
+  File "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/tuppi_ai/native.py", line 372, in __del__
+AttributeError: 'NoneType' object has no attribute 'tc_env_free'
+Exception ignored while calling deallocator <function Env.__del__ at 0x11048ac40>:
+Traceback (most recent call last):
+  File "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/tuppi_ai/native.py", line 372, in __del__
+AttributeError: 'NoneType' object has no attribute 'tc_env_free'
+Exception ignored while calling deallocator <function Mlp.__del__ at 0x11048b320>:
+Traceback (most recent call last):
+  File "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/tuppi_ai/native.py", line 420, in __del__
+AttributeError: 'NoneType' object has no attribute 'tc_mlp_free'
+Exception ignored while calling deallocator <function Mlp.__del__ at 0x11048b320>:
+Traceback (most recent call last):
+  File "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/tuppi_ai/native.py", line 420, in __del__
+AttributeError: 'NoneType' object has no attribute 'tc_mlp_free'
+Exception ignored while calling deallocator <function Env.__del__ at 0x11048ac40>:
+Traceback (most recent call last):
+  File "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/tuppi_ai/native.py", line 372, in __del__
+AttributeError: 'NoneType' object has no attribute 'tc_env_free'
+Exception ignored while calling deallocator <function Env.__del__ at 0x11048ac40>:
+Traceback (most recent call last):
+  File "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/tuppi_ai/native.py", line 372, in __del__
+AttributeError: 'NoneType' object has no attribute 'tc_env_free'
+Exception ignored while calling deallocator <function Env.__del__ at 0x11048ac40>:
+Traceback (most recent call last):
+  File "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/tuppi_ai/native.py", line 372, in __del__
+AttributeError: 'NoneType' object has no attribute 'tc_env_free'
+Exception ignored while calling deallocator <function Env.__del__ at 0x11048ac40>:
+Traceback (most recent call last):
+  File "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/tuppi_ai/native.py", line 372, in __del__
+AttributeError: 'NoneType' object has no attribute 'tc_env_free'
+Exception ignored while calling deallocator <function Mlp.__del__ at 0x11048b320>:
+Traceback (most recent call last):
+  File "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/tuppi_ai/native.py", line 420, in __del__
+AttributeError: 'NoneType' object has no attribute 'tc_mlp_free'
+Exception ignored while calling deallocator <function Mlp.__del__ at 0x11048b320>:
+Traceback (most recent call last):
+  File "/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/tuppi_ai/native.py", line 420, in __del__
+AttributeError: 'NoneType' object has no attribute 'tc_mlp_free'
+{
+ "base_deals": 4,
+ "equity_per_deal": 0.011821706444155292,
+ "sd": 0.018303465197468755,
+ "ci95": [
+  -0.006115689449364086,
+  0.02975910233767467
+ ],
+ "won": 0.53125,
+ "points": 0.75,
+ "tricks": 6.5,
+ "rami": 0.71875,
+ "cand_declared": 0.34375,
+ "opp_declared": 0.375,
+ "stolen": 0.125,
+ "cand_sooli": 0.0,
+ "opp_sooli": 0.0,
+ "cand_sooli_won": 0.0,
+ "opp_sooli_won": 0.0,
+ "candidate": "best:w=128:pib=8:rs=1:bp=/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/models/vrpo4_final.pt:pibp=/Users/pyryouri/Developer/TuppiAI-sym-student-20261126/models/vrpo3_final.pt",
+ "opponent": "best:w=128:pib=8:rs=1",
+ "seed": "base-heidi12-w128-v1",
+ "scores": "uniform",
+ "ruleset": "project_target_v3",
+ "seconds": 223.6,
+ "instrument": "tools/stage3_eval.py (tuppi_ai.evaluate measure/summarise)"
+}
