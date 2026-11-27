@@ -11,7 +11,10 @@
 #   OUT=<dir> sh tools/sym_student_compare.sh <step|group> [...]
 #   DRYRUN=1 OUT=<dir> sh tools/sym_student_compare.sh all
 #
-# Steps: plain0 plainu nelli_dup nelli_pairs heidi128 heidi1024 report
+# Steps: plain0 plainu nelli_dup nelli_pairs heidi128 heidi1024 nelli_heidi report
+#   nelli_heidi: Nelli on the student vs Heidi 1.2 as released (W1024), uniform scores, in
+#   chunks of NH_CHUNK (128) base deals x NH_CHUNKS (16), cap NH_HOURS (9 h wall), WORKERS_NH (12);
+#   touch OUT/STOP to stop after the chunk in progress.
 # Groups: plain (plain0 plainu), nelli (nelli_dup nelli_pairs), heidi (heidi128),
 #         confirm (heidi1024), cheap (plain nelli), all (cheap heidi; NOT confirm).
 # A step whose result JSON exists is skipped (resume = run the same command again). A failed
@@ -54,10 +57,13 @@ heidi() {  # worlds anchor
 if [ "${DRYRUN:-0}" = "1" ]; then
   WORKERS="${WORKERS:-2}"; WORKERS_1024="${WORKERS_1024:-2}"
   N_PLAIN=16; N_NELLI=16; NELLI_PAIRS=2; N_H128=2; N_H1024=2; SUFFIX="-dryrun"
+  NH_CHUNK=2; NH_CHUNKS=2; NH_HOURS=1; WORKERS_NH="${WORKERS_NH:-4}"
 else
   WORKERS="${WORKERS:-12}"; WORKERS_1024="${WORKERS_1024:-10}"
   N_PLAIN="${N_PLAIN:-4096}"; N_NELLI="${N_NELLI:-8192}"; NELLI_PAIRS="${NELLI_PAIRS:-3500}"
   N_H128="${N_H128:-1024}"; N_H1024="${N_H1024:-256}"; SUFFIX=""
+  NH_CHUNK="${NH_CHUNK:-128}"; NH_CHUNKS="${NH_CHUNKS:-16}"; NH_HOURS="${NH_HOURS:-9}"
+  WORKERS_NH="${WORKERS_NH:-12}"
 fi
 
 log() { echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) $*"; }
@@ -118,11 +124,36 @@ step_heidi1024() {
   dup heidi1024 "$OUT/heidi_w1024.json" "$(heidi 1024 "$STUDENT")" "$(heidi 1024 "$VRPO4")" "$N_H1024" uniform \
     sym-heidi-w1024-v1 "$WORKERS_1024"
 }
+# Nelli on the student against Heidi 1.2 as released (W1024), head to head. Heidi holds two seats
+# of every game, so a base deal costs about half a Heidi-vs-Heidi one. Run in chunks of NH_CHUNK
+# base deals, each with its own seed (independent samples, pooled by the report), so stopping
+# loses at most the chunk in progress. No new chunk starts once NH_HOURS (wall) would be passed
+# by the last chunk's duration, or when OUT/STOP exists.
+step_nelli_heidi() {
+  mkdir -p "$OUT/nelli_heidi"
+  _t0=$(date +%s); _last=0; _i=0
+  while [ $_i -lt "$NH_CHUNKS" ]; do
+    _c=$(printf 'c%02d' $_i); _res="$OUT/nelli_heidi/$_c.json"
+    if [ ! -s "$_res" ]; then
+      if [ -e "$OUT/STOP" ]; then log "STOP file present: no new chunk"; return 0; fi
+      _now=$(date +%s)
+      if [ $(( _now - _t0 + _last )) -gt $(( NH_HOURS * 3600 )) ]; then
+        log "time cap ${NH_HOURS} h: no new chunk ($_c not started)"; return 0
+      fi
+      _s=$(date +%s)
+      dup "nelli_heidi_$_c" "$_res" "$NELLI_S" "$(heidi 1024 "$VRPO4")" "$NH_CHUNK" uniform \
+        "sym-nelli-heidi-v1-$_c" "$WORKERS_NH" || return 1
+      _last=$(( $(date +%s) - _s ))
+    fi
+    _i=$((_i + 1))
+  done
+}
+
 step_report() { $PY "$ROOT/tools/sym_student_report.py" --dir "$OUT" || fail report $?; }
 
 step() {
   case "$1" in
-    plain0|plainu|nelli_dup|nelli_pairs|heidi128|heidi1024|report) "step_$1" ;;
+    plain0|plainu|nelli_dup|nelli_pairs|heidi128|heidi1024|nelli_heidi|report) "step_$1" ;;
     plain) step plain0; step plainu ;;
     nelli) step nelli_dup; step nelli_pairs ;;
     heidi) step heidi128 ;;

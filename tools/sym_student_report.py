@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
+import statistics
 from pathlib import Path
 
 STEPS = [
@@ -31,6 +33,34 @@ def ledger(dirpath: Path) -> dict:
             if line.strip():
                 e = json.loads(line)
                 out[e.get("label", "")] = e
+    return out
+
+
+def nelli_heidi(dirpath: Path, led: dict) -> dict | None:
+    """Pool the nelli_heidi chunks (independent seeds) over base deals."""
+    files = sorted((dirpath / "nelli_heidi").glob("c[0-9][0-9].json"))
+    if not files:
+        return None
+    values, cpu = [], 0.0
+    for f in files:
+        r = json.loads(f.read_text())
+        values += r["values"]
+        e = led.get(f"sym-nelli_heidi_{f.stem}") or led.get(f"sym-nelli_heidi_{f.stem}-dryrun") or {}
+        cpu += e.get("cpu_s") or 0.0
+    n = len(values)
+    mean = statistics.fmean(values)
+    sd = statistics.stdev(values) if n > 1 else float("nan")
+    half = 1.96 * sd / math.sqrt(n) if n > 1 else float("nan")
+    out = {"file": "nelli_heidi/", "title": "Nelli (C1H) on the student vs Heidi 1.2 W1024, uniform",
+           "chunks": len(files), "base_deals": n, "mean": mean, "sd": sd, "ci95": [mean - half, mean + half],
+           "cpu_h": f"{cpu / 3600:.2f}"}
+    dup = dirpath / "nelli_dup.json"
+    if dup.exists() and n > 1:
+        d = json.loads(dup.read_text())
+        dl, dh = d["ci95"]
+        h2 = math.hypot(half, (dh - dl) / 2)
+        m2 = mean - d["equity_per_deal"]
+        out["implied_nelli11"], out["implied_nelli11_ci95"] = m2, [m2 - h2, m2 + h2]
     return out
 
 
@@ -68,6 +98,18 @@ def main() -> None:
                          "opp_declared": r["opp_declared"], "candidate": r["candidate"], "opponent": r["opponent"],
                          "seed": r["seed"], "scores": r["scores"], "cpu_h": cpu_h})
             lines.append(f"| {title} | {r['base_deals']} | {res} | {same} | {cpu_h} |")
+    nh = nelli_heidi(a.dir, led)
+    if nh:
+        rows.append(nh)
+        lo, hi = nh["ci95"]
+        lines += ["", "## Nelli on the student vs Heidi 1.2 (W1024 as released), uniform scores", "",
+                  f"Pooled over {nh['chunks']} chunks ({nh['base_deals']} base deals, {nh['cpu_h']} CPU h): "
+                  f"**{nh['mean']:+.5f} [{lo:+.5f}, {hi:+.5f}]** per deal (negative: Heidi is stronger); "
+                  f"per-base-deal SD {nh['sd']:.4f}."]
+        if "implied_nelli11" in nh:
+            m, (l2, h2) = nh["implied_nelli11"], nh["implied_nelli11_ci95"]
+            lines.append(f"Implied Nelli 1.1 vs Heidi 1.2 (this minus the Nelli duplicate's student gain, "
+                         f"independent samples): {m:+.5f} [{l2:+.5f}, {h2:+.5f}].")
     fails = a.dir / "failures.jsonl"
     if fails.exists() and fails.read_text().strip():
         lines += ["", "Failures:", "", "```", fails.read_text().strip(), "```"]
