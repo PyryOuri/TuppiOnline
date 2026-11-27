@@ -203,9 +203,11 @@ class Searcher:
         cum = np.cumsum(weight, 1)
         target = (u[:, None] / w + np.arange(w)[None, :] / w) * cum[:, -1:]
         pick = np.minimum((cum[:, None, :] < target[:, :, None]).sum(2), m - 1)
-        out = cand.reshape(n, m)[np.arange(n)[:, None], pick].reshape(-1)
+        # whole records as bytes: a field-wise copy would leave the struct's padding undefined
+        rows = (np.arange(n)[:, None] * m + pick).reshape(-1)
+        out = np.ascontiguousarray(cand.view(np.uint8).reshape(n * m, STATE.itemsize)[rows]).view(STATE).reshape(-1)
         self.seconds["belief"] += time.perf_counter() - t0
-        return np.ascontiguousarray(out), bad, pick
+        return out, bad, pick
 
     # --------------------------------------------------------------- play-outs
     def play(self, worlds: np.ndarray, w: int, cand: np.ndarray, k: np.ndarray, seeds: np.ndarray) -> np.ndarray:

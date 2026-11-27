@@ -24,6 +24,18 @@ def deal_of(state) -> "native.TcDeal":
     return native.TcDeal.from_buffer_copy(state.tobytes())
 
 
+def same_states(a, b) -> bool:
+    """Equal in every field. (Not a comparison of bytes: the record has padding, which a copy
+    need not preserve.)"""
+    a, b = np.asarray(a), np.asarray(b)
+    return a.shape == b.shape and all(np.array_equal(a[name], b[name]) for name in lookahead.STATE.names)
+
+
+def engine_worlds(env, state, w, seed) -> np.ndarray:
+    ref = native.search_worlds(env, native.observe(deal_of(state), int(state["cur"])), w, rng(seed))
+    return np.frombuffer(b"".join(bytes(r) for r in ref), lookahead.STATE)
+
+
 @pytest.fixture(autouse=True)
 def engine_settings():
     """The look-ahead's process-wide engine settings, restored for the other test files."""
@@ -92,13 +104,12 @@ def test_worlds_are_the_engines(recorded, table, make_env):
         again = s.sample(states, w, seeds)
     finally:
         tn.set_threads(threads)
-    assert worlds.tobytes() == again[0].tobytes() and np.array_equal(u, again[2])
+    assert same_states(worlds, again[0]) and np.array_equal(u, again[2])
     env = make_env(8)
     phases = set()
     for i, st in enumerate(states):
-        ref = native.search_worlds(env, native.observe(deal_of(st), int(st["cur"])), w, rng(int(seeds[i])))
         mine = worlds[i * w:(i + 1) * w]
-        assert b"".join(bytes(r) for r in ref) == mine.tobytes()
+        assert same_states(engine_worlds(env, st, w, int(seeds[i])), mine)
         me = int(st["cur"])
         phases.add(int(st["phase"]))
         for world in mine:
@@ -109,6 +120,12 @@ def test_worlds_are_the_engines(recorded, table, make_env):
             assert hands[0] & hands[1] == 0 and (hands[0] | hands[1]) & hands[2] == 0
             assert (hands[0] | hands[1] | hands[2]) & hands[3] == 0
     assert phases == {native.PH_SHOW, native.PH_PLAY}
+    other = worlds.copy()
+    other["hand"][3, 1] ^= 1
+    assert not same_states(worlds, other)
+    padded = worlds.copy()
+    padded.view(np.uint8).reshape(len(worlds), -1)[:, 178:] = 7      # the padding bytes of the record
+    assert same_states(worlds, padded) and padded.tobytes() != worlds.tobytes()
     assert 0.0 <= u.min() and u.max() < 1.0 and len(np.unique(u)) > len(u) // 2
 
 
@@ -177,8 +194,7 @@ def test_belief_worlds_are_the_engines(recorded, table, make_env, keys):
     worlds, bad, pick = searcher(table, mlp).belief(states, w, mult, seeds, logits, 2.0, 0.5)
     assert not bad.any()
     for i, st in enumerate(states):
-        ref = native.search_worlds(env, native.observe(deal_of(st), int(st["cur"])), w, rng(int(seeds[i])))
-        assert b"".join(bytes(r) for r in ref) == worlds[i * w:(i + 1) * w].tobytes()
+        assert same_states(engine_worlds(env, st, w, int(seeds[i])), worlds[i * w:(i + 1) * w])
     assert np.mean([len(set(p)) for p in pick]) < 0.9 * w
     assert (np.diff(pick, axis=1) >= 0).all()
 
