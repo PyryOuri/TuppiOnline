@@ -348,6 +348,28 @@ Checks of the same run: the plain new network against VRPO4 gave +0.00269 +/- 0.
 of 40,000 complete matches (26.0 deals a match; the deal-level form implied 61.3% +/- 1.3%, a
 little low, as in the CPU check: it ignores that the stronger side leads more often).
 
+**Third run on the L4** (`look_v3`, 2026-11-28): the looser rule in matches, and the ingredients one
+at a time. All arms: the baked network with a look-ahead of 64 worlds and play inference
+(`--belief 4`) against the plain baked network, 0-0, 1,024 base deals, `--all-worlds`.
+
+| Arm | Play-outs | Worlds scored by | Tail | A minus plain |
+|---|---|---|---|---|
+| `faithful_z2` | baked network | baked network | none | **+0.00420 +/- 0.00052** |
+| `faithful_phase` (`--z-by-phase 2,2,1,0`) | baked network | baked network | none | **+0.00433 +/- 0.00060** |
+| `cheap_notail_ownlik` | VRPO1 | baked network | none | +0.00262 +/- 0.00052 |
+| `cheap_notail` | VRPO1 | VRPO1 | none | +0.00140 +/- 0.00058 |
+| `cheap_z2` | VRPO1 | VRPO1 | 6 | +0.00163 +/- 0.00053 |
+
+Contrasts on the same base deals: the looser rule adds 0.00128 +/- 0.00048 to the faithful version
+(`faithful_z2` minus `belief_own64`; the recording had predicted +0.0015) and nothing to the cheap
+one (+0.00022 +/- 0.00053); the phase rule equals the plain looser rule (+0.00013 +/- 0.00045);
+letting the baked network score the sampled worlds adds 0.00122 +/- 0.00066; the baked network in
+the play-outs adds a further 0.00158 +/- 0.00058; with VRPO1 in both roles the tail makes no
+difference (-0.00022 +/- 0.00070). The recording of the cheap version (`calibrate_cheap`, 162,055
+decisions) explains its weakness: its model is biased (slope 0.35 against 1.11 for the faithful
+one), so looser rules lose with it (argmax and margin +0.0005 per game, 2 standard errors +0.0009,
+3 standard errors +0.0010).
+
 **Match scores.** Everything above starts every deal at 0-0. The release evaluator's "uniform" mix
 gives larger figures per deal for the same lead, with a spread larger by about the same factor:
 on the CPU, 2,048 base deals, sooli tricks by the live rules, VRPO4 minus VRPO3 is +0.00114 +/-

@@ -12,7 +12,8 @@ would change its move, prefer that move.
     python -m tuppi_train.teach record --net <net> --out <dir> --hours 1 [--offer-model <file>]
     python -m tuppi_train.teach fit --net <net> --out <dir>
 
-record  Self-play of the plain network (the training mix of match scores). At
+record  (--hours is the total recording time of the folder; a rerun continues
+        up to it.) Self-play of the plain network (the training mix of match scores). At
         every decision of the chosen phases with at least two candidates, the
         look-ahead's mean gain of each candidate over the network's move and
         its standard error are stored with the observation. Resumable shards.
@@ -81,7 +82,10 @@ def record(out: Path, net_name: str, settings: "lookahead.Settings", hours: floa
     look = lookahead.build(net, dev, never, env, table, symmetry.load_net(rollout_name, dev) if rollout_name else None,
                            device.AMP[amp_name], 2, lane_games, True, offer_model,
                            likelihood_net=symmetry.load_net(likelihood_name, dev) if likelihood_name else None)
-    t_end = time.time() + 3600 * hours
+    progress = out / "labels" / "progress.json"          # hours is the total for this folder: a rerun continues up to it
+    used = json.loads(progress.read_text())["seconds"] if progress.exists() else 0.0
+    t_start = time.time()
+    t_end = t_start + max(0.0, 3600 * hours - used)
     i = len(list((out / "labels").glob("shard_*.npz")))
     while time.time() < t_end and i < max_shards:
         look.reset(seed + 7919 * i)
@@ -101,6 +105,7 @@ def record(out: Path, net_name: str, settings: "lookahead.Settings", hours: floa
             tmp.replace(path)
             log(f"shard {i}: {len(data['k']):,} labelled decisions from {games:,} deals in {time.perf_counter() - t0:.0f} s")
         i += 1
+        progress.write_text(json.dumps({"seconds": used + time.time() - t_start}))
     return len(list((out / "labels").glob("shard_*.npz")))
 
 
