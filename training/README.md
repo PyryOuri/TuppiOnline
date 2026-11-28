@@ -327,6 +327,27 @@ first does parallel work (`tn.use_cpus` now tells PyTorch the count too). The ol
 `new_vs_old` and `plain_vs_old` was VRPO3; Heidi 1.2's is VRPO4 with VRPO3 as the likelihood
 network (`--likelihood`, `--opponent-likelihood`), which the second run uses.
 
+**Second run on the L4** (`look_v2`, 2026-11-28; the engine on 12 threads, which was no faster than
+6: 31,000 play-outs a second with the tail):
+
+| Arm | A | B | Scores | Base deals | A minus B |
+|---|---|---|---|---|---|
+| `tail64` | new with look-ahead, new in the play-outs, tail 6 | plain new | 0-0 | 1,024 | +0.00063 +/- 0.00049 |
+| `belief_own64` | new with look-ahead, new in the play-outs, no tail, play inference (`--belief 4`, scored by the new network) | plain new | 0-0 | 1,024 | **+0.00292 +/- 0.00045** |
+| `heidi_new_vs_old` | new with a Heidi-style look-ahead (VRPO1 play-outs, tail 6, `--belief 8` scored by VRPO3, bid margin 0.03) | VRPO4 with the same | uniform | 960 | **+0.00850 +/- 0.00209** |
+| `plain_vs_heidi_old` | plain new | VRPO4 with that look-ahead | uniform | 2,048 | **+0.00411 +/- 0.00144** |
+
+Contrasts on the same base deals: the tail costs 0.00064 +/- 0.00052 (`tail64` minus `uniform64`);
+with the tail the play-out network makes no difference (`tail64` minus `small64` +0.00013 +/-
+0.00050); play inference adds 0.00165 +/- 0.00062 to the version with the new network in the
+play-outs, which then beats the affordable version by 0.00152 +/- 0.00049 (`belief_own64` minus
+`belief64`); the Heidi-style search adds 0.00375 +/- 0.00169 (uniform) to the new network.
+
+Checks of the same run: the plain new network against VRPO4 gave +0.00269 +/- 0.00042 at 0-0 and
++0.00717 +/- 0.00116 at uniform scores (the Mac: +0.0032 and +0.0074), and won **62.95% +/- 0.41%**
+of 40,000 complete matches (26.0 deals a match; the deal-level form implied 61.3% +/- 1.3%, a
+little low, as in the CPU check: it ignores that the stronger side leads more often).
+
 **Match scores.** Everything above starts every deal at 0-0. The release evaluator's "uniform" mix
 gives larger figures per deal for the same lead, with a spread larger by about the same factor:
 on the CPU, 2,048 base deals, sooli tricks by the live rules, VRPO4 minus VRPO3 is +0.00114 +/-
@@ -371,6 +392,18 @@ errors) +0.00167 +/- 0.00055, which agrees with the match result of the same set
 1.5 standard errors +0.00196, 1 standard error +0.00223, none at all +0.00217 (differences to the
 current rule not significant: +0.0005 +/- 0.0007 at 1); a margin of 0.01 loses 0.0008 +/- 0.0004.
 Not searching the last four tricks loses 0.0005 +/- 0.0001; not searching the bids changes nothing.
+
+The same recording on the L4 for the baked network with its most faithful model (the network
+itself in the play-outs, no tail, play inference with 4 candidates per world; 162,055 decisions):
+where a change is indicated the model claims +0.0104 to +0.0127 and reality gives 16% of it in the
+bids, 10% in tricks 1-4, 35% in tricks 5-9 and 94% in tricks 10-13. Scored by reality, the rule the
+match arm `belief_own64` used is worth +0.00308 +/- 0.00045 per game with 2.5% of the searched
+decisions changed; the match gave +0.00292 +/- 0.00045 with 2.4%. So the recording predicts the
+match. It also says that rule was too strict. With play inference the default counts repeated
+worlds once when it forms the standard error; counting every world (`--all-worlds`) is worth
++0.00456 +/- 0.00076 (+0.0015 +/- 0.0005 more), a threshold of 1 standard error +0.00505, and 2, 2,
+1, 0 standard errors in the four phases (`--z-by-phase 2,2,1,0`) +0.00489 +/- 0.00088. The third run
+(`look_v3`) plays those rules in matches.
 
 Reading: within its own model the look-ahead could gain four times as much from the same worlds
 with a rule that trusts small differences (+0.007 per game, estimated by splitting the worlds). In

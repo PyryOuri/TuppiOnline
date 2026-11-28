@@ -67,6 +67,8 @@ class Settings:
     belief: int = 0           # > 1: draw belief x worlds candidates in card play and resample them by likelihood
     belief_t: float = 2.0     # temperature and uniform share of the likelihood (the engine's play inference)
     belief_eps: float = 0.5
+    all_worlds: bool = False  # standard errors from all worlds, also when resampling repeated some (see decide)
+    z_by_phase: str = ""      # "z,z,z,z" for bids, tricks 1-4, 5-9, 10-13 instead of one z
 
 
 class Lane:
@@ -287,11 +289,12 @@ def candidates(anchor, feat, mask, top: int, min_prob: float):
     return a0.cpu().numpy().astype(np.uint8), cand, k.cpu().numpy().astype(np.int32), legal.cpu().numpy()
 
 
-def decide(q: np.ndarray, k: np.ndarray, keep: np.ndarray, z: float, effective: np.ndarray | None = None
+def decide(q: np.ndarray, k: np.ndarray, keep: np.ndarray, z, effective: np.ndarray | None = None
            ) -> tuple[np.ndarray, np.ndarray]:
     """(choice [n], gain [n]): candidate 0 is the anchor. Another candidate is chosen if its mean
     gain over the worlds is above keep[s] and above z paired standard errors; of those, the one
-    with the largest mean gain. gain is that mean (0 where the anchor stays). effective [n]: the
+    with the largest mean gain. gain is that mean (0 where the anchor stays). z: one number, or
+    one per state. effective [n]: the
     number of independent worlds behind each state's w (fewer after resampling, which repeats
     worlds); default w."""
     n, w, max_k = q.shape
@@ -299,7 +302,7 @@ def decide(q: np.ndarray, k: np.ndarray, keep: np.ndarray, z: float, effective: 
     mean = d.mean(1)
     size = np.full(n, float(w)) if effective is None else np.asarray(effective, np.float64)
     se = d.std(1, ddof=1) / np.sqrt(size)[:, None] if w > 1 else np.zeros_like(mean)
-    ok = (np.arange(1, max_k)[None, :] < k[:, None]) & (mean > keep[:, None]) & (mean > z * se)
+    ok = (np.arange(1, max_k)[None, :] < k[:, None]) & (mean > keep[:, None]) & (mean > np.reshape(z, (-1, 1)) * se)
     score = np.where(ok, mean, -np.inf)
     best = score.argmax(1)
     found = ok.any(1)
@@ -384,7 +387,8 @@ class LookAhead:
             kc = np.where(bad > 0, 1, k[rows]).astype(np.int32)   # no consistent world: the anchor stays
             q = self.searcher.play(worlds, s.worlds, cand[rows], kc, world_seeds)
             keep = np.where(showing[rows], s.keep_show, s.keep)
-            choice, gain = decide(q, kc, keep, s.z, effective)
+            z = np.array([float(v) for v in s.z_by_phase.split(",")])[phase_of(states)] if s.z_by_phase else s.z
+            choice, gain = decide(q, kc, keep, z, None if s.all_worlds else effective)
             actions[rows] = cand[rows, choice]
             phase = phase_of(states)
             if self.trace is not None:
@@ -461,6 +465,7 @@ def measure(out: Path, net_name: str, settings: Settings, base: int = 1024, chun
         # a run started before an option existed had that option's default
         old = {"opponent_rollout": "", "likelihood": "", "opponent_likelihood": "", "scores": "zero",
                **json.loads(cfg_path.read_text())}
+        old["settings"] = {**asdict(Settings()), **old["settings"]}
         if old != config:
             raise SystemExit(f"{out} holds a run with other settings; use another --out\n  there: {old}\n  now:   {config}")
     cfg_path.write_text(json.dumps(config, indent=1))
@@ -584,6 +589,10 @@ def main(argv=None) -> None:
     p.add_argument("--keep", type=float, default=d.keep)
     p.add_argument("--keep-show", type=float, default=d.keep_show)
     p.add_argument("--z", type=float, default=d.z)
+    p.add_argument("--z-by-phase", default="", help="four values for bids, tricks 1-4, 5-9, 10-13, e.g. 2,2,1,0")
+    p.add_argument("--all-worlds", action="store_true",
+                   help="with --belief: standard errors count every world, repeated ones too (a looser rule; "
+                        "scored by real outcomes it gains more than the stricter default)")
     p.add_argument("--no-show", action="store_true", help="no look-ahead at showing decisions")
     p.add_argument("--dd", type=int, default=d.dd_left)
     p.add_argument("--belief", type=int, default=d.belief)
@@ -598,7 +607,10 @@ def main(argv=None) -> None:
     p.add_argument("--device", default=None)
     a = p.parse_args(argv)
     tn.use_cpus(a.threads)
-    settings = Settings(worlds=a.worlds, top=a.top, min_prob=a.min_prob, keep=a.keep, keep_show=a.keep_show, z=a.z,
+    if a.z_by_phase and len(a.z_by_phase.split(",")) != len(PHASES):
+        p.error("--z-by-phase takes four values")
+    settings = Settings(all_worlds=a.all_worlds, z_by_phase=a.z_by_phase,
+                        worlds=a.worlds, top=a.top, min_prob=a.min_prob, keep=a.keep, keep_show=a.keep_show, z=a.z,
                         show=not a.no_show, dd_left=a.dd, belief=a.belief)
     r = measure(a.out, a.net, settings, a.base, a.chunk, a.seed, a.rollout, a.opponent, device.pick(a.device), a.amp,
                 a.lanes, a.lane_games, a.sooli_play, a.offer_model, a.hours, plain=a.plain,

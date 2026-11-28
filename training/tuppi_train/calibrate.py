@@ -54,8 +54,12 @@ def record(out: Path, net_name: str, settings: "lookahead.Settings", base: int =
     config = {"net": net_name, "rollout": rollout_name or net_name, "likelihood": likelihood_name,
               "settings": {**vars(settings), "keep": None, "keep_show": None}, "chunk": chunk, "seed": seed, "amp": amp_name}
     cfg = out / "config.json"
-    if cfg.exists() and json.loads(cfg.read_text()) != config:
-        raise SystemExit(f"{out} holds a recording with other settings; use another --out")
+    if cfg.exists():
+        old = json.loads(cfg.read_text())
+        old["settings"] = {**config["settings"], **old["settings"], "z": settings.z, "all_worlds": settings.all_worlds,
+                           "z_by_phase": settings.z_by_phase}     # the rule does not enter a recording
+        if old != config:
+            raise SystemExit(f"{out} holds a recording with other settings; use another --out")
     cfg.write_text(json.dumps(config, indent=1))
     native.set_showing_fix(True)
     native.set_offer_model(None)
@@ -96,7 +100,7 @@ def load(out: Path) -> dict:
     parts = [np.load(f) for f in sorted(Path(out).glob("part_*.npz"))]
     if not parts:
         raise SystemExit(f"no parts in {out}")
-    d = {k: np.concatenate([p[k] for p in parts]) for k in ("q", "k", "logp", "phase", "real")}
+    d = {k: np.concatenate([p[k] for p in parts]) for k in ("q", "k", "logp", "phase", "real", "effective")}
     d["part"] = np.concatenate([np.full(len(p["k"]), i) for i, p in enumerate(parts)])
     d["games"] = np.array([int(p["games"]) for p in parts])
     return d
@@ -117,7 +121,11 @@ def quantities(d: dict, worlds: int = 0) -> dict:
     with np.errstate(divide="ignore", invalid="ignore"):
         z = np.where(se > 0, m / se, np.where(m > 0, 99.0, np.where(m < 0, -99.0, 0.0)))
     real = d["real"].astype(np.float64)
-    return {"m": m, "se": se, "z": z, "r": real - real[:, :1], "alt": alt, "valid": valid, "worlds": w,
+    # as the look-ahead's default counts them after resampling: fewer independent worlds
+    se_eff = se * np.sqrt(w / np.minimum(d["effective"].astype(np.float64), w))[:, None]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        z_eff = np.where(se_eff > 0, m / se_eff, z)
+    return {"m": m, "se": se, "z": z, "z_effective": z_eff, "r": real - real[:, :1], "alt": alt, "valid": valid, "worlds": w,
             "gap": (d["logp"][:, :1] - d["logp"]).astype(np.float64)}
 
 
@@ -164,12 +172,18 @@ def report(out: Path, worlds: int = 0, log=print) -> dict:
     log("\nwhere the current rule acts (model gain above 0.003, z above 2), by phase:")
     for j, name in enumerate(lookahead.PHASES):
         row(name, alt & (m > 0.003) & (z > 2) & (phase == j)[:, None])
-    log(f"\nrules decided from the {x['worlds']} model worlds, scored by reality (per game, searching pair):")
+    log(f"\nrules decided from the {x['worlds']} model worlds, scored by reality (per game, searching pair). 'current' counts")
+    log("repeated worlds once (the default with play inference; the same as 'all worlds' without it):")
     base = None
-    rules = [("z 3", (m > 0.003) & (z > 3)), ("z 2 (current)", (m > 0.003) & (z > 2)), ("z 1.5", (m > 0.003) & (z > 1.5)),
-             ("z 1", (m > 0.003) & (z > 1)), ("z 0 (argmax and margin)", m > 0.003), ("margin 0.01, z 2", (m > 0.01) & (z > 2)),
-             ("z 2, card play only", (m > 0.003) & (z > 2) & (phase > 0)[:, None]),
-             ("z 2, from trick 5", (m > 0.003) & (z > 2) & (phase > 1)[:, None])]
+    ze = x["z_effective"]
+    by_phase = np.array([2.0, 2.0, 1.0, 0.0])[phase][:, None]
+    rules = [("z 2 (current)", (m > 0.003) & (ze > 2)), ("z 1", (m > 0.003) & (ze > 1)),
+             ("all worlds, z 3", (m > 0.003) & (z > 3)), ("all worlds, z 2", (m > 0.003) & (z > 2)),
+             ("all worlds, z 1.5", (m > 0.003) & (z > 1.5)), ("all worlds, z 1", (m > 0.003) & (z > 1)),
+             ("all worlds, z 0 (argmax and margin)", m > 0.003), ("all worlds, z 2,2,1,0 by phase", (m > 0.003) & (z > by_phase)),
+             ("all worlds, margin 0.01, z 2", (m > 0.01) & (z > 2)),
+             ("all worlds, z 2, card play only", (m > 0.003) & (z > 2) & (phase > 0)[:, None]),
+             ("all worlds, z 2, from trick 5", (m > 0.003) & (z > 2) & (phase > 1)[:, None])]
     for name, ok in rules:
         v = rule_value(d, x, choose(m, ok, x["valid"]))
         if "current" in name:
@@ -179,7 +193,7 @@ def report(out: Path, worlds: int = 0, log=print) -> dict:
             diff = v["per_part"] - base
             versus = f"   against the current rule {diff.mean():+.5f} +/- {1.96 * diff.std(ddof=1) / np.sqrt(len(diff)):.5f}"
         result["rules"][name] = {k: v[k] for k in ("real", "ci95", "claimed", "changed")}
-        log(f"  {name:<26} real {v['real']:+.5f} +/- {v['ci95']:.5f}   model claims {v['claimed']:+.5f}   changes "
+        log(f"  {name:<36} real {v['real']:+.5f} +/- {v['ci95']:.5f}   model claims {v['claimed']:+.5f}   changes "
             f"{v['changed']:5.1%}{versus}")
     return result
 

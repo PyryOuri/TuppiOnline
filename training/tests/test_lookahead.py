@@ -493,4 +493,39 @@ def test_calibrate(tmp_path):
     assert calibrate.rule_value(d, x, best)["claimed"] > 0
     result = calibrate.report(tmp_path / "r", log=lambda s: None)
     assert result["decisions"] == n and "z 2 (current)" in result["rules"]
+    # without play inference every world counts: the two forms of the rule are the same
+    assert result["rules"]["z 2 (current)"] == result["rules"]["all worlds, z 2"]
+    assert np.array_equal(x["z"], x["z_effective"])
     assert calibrate.quantities(d, 4)["worlds"] == 4
+
+
+def test_looser_rules(table, net1, tmp_path):
+    """z per state; --all-worlds changes nothing without play inference and loosens the rule with
+    it; z by phase is applied by phase; a folder written before these options existed continues."""
+    q = np.zeros((2, 4, 2))
+    q[:, :, 1] = [0.02, 0.03, 0.02, 0.03]
+    k, keep = np.array([2, 2], np.int32), np.full(2, 0.003)
+    assert lookahead.decide(q, k, keep, np.array([2.0, 20.0]))[0].tolist() == [1, 0]
+    assert lookahead.decide(q, k, keep, 2.0)[0].tolist() == [1, 1]
+    base = lookahead.Settings(worlds=6, top=3, min_prob=0.02, z=1.0)
+    plain, _ = match(table, net1, base)
+    same, _ = match(table, net1, lookahead.Settings(worlds=6, top=3, min_prob=0.02, z=1.0, all_worlds=True))
+    assert np.array_equal(plain, same)
+    strict, a = match(table, net1, lookahead.Settings(worlds=8, top=3, min_prob=0.02, z=2.0, belief=4), base=8)
+    loose, b = match(table, net1, lookahead.Settings(worlds=8, top=3, min_prob=0.02, z=2.0, belief=4, all_worlds=True), base=8)
+    assert b.stats["switched"] > a.stats["switched"] and not np.array_equal(strict, loose)
+    never, c = match(table, net1, lookahead.Settings(worlds=6, top=3, min_prob=0.02, z_by_phase="1e9,1e9,1e9,1e9"))
+    assert not never.any() and c.stats["switched"] == 0
+    late, e = match(table, net1, lookahead.Settings(worlds=6, top=3, min_prob=0.02, z_by_phase="1e9,1e9,1e9,0"))
+    assert e.stats["phase_switched"][:3] == [0, 0, 0] and e.stats["phase_switched"][3] > 0
+    s = lookahead.Settings(worlds=2, top=2, min_prob=0.05, z=1.0)
+    kw = dict(chunk=4, seed=5, dev=torch.device("cpu"), lanes=1, lane_games=2048, log=lambda s: None)
+    lookahead.measure(tmp_path / "a", "vrpo1_actor_0504.pt", s, base=4, **kw)
+    cfg = tmp_path / "a" / "config.json"
+    old = json.loads(cfg.read_text())
+    for key in ("all_worlds", "z_by_phase"):
+        del old["settings"][key]
+    cfg.write_text(json.dumps(old))
+    assert lookahead.measure(tmp_path / "a", "vrpo1_actor_0504.pt", s, base=8, **kw)["base_deals"] == 8
+    with pytest.raises(SystemExit):
+        lookahead.measure(tmp_path / "a", "vrpo1_actor_0504.pt", lookahead.Settings(worlds=2, top=2, min_prob=0.05, z=1.0, all_worlds=True), base=8, **kw)
