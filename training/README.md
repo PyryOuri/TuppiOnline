@@ -389,6 +389,14 @@ with the baked network instead adds nothing (-0.00023 +/- 0.00049); 16 worlds lo
 0.00057 against 64. The small network makes 43,000 play-outs a second on the A100 against 17,000
 for the baked one on the L4; on a CPU the difference is that of the networks' sizes, about 8 times.
 
+The small network on its own: in the distillation's monitoring (2,048 base deals, sooli tricks by
+the solver) it ends +0.0068 over VRPO1, +0.0022 over VRPO4 and 0.0008 behind its teacher; on the
+CPU with 8,192 fresh base deals and the live sooli rules +0.00638 +/- 0.00034 over VRPO1, +0.00338
++/- 0.00031 over VRPO3, +0.00196 +/- 0.00030 over VRPO4 and -0.00105 +/- 0.00022 against the baked
+network. A network of VRPO1's size holds nearly all of the baked network's strength when it is
+taught by it; the older small networks were not a ceiling for their size. It is kept as
+`training/models/vrpo4sym_small_v1.pt`.
+
 **More worlds** (stage C, one recording finished): 256 worlds instead of 64, same model, 80,871
 decisions scored by reality: slope 1.19 (unbiased), an estimate's noise 0.0028 instead of 0.0047,
 and the looser rule is worth +0.00563 +/- 0.00082 per game against +0.00456 +/- 0.00076 with 64

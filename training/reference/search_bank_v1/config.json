@@ -1,0 +1,25 @@
+{
+ "net": "vrpo4sym_v1.pt (sha256 5322bd22ed20db70aeb7d15f0d590fb6226922034a9b4630ec6fe44b858169a4)",
+ "rollout": "training/models/vrpo4sym_small_v1.pt (sha256 ef2a33652fa587be5af1b1c55de8387a11934bf799390d3663468feb05262210)",
+ "likelihood": "",
+ "settings": {
+  "worlds": 64,
+  "top": 4,
+  "min_prob": 0.01,
+  "keep": null,
+  "keep_show": null,
+  "z": 2.0,
+  "show": true,
+  "dd_left": 0,
+  "belief": 4,
+  "belief_t": 2.0,
+  "belief_eps": 0.5,
+  "all_worlds": false,
+  "z_by_phase": "",
+  "phases": ""
+ },
+ "chunk": 32,
+ "seed": 4000,
+ "amp": "off",
+ "note": "float32 on the CPU; see training/MAC_TASKS.md, task 4"
+}

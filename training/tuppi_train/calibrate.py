@@ -45,7 +45,7 @@ from tuppi_ai import native
 
 def record(out: Path, net_name: str, settings: "lookahead.Settings", base: int = 1280, chunk: int = 32,
            seed: int = 4000, rollout_name: str = "", likelihood_name: str = "", dev=None, amp_name: str = "",
-           lane_games: int = 65536, offer_model_path: str = "", log=print) -> None:
+           lane_games: int = 65536, offer_model_path: str = "", log=print, bank: bool = False) -> None:
     """Parts of `chunk` base deals in `out` (resumable): the trace of a look-ahead that never changes
     a move (so the deals are the plain network's), plus `real` [n, top]: each candidate's value in
     the true deal, the network on all seats, no solver tail."""
@@ -91,12 +91,19 @@ def record(out: Path, net_name: str, settings: "lookahead.Settings", base: int =
         t0 = time.perf_counter()
         values = lockstep.duplicate_eval(env, look, plain, chunk, 3, C.c_uint64(seed + c), net.encoder)
         assert not values.any()
-        data = {k: np.concatenate([t[k] for t in look.trace]) for k in look.trace[0] if k not in ("state", "feat", "mask")}
+        data = {k: np.concatenate([t[k] for t in look.trace]) for k in look.trace[0]
+                if k not in ("state", "feat", "mask", "seed")}
         states = np.ascontiguousarray(np.concatenate([t["state"] for t in look.trace]))
         cand = np.zeros((len(states), lookahead.MAX_K), np.int32)
         cand[:, :data["cand"].shape[1]] = data["cand"]
         seeds = np.random.default_rng(seed + 104729 * c).integers(1, 2**63, len(states), dtype=np.uint64)
         data["real"] = truth.play(states, 1, cand, data["k"], seeds)[:, 0, :data["cand"].shape[1]].astype(np.float32)
+        if bank:    # a reference for another implementation of the same look-ahead (SEARCH_SPEC.md)
+            x = quantities({**data, "effective": data["effective"]})
+            data["state"] = states.view(np.uint8).reshape(len(states), -1)       # TcDeal records, as bytes
+            data["seed"] = np.concatenate([t["seed"] for t in look.trace])       # each state's world stream
+            data["mean_gain"], data["se"] = x["m"].astype(np.float32), x["se"].astype(np.float32)
+            data["spec_choice"] = choose(x["m"], (x["m"] > 0.003) & (x["z"] > 2), x["valid"]).astype(np.int8)
         tmp = path.with_name(path.name + ".tmp.npz")
         np.savez_compressed(tmp, **data, games=8 * chunk)
         tmp.replace(path)
@@ -286,6 +293,9 @@ def main(argv=None) -> None:
     p.add_argument("--belief-t", type=float, default=d.belief_t)
     p.add_argument("--belief-eps", type=float, default=d.belief_eps)
     p.add_argument("--seed", type=int, default=4000, help="record: the same seed gives the same decisions")
+    p.add_argument("--bank", action="store_true",
+                   help="record: also keep each decision's full state, world seed, mean gains and the choice of "
+                        "the specified rule, as a reference for another implementation")
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--net", default="")
     p.add_argument("--base", type=int, default=1280)
@@ -310,7 +320,8 @@ def main(argv=None) -> None:
         settings = lookahead.Settings(worlds=a.worlds, top=a.top, min_prob=a.min_prob, dd_left=a.dd, belief=a.belief,
                                       belief_t=a.belief_t, belief_eps=a.belief_eps)
         record(a.out, a.net, settings, a.base, a.chunk, seed=a.seed, rollout_name=a.rollout, likelihood_name=a.likelihood,
-               dev=device.pick(a.device), amp_name=a.amp, lane_games=a.lane_games, offer_model_path=a.offer_model)
+               dev=device.pick(a.device), amp_name=a.amp, lane_games=a.lane_games, offer_model_path=a.offer_model,
+               bank=a.bank)
     if a.command == "compare":
         compare([a.out] + [Path(x.strip()) for x in a.others.split(",") if x.strip()])
         return

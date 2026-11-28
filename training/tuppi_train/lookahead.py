@@ -337,7 +337,8 @@ class LookAhead:
         self.env, self.anchor, self.searcher, self.s = env, anchor, searcher, settings
         self.likelihood = likelihood or anchor    # the chooser whose logits score the worlds (belief)
         #: None, or a list that receives, per call with searched decisions, what the decision was
-        #: made from: the full "state", its packed observation "feat" and legal "mask", the
+        #: made from: the full "state", the "seed" its worlds were drawn from, its packed
+        #: observation "feat" and legal "mask", the
         #: candidates "cand" and their count "k", every world's
         #: value of every candidate ("q" [n, worlds, top]), the anchor's log-probabilities of the
         #: candidates "logp", "phase" (PHASES), "effective" worlds and the "choice". For studying
@@ -403,7 +404,7 @@ class LookAhead:
                 with torch.no_grad():
                     logp = torch.log_softmax(self.anchor._logits(feat[rows], mask[rows]), 1)
                     logp = logp.gather(1, torch.from_numpy(cand[rows, :top].astype(np.int64)).to(logp.device))
-                self.trace.append({"state": states, "cand": cand[rows, :top].copy(),
+                self.trace.append({"state": states, "seed": state_seeds.copy(), "cand": cand[rows, :top].copy(),
                                    "feat": np.array(feat[rows]), "mask": np.array(mask[rows]),
                                    "q": q[:, :, :top].astype(np.float32), "k": kc.copy(), "logp": logp.cpu().numpy(),
                                    "phase": phase.astype(np.int8), "effective": effective.astype(np.float32),

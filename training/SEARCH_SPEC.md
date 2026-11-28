@@ -66,6 +66,11 @@ Played: 16 deals with thresholds of 2, 2, 1 and 0 standard errors in the four ph
 network in both roles: +0.0024 per game at 8 deals, +0.0032 at 16, +0.0039 at 32, +0.0046 at 64
 and +0.0056 at 256.
 
+The small network on its own (CPU, 8,192 base deals, 0-0): +0.0020 +/- 0.0003 per deal over
+VRPO4 and -0.0011 +/- 0.0002 against the new network. It is in this branch as
+`training/models/vrpo4sym_small_v1.pt`; `training/reference/search_bank_v1/` holds 3,913 decisions
+of the recommended configuration to check an implementation against (`training/MAC_TASKS.md`).
+
 ## 4. Tried and closed
 
 - Teaching the plain network the search's decisions (1.2 million labelled decisions): no gain,

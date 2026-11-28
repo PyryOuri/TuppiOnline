@@ -83,3 +83,32 @@ def test_record_fit_and_compare(tmp_path):
     calibrate.record(tmp_path / "other", "vrpo1_actor_0504.pt", base, seed=4001, **kw)
     with pytest.raises(SystemExit):
         calibrate.compare([tmp_path / "soft", tmp_path / "other"], log=lambda x: None)
+
+
+def test_reference_bank(tmp_path, table):
+    """--bank keeps what another implementation needs to reproduce a decision: the state, the seed
+    of its worlds, the mean gains and the specified rule's choice. From the state and the seed the
+    engine draws the very worlds the recording used."""
+    from tuppi_train import lockstep, tn
+    from tuppi_ai import model as qmodel
+    import tuppi_train
+    s = lookahead.Settings(worlds=6, top=3, min_prob=0.02)
+    calibrate.record(tmp_path / "bank", "vrpo1_actor_0504.pt", s, base=4, chunk=4, dev=torch.device("cpu"), lane_games=4096,
+                     log=lambda x: None, bank=True)
+    z = np.load(tmp_path / "bank" / "part_0000.npz")
+    n = len(z["k"])
+    states = np.ascontiguousarray(z["state"]).view(lookahead.STATE).reshape(-1)
+    assert len(states) == n == len(z["seed"]) and z["mean_gain"].shape == (n, 3) and z["spec_choice"].max() <= 2
+    assert (z["spec_choice"] < z["k"]).all() and not z["mean_gain"][:, 0].any()
+    net = qmodel.load(tuppi_train.MODELS / "vrpo1_actor_0504.pt", "cpu")
+    searcher = lookahead.Searcher(table, lockstep.TorchGreedy(net, "cpu", 2), 2, 1, 4096, True, 0, None)
+    native.set_showing_fix(True)
+    native.set_offer_model(None)
+    worlds, bad, _ = searcher.sample(states, 6, z["seed"])
+    cand = np.zeros((n, lookahead.MAX_K), np.int32)
+    cand[:, :3] = z["cand"]
+    play = states["phase"] == native.PH_PLAY          # no sooli can follow: the play-outs draw nothing
+    q = searcher.play(worlds, 6, cand, z["k"], np.ones(n * 6, np.uint64))
+    assert play.sum() > 50 and np.abs(q[play][:, :, :3] - z["q"][play]).max() < 1e-6
+    gain = (q[:, :, :3] - q[:, :, :1]).mean(1)
+    assert np.abs(gain[play] - z["mean_gain"][play]).max() < 1e-6
