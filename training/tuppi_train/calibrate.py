@@ -13,13 +13,19 @@ confidence.
         [--rollout vrpo1_actor_0504.pt --dd 6] [--belief 4 --likelihood <net>]
     python -m tuppi_train.calibrate report --out <dir>
 
-First use (VRPO4, 64 uniform worlds, VRPO1 play-outs, solver tail of 6; 130,000
-decisions on the CPU): where the current rule changes a move the model claims
-+0.010 on average and reality gives +0.0025, a quarter (a tenth in the bidding
-and the first four tricks, a half in the last four). Model gains below about 1.5
-standard errors are worth nothing in reality. So the look-ahead is limited by
-how faithful its model is (which worlds, which play-out policy), not by the
-number of worlds, and the rule's threshold of 2 standard errors is about right.
+What it has shown (training/README.md has the tables):
+
+- An unfaithful model is biased. VRPO4 with uniform worlds, VRPO1 play-outs and a
+  solver tail: real gains follow the model's gains with a slope of 0.5, noise
+  removed. More worlds cannot repair that.
+- The faithful model is not. The baked network with itself in the play-outs, no
+  tail and play inference: slope 1.1. What is left is sampling noise, which is
+  as large as the true differences before trick 10, so its real gain still grows
+  with the number of worlds (+0.0024, +0.0032, +0.0039, +0.0046 per game at 8,
+  16, 32, 64 with a threshold of 2 standard errors), and a looser rule gets
+  most of it from few worlds (+0.0038 at 8 with thresholds 2, 2, 1, 0 by phase).
+- The recording predicts matches: the rule the match used scores +0.0031 here
+  and gave +0.0029 in play.
 """
 
 from __future__ import annotations
@@ -111,8 +117,8 @@ def quantities(d: dict, worlds: int = 0) -> dict:
     """Per (decision, candidate): the model's mean gain over the anchor `m`, its standard error
     `se`, `z` = m / se, the real gain `r`; `alt` marks the alternatives (not the anchor, not padding)."""
     q = d["q"].astype(np.float64)
-    if worlds:
-        q = q[:, :worlds]
+    if worlds:      # an even thinning (after resampling the worlds are in the candidates' order)
+        q = q[:, ::max(1, q.shape[1] // worlds)][:, :worlds]
     n, w, top = q.shape
     valid = np.arange(top)[None, :] < d["k"][:, None]
     alt = valid.copy()
@@ -128,6 +134,27 @@ def quantities(d: dict, worlds: int = 0) -> dict:
         z_eff = np.where(se_eff > 0, m / se_eff, z)
     return {"m": m, "se": se, "z": z, "z_effective": z_eff, "r": real - real[:, :1], "alt": alt, "valid": valid, "worlds": w,
             "gap": (d["logp"][:, :1] - d["logp"]).astype(np.float64)}
+
+
+def fidelity(d: dict, x: dict) -> dict:
+    """Is the model right on average, apart from its sampling noise? Per phase: the spread of the
+    model's gains over the alternatives, the part of it that is sampling noise (standard errors
+    with repeated worlds counted once), the spread that remains (`true_sd`), and the slope of the
+    real gains on the model's gains corrected for that noise: 1 = unbiased, below 1 = the model
+    sees differences that are not there. A low share of claims that is real with a slope near 1
+    is the winner's curse of a noisy estimate, not a wrong model."""
+    w = x["worlds"]
+    se = x["se"] * np.sqrt(w / np.minimum(d["effective"].astype(np.float64), w))[:, None]
+    out = {}
+    for j, name in enumerate(lookahead.PHASES + ("all",)):
+        sel = x["alt"] & ((d["phase"] == j)[:, None] if j < len(lookahead.PHASES) else True)
+        if sel.sum() < 500 and name != "all":
+            continue
+        m, r, noise2 = x["m"][sel], x["r"][sel], float((se[sel] ** 2).mean())
+        true_var = float(m.var() - noise2)
+        out[name] = {"n": int(sel.sum()), "sd": float(m.std()), "noise_sd": noise2 ** 0.5, "true_sd": max(true_var, 0.0) ** 0.5,
+                     "slope": float(np.cov(m, r)[0, 1] / true_var) if true_var > 1e-9 else float("nan")}
+    return out
 
 
 def choose(score: np.ndarray, ok: np.ndarray, valid: np.ndarray) -> np.ndarray:
@@ -173,6 +200,11 @@ def report(out: Path, worlds: int = 0, log=print) -> dict:
     log("\nwhere the current rule acts (model gain above 0.003, z above 2), by phase:")
     for j, name in enumerate(lookahead.PHASES):
         row(name, alt & (m > 0.003) & (z > 2) & (phase == j)[:, None])
+    log("\nis the model right apart from its sampling noise? (slope of real on model gains, noise removed: 1 = unbiased)")
+    result["fidelity"] = fidelity(d, x)
+    for name, f in result["fidelity"].items():
+        log(f"  {name:<13} {f['n']:>8,} alternatives: spread of the model's gains {f['sd']:.4f}, of which noise {f['noise_sd']:.4f}, "
+            f"true {f['true_sd']:.4f}; slope {f['slope']:.2f}")
     log(f"\nrules decided from the {x['worlds']} model worlds, scored by reality (per game, searching pair). 'current' counts")
     log("repeated worlds once (the default with play inference; the same as 'all worlds' without it):")
     base = None
@@ -229,9 +261,10 @@ def compare(folders: list, log=print) -> dict:
         for j in range(len(lookahead.PHASES)):
             sel = x["alt"] & (x["m"] > 0.003) & (x["z"] > 2) & (d["phase"] == j)[:, None]
             ratio.append(x["r"][sel].mean() / x["m"][sel].mean() if sel.sum() > 100 else float("nan"))
-        log(f"{name}: share of the model's claims that is real, by phase " + ", ".join(
-            f"{p} {r:.0%}" for p, r in zip(lookahead.PHASES, ratio)))
-        out[name] = {"real_share": ratio, "rules": {}}
+        fid = fidelity(d, x)
+        log(f"{name} ({x['worlds']} worlds): slope of real on model gains {fid['all']['slope']:.2f} (1 = unbiased); noise of an "
+            f"estimate {fid['all']['noise_sd']:.4f} against a true spread of {fid['all']['true_sd']:.4f}")
+        out[name] = {"real_share": ratio, "fidelity": fid, "rules": {}}
         for rule, ok in RULES.items():
             v = rule_value(d, x, choose(x["m"], ok(x, d["phase"]), x["valid"]))
             versus = ""

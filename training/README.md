@@ -405,12 +405,40 @@ worlds once when it forms the standard error; counting every world (`--all-world
 1, 0 standard errors in the four phases (`--z-by-phase 2,2,1,0`) +0.00489 +/- 0.00088. The third run
 (`look_v3`) plays those rules in matches.
 
-Reading: within its own model the look-ahead could gain four times as much from the same worlds
+**Biased or only noisy?** The share of claims that is real mixes two things: a wrong model, and
+the winner's curse of picking the largest of noisy estimates. `calibrate.fidelity` separates them:
+the slope of the real gains on the model's gains, with the sampling noise taken out of the
+model's spread (1 = unbiased).
+
+| Recording | Slope, all phases | By phase (bids, tricks 1-4, 5-9, 10-13) | Noise of an estimate / true spread |
+|---|---|---|---|
+| Baked network, itself in the play-outs, no tail, play inference (L4, 64 worlds) | **1.11 +/- 0.07** | 0.7 +/- 0.8, 1.16 +/- 0.30, 1.11 +/- 0.10, 1.10 +/- 0.06 | 0.0047 / 0.0038 |
+| VRPO4, uniform worlds, VRPO1 play-outs, tail 6 (CPU, 64 worlds) | **0.50 +/- 0.06** | 1.4 +/- 0.7, 0.42 +/- 0.14, 0.41 +/- 0.07, 0.67 +/- 0.07 | 0.0029 / 0.0042 |
+
+So the faithful model is right on average, and the low real share early in the deal is noise:
+before trick 10 an estimate's noise is as large as the true differences (0.005 against 0.002 to
+0.004). Its real gain therefore still grows with the number of worlds. From the same recording,
+deciding from every 8th, 4th, 2nd or every world and scoring by reality, per game:
+
+| Worlds | 2 standard errors | 1 standard error | 2, 2, 1, 0 by phase |
+|---|---|---|---|
+| 8 | +0.00240 | +0.00361 | +0.00379 |
+| 16 | +0.00318 | +0.00421 | +0.00419 |
+| 32 | +0.00390 | +0.00484 | +0.00469 |
+| 64 | +0.00456 +/- 0.00076 | +0.00505 +/- 0.00109 | +0.00489 +/- 0.00088 |
+
+Two uses: a cheap look-ahead (8 worlds with the phase rule keeps three quarters of the gain of 64),
+and more worlds or more candidates per world for the strongest one. A CPU pilot of sharper play
+inference (temperature 1 and 0.5 instead of 2, with VRPO1; 18,000 decisions) showed no gain over
+the soft default and signs of overconfidence; `colab/tuppi_teach.ipynb` repeats it at scale
+together with 256 worlds.
+
+Reading, for the unfaithful model of the first recording: within its own model the look-ahead could gain four times as much from the same worlds
 with a rule that trusts small differences (+0.007 per game, estimated by splitting the worlds). In
 reality those differences are artefacts of the model: uniform worlds that ignore what the play so
-far implies, a play-out policy that is not the one at the table, an open-card finish. The
-look-ahead is limited by the fidelity of its model, not by the number of worlds, and the threshold
-of 2 standard errors is about right. `LookAhead.trace` exposes the same data for other studies.
+far implies, a play-out policy that is not the one at the table, an open-card finish. That
+look-ahead is limited by the fidelity of its model, not by the number of worlds.
+`LookAhead.trace` exposes the same data for other studies.
 
 ### Can the gain be trained into the network? (not at this scale)
 
