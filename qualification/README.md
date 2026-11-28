@@ -12,3 +12,5 @@
 - `heidi11-browser.json`, `browser-speed.json`, `hosted-heidi.json`: records of earlier releases.
 - `heidi12-release.json`: this release's checks (browser, server, Linux image).
 - `dan-reference.json`, `qualify_dan.py`: Dan 1.1 fixed NOLO roots (hosted worker, accepted-action checkpoints and restore), run in the final image.
+- `nelli15-reference.json`: Nelli 1.5 (lite C1H on vrpo4sym_v1), checked by `qualify_heidi.py` in the final image.
+- `compact-reference-heidi15.json`: Heidi 1.5 (compact controller mode 5, models/compact_sym, 64 worlds, PIB4) roots from the browser WASM, checked by `qualify_compact.py --mode 5` in the final image.

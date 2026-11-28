@@ -47,21 +47,26 @@ COPY --from=qualified /app/qualification/qualify_lite.py qualification/qualify_l
 COPY --from=qualified /app/qualification/qualify_heidi.py qualification/qualify_heidi.py
 COPY --from=qualified /app/qualification/heidi-reference.json qualification/heidi-reference.json
 COPY --from=qualified /app/qualification/heidi12-reference.json qualification/heidi12-reference.json
+COPY --from=qualified /app/qualification/nelli15-reference.json qualification/nelli15-reference.json
 COPY --from=qualified /app/qualification/qualify_compact.py qualification/qualify_compact.py
 COPY --from=qualified /app/qualification/qualify_hosted_compact.py qualification/qualify_hosted_compact.py
 COPY --from=qualified /app/qualification/qualify_dan.py qualification/qualify_dan.py
 COPY --from=qualified /app/qualification/dan-reference.json qualification/dan-reference.json
 COPY --from=qualified /app/qualification/compact-reference.json qualification/compact-reference.json
 COPY --from=qualified /app/qualification/compact-reference-heidi12.json qualification/compact-reference-heidi12.json
+COPY --from=qualified /app/qualification/compact-reference-heidi15.json qualification/compact-reference-heidi15.json
 ENV PYTHONPATH=/app/engine/src:/app/ai PYTHONDONTWRITEBYTECODE=1 \
     TUPPI_HOSTED_BOT_LEVEL=lite TUPPI_HOSTED_HEIDI10=1 TUPPI_HOSTED_DAN11=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
-# These checks execute inside the final, PyTorch-free filesystem: plain lite, Nelli 1.0
-# and 1.1, and the compact controller in modes 2 (Heidi 1.1) and 4 (Heidi 1.2).
+# These checks execute inside the final, PyTorch-free filesystem: plain lite, Nelli 1.0,
+# 1.1 and 1.5, and the compact controller in modes 2 (Heidi 1.1), 4 (Heidi 1.2) and 5 (Heidi 1.5,
+# models/compact_sym).
 RUN python qualification/qualify_lite.py \
     && python qualification/qualify_heidi.py \
     && python qualification/qualify_compact.py --no-torch --report qualification/compact-result.json \
     && python qualification/qualify_compact.py --no-torch --mode 4 --reference qualification/compact-reference-heidi12.json \
          --report qualification/compact-heidi12-result.json \
+    && python qualification/qualify_compact.py --no-torch --mode 5 --reference qualification/compact-reference-heidi15.json \
+         --report qualification/compact-heidi15-result.json \
     && python qualification/qualify_dan.py --no-torch --report qualification/dan-result.json \
     && groupadd --gid 10001 tuppi && useradd --uid 10001 --gid tuppi --no-create-home tuppi \
     && chmod +x start.sh

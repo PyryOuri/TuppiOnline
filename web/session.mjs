@@ -3,12 +3,12 @@
 // team ahead has 7 tricks or, in RAMI (1), the team behind has 7. Normal trick
 // play (phase 1) only. The server's rule is match_runner.concede_available;
 // network.mjs keeps the same rule for online views (separate bundles).
-// Heidi 1.0, 1.1 and 1.2: the search bots, whose saves bind the inference count
+// Heidi 1.0, 1.1, 1.2 and 1.5: the search bots, whose saves bind the inference count
 // (as runtime.mjs's list; not imported here, to keep the engine out, and
 // named differently because release bundles concatenate the modules). The lite
-// bots' saves (heidi05, nelli11) carry their network cursors in the context
+// bots' saves (heidi05, nelli11, nelli15) carry their network cursors in the context
 // (runtime.mjs, seven words per seat).
-const inferenceBoundBots = ['heidi10', 'heidi11', 'heidi12'];
+const inferenceBoundBots = ['heidi10', 'heidi11', 'heidi12', 'heidi15'];
 
 export function decidedForZero({phase, contract, tricks0, tricks1, score0, score1}) {
   if (phase !== 1 || (!score0 && !score1)) return false;

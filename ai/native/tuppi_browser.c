@@ -38,7 +38,9 @@ void tc_set_dedup_worlds(int on);
 
 static TcDeal game;
 static int hand_order[4][14], hand_count[4];
-/* Roles: 0 rollouts (VRPO1), 1 anchor (VRPO3), 2 the Heidi 1.2 network. */
+/* Roles: 0 rollouts (VRPO1), 1 anchor (VRPO3), 2 the Heidi 1.2 network.
+ * Modes 5 and 6 read role 0 as the small play-out/likelihood network and
+ * role 2 as the anchor (training/SEARCH_SPEC.md section 2). */
 static TcMlp *models[3];
 static TcEnv *envs[4];
 static uint64_t rngs[4];
@@ -51,17 +53,27 @@ static int bot_mode, human_mask;
  * the anchor only (Heidi 1.2). */
 static int lite_mode(int mode) { return mode == 1 || mode == 3; }
 static int pib_mode(int mode) { return mode == 2 || mode == 4; }
+/* Modes 5 and 6: the tested look-ahead around the anchor (role 2); role 0
+ * plays the play-outs to the end of the deal (no solver tail) and scores the
+ * worlds' play inference. 5: 64 worlds, 2 standard errors in every phase;
+ * 6: 16 worlds, 2, 2, 1, 0 standard errors for bids, tricks 1-4, 5-9, 10-13. */
+static int sym_mode(int mode) { return mode == 5 || mode == 6; }
+static int sym_worlds(int mode) { return mode == 6 ? 16 : 64; }
+/* Play inference reads the other seats' moves (people's loosely). */
+static int infer_mode(int mode) { return pib_mode(mode) || sym_mode(mode); }
 /* The anchor: the keep rule's network for bids and play, the anchor-only bid
  * and the lite policy. Role 2 in modes 3 and 4, role 1 otherwise. */
 static TcMlp *anchor_for(int mode) { return models[mode >= 3 ? 2 : 1]; }
 /* The likelihood model: play inference (modes 2 and 4) and the safety net's
  * belief (modes 1 and 3, the lite policy's own network). Role 2 in mode 3
  * only; Heidi 1.2 keeps role 1 here. Rollouts always use models[0]. */
-static TcMlp *likelihood_for(int mode) { return models[mode == 3 ? 2 : 1]; }
+static TcMlp *likelihood_for(int mode) { return models[sym_mode(mode) ? 0 : mode == 3 ? 2 : 1]; }
 static TcMlp *anchor_model(void) { return anchor_for(bot_mode); }
 static TcMlp *likelihood_model(void) { return likelihood_for(bot_mode); }
 /* Every network a mode reads is loaded (role 0 is required by tb_configure). */
-static int mode_ready(int mode) { return models[0] && anchor_for(mode) && likelihood_for(mode); }
+static int mode_ready(int mode) {
+  return models[0] && anchor_for(mode) && likelihood_for(mode) && (!sym_mode(mode) || 26 * worlds >= 4 * sym_worlds(mode));
+}
 /* 0: searched bids (the default); 1: the anchor's bid in the show phase. */
 static int bid_mode;
 static uint64_t gate_rngs[4], belief_rngs[4];
@@ -70,6 +82,8 @@ static double match_equity[50];
  * formats remain unchanged. The caller owns proposal/commit of Dan state. */
 static TcEnv *dan_envs[4];
 static int dan_env_worlds[4];
+
+static void set_sooli(int seat, int mode);
 
 int tb_api_version(void) { return 1; }
 
@@ -120,15 +134,20 @@ int tb_configure(int n_worlds, const double *equity) {
 
 /* 0: unchanged search; 1: Heidi 0.5 / Nelli 1.0 (C1H); 2: Heidi 1.0 / 1.1
  * (PIB4 humans); 3: Nelli 1.1 (mode 1 on role 2); 4: Heidi 1.2 (mode 2 with
- * role 2 as the anchor only; likelihood role 1). Modes 0-2 need role 1,
- * mode 3 role 2, mode 4 roles 1 and 2. */
+ * role 2 as the anchor only; likelihood role 1); 5 and 6: the look-ahead of
+ * choose_sym (anchor role 2, play-outs and likelihood role 0). Modes 0-2 need
+ * role 1, mode 3 role 2, mode 4 roles 1 and 2, modes 5 and 6 roles 0 and 2
+ * and tb_configure worlds of at least 10 (64 for mode 5: 26 * worlds slots). */
 int tb_configure_bot(int mode, int people) {
-  if (mode < 0 || mode > 4 || people < 0 || people > 15 || !envs[0] || !mode_ready(mode)) return -1;
+  if (mode < 0 || mode > 6 || people < 0 || people > 15 || !envs[0] || !mode_ready(mode)) return -1;
   bot_mode = mode; human_mask = people; bid_mode = 0;
-  const int pib = pib_mode(mode);
+  const int pib = infer_mode(mode);
   for (int s = 0; s < 4; ++s) {
     tc_env_set_belief(envs[s], pib ? likelihood_model() : NULL, pib ? 4 : 0, 2.0, 0.5, 1);
     tc_env_set_belief_humans(envs[s], pib ? people & ~(1 << s) : 0, 4.0, 0.8);
+    /* The play-out sooli settings follow the mode (a pure function of the
+     * seat's persistent sooli mode in modes 0-4, so unchanged for them). */
+    set_sooli(s, sooli_modes[s]);
     if (lite_mode(mode)) rngs[s] = UINT64_C(0x9E3779B97F4A7C15) * (s + 1);
     gate_rngs[s] = UINT64_C(0x5AFE0000) + s;
     belief_rngs[s] = UINT64_C(0xBE11EF00) + s;
@@ -141,7 +160,8 @@ int tb_configure_bot(int mode, int people) {
  * threaded build keeps lanes - 1 workers for scoring and rollouts until
  * tb_dispose; the single build has none. */
 int tb_configure_inference(int mult, int lanes) {
-  if (!pib_mode(bot_mode) || (mult != 4 && mult != 8) || lanes < 1 || lanes > 4) return -1;
+  if (!infer_mode(bot_mode) || (mult != 4 && mult != 8) || (sym_mode(bot_mode) && mult != 4) ||
+      lanes < 1 || lanes > 4) return -1;
   tc_set_belief_lanes(lanes);
   tc_parallel_start(lanes);
   for (int s = 0; s < 4; ++s)
@@ -155,7 +175,7 @@ int tb_set_human_seats(int people) {
   if (people < 0 || people > 15 || !envs[0]) return -1;
   human_mask = people;
   for (int s = 0; s < 4; ++s)
-    tc_env_set_belief_humans(envs[s], pib_mode(bot_mode) ? people & ~(1 << s) : 0, 4.0, 0.8);
+    tc_env_set_belief_humans(envs[s], infer_mode(bot_mode) ? people & ~(1 << s) : 0, 4.0, 0.8);
   return 0;
 }
 
@@ -291,7 +311,10 @@ int tb_bids(int32_t *cards, int32_t *seats, int32_t *contracts) {
 }
 
 static void set_sooli(int seat, int mode) {
-  tc_env_set_sooli(envs[seat], mode ? 17 : 0, 0, mode == 1, mode ? 0.3 : 0);
+  /* Modes 5 and 6 never search a sooli decision: their play-outs draw worlds
+   * without a sooli belief and play sooli tricks by the heuristics. */
+  if (sym_mode(bot_mode)) tc_env_set_sooli(envs[seat], 0, 0, 1, 0);
+  else tc_env_set_sooli(envs[seat], mode ? 17 : 0, 0, mode == 1, mode ? 0.3 : 0);
   sooli_modes[seat] = mode;
 }
 
@@ -368,13 +391,94 @@ static int adaptive(int seat, const TcObs *obs, const int *ids, int k, double *v
   free(rows); free(batch_rows); return lead;
 }
 
+/* Modes 5 and 6 (training/SEARCH_SPEC.md section 2; reference
+ * training/tuppi_train/lookahead.py on TuppiOnline
+ * claude/colab-pro-compute-eval-nu8in4 911517a). Candidates: the anchor's
+ * greedy move (first maximum by id), then its next most probable legal moves
+ * by softmax over the legal logits, at most 4 in all, each with probability
+ * at least 0.01; one candidate is not searched. Every candidate is played out
+ * in the same worlds; d[w] = value[w][j] - value[w][anchor]. A candidate is
+ * eligible if mean(d) > 0.003 and mean(d) > z se, se = sd(d, n - 1) / sqrt(n),
+ * every world counted (repeated ones too); the eligible candidate with the
+ * largest mean is played, else the anchor. Sooli phases: the heuristics. */
+enum { SYM_TOP = 4 };
+static double sym_gain[SYM_TOP], sym_se[SYM_TOP];
+static int sym_count;
+
+static int sym_phase(const TcObs *obs) {
+  if (obs->phase == TC_PH_SHOW) return 0;
+  int trick = obs->n_played / 4;
+  return trick < 4 ? 1 : trick < 9 ? 2 : 3;
+}
+
+static int choose_sym(int seat, const TcObs *obs, const int *ids, int k) {
+  if (obs->phase >= TC_PH_SOOLI_OFFER) return tc_sooli_policy(obs, &rngs[seat]);
+  const TcMlp *model = anchor_model();
+  uint8_t features[2048]; float q[TC_NUM_ACTIONS];
+  tc_encode_v(obs, features, tc_mlp_encoder(model));
+  tc_mlp_forward(model, features, 1, q);
+  int anchor = 0;
+  for (int i = 1; i < k; ++i)
+    if (q[ids[i]] > q[ids[anchor]] || (q[ids[i]] == q[ids[anchor]] && ids[i] < ids[anchor])) anchor = i;
+  double top = q[ids[anchor]], sum = 0, p[TC_NUM_ACTIONS_V2];
+  for (int i = 0; i < k; ++i) sum += (p[i] = exp((double)q[ids[i]] - top));
+  for (int i = 0; i < k; ++i) p[i] /= sum;
+  int32_t cand[SYM_TOP]; int n = 0, used[TC_NUM_ACTIONS_V2] = {0};
+  cand[n++] = ids[anchor]; used[anchor] = 1;
+  while (n < SYM_TOP) {
+    int best = -1;
+    for (int i = 0; i < k; ++i)
+      if (!used[i] && (best < 0 || p[i] > p[best] || (p[i] == p[best] && ids[i] < ids[best]))) best = i;
+    if (best < 0 || !(p[best] >= 0.01)) break;
+    used[best] = 1; cand[n++] = ids[best];
+  }
+  if (n == 1) return cand[0];
+  static const double z_by_mode[2][4] = {{2, 2, 2, 2}, {2, 2, 1, 0}};
+  const int w = sym_worlds(bot_mode);
+  const double z = z_by_mode[bot_mode == 6][sym_phase(obs)];
+  double means[SYM_TOP], *per_world = malloc(sizeof(double) * (size_t)w * n);
+  if (!per_world) return -3;
+  int status = tc_search_world_values(envs[seat], models[0], obs, cand, n, w, 0, &rngs[seat], means, per_world);
+  if (status == -1) { free(per_world); return cand[0]; }  /* no consistent world: the anchor */
+  if (status) { free(per_world); return -3; }
+  int choice = 0;
+  sym_gain[0] = sym_se[0] = 0;
+  for (int j = 1; j < n; ++j) {
+    double mean = 0, var = 0;
+    for (int r = 0; r < w; ++r) mean += per_world[r * n + j] - per_world[r * n];
+    mean /= w;
+    for (int r = 0; r < w; ++r) {
+      double d = per_world[r * n + j] - per_world[r * n] - mean;
+      var += d * d;
+    }
+    double se = sqrt(var / (w - 1)) / sqrt((double)w);
+    sym_gain[j] = mean; sym_se[j] = se;
+    if (mean > 0.003 && mean > z * se && (choice == 0 || mean > sym_gain[choice])) choice = j;
+  }
+  free(per_world);
+  sym_count = n;
+  last_count = n;
+  for (int j = 0; j < n; ++j) { last_ids[j] = cand[j]; last_values[j] = means[j]; }
+  return cand[choice];
+}
+
+/* Test hook: the mean gains over the anchor and their standard errors of the
+ * last searched decision of modes 5 and 6 (candidate order as tb_values). */
+int tb_sym_last(double *gain, double *se) {
+  if (!gain || !se) return -1;
+  for (int j = 0; j < sym_count; ++j) { gain[j] = sym_gain[j]; se[j] = sym_se[j]; }
+  return sym_count;
+}
+
 static int choose_observation(int seat, const TcObs *observation, const int *legal, int k) {
   last_count = 0;
   TcObs obs = *observation;
   int ids[TC_NUM_ACTIONS_V2];
   memcpy(ids, legal, sizeof(int) * k);
   if (k == 0) return -2;
+  sym_count = 0;
   if (k == 1) return ids[0];
+  if (sym_mode(bot_mode)) return choose_sym(seat, &obs, ids, k);
   if (lite_mode(bot_mode)) {
     if (obs.phase >= TC_PH_SOOLI_OFFER) return tc_sooli_policy(&obs, &rngs[seat]);
     TcMlp *model = anchor_model();

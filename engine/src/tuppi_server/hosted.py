@@ -113,20 +113,21 @@ def _verified_model_manifest(root: Path, level: str) -> dict:
     full = models / "hosted-models.json"
     if level == "lite" and lite.is_file():
         # The d1 options also read the equity table (TUPPI_HOSTED_LITE_OPTIONS).
-        # Nelli 1.1 (tuppi_ai_lite_c1h_v2) plays vrpo4_final.lite.npz, so every
-        # lite package lists and verifies it: no network is loaded unverified.
+        # Nelli 1.1 (tuppi_ai_lite_c1h_v2) plays vrpo4_final.lite.npz and Nelli 1.5
+        # (tuppi_ai_lite_c1h_v3) vrpo4sym_v1.lite.npz, so every lite package lists
+        # and verifies both: no network is loaded unverified.
         from .hosted_bot import lite_options
         path = lite
         names = set(json.loads(lite.read_text()))
-        expected = {"vrpo3_final.lite.npz", "vrpo4_final.lite.npz", "equity_incumbent.json"} if (
-            lite_options() != "off" or "equity_incumbent.json" in names) else {"vrpo3_final.lite.npz",
-                                                                               "vrpo4_final.lite.npz"}
+        networks = {"vrpo3_final.lite.npz", "vrpo4_final.lite.npz", "vrpo4sym_v1.lite.npz"}
+        expected = networks | {"equity_incumbent.json"} if (
+            lite_options() != "off" or "equity_incumbent.json" in names) else networks
     else:
         if level == "full" and not full.is_file() and lite.is_file():
             raise RuntimeError("this runtime contains only the lite bot; use the full image for TUPPI_HOSTED_BOT_LEVEL=full")
         path = full
         expected = {"vrpo1_actor_0504.pt", "vrpo3_final.pt", "equity_incumbent.json", "vrpo3_final.lite.npz",
-                    "vrpo4_final.pt", "vrpo4_final.lite.npz"}
+                    "vrpo4_final.pt", "vrpo4_final.lite.npz", "vrpo4sym_v1.lite.npz"}
     manifest = json.loads(path.read_text())
     if type(manifest) is not dict or set(manifest) != expected:
         raise RuntimeError("hosted model manifest fields are invalid")
@@ -144,29 +145,31 @@ def verify_bot_identity(level: str = "full") -> dict:
     root = Path(spec.origin).resolve().parents[1]
     manifest = _verified_model_manifest(root, level)
     from tuppi_ai import native
-    from .hosted_bot import lite_options, heidi_enabled, heidi_identity, dan_enabled
+    from .hosted_bot import lite_options, heidi_enabled, heidi_identity, heidi15_identity, dan_enabled
     options = lite_options() if level == "lite" else "off"
     bot = ({"profile": "tuppi_ai_lite_v1" if options == "off" else f"tuppi_ai_lite_{options}_v1", "level": "lite",
             "search": None} if level == "lite" else {"profile": "tuppi_ai_search_v1", "level": "full", "worlds": 1024})
     return {**bot,
         **({"dan11": {"worlds": 64}} if level == "lite" and dan_enabled() else {}),
         **({"heidi10": {"worlds": 1024, "inference": 8, "max_active_tables": 1,
-                        "models_sha256": heidi_identity()}} if level == "lite" and heidi_enabled() else {}),
+                        "models_sha256": heidi_identity()},
+            "heidi15": {"worlds": 64, "inference": 4, "max_active_tables": 1,
+                        "models_sha256": heidi15_identity()}} if level == "lite" and heidi_enabled() else {}),
         "models_sha256": hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest(),
         "native_sha256": hashlib.sha256(Path(native.lib._name).read_bytes()).hexdigest()}
 
 
 def bot_options(identity: dict) -> list[dict]:
-    """The bots new rooms may choose. Nelli 1.0 and Heidi 1.1 are no longer
-    offered; rooms that chose them keep them (match_runner.py). Heidi 1.2
+    """The bots new rooms may choose. Nelli 1.0/1.1 and Heidi 1.1/1.2 are no
+    longer offered; rooms that chose them keep them (match_runner.py). Heidi 1.5
     needs the hosted compact worker (TUPPI_HOSTED_HEIDI10=1, the identity's
-    ``heidi10`` entry), which serves both search profiles one table at a time."""
-    from .match_runner import BOT_DISPLAY_NAMES, HEIDI12_PROFILE_KEY, NELLI11_PROFILE_KEY, TUPPI_AI_PROFILE_KEY, DAN11_PROFILE_KEY
+    ``heidi15`` entry), which serves every search profile one table at a time."""
+    from .match_runner import BOT_DISPLAY_NAMES, HEIDI15_PROFILE_KEY, NELLI15_PROFILE_KEY, TUPPI_AI_PROFILE_KEY, DAN11_PROFILE_KEY
     if identity.get("level") != "lite":
         return []
-    return ([{"profile": key, "name": BOT_DISPLAY_NAMES[key]} for key in (TUPPI_AI_PROFILE_KEY, NELLI11_PROFILE_KEY)] +
-            ([{"profile": HEIDI12_PROFILE_KEY, "name": BOT_DISPLAY_NAMES[HEIDI12_PROFILE_KEY], "max_active_tables": 1}]
-             if identity.get("heidi10") else []) +
+    return ([{"profile": key, "name": BOT_DISPLAY_NAMES[key]} for key in (TUPPI_AI_PROFILE_KEY, NELLI15_PROFILE_KEY)] +
+            ([{"profile": HEIDI15_PROFILE_KEY, "name": BOT_DISPLAY_NAMES[HEIDI15_PROFILE_KEY], "max_active_tables": 1}]
+             if identity.get("heidi15") else []) +
             ([{"profile": DAN11_PROFILE_KEY, "name": BOT_DISPLAY_NAMES[DAN11_PROFILE_KEY]}]
              if identity.get("dan11") else []))
 

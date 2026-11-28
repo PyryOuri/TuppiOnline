@@ -2,7 +2,9 @@
 
 The compact directory holds three networks (roles 0, 1, 2). --mode 2 (Heidi 1.1, the
 default) uses compact-reference.json; --mode 4 (Heidi 1.2, role 2 as the anchor only;
-likelihood role 1) uses a reference written by tests/export_compact_reference.mjs --bot heidi12."""
+likelihood role 1) uses a reference written by tests/export_compact_reference.mjs --bot heidi12.
+--mode 5 (Heidi 1.5, the look-ahead: 64 worlds, PIB4) reads models/compact_sym (role 0 the small
+network, role 2 vrpo4sym_v1) and uses compact-reference-heidi15.json (--bot heidi15)."""
 import argparse
 import ctypes
 import hashlib
@@ -18,7 +20,7 @@ p.add_argument('--reference',type=Path,default=Path(__file__).with_name('compact
 p.add_argument('--report',type=Path)
 p.add_argument('--require-host-limits',action='store_true')
 p.add_argument('--no-torch',action='store_true')
-p.add_argument('--mode',type=int,choices=(2,4),default=2,help='2 Heidi 1.1, 4 Heidi 1.2')
+p.add_argument('--mode',type=int,choices=(2,4,5),default=2,help='2 Heidi 1.1, 4 Heidi 1.2, 5 Heidi 1.5')
 a=p.parse_args()
 limits={}
 if a.require_host_limits:
@@ -29,7 +31,7 @@ if a.require_host_limits:
         p.error('host check requires at most 0.5 CPU and 512 MiB')
     limits={'cpu.max':' '.join(cpu),'memory.max':memory,
             'memory.events.before':(cgroup/'memory.events').read_text()}
-from tuppi_ai.compact import CompactController, model_identity
+from tuppi_ai.compact import CompactController, NETWORKS, SYM_DIRECTORY, SYM_NETWORKS, model_identity
 from tuppi_ai.bridge import action_id, engine_action, obs_from_player_observation
 from tuppi_engine import (ExplicitDeal,apply_match_action,begin_explicit_deal,create_match,
                           match_observation_for)
@@ -39,12 +41,14 @@ from tuppi_rules.cards import card_from_index
 
 fixture=json.loads(a.reference.read_text())
 assert fixture['schema']=='tuppi.hosted.compact_reference.v1'
-bots={2:{'heidi10','heidi11'},4:{'heidi12'}}[a.mode]
+bots={2:{'heidi10','heidi11'},4:{'heidi12'},5:{'heidi15'}}[a.mode]
 assert all(test['bot'] in bots for test in fixture['cases']),'reference bot and --mode differ'
 controller=CompactController(mode=a.mode);rows=[];phases=set()
 assert controller.mode==a.mode
-# Every file of the three-network directory is hashed into the identity (roles 0, 1, 2 and equity).
-identity=model_identity()
+# Every file of the three-network directory is hashed into the identity (roles 0, 1, 2 and equity);
+# mode 5 reads its own directory (models/compact_sym), never the networks of modes 2 and 4.
+identity=model_identity(SYM_DIRECTORY,SYM_NETWORKS) if a.mode==5 else model_identity()
+assert [r['file'] for r in identity['manifest']['models']]==[n[1] for n in (SYM_NETWORKS if a.mode==5 else NETWORKS)]
 assert identity['sha256']==controller.model_sha256
 assert [record['role'] for record in identity['manifest']['models']]==[0,1,2]
 try:
@@ -96,7 +100,7 @@ if limits:
     assert limits['memory.events.before']==limits['memory.events.after']
     limits['memory.peak']=(cgroup/'memory.peak').read_text().strip()
 peak=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-result={'passed':True,'mode':a.mode,'worlds':1024,'inference':8,'cases':rows,'phases':sorted(phases),
+result={'passed':True,'mode':a.mode,'worlds':64 if a.mode==5 else 1024,'inference':4 if a.mode==5 else 8,'cases':rows,'phases':sorted(phases),
         'reference_sha256':hashlib.sha256(a.reference.read_bytes()).hexdigest(),
         'models_sha256':controller.model_sha256,'models':[{'role':r['role'],'file':r['file'],'sha256':r['sha256']}
             for r in identity['manifest']['models']],'reference_bots':sorted(bots&{t['bot'] for t in fixture['cases']}),'torch_imported':False,

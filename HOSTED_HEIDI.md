@@ -129,3 +129,22 @@ bots and the reservation behaviour above are unchanged; earlier browser runtimes
 byte-identical. Details: engine docs `DAN11_SERVER.md` (TuppiProject 54e7cf0).
 The Docker build runs `qualify_dan.py` in the final filesystem, so a mismatch there fails
 the build before deploy.
+
+## Heidi 1.5 and Nelli 1.5 (28 November 2026)
+
+New rooms are offered Nelli 1.5 (profile `tuppi_ai_lite_c1h_v3`: Nelli's lite C1H bot on the
+suit-symmetric network vrpo4sym_v1) and Heidi 1.5 (profile `tuppi_ai_heidi15_sym64_v1`: the
+look-ahead of compact controller mode 5 around vrpo4sym_v1, its candidates played out in 64
+worlds by the small network vrpo4sym_small_v1, PIB4, people's moves read at T4/eps 0.8) instead of
+Nelli 1.1 and Heidi 1.2; the browser offers them locally (bot ids `nelli15`, `heidi15`, runtime
+`33ef8f37...`). Heidi 1.5 reads `ai/models/compact_sym`; the one compact worker
+(`TUPPI_HOSTED_HEIDI10=1`, unchanged) serves every search profile and replaces its controller
+when a decision needs the other model directory (a native controller holds one table of networks
+per process). Heidi 1.5 shares the one-table reservation (`heidi_busy`). Checkpoints are
+`tuppi.hosted.controller.heidi15.v1` (worlds 64, inference 4); a server older than this release
+refuses Heidi 1.5 and Nelli 1.5 rooms, so finish or close them before a rollback. Saved Heidi
+1.1/1.2 and Nelli 1.0/1.1 rooms keep their bot and name (`ai/models/compact` is unchanged);
+earlier browser runtimes stay served byte-identical. Details: engine docs `HEIDI15_SERVER.md`
+(TuppiProject ccd52b7). The Docker build runs `qualify_compact.py --mode 5`
+and `qualify_heidi.py` (Nelli 1.5) in the final filesystem, so a mismatch there fails the build
+before deploy.

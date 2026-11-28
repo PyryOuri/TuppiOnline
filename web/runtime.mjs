@@ -22,16 +22,36 @@ async function sha256(bytes) {
 // anchor only: the play-inference likelihood model stays VRPO3 (role 1) and the
 // rollouts VRPO1 (role 0). Nelli 1.1 is Nelli 1.0 (heidi05, the lite C1H bot) on
 // the new network (its policy and its safety net).
+// Heidi 1.5 (heidi15) is the look-ahead of controller mode 5 around the
+// suit-symmetric network vrpo4sym_v1 (role 2, its anchor): its candidates are
+// played out in 64 worlds by the small network vrpo4sym_small_v1 (role 0, also
+// its play-inference likelihood model, PIB4). Nelli 1.5 (nelli15) is Nelli 1.1's
+// lite C1H bot (mode 3) on vrpo4sym_v1.
 export const heidiSearchBots = ['heidi10', 'heidi11', 'heidi12'];
 const heidiSearch = bot => heidiSearchBots.includes(bot);
+// The look-ahead bots: 64 worlds, PIB4 (tb_configure_inference accepts only 4), lanes
+// as the search bots, no anchor-bid option.
+export const lookaheadBots = ['heidi15'];
+const lookahead = bot => lookaheadBots.includes(bot);
+const inferenceBot = bot => heidiSearch(bot) || lookahead(bot);
 // The lite bots' saves carry their network cursors (seven context words).
-export const liteNetBots = ['heidi05', 'nelli11'];
+export const liteNetBots = ['heidi05', 'nelli11', 'nelli15'];
 // Controller mode (tb_configure_bot) and the model roles each bot loads: 0 rollouts,
 // 1 VRPO3 (anchor and likelihood of the older bots, likelihood of Heidi 1.2), 2 the new
 // network. Legacy keeps tb_configure's mode 0.
-export const runtimeBotModes = {legacy: 0, heidi05: 1, heidi10: 2, heidi11: 2, nelli11: 3, heidi12: 4, dan11: 0};
-const modeRoles = {3: [0, 2], 4: [0, 1, 2]};
+export const runtimeBotModes = {legacy: 0, heidi05: 1, heidi10: 2, heidi11: 2, nelli11: 3, heidi12: 4, dan11: 0,
+  nelli15: 3, heidi15: 5};
+const modeRoles = {3: [0, 2], 4: [0, 1, 2], 5: [0, 2]};
 export const runtimeBotRoles = bot => bot === 'dan11' ? [0, 1, 2] : modeRoles[runtimeBotModes[bot]] ?? [0, 1];
+// The native controller has one table of networks per runtime and does not know
+// which file is in which role, so every bot names the record of each role it reads:
+// models.json's records without a "set" are the VRPO1/VRPO3/VRPO4 networks of the
+// older bots, those with "set": "sym" the networks of Heidi 1.5 (roles 0 and 2) and
+// Nelli 1.5 (role 2). A runtime is created for one bot and never changes it.
+const botSets = {heidi15: {0: 'sym', 2: 'sym'}, nelli15: {2: 'sym'}};
+export const runtimeBotRecords = (manifest, bot) => runtimeBotRoles(bot).map(role =>
+  manifest.models.filter(record => record.role === role && (record.set ?? null) === (botSets[bot]?.[role] ?? null)));
+export const runtimeBotWorlds = bot => bot === 'dan11' || lookahead(bot) ? [64] : [128, 1024];
 
 export function inferenceLanes() {
   if (globalThis.crossOriginIsolated !== true || typeof SharedArrayBuffer !== 'function') return 1;
@@ -45,10 +65,11 @@ export class Runtime {
   static async create({worlds = 1024, bot = 'legacy', humanSeats = [0], inference = 8,
       backend = 'auto', lanes = inferenceLanes(), read = readAsset, progress = () => {},
       bids = 0, singleInference = null} = {}) {
-    if (!(bot === 'dan11' ? worlds === 64 : [128, 1024].includes(worlds))) throw new Error('Bottiasetus ei ole tuettu.');
-    if (!Object.hasOwn(runtimeBotModes, bot) ||
+    if (!Object.hasOwn(runtimeBotModes, bot) || !runtimeBotWorlds(bot).includes(worlds)) throw new Error('Bottiasetus ei ole tuettu.');
+    if (lookahead(bot)) inference = 4;  // the only budget of mode 5 (saves record it)
+    if (
         !Array.isArray(humanSeats) || humanSeats.some(seat => !Number.isInteger(seat) || seat < 0 || seat > 3) ||
-        (heidiSearch(bot) && ![4, 8].includes(inference)) || !['auto', 'single', 'threads'].includes(backend) ||
+        (inferenceBot(bot) && ![4, 8].includes(inference)) || !['auto', 'single', 'threads'].includes(backend) ||
         ![0, 1].includes(bids) || (bids && !heidiSearch(bot)) || ![null, 4, 8].includes(singleInference) ||
         !Number.isInteger(lanes) || lanes < 1 || lanes > 4)
       throw new Error('Bottiasetus ei ole tuettu.');
@@ -87,7 +108,7 @@ export class Runtime {
         throw error;
       } finally { clearTimeout(timer); }
     };
-    let module, threaded = heidiSearch(bot) && backend !== 'single' && (backend === 'threads' || lanes > 1);
+    let module, threaded = inferenceBot(bot) && backend !== 'single' && (backend === 'threads' || lanes > 1);
     try { module = await load(threaded); }
     catch (error) {
       if (!threaded || backend !== 'auto') throw error;
@@ -98,14 +119,16 @@ export class Runtime {
     const runtime = new Runtime(module, manifest, await sha256(identityBytes));
     runtime.backend = threaded ? 'threads' : 'single'; runtime.lanes = threaded ? lanes : 1;
     if (heidiSearch(bot) && !threaded && singleInference) inference = singleInference;
-    runtime.inferenceCandidates = heidiSearch(bot) ? inference : 0;
+    runtime.inferenceCandidates = inferenceBot(bot) ? inference : 0;
     runtime.bidMode = bids;
     try {
       if (module._tb_api_version() !== manifest.api_version) throw new Error('Pelin ja botin versiot eivät täsmää.');
       // Only the networks this bot uses: a Nelli 1.1 game never reads the VRPO3 file, a
-      // Heidi 1.2 game reads all three, and the older bots never read the new network.
-      const roles = runtimeBotRoles(bot), records = manifest.models.filter(record => roles.includes(record.role));
-      if (records.length !== roles.length) throw new Error('Bottipaketin versio ei ole tuettu.');
+      // Heidi 1.2 game reads all three, the older bots never read the new networks, and a
+      // Heidi 1.5 game reads only the two suit-symmetric ones (exactly one record per role).
+      const matches = runtimeBotRecords(manifest, bot);
+      if (matches.some(found => found.length !== 1)) throw new Error('Bottipaketin versio ei ole tuettu.');
+      const records = matches.map(([record]) => record);
       for (const record of records) {
         progress(`Ladataan botti ${records.indexOf(record) + 1}/${records.length}…`);
         const bytes = await read(record.file);
@@ -133,7 +156,7 @@ export class Runtime {
         const mask = [...new Set(humanSeats)].reduce((value, seat) => value | (1 << seat), 0);
         if (!module._tb_configure_bot || module._tb_configure_bot(runtimeBotModes[bot], mask) !== 0)
           throw new Error('Tämä peliversio ei tue valittua bottia.');
-        if (heidiSearch(bot) && (!module._tb_configure_inference ||
+        if (inferenceBot(bot) && (!module._tb_configure_inference ||
             module._tb_configure_inference(inference, runtime.lanes) !== 0))
           throw new Error('Tämä peliversio ei tue valittua bottia.');
         if (bids && (!module._tb_configure_bids || module._tb_configure_bids(bids) !== 0))
@@ -157,7 +180,8 @@ export class Runtime {
   // The numerical profile a save is bound to (the execution backend is not part of it).
   profile() {
     return `${this.bot ?? 'legacy'} W${this.worlds}` + (heidiSearch(this.bot) ?
-      ` PIB${this.inferenceCandidates ?? 4} bids:${this.bidMode ? 'anchor' : 'search'}` : '');
+      ` PIB${this.inferenceCandidates ?? 4} bids:${this.bidMode ? 'anchor' : 'search'}` :
+      lookahead(this.bot) ? ` PIB${this.inferenceCandidates}` : '');
   }
 
   close() {

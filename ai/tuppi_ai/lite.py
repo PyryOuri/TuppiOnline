@@ -27,8 +27,9 @@ against the lite bot's own family but loses its sooli part against the search
 bot. The options reproduce the research harness's decisions.
 
 ``LiteAgent(model=MODEL_V4)`` plays the same bot on the Heidi 1.2 network
-(Nelli 1.1 is C1H on it); with ``model=None`` the agent uses ``MODEL`` exactly
-as before. Each network file is loaded once per process (``shared_mlp``).
+(Nelli 1.1 is C1H on it) and ``LiteAgent(model=MODEL_SYM)`` on the
+suit-symmetric network vrpo4sym_v1 (Nelli 1.5 is C1H on it); with
+``model=None`` the agent uses ``MODEL`` exactly as before. Each network file is loaded once per process (``shared_mlp``).
 """
 from __future__ import annotations
 
@@ -46,6 +47,9 @@ ROOT = Path(__file__).resolve().parents[1]
 MODEL = ROOT / "models" / "vrpo3_final.lite.npz"
 #: The Heidi 1.2 network (768x4, encoder 2), exported by tools/export_lite_model.py.
 MODEL_V4 = ROOT / "models" / "vrpo4_final.lite.npz"
+#: The suit-symmetric network vrpo4sym_v1 (768x4, encoder 2; Nelli 1.5 and the
+#: anchor of Heidi 1.5's look-ahead), exported by tools/export_lite_model.py.
+MODEL_SYM = ROOT / "models" / "vrpo4sym_v1.lite.npz"
 EQUITY = ROOT / "models" / "equity_incumbent.json"
 _shared: dict[Path, native.Mlp] = {}
 _equity: np.ndarray | None = None

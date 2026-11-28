@@ -13,8 +13,9 @@ assert [item['worlds'] for item in qualification['references']] == [128, 1024]
 manifest = json.loads((ai / 'models/hosted-models.json').read_text())
 model = 'vrpo3_final.lite.npz'
 # Nelli 1.1 (tuppi_ai_lite_c1h_v2) plays the new base network's lite file; the server's
-# lite manifest must list and verify it (tuppi_server.hosted._verified_model_manifest).
-models = (model, 'vrpo4_final.lite.npz')
+# lite manifest must list and verify it (tuppi_server.hosted._verified_model_manifest); so does
+# Nelli 1.5 (tuppi_ai_lite_c1h_v3) with the suit-symmetric network's lite file.
+models = (model, 'vrpo4_final.lite.npz', 'vrpo4sym_v1.lite.npz')
 for name in models:
     assert hashlib.sha256((ai / 'models' / name).read_bytes()).hexdigest() == manifest[name], name
 out.mkdir(exist_ok=False)
@@ -33,4 +34,6 @@ assert hashlib.sha256((ai / 'models' / equity).read_bytes()).hexdigest() == mani
 shutil.copyfile(ai / 'models' / equity, out / 'models' / equity)
 (out / 'models/hosted-models.lite.json').write_text(json.dumps({name: manifest[name] for name in (*models, equity)}, indent=2) + '\n')
 shutil.copytree(ai / 'models/compact', out / 'models/compact')
+# Heidi 1.5 (compact controller mode 5) reads its own directory.
+shutil.copytree(ai / 'models/compact_sym', out / 'models/compact_sym')
 print(json.dumps({'lite_package': str(out), 'model_sha256': manifest[model], 'models': {name: manifest[name] for name in models}}))

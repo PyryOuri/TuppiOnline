@@ -1,7 +1,8 @@
 """Exercise the production spawned-worker protocol, including a fresh worker.
 
 --mode 2 (default) is Heidi 1.1 with compact-reference.json; --mode 4 is Heidi 1.2
-(HostedHeidiAgent(seat, mode=4)) with compact-reference-heidi12.json."""
+(HostedHeidiAgent(seat, mode=4)) with compact-reference-heidi12.json; --mode 5 is Heidi 1.5
+(mode 5, models/compact_sym) with compact-reference-heidi15.json."""
 import argparse
 import importlib.util
 import json
@@ -32,9 +33,9 @@ def main():
     p.add_argument('--report',type=Path)
     p.add_argument('--no-torch',action='store_true')
     p.add_argument('--require-host-limits',action='store_true')
-    p.add_argument('--mode',type=int,choices=(2,4),default=2,help='2 Heidi 1.1, 4 Heidi 1.2')
+    p.add_argument('--mode',type=int,choices=(2,4,5),default=2,help='2 Heidi 1.1, 4 Heidi 1.2, 5 Heidi 1.5')
     a=p.parse_args();fixture=json.loads(a.reference.read_text());rows=[]
-    bots={2:{'heidi10','heidi11'},4:{'heidi12'}}[a.mode]
+    bots={2:{'heidi10','heidi11'},4:{'heidi12'},5:{'heidi15'}}[a.mode]
     assert all(test['bot'] in bots for test in fixture['cases']),'reference bot and --mode differ'
     limits={}
     if a.require_host_limits:
@@ -64,7 +65,7 @@ def main():
         assert 'torch' not in sys.modules
         if a.no_torch:assert importlib.util.find_spec('torch') is None
         report={'passed':True,'mode':a.mode,'worker_requests':len(rows)+1,'fresh_worker_repeat':True,'cases':rows,
-                'worlds':1024,'inference':8,'torch_imported':False,'host_limits':limits}
+                'worlds':64 if a.mode==5 else 1024,'inference':4 if a.mode==5 else 8,'torch_imported':False,'host_limits':limits}
         if limits:
             limits['memory.peak']=(cgroup/'memory.peak').read_text().strip()
             limits['memory.events']=(cgroup/'memory.events').read_text()

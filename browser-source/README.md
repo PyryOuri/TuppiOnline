@@ -21,3 +21,8 @@ hosted `ai/` are built from TuppiAI ac94273 (TuppiAI-dan11-product-20261026) wit
 TuppiBrowser-dan11-20261026. The Heidi 1.2 runtime (d0ef4461...) stays retained with its snapshot above.
 The first Dan 1.1 runtime (ab2b37c6..., margin 14) used the same workspace paths; its
 compiler inputs are in this repository's history at 3b9b8ae.
+
+Heidi 1.5 release (28 November 2026): the current runtime `33ef8f37...` and the
+hosted `ai/` are built from TuppiAI b229db7 (TuppiAI-symsearch-20261128, native controller with the
+look-ahead modes 5 and 6) with the tools of TuppiBrowser-heidi20-20261128. The Dan 1.1 runtime (72bd855d...) and the
+Heidi 1.2 runtime (d0ef4461...) stay retained with their snapshots above.

@@ -8,6 +8,13 @@ role 0 rollouts (VRPO1), role 1 anchor (VRPO3) and role 2 the Heidi 1.2
 network. Mode 2 is Heidi 1.0/1.1 (anchor and likelihood role 1), mode 4 is
 Heidi 1.2 (the same controller with role 2 as the anchor only; likelihood
 role 1); rollouts are role 0 in both.
+
+A second directory, models/compact_sym (tools/export_compact_sym.py), holds the
+networks of modes 5 and 6, the look-ahead of training/SEARCH_SPEC.md section 2
+(TuppiOnline claude/colab-pro-compute-eval-nu8in4): role 0 the small network
+vrpo4sym_small_v1 (play-outs and play-inference likelihood), role 2 the anchor
+vrpo4sym_v1, role 1 VRPO3 (unused by modes 5 and 6). A controller serves the
+modes of its directory: (2, 4) or (5, 6).
 """
 from __future__ import annotations
 
@@ -29,18 +36,29 @@ MODES = (2, 4)
 NETWORKS = ((0, "vrpo1_actor_0504.f32", 256, 2, 804508),
             (1, "vrpo3_final.f32", 512, 4, 3185820),
             (2, "vrpo4_final.f32", 768, 4, 6351516))
+#: Modes 5 (64 worlds) and 6 (16 worlds) of the look-ahead, their directory and networks.
+SYM_MODES = (5, 6)
+SYM_DIRECTORY = ROOT / "models/compact_sym"
+SYM_NETWORKS = ((0, "vrpo4sym_small_v1.f32", 256, 2, 804508),
+                (1, "vrpo3_final.f32", 512, 4, 3185820),
+                (2, "vrpo4sym_v1.f32", 768, 4, 6351516))
+#: Play-inference candidates per world (tb_configure_inference) by mode family.
+SYM_INFERENCE = 4
+#: tb_configure's world count for modes 5 and 6 (64 * 26 game slots per seat, enough for
+#: 64 worlds x 4 candidates; mode 6 uses 16 of them).
+SYM_WORLDS = 64
 
 
-def model_identity(directory: Path | None = None) -> dict:
+def model_identity(directory: Path | None = None, networks=NETWORKS) -> dict:
     directory = ROOT / "models/compact" if directory is None else Path(directory)
     blob = (directory / "models.json").read_bytes()
     manifest = json.loads(blob)
     if (manifest.get("schema") != "tuppi.browser.assets.v1" or manifest.get("api_version") != 1
             or manifest.get("ruleset") != "project_target_v3"
-            or [r.get("file") for r in manifest.get("models", [])] != [n[1] for n in NETWORKS]
+            or [r.get("file") for r in manifest.get("models", [])] != [n[1] for n in networks]
             or manifest.get("equity", {}).get("file") != "equity.f64"):
         raise ValueError("invalid compact model manifest")
-    for record, (role, _, width, blocks, count) in zip(manifest["models"], NETWORKS):
+    for record, (role, _, width, blocks, count) in zip(manifest["models"], networks):
         if (record["role"] != role or record["config"] != {"width": width, "blocks": blocks, "encoder": 2}
                 or record["in_dim"] != 1951 or record["out_dim"] != 156 or record["count"] != count
                 or record["bytes"] != count * 4):
@@ -69,17 +87,21 @@ def validate_context(context) -> list[int]:
     return list(context)
 
 
-def _mode(mode) -> int:
-    if type(mode) is not int or mode not in MODES:
+def _mode(mode, modes=MODES) -> int:
+    if type(mode) is not int or mode not in modes:
+        if modes == SYM_MODES:
+            raise ValueError("compact look-ahead controller mode must be 5 (64 worlds) or 6 (16 worlds)")
         raise ValueError("compact controller mode must be 2 (Heidi 1.0/1.1) or 4 (Heidi 1.2)")
     return mode
 
 
 class CompactController:
     def __init__(self, directory: Path | None = None, mode: int = 2):
-        mode = _mode(mode)
-        directory = ROOT / "models/compact" if directory is None else Path(directory)
-        identity = model_identity(directory)
+        self.modes = SYM_MODES if type(mode) is int and mode in SYM_MODES else MODES
+        mode = _mode(mode, self.modes)
+        sym = self.modes == SYM_MODES
+        directory = (SYM_DIRECTORY if sym else ROOT / "models/compact") if directory is None else Path(directory)
+        identity = model_identity(directory, SYM_NETWORKS if sym else NETWORKS)
         self.model_sha256 = identity["sha256"]
         self.lib = lib = native.lib
         lib.tb_load_model.argtypes = [C.c_int] * 6 + [C.POINTER(C.c_float)]
@@ -104,7 +126,7 @@ class CompactController:
                         len(flat), flat.ctypes.data_as(C.POINTER(C.c_float))):
                     raise RuntimeError("compact model load failed")
             equity = np.fromfile(directory / "equity.f64", dtype="<f8")
-            if not np.isfinite(equity).all() or lib.tb_configure(WORLDS, equity.ctypes.data_as(C.POINTER(C.c_double))):
+            if not np.isfinite(equity).all() or lib.tb_configure(SYM_WORLDS if sym else WORLDS, equity.ctypes.data_as(C.POINTER(C.c_double))):
                 raise RuntimeError("compact controller configuration failed")
             self._configure(mode, 0)
         except BaseException:
@@ -114,17 +136,19 @@ class CompactController:
     def _configure(self, mode: int, people: int) -> None:
         """Select the bot; the per-decision state is restored by choose as before."""
         self.mode = None
-        if self.lib.tb_configure_bot(mode, people) or self.lib.tb_configure_inference(INFERENCE, 1):
+        inference = SYM_INFERENCE if mode in SYM_MODES else INFERENCE
+        if self.lib.tb_configure_bot(mode, people) or self.lib.tb_configure_inference(inference, 1):
             raise RuntimeError("compact inference configuration failed")
         self.mode = mode
 
     def choose(self, observation, context, human_seats=(), mode=None):
-        """`mode` None keeps the current mode; 2 or 4 switches to it when it differs."""
+        """`mode` None keeps the current mode; another mode of this controller's
+        directory ((2, 4) or (5, 6)) switches to it when it differs."""
         context = validate_context(context)
         people = frozenset(human_seats)
         if any(type(s) is not int or s not in range(4) for s in people):
             raise ValueError("invalid human seats")
-        mode = self.mode if mode is None else _mode(mode)
+        mode = self.mode if mode is None else _mode(mode, self.modes)
         if mode is None:
             raise RuntimeError("compact controller mode is not configured")
         mask = sum(1 << s for s in people)

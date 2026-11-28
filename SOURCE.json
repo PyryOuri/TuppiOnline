@@ -1,20 +1,20 @@
 {
   "schema": "tuppi.hosted.source.v1",
   "commits": {
-    "browser": "cbfb97b100928e118add7948191ea6b5dee6dfa6",
-    "engine": "54e7cf090dca5d87c3f84832c947fde52c3577fc",
-    "ai": "ac94273331ba0d426dd44ecbdeed250b729ac66c"
+    "browser": "c4ba5614e371bd709aa73c8a43f2d510143c7ae3",
+    "engine": "ccd52b72ff23237b791c45bfaeb3abce8e8f14a0",
+    "ai": "b229db78b9436062d86f4b6db6ef223e217cf89f"
   },
   "files": [
     {
       "path": "Dockerfile",
-      "bytes": 4706,
-      "sha256": "f1e4a70fd903e7e82d639deccea1ca1181f275e21eb3d0ffd3c9c2ec04fe9b09"
+      "bytes": 5154,
+      "sha256": "be29d1e1694d5d2a45ab6a592bf8d95f93c770a38f6126576ca902237a73e5e0"
     },
     {
       "path": "HOSTED_HEIDI.md",
-      "bytes": 8530,
-      "sha256": "249a47c83b6bed0cde5a0acd362eb4dcce3c5c24cc690b55e2e39ba339ac08be"
+      "bytes": 9973,
+      "sha256": "4c6454acc02e1cb03e51a9168d9f802fb477dec5cf85f47cc94ae01aae21053e"
     },
     {
       "path": "ai/models/compact/equity.f64",
@@ -42,14 +42,39 @@
       "sha256": "d1789d37a19a0b3834b0299967675bcd828e4fbb58df8001cb0ec8f51504f5ff"
     },
     {
+      "path": "ai/models/compact_sym/equity.f64",
+      "bytes": 400,
+      "sha256": "8e01246f723210a8e0364a63748de460b94b6e5a513e8e747dc91744f1bc3f0b"
+    },
+    {
+      "path": "ai/models/compact_sym/models.json",
+      "bytes": 2135,
+      "sha256": "e3412a2420e15ad9221f4a04c1e2850798abc9a72fa5550873760e2dee324cd5"
+    },
+    {
+      "path": "ai/models/compact_sym/vrpo3_final.f32",
+      "bytes": 12743280,
+      "sha256": "0e4bba619908ad3fa92a75fb118470b436ffa571caaca5e8f6aab497be633b47"
+    },
+    {
+      "path": "ai/models/compact_sym/vrpo4sym_small_v1.f32",
+      "bytes": 3218032,
+      "sha256": "7f22f73e6a9bd83739f66225663da9c7a74eb5dfbc39950a014e9b04673482e3"
+    },
+    {
+      "path": "ai/models/compact_sym/vrpo4sym_v1.f32",
+      "bytes": 25406064,
+      "sha256": "06ad3f89cd998cf832ba0f5fae376188c8ea756984cfc4435c727c06d4f46392"
+    },
+    {
       "path": "ai/models/equity_incumbent.json",
       "bytes": 2112,
       "sha256": "1496f77104f411c5cb55e2cef4573a10aead59acbd643261b755886bfeb60b91"
     },
     {
       "path": "ai/models/hosted-models.json",
-      "bytes": 555,
-      "sha256": "27eece6b4cecf435c955920dc7838c553cc6bb77670c417bf4f5f9e75ed5fa64"
+      "bytes": 649,
+      "sha256": "d740bbd95b49e3ed5ccaae7af9eb5dc4c26137cfc1fe93c88e9a8843467a1d91"
     },
     {
       "path": "ai/models/vrpo1_actor_0504.pt",
@@ -77,6 +102,11 @@
       "sha256": "0e980b4f3344c511cd7faf6e7258433a088be26431000e83cfb21c36c51d0deb"
     },
     {
+      "path": "ai/models/vrpo4sym_v1.lite.npz",
+      "bytes": 25406598,
+      "sha256": "88c2ea62a28ec94822e533d20ba751393813786f0e6eb3d674aba46cb737d13b"
+    },
+    {
       "path": "ai/native/build.sh",
       "bytes": 1669,
       "sha256": "1cf166d28df6fe0591d86db378072a82d552a3c9b0840c92f72ef6cfb6ea1fe6"
@@ -88,8 +118,8 @@
     },
     {
       "path": "ai/native/tuppi_browser.c",
-      "bytes": 26542,
-      "sha256": "d91b1a6135329bc8791c9d65d39c37014d18472a839510e3249eb2ebcaab6873"
+      "bytes": 31767,
+      "sha256": "666b94b6283b59e40b0bd9e3239c6b711a3eff2a8bbc37ecff1c5f8da2bea5d0"
     },
     {
       "path": "ai/native/tuppi_core.c",
@@ -228,8 +258,8 @@
     },
     {
       "path": "ai/tuppi_ai/compact.py",
-      "bytes": 7446,
-      "sha256": "cedcc99d2f113721d9c7243bb42d6ef499ab207ccdfd8bdb52dfe06f37eec1f9"
+      "bytes": 9003,
+      "sha256": "69821c842fb4c51a722038ae364b55128375ad4bf29a2ccbf493a768e3b278ee"
     },
     {
       "path": "ai/tuppi_ai/dan.py",
@@ -283,8 +313,8 @@
     },
     {
       "path": "ai/tuppi_ai/lite.py",
-      "bytes": 8788,
-      "sha256": "c9c8343b88107a604044ef17cce8c9b847d627cbff6d440a567404b4a2c6a1b2"
+      "bytes": 9100,
+      "sha256": "e5a2932592afaa599897c69a1628be62e5b541093bf40cdf676c2faf22b8139f"
     },
     {
       "path": "ai/tuppi_ai/match_eval.py",
@@ -363,8 +393,8 @@
     },
     {
       "path": "browser-source/README.md",
-      "bytes": 1437,
-      "sha256": "8147b65f9b5b7f206bfcafbb4002f8da293e5ead74514650762efdc3418657b2"
+      "bytes": 1809,
+      "sha256": "bf8274a15a962e9b993e07e62b91e934d258531fa29349669c2696779382190c"
     },
     {
       "path": "browser-source/TuppiAI-dan11-product-20261026/native/showing_constraints.h",
@@ -692,6 +722,96 @@
       "sha256": "4952fd710386198206b0323acfa55b9f1a8da59c018f3ab3c4a8cddd7c360881"
     },
     {
+      "path": "browser-source/TuppiAI-symsearch-20261128/native/showing_constraints.h",
+      "bytes": 3081,
+      "sha256": "f641aa73bfe8373c8b88329f842d268a12d64b87791a9c501c1f0a911975afea"
+    },
+    {
+      "path": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_browser.c",
+      "bytes": 31767,
+      "sha256": "666b94b6283b59e40b0bd9e3239c6b711a3eff2a8bbc37ecff1c5f8da2bea5d0"
+    },
+    {
+      "path": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_core.c",
+      "bytes": 16409,
+      "sha256": "2c3f0a539f6569d0927aea0d08fc8911304a88108e84667826b5c8a0c810ecbf"
+    },
+    {
+      "path": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_core.h",
+      "bytes": 5938,
+      "sha256": "fc301b9484d6bc1e6af5dacd4937542ff429eab51ca3cbfe6380220f8571033b"
+    },
+    {
+      "path": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_dan.c",
+      "bytes": 8697,
+      "sha256": "8442de9c85eac8d3fa1d4d8bc285df1a06e79d430d4539011c908278aac9f296"
+    },
+    {
+      "path": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_dan.h",
+      "bytes": 2030,
+      "sha256": "cab691b49d49715c36d513d44ce6ab49a33d9b1b6f0e9f3d8553aa596fc7dda3"
+    },
+    {
+      "path": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_dd.c",
+      "bytes": 8825,
+      "sha256": "3ea6ec6e8dd9faab1de4f69738ebeb20d2c244e4920fa6b10a2bfc148b6a38c1"
+    },
+    {
+      "path": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_dd_wr.c",
+      "bytes": 17961,
+      "sha256": "beb856dee34a5e0da0484060035b6d53b438df3db7c68bca39a525a4e7b4249c"
+    },
+    {
+      "path": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_env.c",
+      "bytes": 78814,
+      "sha256": "8952fbcdfdb9f9ab02866e1391de0cb662519c64cdf3ed2fe6431caff6c521f9"
+    },
+    {
+      "path": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_lite_net.c",
+      "bytes": 12269,
+      "sha256": "87c9557eec98457db23218f71801098ca99722c19372f8ffc7d6b4c4b3fb9ca6"
+    },
+    {
+      "path": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_matrix.h",
+      "bytes": 6345,
+      "sha256": "b43a4012dbe18c575f70c019b2352014b5a105358882aaf4bcd6c94fda822969"
+    },
+    {
+      "path": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_mlp.c",
+      "bytes": 10430,
+      "sha256": "5bb6b4bb0484a0c787a973884e03b05d88ba3d7d216c8a7a716c86dc002d953c"
+    },
+    {
+      "path": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_mlp.h",
+      "bytes": 689,
+      "sha256": "89f7b352ba52edfedc289f9e47dc134957907568c481500412714e368f92f372"
+    },
+    {
+      "path": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_parallel.c",
+      "bytes": 4510,
+      "sha256": "4b617ed288ef0858d48849fd7eec2e97d6a22a6ceb2248291e1c16e8fbab5faf"
+    },
+    {
+      "path": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_parallel.h",
+      "bytes": 1824,
+      "sha256": "b5ba0046c642d3cc9004ad53d3fe0f7efb6a276e5f6918529dd06071bb86804b"
+    },
+    {
+      "path": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_search.c",
+      "bytes": 29067,
+      "sha256": "2aa5ca9dde01a861723791e520c3d7db693ca3fec271300b9c0a048e0329cfb5"
+    },
+    {
+      "path": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_sooli.c",
+      "bytes": 9649,
+      "sha256": "d88c6c7332216618d110120b92b3be6a699fcbe3dc6cf29928bc0bb340b2b38b"
+    },
+    {
+      "path": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_sooli_policy.c",
+      "bytes": 15267,
+      "sha256": "4952fd710386198206b0323acfa55b9f1a8da59c018f3ab3c4a8cddd7c360881"
+    },
+    {
       "path": "browser-source/TuppiBrowser-dan11-20261026/tools/thread_runtime.js",
       "bytes": 297,
       "sha256": "ba365647c3022169c67b9bd7cece325ea564e5e2808788ec6a7ce79cc105d2b0"
@@ -723,6 +843,11 @@
     },
     {
       "path": "browser-source/TuppiBrowser-heidi12-20261023/tools/thread_runtime.js",
+      "bytes": 297,
+      "sha256": "ba365647c3022169c67b9bd7cece325ea564e5e2808788ec6a7ce79cc105d2b0"
+    },
+    {
+      "path": "browser-source/TuppiBrowser-heidi20-20261128/tools/thread_runtime.js",
       "bytes": 297,
       "sha256": "ba365647c3022169c67b9bd7cece325ea564e5e2808788ec6a7ce79cc105d2b0"
     },
@@ -1533,8 +1658,8 @@
     },
     {
       "path": "engine/schemas/network/http_api.schema.json",
-      "bytes": 26246,
-      "sha256": "0c197cc15284ad07cd88808bfda748bea2dfae044a41027a63f61f74707dbe72"
+      "bytes": 26833,
+      "sha256": "62cb07d30ef89a435f61c46f0e68cf566fab751fb1b833140637936bf0cb1c0e"
     },
     {
       "path": "engine/schemas/network/post_match_analysis.schema.json",
@@ -2728,13 +2853,13 @@
     },
     {
       "path": "engine/src/tuppi_server/hosted.py",
-      "bytes": 48634,
-      "sha256": "8dedcc6bb47372ba66b469dea196eefe5710416dc94425de2e6a691fc0351389"
+      "bytes": 48830,
+      "sha256": "add0ecd5929ba148a8a7fb441d4e3fed9ab1846bf4650cfadbcf9ee4206f6df6"
     },
     {
       "path": "engine/src/tuppi_server/hosted_bot.py",
-      "bytes": 22610,
-      "sha256": "aa04d918598902b40a3d24de4603b6ebcc88e5d43cd0b37ef6da3579f24b1f8c"
+      "bytes": 24914,
+      "sha256": "da618b2cd004b998efba0ff4ae77b3be6bec278e95a2073575e5cb833b3a3443"
     },
     {
       "path": "engine/src/tuppi_server/hosted_site.py",
@@ -2753,8 +2878,8 @@
     },
     {
       "path": "engine/src/tuppi_server/match_runner.py",
-      "bytes": 62407,
-      "sha256": "cbc165f49287af983ab8e69f1df9ce3c986d04ffee45605350227856ede06a76"
+      "bytes": 63274,
+      "sha256": "8eb1b7233341e08948ddf6ba200e5818997e9c6883234dc8d4bad53d147a2fd5"
     },
     {
       "path": "engine/src/tuppi_server/persistence.py",
@@ -2778,18 +2903,18 @@
     },
     {
       "path": "engine/src/tuppi_server/research.py",
-      "bytes": 15088,
-      "sha256": "7eb856fc6a778250d72be5e8aedb2fba58220b4a775f0a946750e5cc767b9d45"
+      "bytes": 15105,
+      "sha256": "27864810b52627562c85570ca65a9e055b596f209e64743d1e3483feebea5ba9"
     },
     {
       "path": "engine/src/tuppi_server/results.py",
-      "bytes": 5857,
-      "sha256": "aa534286042e2a0fbb06f5109775dd17dd8dea00668f331165e5e058d74cb76d"
+      "bytes": 6000,
+      "sha256": "974ef185f0ded9abb2d42cdc24fb95219236633489033a17cfdbcf46b3301265"
     },
     {
       "path": "engine/src/tuppi_server/rooms.py",
-      "bytes": 63428,
-      "sha256": "95f81612b6a42591ca70f82d9043c3fe16d59d9db864f29881fb47efc32046d9"
+      "bytes": 63623,
+      "sha256": "8050b6de8753024150a9289c7589477df4c8a4ab062d4e786d42155dcd80dcf2"
     },
     {
       "path": "engine/src/tuppi_server/sooli_training_analysis.py",
@@ -2823,8 +2948,8 @@
     },
     {
       "path": "qualification/README.md",
-      "bytes": 1115,
-      "sha256": "e44a6e26415db41e33b62e7ec8f8c0425c234a405e2666f5a1644cb166482b38"
+      "bytes": 1431,
+      "sha256": "f258a329ebff636bcb7fe5658ef34263b10ab466c3ab762140d1613bebfcf226"
     },
     {
       "path": "qualification/browser-speed.json",
@@ -2835,6 +2960,11 @@
       "path": "qualification/compact-reference-heidi12.json",
       "bytes": 34615,
       "sha256": "b8231930790c66ee61473af3c2c32efeac0d80246f126dd069f6b58341c992dc"
+    },
+    {
+      "path": "qualification/compact-reference-heidi15.json",
+      "bytes": 31661,
+      "sha256": "9b074bc47430ad56fb65a1307c9525bde2067dace3238bc00b03570b2885503b"
     },
     {
       "path": "qualification/compact-reference.json",
@@ -2877,9 +3007,14 @@
       "sha256": "f5c951fca3f3554d8a9fa200c1f13f42f9202aa6eff6e9d45dcd878bff7113df"
     },
     {
+      "path": "qualification/nelli15-reference.json",
+      "bytes": 299184,
+      "sha256": "5497cec116f15ed21dae5afde9901c9668bd066a780813bc9fabb5bd209dd1c2"
+    },
+    {
       "path": "qualification/package_lite.py",
-      "bytes": 1948,
-      "sha256": "ee79ed68cb760f9061e4759b44f8fd6c42b86ae3cfe86758903a9335f5ae84b4"
+      "bytes": 2196,
+      "sha256": "48753a7fa69410b7c44763cb9379e4c162d6c3c4a4f0f912fdb54aea206dde63"
     },
     {
       "path": "qualification/qualify.py",
@@ -2888,8 +3023,8 @@
     },
     {
       "path": "qualification/qualify_compact.py",
-      "bytes": 6475,
-      "sha256": "30cf49047b1d4988b4c1e24c6c136e9740c435d5e3c057605e6508da64245f6f"
+      "bytes": 7038,
+      "sha256": "e5d352f5804e0e7918ebfaf35f3f36bbe645922cac88cf35f98344ae001e7f69"
     },
     {
       "path": "qualification/qualify_dan.py",
@@ -2898,18 +3033,18 @@
     },
     {
       "path": "qualification/qualify_heidi.py",
-      "bytes": 3917,
-      "sha256": "77ad93ee64c32754706b83a6e4b2022b1b96c245de7be8bc501414a0d0d49fd9"
+      "bytes": 4075,
+      "sha256": "164503df04c519e6690678979f2e1c448dd3b133f8d2bcdf839456c413856989"
     },
     {
       "path": "qualification/qualify_hosted_compact.py",
-      "bytes": 4293,
-      "sha256": "838bfece10a2b35c7cb27340d1d1d70f037d22d027b9e7be4890ebb1d5ef9db1"
+      "bytes": 4451,
+      "sha256": "df6a6a70181ea6bd2603adc5da454478a4e29bbb68184fc616d98716e0e3f236"
     },
     {
       "path": "qualification/qualify_lite.py",
-      "bytes": 5012,
-      "sha256": "3d45c921059e7f85506d850966b621e99dda571f781978265de30b0ff9d99108"
+      "bytes": 5504,
+      "sha256": "64a4e84417f17214c1d8416f6cf648c2dbfc83fcdaef9b275e4e2e8c5ceeb57b"
     },
     {
       "path": "qualification/reference-w1024.json",
@@ -2943,8 +3078,8 @@
     },
     {
       "path": "web/app.mjs",
-      "bytes": 107851,
-      "sha256": "4a5824105453d2907643c4ab81b1f5feb61404d43cc0ead23dbf04e82d7f818a"
+      "bytes": 108310,
+      "sha256": "e4e18ca792a6714c5de272bdda973a93c572eb92148e3f8470087ab0893f41d3"
     },
     {
       "path": "web/bootstrap.033f26379c9ec791.mjs",
@@ -2960,6 +3095,11 @@
       "path": "web/bootstrap.6428ca88a057b2ce.mjs",
       "bytes": 3214,
       "sha256": "6428ca88a057b2ce060db6d6493c144a32d5562b5fadfc6580613b321788ab51"
+    },
+    {
+      "path": "web/bootstrap.6626c6caf2ed7468.mjs",
+      "bytes": 3214,
+      "sha256": "6626c6caf2ed7468ffe0f90d12e1aded1c5d666c757625d3a1af4abd1e8c14a0"
     },
     {
       "path": "web/bootstrap.754665da65c80049.mjs",
@@ -3012,6 +3152,11 @@
       "sha256": "22d959c51a27bc7a7e7ab4693edc281e19fb442c447f35d8e216c0262773c4d7"
     },
     {
+      "path": "web/client.23bf4d5021abfeaa.mjs",
+      "bytes": 214135,
+      "sha256": "23bf4d5021abfeaac1f38d0ad95973467ee534e836fb52a0457e8e14619d5920"
+    },
+    {
       "path": "web/client.27708b366a5da2e8.mjs",
       "bytes": 169399,
       "sha256": "27708b366a5da2e80f8ae803dce821d8b614444967c7f746955db38613af05d9"
@@ -3049,7 +3194,7 @@
     {
       "path": "web/current-release.json",
       "bytes": 690,
-      "sha256": "bb00af470a8860d4b636ede560a7a4a010e7f6c79b5db36c8bd7dd6083da3f25"
+      "sha256": "4f1f6ac9aa2c81288cbbfa410c0c7dc6ed26129d49874a5ae8de0e3ab049169f"
     },
     {
       "path": "web/deployment.json",
@@ -3097,6 +3242,11 @@
       "sha256": "d64785159d9cec4e389717841ed05a925039a1c9722c95beb3000698940f560c"
     },
     {
+      "path": "web/engine.e4dcf2b7c8c8e168.mjs",
+      "bytes": 45532,
+      "sha256": "e4dcf2b7c8c8e16829aae023261c15e4791eef995ab3a026a5c077dacde7ba71"
+    },
+    {
       "path": "web/frontend.33988c7364d1fcf3.json",
       "bytes": 690,
       "sha256": "aa88e52a076363d492986a6401bc67f457e016c8e361da8459d3982542206629"
@@ -3142,9 +3292,14 @@
       "sha256": "720076f9856866dd24a892f0986e1c6585c8030ea0fdfc7fea1d4f2766b83417"
     },
     {
+      "path": "web/frontend.f7957a0c3f4114ae.json",
+      "bytes": 690,
+      "sha256": "4f1f6ac9aa2c81288cbbfa410c0c7dc6ed26129d49874a5ae8de0e3ab049169f"
+    },
+    {
       "path": "web/frontend.json",
       "bytes": 690,
-      "sha256": "bb00af470a8860d4b636ede560a7a4a010e7f6c79b5db36c8bd7dd6083da3f25"
+      "sha256": "4f1f6ac9aa2c81288cbbfa410c0c7dc6ed26129d49874a5ae8de0e3ab049169f"
     },
     {
       "path": "web/hand.mjs",
@@ -3173,8 +3328,8 @@
     },
     {
       "path": "web/index.html",
-      "bytes": 28799,
-      "sha256": "17b0003f2ca3d5aea7313e7d76b86e102683b5c092bdf44bf25edb6f7c82d2d8"
+      "bytes": 29066,
+      "sha256": "6ded32f2e885163ae60e1193a3ff49f821af4cc9ee4675c12df41a8b985dd2fb"
     },
     {
       "path": "web/launch.33988c7364d1fcf3.html",
@@ -3222,6 +3377,11 @@
       "sha256": "53d7aa652524d2936ad0583b22d31b9d2db90b0c7a11ef25abf214acde2e32a7"
     },
     {
+      "path": "web/launch.f7957a0c3f4114ae.html",
+      "bytes": 29100,
+      "sha256": "6751711b755c9998d32f0466d9c0584ad9fb59f1e59f82f2726f3a7117714e12"
+    },
+    {
       "path": "web/lobby.mjs",
       "bytes": 9785,
       "sha256": "d252aa0e8e9c3b312d5fee78b1cdc04a3126d13fd79f1ce59dfa1b539356601e"
@@ -3238,8 +3398,8 @@
     },
     {
       "path": "web/offline-manifest.json",
-      "bytes": 30703,
-      "sha256": "ed622447166b7f1fcde6e3327e32347369cee32157edb9846c66886a51f605d1"
+      "bytes": 34595,
+      "sha256": "290681f4a7a2d0e04809c78e0cb288c271e3b52d63afd549ee6d495f4c609110"
     },
     {
       "path": "web/offline-shell.0f95d8770ed15261.txt",
@@ -3285,6 +3445,16 @@
       "path": "web/offline-shell.575b8839e3e3b1eb.txt",
       "bytes": 27981,
       "sha256": "575b8839e3e3b1ebe3f05ac1e57430d22c3bd472446cca3bb01c37d30a1b807d"
+    },
+    {
+      "path": "web/offline-shell.6751711b755c9998.txt",
+      "bytes": 29100,
+      "sha256": "6751711b755c9998d32f0466d9c0584ad9fb59f1e59f82f2726f3a7117714e12"
+    },
+    {
+      "path": "web/offline-shell.6ded32f2e885163a.txt",
+      "bytes": 29066,
+      "sha256": "6ded32f2e885163ae60e1193a3ff49f821af4cc9ee4675c12df41a8b985dd2fb"
     },
     {
       "path": "web/offline-shell.7316338cf3ae5495.txt",
@@ -3348,8 +3518,8 @@
     },
     {
       "path": "web/presentation.mjs",
-      "bytes": 6849,
-      "sha256": "ee3166d9eceb3cf9f24993280cea036dc81836c5fa241e072b70a9aaaa463374"
+      "bytes": 6868,
+      "sha256": "4b10fc6d7a0ff9a158cc60bb2e13949be8a392c8f82712d5945feb73936d57d5"
     },
     {
       "path": "web/privacy.css",
@@ -3420,6 +3590,66 @@
       "path": "web/runtime/31426bbf97821e2c275339a66147d8cdfe7ffcbbc6b089b3b9bbc41881415413/vrpo3_final.f32",
       "bytes": 12743280,
       "sha256": "0e4bba619908ad3fa92a75fb118470b436ffa571caaca5e8f6aab497be633b47"
+    },
+    {
+      "path": "web/runtime/33ef8f373a5337a18594f06dda16b919c5bdc54c7c3f35cf39c18ddf7410b85a/build.json",
+      "bytes": 13782,
+      "sha256": "91a969a3cbbd923d407e37ef5f686c02725c8728dc73d6abb0154fd88dd810d3"
+    },
+    {
+      "path": "web/runtime/33ef8f373a5337a18594f06dda16b919c5bdc54c7c3f35cf39c18ddf7410b85a/equity.f64",
+      "bytes": 400,
+      "sha256": "8e01246f723210a8e0364a63748de460b94b6e5a513e8e747dc91744f1bc3f0b"
+    },
+    {
+      "path": "web/runtime/33ef8f373a5337a18594f06dda16b919c5bdc54c7c3f35cf39c18ddf7410b85a/models.json",
+      "bytes": 3103,
+      "sha256": "0ed19935754bcd060d5537d0f9e00653e832152ddd8f0a1f36cd625156a11780"
+    },
+    {
+      "path": "web/runtime/33ef8f373a5337a18594f06dda16b919c5bdc54c7c3f35cf39c18ddf7410b85a/tuppi-thread.mjs",
+      "bytes": 24262,
+      "sha256": "04169d643f53003829c158690b2afe7936c5c5e5cbb20b1a8f90026db2d2190f"
+    },
+    {
+      "path": "web/runtime/33ef8f373a5337a18594f06dda16b919c5bdc54c7c3f35cf39c18ddf7410b85a/tuppi-thread.wasm",
+      "bytes": 138723,
+      "sha256": "9d932ad2d278877c9958eeb474ee824e3b0da43794f4ec96a5da8261182b1836"
+    },
+    {
+      "path": "web/runtime/33ef8f373a5337a18594f06dda16b919c5bdc54c7c3f35cf39c18ddf7410b85a/tuppi.mjs",
+      "bytes": 9912,
+      "sha256": "e7af7197bbb3926d8cd067faafdd6881df30aa0b2df7df65dac3665bab022327"
+    },
+    {
+      "path": "web/runtime/33ef8f373a5337a18594f06dda16b919c5bdc54c7c3f35cf39c18ddf7410b85a/tuppi.wasm",
+      "bytes": 124760,
+      "sha256": "4205946cc091234c1de02dda1f4e74f6aad58c1a2818fa3b538cc0636bd37f8f"
+    },
+    {
+      "path": "web/runtime/33ef8f373a5337a18594f06dda16b919c5bdc54c7c3f35cf39c18ddf7410b85a/vrpo1_actor_0504.f32",
+      "bytes": 3218032,
+      "sha256": "beb1f890947748a3df254dc200b9433547babc9fe40388fe76ba82e0f01abbda"
+    },
+    {
+      "path": "web/runtime/33ef8f373a5337a18594f06dda16b919c5bdc54c7c3f35cf39c18ddf7410b85a/vrpo3_final.f32",
+      "bytes": 12743280,
+      "sha256": "0e4bba619908ad3fa92a75fb118470b436ffa571caaca5e8f6aab497be633b47"
+    },
+    {
+      "path": "web/runtime/33ef8f373a5337a18594f06dda16b919c5bdc54c7c3f35cf39c18ddf7410b85a/vrpo4_final.f32",
+      "bytes": 25406064,
+      "sha256": "d1789d37a19a0b3834b0299967675bcd828e4fbb58df8001cb0ec8f51504f5ff"
+    },
+    {
+      "path": "web/runtime/33ef8f373a5337a18594f06dda16b919c5bdc54c7c3f35cf39c18ddf7410b85a/vrpo4sym_small_v1.f32",
+      "bytes": 3218032,
+      "sha256": "7f22f73e6a9bd83739f66225663da9c7a74eb5dfbc39950a014e9b04673482e3"
+    },
+    {
+      "path": "web/runtime/33ef8f373a5337a18594f06dda16b919c5bdc54c7c3f35cf39c18ddf7410b85a/vrpo4sym_v1.f32",
+      "bytes": 25406064,
+      "sha256": "06ad3f89cd998cf832ba0f5fae376188c8ea756984cfc4435c727c06d4f46392"
     },
     {
       "path": "web/runtime/4341014ea0acfb9a7673d2bc015ebb36a31ea89c1b638290a4c80652f3748a91/build.json",
@@ -3688,13 +3918,13 @@
     },
     {
       "path": "web/runtime.mjs",
-      "bytes": 16701,
-      "sha256": "eae18e482f0e2fbf81cccdb42d246d73ef6015de5bcf486087a0049dc4e01c93"
+      "bytes": 18411,
+      "sha256": "65f47647ccbc53f8c64a74aa0d6e1259162351533713db87bd96f44d623f8f7d"
     },
     {
       "path": "web/session.mjs",
-      "bytes": 12198,
-      "sha256": "3b8e8fe639d7f689ce80fdfd11b2c9e13a22bed4441453aabb2f93319e0ad2b9"
+      "bytes": 12223,
+      "sha256": "66374106b3dd5a987269e44af98cc13d11a8dd4ee599bc795fa385b8783074d8"
     },
     {
       "path": "web/storage.mjs",
@@ -3723,8 +3953,8 @@
     },
     {
       "path": "web/sw.mjs",
-      "bytes": 22649,
-      "sha256": "940433127a4f82ad638f897036de638bf84eb3660b8e27bac4657f4ca184a327"
+      "bytes": 23084,
+      "sha256": "8e88c011cbc2adebfebd639a1b8623c72ab745de72ca620bee90a0c00bf6cc18"
     },
     {
       "path": "web/table.mjs",
@@ -3733,12 +3963,12 @@
     },
     {
       "path": "web/worker.mjs",
-      "bytes": 9345,
-      "sha256": "e8c777a413842b58d46a90559c83118dd727fda15bd23a518ebbcb28d9e0c1bb"
+      "bytes": 9426,
+      "sha256": "e1ea48fea1d8db427ec351b926cbb238dec9eb1a019c4afe855f2487ad6f4aac"
     }
   ],
-  "release": "dbc69b19554d73d99d59fb8d1f9c7eb8b0d796b56b2b491c9cbcb27a5e06088c",
-  "linux_image_executed": false,
+  "release": "4fff08c3ce5329b5cdea79d408d6d03ed81cfc304e151370bf4ea0936aad87f1",
+  "linux_image_executed": true,
   "hosted_compact": {
     "profile": "tuppi_ai_heidi12_pib8_v1",
     "name": "Heidi 1.2",
@@ -3788,43 +4018,64 @@
     },
     "note": "final actor"
   },
-  "deployment_parent": "4a2944e1f586d9695cb6040c3a201297863cf3d1",
+  "hosted_dan11": {
+    "profile": "tuppi_ai_dan11_v1",
+    "name": "Dan 1.1",
+    "env": "TUPPI_HOSTED_DAN11=1",
+    "workers": 1,
+    "worlds": 64,
+    "rami_actor_margin": 12.0,
+    "checkpoint_schema": "tuppi.hosted.controller.dan11.v1",
+    "uses_heidi_reservation": false,
+    "carries_earlier_build_checkpoints": true
+  },
+  "privacy_notice": {
+    "browser_commit": "cbfb97b100928e118add7948191ea6b5dee6dfa6",
+    "notice": "web/privacy.html",
+    "assessment": "docs/PRIVACY_ASSESSMENT.md",
+    "collection_and_retention_unchanged": true,
+    "personal_name_and_email_published": false,
+    "operator_identity_and_contact": "unresolved; deliberately not published per owner instruction",
+    "scope": "Notice, visible links and accurate data wording only; not a complete GDPR notice"
+  },
+  "deployment_parent": "8841583bb0f15ca2bbe322bb190e6686ecaf5f82",
   "browser_build": {
-    "ai_commit": "ac94273331ba0d426dd44ecbdeed250b729ac66c",
-    "ai_worktree": "TuppiAI-dan11-product-20261026",
+    "ai_commit": "b229db78b9436062d86f4b6db6ef223e217cf89f",
+    "ai_worktree": "TuppiAI-symsearch-20261128",
     "file_map": {
-      "TuppiAI-dan11-product-20261026/native/tuppi_core.c": "browser-source/TuppiAI-dan11-product-20261026/native/tuppi_core.c",
-      "TuppiAI-dan11-product-20261026/native/tuppi_env.c": "browser-source/TuppiAI-dan11-product-20261026/native/tuppi_env.c",
-      "TuppiAI-dan11-product-20261026/native/tuppi_search.c": "browser-source/TuppiAI-dan11-product-20261026/native/tuppi_search.c",
-      "TuppiAI-dan11-product-20261026/native/tuppi_dd.c": "browser-source/TuppiAI-dan11-product-20261026/native/tuppi_dd.c",
-      "TuppiAI-dan11-product-20261026/native/tuppi_mlp.c": "browser-source/TuppiAI-dan11-product-20261026/native/tuppi_mlp.c",
-      "TuppiAI-dan11-product-20261026/native/tuppi_sooli.c": "browser-source/TuppiAI-dan11-product-20261026/native/tuppi_sooli.c",
-      "TuppiAI-dan11-product-20261026/native/tuppi_sooli_policy.c": "browser-source/TuppiAI-dan11-product-20261026/native/tuppi_sooli_policy.c",
-      "TuppiAI-dan11-product-20261026/native/tuppi_dd_wr.c": "browser-source/TuppiAI-dan11-product-20261026/native/tuppi_dd_wr.c",
-      "TuppiAI-dan11-product-20261026/native/tuppi_lite_net.c": "browser-source/TuppiAI-dan11-product-20261026/native/tuppi_lite_net.c",
-      "TuppiAI-dan11-product-20261026/native/tuppi_browser.c": "browser-source/TuppiAI-dan11-product-20261026/native/tuppi_browser.c",
-      "TuppiAI-dan11-product-20261026/native/tuppi_parallel.c": "browser-source/TuppiAI-dan11-product-20261026/native/tuppi_parallel.c",
-      "TuppiAI-dan11-product-20261026/native/tuppi_dan.c": "browser-source/TuppiAI-dan11-product-20261026/native/tuppi_dan.c",
-      "TuppiAI-dan11-product-20261026/native/showing_constraints.h": "browser-source/TuppiAI-dan11-product-20261026/native/showing_constraints.h",
-      "TuppiAI-dan11-product-20261026/native/tuppi_core.h": "browser-source/TuppiAI-dan11-product-20261026/native/tuppi_core.h",
-      "TuppiAI-dan11-product-20261026/native/tuppi_dan.h": "browser-source/TuppiAI-dan11-product-20261026/native/tuppi_dan.h",
-      "TuppiAI-dan11-product-20261026/native/tuppi_matrix.h": "browser-source/TuppiAI-dan11-product-20261026/native/tuppi_matrix.h",
-      "TuppiAI-dan11-product-20261026/native/tuppi_mlp.h": "browser-source/TuppiAI-dan11-product-20261026/native/tuppi_mlp.h",
-      "TuppiAI-dan11-product-20261026/native/tuppi_parallel.h": "browser-source/TuppiAI-dan11-product-20261026/native/tuppi_parallel.h",
-      "TuppiBrowser-dan11-20261026/tools/thread_runtime.js": "browser-source/TuppiBrowser-dan11-20261026/tools/thread_runtime.js"
+      "TuppiAI-symsearch-20261128/native/tuppi_core.c": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_core.c",
+      "TuppiAI-symsearch-20261128/native/tuppi_env.c": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_env.c",
+      "TuppiAI-symsearch-20261128/native/tuppi_search.c": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_search.c",
+      "TuppiAI-symsearch-20261128/native/tuppi_dd.c": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_dd.c",
+      "TuppiAI-symsearch-20261128/native/tuppi_mlp.c": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_mlp.c",
+      "TuppiAI-symsearch-20261128/native/tuppi_sooli.c": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_sooli.c",
+      "TuppiAI-symsearch-20261128/native/tuppi_sooli_policy.c": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_sooli_policy.c",
+      "TuppiAI-symsearch-20261128/native/tuppi_dd_wr.c": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_dd_wr.c",
+      "TuppiAI-symsearch-20261128/native/tuppi_lite_net.c": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_lite_net.c",
+      "TuppiAI-symsearch-20261128/native/tuppi_browser.c": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_browser.c",
+      "TuppiAI-symsearch-20261128/native/tuppi_parallel.c": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_parallel.c",
+      "TuppiAI-symsearch-20261128/native/tuppi_dan.c": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_dan.c",
+      "TuppiAI-symsearch-20261128/native/showing_constraints.h": "browser-source/TuppiAI-symsearch-20261128/native/showing_constraints.h",
+      "TuppiAI-symsearch-20261128/native/tuppi_core.h": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_core.h",
+      "TuppiAI-symsearch-20261128/native/tuppi_dan.h": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_dan.h",
+      "TuppiAI-symsearch-20261128/native/tuppi_matrix.h": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_matrix.h",
+      "TuppiAI-symsearch-20261128/native/tuppi_mlp.h": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_mlp.h",
+      "TuppiAI-symsearch-20261128/native/tuppi_parallel.h": "browser-source/TuppiAI-symsearch-20261128/native/tuppi_parallel.h",
+      "TuppiBrowser-heidi20-20261128/tools/thread_runtime.js": "browser-source/TuppiBrowser-heidi20-20261128/tools/thread_runtime.js"
     },
     "inference_candidates": 8,
-    "runtime_identity": "72bd855dd1c52ffe5817ff07c5c3b5a5c7e34b6bda73fa7832730c7fb5d417a7",
+    "runtime_identity": "33ef8f373a5337a18594f06dda16b919c5bdc54c7c3f35cf39c18ddf7410b85a",
     "retained_runtimes": [
       "31426bbf97821e2c275339a66147d8cdfe7ffcbbc6b089b3b9bbc41881415413",
       "4341014ea0acfb9a7673d2bc015ebb36a31ea89c1b638290a4c80652f3748a91",
       "63d3ac3e516499968243fb5a9e77f5b72138a1a9c3fc78d6f8c5e7f0d75e19c6",
+      "72bd855dd1c52ffe5817ff07c5c3b5a5c7e34b6bda73fa7832730c7fb5d417a7",
       "95497f1ebdf0979b8463f3822cf3db85ad8495ed85ae1fe3e5b3b09962871b5d",
       "ab2b37c6fa31035c211fab2fbf99505dd7b5d4f562dc9fc2a4d1db333f5773bc",
       "d0ef4461f89ef7ac126bf428b908d8dbf2227d82c2a8f6cb823ecde6d02cb769"
     ],
     "previous_browser_build": {
-      "ai_commit": "7c38db6a825ecfaced3dbdb830899f3358f4ebab",
+      "ai_commit": "ac94273331ba0d426dd44ecbdeed250b729ac66c",
       "ai_worktree": "TuppiAI-dan11-product-20261026",
       "file_map": {
         "TuppiAI-dan11-product-20261026/native/tuppi_core.c": "browser-source/TuppiAI-dan11-product-20261026/native/tuppi_core.c",
@@ -3848,12 +4099,13 @@
         "TuppiBrowser-dan11-20261026/tools/thread_runtime.js": "browser-source/TuppiBrowser-dan11-20261026/tools/thread_runtime.js"
       },
       "inference_candidates": 8,
-      "runtime_identity": "ab2b37c6fa31035c211fab2fbf99505dd7b5d4f562dc9fc2a4d1db333f5773bc",
+      "runtime_identity": "72bd855dd1c52ffe5817ff07c5c3b5a5c7e34b6bda73fa7832730c7fb5d417a7",
       "retained_runtimes": [
         "31426bbf97821e2c275339a66147d8cdfe7ffcbbc6b089b3b9bbc41881415413",
         "4341014ea0acfb9a7673d2bc015ebb36a31ea89c1b638290a4c80652f3748a91",
         "63d3ac3e516499968243fb5a9e77f5b72138a1a9c3fc78d6f8c5e7f0d75e19c6",
         "95497f1ebdf0979b8463f3822cf3db85ad8495ed85ae1fe3e5b3b09962871b5d",
+        "ab2b37c6fa31035c211fab2fbf99505dd7b5d4f562dc9fc2a4d1db333f5773bc",
         "d0ef4461f89ef7ac126bf428b908d8dbf2227d82c2a8f6cb823ecde6d02cb769"
       ],
       "bots": {
@@ -3911,30 +4163,85 @@
       "dan11": {
         "worlds": 64,
         "context_words": 8
+      },
+      "nelli15": {
+        "worlds": 128,
+        "mode": 3,
+        "roles": [
+          0,
+          2
+        ],
+        "role_files": [
+          "vrpo1_actor_0504.f32",
+          "vrpo4sym_v1.f32"
+        ]
+      },
+      "heidi15": {
+        "worlds": 64,
+        "mode": 5,
+        "roles": [
+          0,
+          2
+        ],
+        "inference": 4,
+        "role_files": [
+          "vrpo4sym_small_v1.f32",
+          "vrpo4sym_v1.f32"
+        ]
       }
     },
-    "qualification": "audit_deliverables/tuppi_dan11_release_20261026 (host Mac checks)",
-    "scope": "Adds Dan 1.1; earlier bots unchanged on fixtures"
+    "qualification": "audit_deliverables/tuppi_symsearch_20261128/release (host Mac checks)",
+    "scope": "Adds Heidi 1.5 and Nelli 1.5 (new games); earlier bots unchanged on fixtures"
   },
-  "hosted_dan11": {
-    "profile": "tuppi_ai_dan11_v1",
-    "name": "Dan 1.1",
-    "env": "TUPPI_HOSTED_DAN11=1",
-    "workers": 1,
+  "hosted_heidi15": {
+    "profile": "tuppi_ai_heidi15_sym64_v1",
+    "name": "Heidi 1.5",
+    "mode": 5,
     "worlds": 64,
-    "rami_actor_margin": 12.0,
-    "checkpoint_schema": "tuppi.hosted.controller.dan11.v1",
-    "uses_heidi_reservation": false,
-    "carries_earlier_build_checkpoints": true
+    "inference": 4,
+    "model_directory": "ai/models/compact_sym",
+    "model_manifest_sha256": "e3412a2420e15ad9221f4a04c1e2850798abc9a72fa5550873760e2dee324cd5",
+    "networks": {
+      "0": "vrpo4sym_small_v1.f32",
+      "1": "vrpo3_final.f32",
+      "2": "vrpo4sym_v1.f32"
+    },
+    "checkpoint_schema": "tuppi.hosted.controller.heidi15.v1",
+    "shares_heidi_reservation": true,
+    "worker_switches_model_directory": true,
+    "lite_profile": {
+      "profile": "tuppi_ai_lite_c1h_v3",
+      "name": "Nelli 1.5",
+      "network": "vrpo4sym_v1.lite.npz"
+    }
   },
-  "release_status": "Privacy notice and logging-basis update prepared locally; public operator identity/contact unresolved; no push or deploy",
-  "privacy_notice": {
-    "browser_commit": "cbfb97b100928e118add7948191ea6b5dee6dfa6",
-    "notice": "web/privacy.html",
-    "assessment": "docs/PRIVACY_ASSESSMENT.md",
-    "collection_and_retention_unchanged": true,
-    "personal_name_and_email_published": false,
-    "operator_identity_and_contact": "unresolved; deliberately not published per owner instruction",
-    "scope": "Notice, visible links and accurate data wording only; not a complete GDPR notice"
+  "network_sym": {
+    "architecture": "768x4 QNet, encoder 2 (anchor) and 256x2 (small)",
+    "sha256": {
+      "pt": "5322bd22ed20db70aeb7d15f0d590fb6226922034a9b4630ec6fe44b858169a4",
+      "lite_npz": "88c2ea62a28ec94822e533d20ba751393813786f0e6eb3d674aba46cb737d13b",
+      "small_pt": "ef2a33652fa587be5af1b1c55de8387a11934bf799390d3663468feb05262210"
+    }
+  },
+  "release_status": "Heidi 1.5 / Nelli 1.5 over 8841583; coordinator verifies and pushes; owner deploys",
+  "linux_image": {
+    "image": "tuppi-online:heidi15-01",
+    "id": "sha256:a86c14a57ac285bbaaafe67cebe2770e0381817d26e242b07ead79d3a31ae9ed",
+    "bytes": 468225200,
+    "platform": "linux/amd64 (Rosetta, one-vCPU VM)",
+    "build_qualification": "Dockerfile in-image checks passed: qualify.py W128/W1024, qualify_lite (500 deals), qualify_heidi (Nelli 1.0/1.1/1.5), qualify_compact modes 2/4/5, qualify_dan",
+    "at_0.5_cpu_512mib_no_swap": {
+      "direct5_max_decision_s": 1.08,
+      "worker5_max_decision_s": 1.07,
+      "worker4_after_mode5_max_decision_s": 35.01,
+      "cgroup_memory_peak_bytes": {
+        "direct5": 136024064,
+        "worker5": 421310464,
+        "worker4": 443621376
+      },
+      "oom_kill": 0
+    },
+    "not_run": "service fixture with tables, upgrade from the live image",
+    "records": "/Users/pyryouri/Developer/audit_deliverables/tuppi_symsearch_20261128/release/linux/attempt_01"
   }
 }

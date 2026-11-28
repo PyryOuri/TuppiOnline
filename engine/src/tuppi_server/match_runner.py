@@ -92,18 +92,25 @@ TUPPI_AI_PROFILE_KEY = "tuppi_ai_search_v1"
 HEIDI_LITE_PROFILE_KEY = "tuppi_ai_lite_c1h_v1"
 #: Heidi 1.1: the hosted W1024 PIB8 search (compact controller mode 2). No longer offered.
 HEIDI_SEARCH_PROFILE_KEY = "tuppi_ai_heidi10_pib8_v1"
-#: Nelli 1.1: Nelli 1.0 on the new base network (tuppi_ai.lite.MODEL_V4).
+#: Nelli 1.1: Nelli 1.0 on the VRPO4 base network (tuppi_ai.lite.MODEL_V4). No longer offered.
 NELLI11_PROFILE_KEY = "tuppi_ai_lite_c1h_v2"
-#: Heidi 1.2: Heidi 1.1 with the new base network as anchor and likelihood
-#: (compact controller mode 4); shares the one search-table slot with Heidi 1.1.
+#: Heidi 1.2: Heidi 1.1 with the VRPO4 network as its anchor only (compact
+#: controller mode 4). No longer offered.
 HEIDI12_PROFILE_KEY = "tuppi_ai_heidi12_pib8_v1"
+#: Nelli 1.5: the same lite C1H bot on the suit-symmetric network
+#: (tuppi_ai.lite.MODEL_SYM, vrpo4sym_v1).
+NELLI15_PROFILE_KEY = "tuppi_ai_lite_c1h_v3"
+#: Heidi 1.5: the look-ahead around vrpo4sym_v1 (compact controller mode 5,
+#: 64 worlds, PIB4; models/compact_sym). Shares the one search-table slot with
+#: Heidi 1.1 and 1.2.
+HEIDI15_PROFILE_KEY = "tuppi_ai_heidi15_sym64_v1"
 DAN11_PROFILE_KEY = "tuppi_ai_dan11_v1"
 #: The hosted lite C1H profiles and the hosted search profiles. A room record
 #: of each family keeps its own schema version (rooms.py, persistence.py).
-HEIDI_LITE_PROFILE_KEYS = frozenset({HEIDI_LITE_PROFILE_KEY, NELLI11_PROFILE_KEY})
-HEIDI_SEARCH_PROFILE_KEYS = frozenset({HEIDI_SEARCH_PROFILE_KEY, HEIDI12_PROFILE_KEY})
+HEIDI_LITE_PROFILE_KEYS = frozenset({HEIDI_LITE_PROFILE_KEY, NELLI11_PROFILE_KEY, NELLI15_PROFILE_KEY})
+HEIDI_SEARCH_PROFILE_KEYS = frozenset({HEIDI_SEARCH_PROFILE_KEY, HEIDI12_PROFILE_KEY, HEIDI15_PROFILE_KEY})
 #: Compact controller mode of each hosted search profile.
-HEIDI_SEARCH_MODES = {HEIDI_SEARCH_PROFILE_KEY: 2, HEIDI12_PROFILE_KEY: 4}
+HEIDI_SEARCH_MODES = {HEIDI_SEARCH_PROFILE_KEY: 2, HEIDI12_PROFILE_KEY: 4, HEIDI15_PROFILE_KEY: 5}
 #: Display names. Profile keys stay as stored; Nelli 1.0 was Heidi 0.5 and
 #: Heidi 1.1 was Heidi 1.0 (the same bots under new names).
 BOT_DISPLAY_NAMES = {
@@ -112,6 +119,8 @@ BOT_DISPLAY_NAMES = {
     NELLI11_PROFILE_KEY: "Nelli 1.1",
     HEIDI_SEARCH_PROFILE_KEY: "Heidi 1.1",
     HEIDI12_PROFILE_KEY: "Heidi 1.2",
+    NELLI15_PROFILE_KEY: "Nelli 1.5",
+    HEIDI15_PROFILE_KEY: "Heidi 1.5",
     DAN11_PROFILE_KEY: "Dan 1.1",
 }
 TUPPI_AI_WORLDS = 1024
@@ -201,6 +210,12 @@ def _construct_ai_agents(
             return hosted_agents(seats, options="c1h", model="v4")
         from tuppi_ai.lite import C1H, MODEL_V4, LiteAgent
         return {seat: LiteAgent(seat, options=C1H, model=MODEL_V4) for seat in seats}
+    if profile_key == NELLI15_PROFILE_KEY:
+        if os.environ.get("TUPPI_HOSTED_BOT") == "1":
+            from .hosted_bot import hosted_agents
+            return hosted_agents(seats, options="c1h", model="sym")
+        from tuppi_ai.lite import C1H, MODEL_SYM, LiteAgent
+        return {seat: LiteAgent(seat, options=C1H, model=MODEL_SYM) for seat in seats}
     if profile_key == TUPPI_AI_PROFILE_KEY:
         if os.environ.get("TUPPI_HOSTED_BOT") == "1":
             from .hosted_bot import hosted_agents

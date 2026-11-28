@@ -37,6 +37,9 @@ from .match_runner import (
     HEIDI_SEARCH_PROFILE_KEYS,
     HEIDI12_PROFILE_KEY,
     NELLI11_PROFILE_KEY,
+    NELLI15_PROFILE_KEY,
+    HEIDI15_PROFILE_KEY,
+    HEIDI_SEARCH_MODES,
     DAN11_PROFILE_KEY,
     LiveMatchRunner,
     tuppi_ai_available,
@@ -123,7 +126,8 @@ HEIDI_PROFILE_KEYS = LITE_ROOM_PROFILE_KEYS | HEIDI_SEARCH_PROFILE_KEYS
 #: The bot named in research results and match records (the browser's bot ids;
 #: the online Nelli 1.0 and Heidi 1.1 keep their earlier ids heidi05 and heidi10).
 RESEARCH_BOT_IDS = {HEIDI_LITE_PROFILE_KEY: "heidi05", HEIDI_SEARCH_PROFILE_KEY: "heidi10",
-                    NELLI11_PROFILE_KEY: "nelli11", HEIDI12_PROFILE_KEY: "heidi12", DAN11_PROFILE_KEY: "dan11"}
+                    NELLI11_PROFILE_KEY: "nelli11", HEIDI12_PROFILE_KEY: "heidi12", DAN11_PROFILE_KEY: "dan11",
+                    NELLI15_PROFILE_KEY: "nelli15", HEIDI15_PROFILE_KEY: "heidi15"}
 
 
 @dataclass(slots=True)
@@ -381,8 +385,8 @@ class RoomManager:
     ) -> tuple[Room, Session]:
         name = self._validate_name(display_name)
         self._validate_ai_seats(ai_seats)
-        # Nelli 1.0 and Heidi 1.1 stay accepted (an older client may still ask
-        # for them); new clients are offered Nelli 1.1 and Heidi 1.2.
+        # Nelli 1.0/1.1 and Heidi 1.1/1.2 stay accepted (an older client may
+        # still ask for them); new clients are offered Nelli 1.5 and Heidi 1.5.
         if bot_profile is not None and (self._ai_profile_key != TUPPI_AI_PROFILE_KEY or
                 bot_profile not in {TUPPI_AI_PROFILE_KEY, *HEIDI_PROFILE_KEYS}):
             raise RoomError("invalid_bot_profile")
@@ -776,8 +780,8 @@ class RoomManager:
             heidi = RESEARCH_BOT_IDS.get(profile)
             version = (profile + ":" + self.bot_version.split(":", 1)[-1]) if heidi and self.bot_version else self.bot_version
             if profile in HEIDI_SEARCH_PROFILE_KEYS:
-                from .hosted_bot import heidi_identity
-                version = profile + ":" + heidi_identity()[:12]
+                from .hosted_bot import search_identity
+                version = profile + ":" + search_identity(HEIDI_SEARCH_MODES[profile])[:12]
             record = online_record(room.runner, bot=heidi or os.environ.get("TUPPI_HOSTED_BOT_LEVEL") or "server",
                                    day=results_today(), bot_version=version)
             if record is not None:

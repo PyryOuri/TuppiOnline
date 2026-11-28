@@ -143,6 +143,8 @@
             "tuppi_ai_heidi10_pib8_v1",
             "tuppi_ai_lite_c1h_v2",
             "tuppi_ai_heidi12_pib8_v1",
+            "tuppi_ai_lite_c1h_v3",
+            "tuppi_ai_heidi15_sym64_v1",
             "tuppi_ai_dan11_v1"
           ]
         },
@@ -278,6 +280,8 @@
             "tuppi_ai_heidi10_pib8_v1",
             "tuppi_ai_lite_c1h_v2",
             "tuppi_ai_heidi12_pib8_v1",
+            "tuppi_ai_lite_c1h_v3",
+            "tuppi_ai_heidi15_sym64_v1",
             "tuppi_ai_dan11_v1"
           ]
         }
@@ -382,6 +386,8 @@
             "tuppi_ai_heidi10_pib8_v1",
             "tuppi_ai_lite_c1h_v2",
             "tuppi_ai_heidi12_pib8_v1",
+            "tuppi_ai_lite_c1h_v3",
+            "tuppi_ai_heidi15_sym64_v1",
             "tuppi_ai_dan11_v1"
           ]
         }
@@ -689,7 +695,9 @@
             "heidi11",
             "nelli11",
             "heidi12",
-            "dan11"
+            "dan11",
+            "nelli15",
+            "heidi15"
           ]
         }
       },
@@ -709,7 +717,10 @@
           "then": {
             "properties": {
               "bot": {
-                "const": "dan11"
+                "enum": [
+                  "dan11",
+                  "heidi15"
+                ]
               }
             },
             "required": [
@@ -721,7 +732,10 @@
           "if": {
             "properties": {
               "bot": {
-                "const": "dan11"
+                "enum": [
+                  "dan11",
+                  "heidi15"
+                ]
               }
             },
             "required": [
@@ -971,7 +985,9 @@
             "heidi11",
             "nelli11",
             "heidi12",
-            "dan11"
+            "dan11",
+            "nelli15",
+            "heidi15"
           ]
         }
       },
@@ -991,7 +1007,10 @@
           "then": {
             "properties": {
               "bot": {
-                "const": "dan11"
+                "enum": [
+                  "dan11",
+                  "heidi15"
+                ]
               }
             },
             "required": [
@@ -1003,7 +1022,10 @@
           "if": {
             "properties": {
               "bot": {
-                "const": "dan11"
+                "enum": [
+                  "dan11",
+                  "heidi15"
+                ]
               }
             },
             "required": [

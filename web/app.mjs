@@ -19,19 +19,24 @@ const $ = id => document.getElementById(id);
 // called Heidi 0.5 (id heidi05, profile tuppi_ai_lite_c1h_v1): only the name changed.
 // Heidi 1.2 and Nelli 1.1 are Heidi 1.1 and Nelli 1.0 with the new base network.
 // Dan 1.1 adds his guarded NOLO habit and conservative bidding beside those two.
+// Heidi 1.5 (heidi15, a 64-world look-ahead around the suit-symmetric network) and
+// Nelli 1.5 (nelli15, Nelli's lite bot on that network) replace Heidi 1.2 and Nelli 1.1.
 // The older ids stay selectable for their saves.
-const heidiNames = {heidi05: 'Nelli 1.0', nelli11: 'Nelli 1.1', heidi10: 'Heidi 1.0', heidi11: 'Heidi 1.1', heidi12: 'Heidi 1.2', dan11: 'Dan 1.1'};
+const heidiNames = {heidi05: 'Nelli 1.0', nelli11: 'Nelli 1.1', heidi10: 'Heidi 1.0', heidi11: 'Heidi 1.1', heidi12: 'Heidi 1.2', dan11: 'Dan 1.1',
+  nelli15: 'Nelli 1.5', heidi15: 'Heidi 1.5'};
 const onlineHeidiNames = {tuppi_ai_lite_c1h_v1: 'Nelli 1.0', tuppi_ai_lite_c1h_v2: 'Nelli 1.1',
-  tuppi_ai_heidi10_pib8_v1: 'Heidi 1.1', tuppi_ai_heidi12_pib8_v1: 'Heidi 1.2', tuppi_ai_dan11_v1: 'Dan 1.1'};
+  tuppi_ai_heidi10_pib8_v1: 'Heidi 1.1', tuppi_ai_heidi12_pib8_v1: 'Heidi 1.2', tuppi_ai_dan11_v1: 'Dan 1.1',
+  tuppi_ai_lite_c1h_v3: 'Nelli 1.5', tuppi_ai_heidi15_sym64_v1: 'Heidi 1.5'};
 // A new game started from an older bot's selection plays that bot's current version.
-const currentLocalBots = {heidi05: 'nelli11', heidi10: 'heidi12', heidi11: 'heidi12'};
-const liteLocalBots = ['heidi05', 'nelli11'];  // W128; the Heidi search bots are W1024
+const currentLocalBots = {heidi05: 'nelli15', nelli11: 'nelli15', heidi10: 'heidi15', heidi11: 'heidi15', heidi12: 'heidi15'};
+const liteLocalBots = ['heidi05', 'nelli11', 'nelli15'];  // W128; the Heidi 1.x search bots are W1024
+const worlds64Bots = ['dan11', 'heidi15'];  // Dan 1.1 and the Heidi 1.5 look-ahead: 64 worlds
 // The online bots new rooms may choose, shown when the server lists them in bot_options.
-const onlineBotChoices = [['network-nelli11-option', 'tuppi_ai_lite_c1h_v2'], ['network-heidi12-option', 'tuppi_ai_heidi12_pib8_v1'], ['network-dan11-option', 'tuppi_ai_dan11_v1']];
+const onlineBotChoices = [['network-nelli15-option', 'tuppi_ai_lite_c1h_v3'], ['network-heidi15-option', 'tuppi_ai_heidi15_sym64_v1'], ['network-dan11-option', 'tuppi_ai_dan11_v1']];
 function botSelection(save = null) {
   let value = save ? (save.bot ?? String(save.worlds)) : $('worlds').value;
   if (!save) value = currentLocalBots[value] ?? value;
-  return value in heidiNames ? {bot: value, worlds: value === 'dan11' ? 64 : liteLocalBots.includes(value) ? 128 : 1024} :
+  return value in heidiNames ? {bot: value, worlds: worlds64Bots.includes(value) ? 64 : liteLocalBots.includes(value) ? 128 : 1024} :
     {bot: 'legacy', worlds: save?.worlds ?? Number(value)};
 }
 function botSelectionValue(save) { return save?.bot ?? String(save?.worlds ?? 128); }
