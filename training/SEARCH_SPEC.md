@@ -13,17 +13,21 @@ deal at 0-0, +0.0072 at the release evaluator's uniform scores. The Mac measured
 
 ## 2. The search (a change of the controller in `ai/native/tuppi_browser.c`)
 
-Against the plain new network, per deal at 0-0, 1,024 base deals each:
+Against the plain new network, per deal at 0-0, 1,024 base deals each. "Small network": the new
+network distilled into VRPO1's shape (256 wide, 2 blocks), `runs/teach_v1/small_net/best_student.pt`
+on Drive.
 
-| Search around the new network | Gain |
-|---|---|
-| The configuration below | **+0.0042 +/- 0.0005** |
-| The same with VRPO1 in the play-outs | +0.0026 +/- 0.0005 |
-| The same with VRPO1 also scoring the sampled worlds | +0.0014 +/- 0.0006 |
-| Heidi 1.2's kind of play-outs (VRPO1, last 6 tricks by the open-card solver), with the rule below | +0.0016 +/- 0.0005 |
+| Search around the new network | Sampled deals | Gain |
+|---|---|---|
+| New network in the play-outs and scoring the deals | 64 | **+0.0042 +/- 0.0005** |
+| **Small network in both roles (recommended)** | 64 | **+0.0036 +/- 0.0005** |
+| Small network in both roles, thresholds 2, 2, 1, 0 by phase | 16 | +0.0026 +/- 0.0005 |
+| VRPO1 in both roles | 64 | +0.0014 +/- 0.0006 |
+| Heidi 1.2's kind of play-outs (VRPO1, last 6 tricks by the open-card solver) | 64 | +0.0016 +/- 0.0005 |
 
-Converted with the one direct measurement (+0.0027 per deal = 63% of matches), +0.0042 is roughly
-70% of matches against the plain new network. That conversion is linear and rough.
+Converted with the one direct measurement (+0.0027 per deal = 63% of matches), +0.0036 is roughly
+67% of matches against the plain new network and +0.0042 roughly 70%. That conversion is linear
+and rough.
 
 The configuration:
 
@@ -32,9 +36,10 @@ The configuration:
   (28% of the unforced decisions).
 - **Worlds**: 64 per decision. Play inference as the engine has it (`belief_worlds` in
   `tuppi_env.c`): 4 candidates per world, temperature 2, uniform share 0.5, in card play, scored
-  by the **new network** (not VRPO3).
-- **Play-outs**: the **new network** on all four seats, to the end of the deal, **no solver tail**.
-  Sooli phases by the heuristics, as now.
+  by the **small network** (not VRPO3; the new network itself is no better in this role).
+- **Play-outs**: the **small network** on all four seats, to the end of the deal, **no solver
+  tail**. Sooli phases by the heuristics, as now. (The new network itself in the play-outs is
+  worth a further 0.0006 +/- 0.0005 at about 8 times the network cost.)
 - **Rule**: with the mean gain of a candidate over the network's move across the 64 worlds and
   its paired standard error (every world counted, repeated ones too), play the candidate with the
   largest mean gain among those above 0.003 and above 2 standard errors; otherwise the network's
@@ -47,24 +52,31 @@ follow its gains with a slope of 0.35) a margin rule without the test is worth a
 tested rule; whether swapping only her anchor helps has not been measured and the repository
 records an earlier anchor swap as neutral.
 
-Cost per searched decision: about 180 play-outs of on average 31 network moves with the 768-wide
-network, plus scoring 256 candidate worlds; Heidi 1.2 does about 5,200 play-outs of about 11 moves
-with the 256-wide network plus 8,192 candidate worlds. By arithmetic the two are of the same order;
-it has not been timed natively.
+Cost per searched decision, by arithmetic (not timed natively): about 180 play-outs of on average
+31 moves and 256 candidate worlds to score, all with a network of VRPO1's size. Heidi 1.2 does
+about 5,200 play-outs of about 11 moves with VRPO1, the solver, and 8,192 candidate worlds scored
+with the four times larger VRPO3. That is an order of magnitude less work than Heidi 1.2 at 64
+deals, and several times less again at 16; and 28% of the unforced decisions are not searched at
+all.
 
-## 3. Cheaper variants, from a recording scored by real outcomes (not yet played as matches)
+## 3. Fewer or more deals
 
-With the configuration above and fewer worlds, the gain per game was +0.0024 at 8 worlds, +0.0032
-at 16, +0.0039 at 32 and +0.0046 at 64. A threshold of 1 standard error in tricks 5-9 and none
-from trick 10 (2 before) gave +0.0038 at 8 worlds and +0.0042 at 16.
+Played: 16 deals with thresholds of 2, 2, 1 and 0 standard errors in the four phases (bids, tricks
+1-4, 5-9, 10-13) keep +0.0026 of the +0.0036. From recordings scored by real outcomes, with the new
+network in both roles: +0.0024 per game at 8 deals, +0.0032 at 16, +0.0039 at 32, +0.0046 at 64
+and +0.0056 at 256.
 
-## 4. Still open
+## 4. Tried and closed
 
-- A small network distilled from the new one, for the play-outs and for scoring the worlds
-  (`colab/tuppi_teach.ipynb`, stage B). If it comes close to the new network in those roles the
-  search costs a fraction.
-- More worlds or more candidates per world (stage C), and teaching the plain network the
-  search's decisions (stage A).
+- Teaching the plain network the search's decisions (1.2 million labelled decisions): no gain,
+  49.5% +/- 0.5% of matches against the original. Likewise an earlier trial on single play-outs.
+- A looser rule for Heidi's kind of model, a solver tail, sharper play inference (CPU pilot):
+  no gain.
+
+## 5. Still open
+
+- Whether swapping only Heidi 1.2's anchor helps under her own rule: not measured.
 - A check on a bank of positions that the hosted implementation chooses as `lookahead.py` does:
   the worlds and per-world values of `lookahead.py` equal the engine's `tc_search_worlds` and
   `tc_search_world_values` exactly (`training/tests/test_lookahead.py`).
+- More candidates per world (cheap; the recording was not finished).

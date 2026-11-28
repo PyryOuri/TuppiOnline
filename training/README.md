@@ -370,6 +370,31 @@ decisions) explains its weakness: its model is biased (slope 0.35 against 1.11 f
 one), so looser rules lose with it (argmax and margin +0.0005 per game, 2 standard errors +0.0009,
 3 standard errors +0.0010).
 
+**A small network for the look-ahead** (`teach_v1`, stage B, 2026-11-28, on an A100). The baked
+network was distilled into one of VRPO1's shape (256 wide, 2 blocks; `bake.py --init
+vrpo1_actor_0504.pt --teacher <baked network>`, 45 minutes) and used inside the look-ahead of the
+baked network; against the plain baked network, 0-0, 1,024 base deals, `--belief 4 --all-worlds`:
+
+| Arm | Play-outs | Worlds scored by | Worlds | A minus plain |
+|---|---|---|---|---|
+| `faithful_z2` (third run) | baked network | baked network | 64 | +0.00420 +/- 0.00052 |
+| `small_all` | small network | small network | 64 | **+0.00356 +/- 0.00049** |
+| `small_ownlik` | small network | baked network | 64 | +0.00333 +/- 0.00048 |
+| `small_all_16` (`--z-by-phase 2,2,1,0`) | small network | small network | 16 | **+0.00261 +/- 0.00053** |
+| `cheap_notail` (third run) | VRPO1 | VRPO1 | 64 | +0.00140 +/- 0.00058 |
+
+On the same base deals the small network in both roles is 0.00063 +/- 0.00052 behind the baked
+network in both roles and 0.00216 +/- 0.00063 ahead of VRPO1 in both roles; scoring the worlds
+with the baked network instead adds nothing (-0.00023 +/- 0.00049); 16 worlds lose 0.00095 +/-
+0.00057 against 64. The small network makes 43,000 play-outs a second on the A100 against 17,000
+for the baked one on the L4; on a CPU the difference is that of the networks' sizes, about 8 times.
+
+**More worlds** (stage C, one recording finished): 256 worlds instead of 64, same model, 80,871
+decisions scored by reality: slope 1.19 (unbiased), an estimate's noise 0.0028 instead of 0.0047,
+and the looser rule is worth +0.00563 +/- 0.00082 per game against +0.00456 +/- 0.00076 with 64
+worlds (the two recordings overlap in half of the decisions; not a paired figure). About a fifth
+more for four times the work.
+
 **Match scores.** Everything above starts every deal at 0-0. The release evaluator's "uniform" mix
 gives larger figures per deal for the same lead, with a spread larger by about the same factor:
 on the CPU, 2,048 base deals, sooli tricks by the live rules, VRPO4 minus VRPO3 is +0.00114 +/-
@@ -461,6 +486,19 @@ reality those differences are artefacts of the model: uniform worlds that ignore
 far implies, a play-out policy that is not the one at the table, an open-card finish. That
 look-ahead is limited by the fidelity of its model, not by the number of worlds.
 `LookAhead.trace` exposes the same data for other studies.
+
+### Teaching the network the look-ahead's decisions: no
+
+`tuppi_train/teach.py`, `teach_v1` stage A. 1,181,173 decisions of tricks 5 to 13 from the baked
+network's own play were labelled by the faithful look-ahead (64 worlds, play inference); the rule
+(1 standard error in tricks 5-9, none from trick 10) changes the move in 11.9% of them. A copy of
+the network was trained for three passes to prefer the look-ahead's move there and its own
+elsewhere. Result: -0.00003 +/- 0.00015 per deal against the original on fresh deals and 49.5% +/-
+0.5% of 20,000 complete matches. On held-out decisions the copy plays the look-ahead's move in 8% of
+the decisions the rule changes, and has left its own move in 9% of the others: it cannot tell from
+the observation which decisions the look-ahead would change. With the earlier trial on single
+play-outs this is the second null of its kind; what the look-ahead adds is computed at the table
+and does not fit into a network of this size as a function of the observation.
 
 ### Can the gain be trained into the network? (not at this scale)
 
