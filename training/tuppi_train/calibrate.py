@@ -58,6 +58,7 @@ def record(out: Path, net_name: str, settings: "lookahead.Settings", base: int =
         old = json.loads(cfg.read_text())
         old["settings"] = {**config["settings"], **old["settings"], "z": settings.z, "all_worlds": settings.all_worlds,
                            "z_by_phase": settings.z_by_phase}     # the rule does not enter a recording
+        old["settings"].setdefault("phases", "")
         if old != config:
             raise SystemExit(f"{out} holds a recording with other settings; use another --out")
     cfg.write_text(json.dumps(config, indent=1))
@@ -84,7 +85,7 @@ def record(out: Path, net_name: str, settings: "lookahead.Settings", base: int =
         t0 = time.perf_counter()
         values = lockstep.duplicate_eval(env, look, plain, chunk, 3, C.c_uint64(seed + c), net.encoder)
         assert not values.any()
-        data = {k: np.concatenate([t[k] for t in look.trace]) for k in look.trace[0] if k != "state"}
+        data = {k: np.concatenate([t[k] for t in look.trace]) for k in look.trace[0] if k not in ("state", "feat", "mask")}
         states = np.ascontiguousarray(np.concatenate([t["state"] for t in look.trace]))
         cand = np.zeros((len(states), lookahead.MAX_K), np.int32)
         cand[:, :data["cand"].shape[1]] = data["cand"]
@@ -198,10 +199,60 @@ def report(out: Path, worlds: int = 0, log=print) -> dict:
     return result
 
 
+RULES = {"z 2, repeated worlds once": lambda x, ph: (x["m"] > 0.003) & (x["z_effective"] > 2),
+         "all worlds, z 2": lambda x, ph: (x["m"] > 0.003) & (x["z"] > 2),
+         "all worlds, z 1": lambda x, ph: (x["m"] > 0.003) & (x["z"] > 1),
+         "all worlds, z 2,2,1,0": lambda x, ph: (x["m"] > 0.003) & (x["z"] > np.array([2.0, 2.0, 1.0, 0.0])[ph][:, None])}
+
+
+def compare(folders: list, log=print) -> dict:
+    """Recordings of the same decisions under different models (same network, seed and size): how
+    much of each model's claims is real by phase, and what each rule is really worth, with the
+    difference to the first recording (paired: the decisions and their real values are the same)."""
+    warnings.simplefilter("ignore")
+    data = [load(f) for f in folders]
+    n = min(len(d["k"]) for d in data)
+    parts = min(len(d["games"]) for d in data)
+    keep = [d["part"] < parts for d in data]
+    first_real = data[0]["real"][keep[0]]
+    out = {}
+    for f, d, kp in zip(folders, data, keep):
+        if d["real"][kp].shape != first_real.shape or not np.array_equal(d["real"][kp], first_real):
+            raise SystemExit(f"{f} does not hold the same decisions as {folders[0]} (another network, seed or size)")
+    log(f"{int(keep[0].sum()):,} decisions in {int(data[0]['games'][:parts].sum()):,} games, common to {len(folders)} recordings\n")
+    base = {}
+    for f, d, kp in zip(folders, data, keep):
+        d = {k: (v[kp] if k not in ("games",) else v[:parts]) for k, v in d.items()}
+        x = quantities(d)
+        name = Path(f).name
+        ratio = []
+        for j in range(len(lookahead.PHASES)):
+            sel = x["alt"] & (x["m"] > 0.003) & (x["z"] > 2) & (d["phase"] == j)[:, None]
+            ratio.append(x["r"][sel].mean() / x["m"][sel].mean() if sel.sum() > 100 else float("nan"))
+        log(f"{name}: share of the model's claims that is real, by phase " + ", ".join(
+            f"{p} {r:.0%}" for p, r in zip(lookahead.PHASES, ratio)))
+        out[name] = {"real_share": ratio, "rules": {}}
+        for rule, ok in RULES.items():
+            v = rule_value(d, x, choose(x["m"], ok(x, d["phase"]), x["valid"]))
+            versus = ""
+            if rule in base:
+                diff = v["per_part"] - base[rule]
+                versus = f"   against {Path(folders[0]).name} {diff.mean():+.5f} +/- {1.96 * diff.std(ddof=1) / np.sqrt(len(diff)):.5f}"
+            else:
+                base[rule] = v["per_part"]
+            out[name]["rules"][rule] = {k: v[k] for k in ("real", "ci95", "claimed", "changed")}
+            log(f"   {rule:<28} real {v['real']:+.5f} +/- {v['ci95']:.5f}   changes {v['changed']:5.1%}{versus}")
+    return out
+
+
 def main(argv=None) -> None:
     d = lookahead.Settings()
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    p.add_argument("command", choices=("record", "report"))
+    p.add_argument("command", choices=("record", "report", "compare"))
+    p.add_argument("--with", dest="others", default="", help="compare: further recordings, comma-separated folders")
+    p.add_argument("--belief-t", type=float, default=d.belief_t)
+    p.add_argument("--belief-eps", type=float, default=d.belief_eps)
+    p.add_argument("--seed", type=int, default=4000, help="record: the same seed gives the same decisions")
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--net", default="")
     p.add_argument("--base", type=int, default=1280)
@@ -223,9 +274,13 @@ def main(argv=None) -> None:
         if not a.net:
             p.error("record needs --net")
         tn.use_cpus(a.threads)
-        settings = lookahead.Settings(worlds=a.worlds, top=a.top, min_prob=a.min_prob, dd_left=a.dd, belief=a.belief)
-        record(a.out, a.net, settings, a.base, a.chunk, rollout_name=a.rollout, likelihood_name=a.likelihood,
+        settings = lookahead.Settings(worlds=a.worlds, top=a.top, min_prob=a.min_prob, dd_left=a.dd, belief=a.belief,
+                                      belief_t=a.belief_t, belief_eps=a.belief_eps)
+        record(a.out, a.net, settings, a.base, a.chunk, seed=a.seed, rollout_name=a.rollout, likelihood_name=a.likelihood,
                dev=device.pick(a.device), amp_name=a.amp, lane_games=a.lane_games, offer_model_path=a.offer_model)
+    if a.command == "compare":
+        compare([a.out] + [Path(x.strip()) for x in a.others.split(",") if x.strip()])
+        return
     result = report(a.out, a.worlds if a.command == "report" and a.worlds != d.worlds else 0)
     (a.out / "report.json").write_text(json.dumps(result, indent=1))
 

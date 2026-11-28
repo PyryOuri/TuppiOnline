@@ -69,6 +69,7 @@ class Settings:
     belief_eps: float = 0.5
     all_worlds: bool = False  # standard errors from all worlds, also when resampling repeated some (see decide)
     z_by_phase: str = ""      # "z,z,z,z" for bids, tricks 1-4, 5-9, 10-13 instead of one z
+    phases: str = ""          # "0,0,1,1": look ahead only in the phases marked 1 (default: all)
 
 
 class Lane:
@@ -336,7 +337,8 @@ class LookAhead:
         self.env, self.anchor, self.searcher, self.s = env, anchor, searcher, settings
         self.likelihood = likelihood or anchor    # the chooser whose logits score the worlds (belief)
         #: None, or a list that receives, per call with searched decisions, what the decision was
-        #: made from: the full "state", the candidates "cand" and their count "k", every world's
+        #: made from: the full "state", its packed observation "feat" and legal "mask", the
+        #: candidates "cand" and their count "k", every world's
         #: value of every candidate ("q" [n, worlds, top]), the anchor's log-probabilities of the
         #: candidates "logp", "phase" (PHASES), "effective" worlds and the "choice". For studying
         #: decision rules offline.
@@ -372,6 +374,10 @@ class LookAhead:
             games = np.ascontiguousarray(np.asarray(idx)[rows], np.int32)
             states = np.zeros(len(rows), STATE)
             lib.tc_ls_copy_states(self.env._h, games.ctypes.data, len(rows), states.ctypes.data)
+            if s.phases:
+                wanted = np.array([int(v) for v in s.phases.split(",")])[phase_of(states)] > 0
+                rows, states = rows[wanted], np.ascontiguousarray(states[wanted])
+        if len(rows):
             # all draws up front, in row order: the result does not depend on lanes or chunks
             state_seeds = self.rng.integers(1, 2**63, len(rows), dtype=np.uint64)
             world_seeds = self.rng.integers(1, 2**63, len(rows) * s.worlds, dtype=np.uint64)
@@ -398,6 +404,7 @@ class LookAhead:
                     logp = torch.log_softmax(self.anchor._logits(feat[rows], mask[rows]), 1)
                     logp = logp.gather(1, torch.from_numpy(cand[rows, :top].astype(np.int64)).to(logp.device))
                 self.trace.append({"state": states, "cand": cand[rows, :top].copy(),
+                                   "feat": np.array(feat[rows]), "mask": np.array(mask[rows]),
                                    "q": q[:, :, :top].astype(np.float32), "k": kc.copy(), "logp": logp.cpu().numpy(),
                                    "phase": phase.astype(np.int8), "effective": effective.astype(np.float32),
                                    "choice": choice.astype(np.int8)})
@@ -596,6 +603,9 @@ def main(argv=None) -> None:
     p.add_argument("--no-show", action="store_true", help="no look-ahead at showing decisions")
     p.add_argument("--dd", type=int, default=d.dd_left)
     p.add_argument("--belief", type=int, default=d.belief)
+    p.add_argument("--belief-t", type=float, default=d.belief_t, help="temperature of the likelihood (lower = sharper)")
+    p.add_argument("--belief-eps", type=float, default=d.belief_eps, help="uniform share of the likelihood")
+    p.add_argument("--phases", default="", help="look ahead only in these phases, e.g. 0,0,1,1 for tricks 5-13")
     p.add_argument("--scores", default="zero", choices=["zero", "uniform"],
                    help="match score of each base deal: 0-0, or the release evaluator's uniform mix")
     p.add_argument("--lanes", type=int, default=2)
@@ -609,7 +619,10 @@ def main(argv=None) -> None:
     tn.use_cpus(a.threads)
     if a.z_by_phase and len(a.z_by_phase.split(",")) != len(PHASES):
         p.error("--z-by-phase takes four values")
-    settings = Settings(all_worlds=a.all_worlds, z_by_phase=a.z_by_phase,
+    if a.phases and len(a.phases.split(",")) != len(PHASES):
+        p.error("--phases takes four values")
+    settings = Settings(all_worlds=a.all_worlds, z_by_phase=a.z_by_phase, belief_t=a.belief_t, belief_eps=a.belief_eps,
+                        phases=a.phases,
                         worlds=a.worlds, top=a.top, min_prob=a.min_prob, keep=a.keep, keep_show=a.keep_show, z=a.z,
                         show=not a.no_show, dd_left=a.dd, belief=a.belief)
     r = measure(a.out, a.net, settings, a.base, a.chunk, a.seed, a.rollout, a.opponent, device.pick(a.device), a.amp,
